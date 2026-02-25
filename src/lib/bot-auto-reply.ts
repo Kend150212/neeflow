@@ -550,7 +550,7 @@ async function sendAndSaveReply(
         })
         : null
 
-    if ((platform === 'facebook' || platform === 'instagram') && platformAccount?.accessToken) {
+    if (platform === 'facebook' && platformAccount?.accessToken) {
         const conversationType = conversation.type || 'message'
 
         if (conversationType === 'message') {
@@ -569,6 +569,29 @@ async function sendAndSaveReply(
                     }
                 }
                 await sendFacebookMessage(
+                    platformAccount.accessToken,
+                    conversation.externalUserId,
+                    text,
+                    imageUrls
+                )
+            }
+        }
+    }
+
+    // Instagram DM reply — uses Instagram Send API (different from Facebook Messenger)
+    if (platform === 'instagram' && platformAccount?.accessToken) {
+        const conversationType = conversation.type || 'message'
+
+        if (conversationType === 'message') {
+            const dedupKey = `ig_${conversation.externalUserId}`
+            const lastSent = recentBotReplies.get(dedupKey)
+            const now = Date.now()
+
+            if (lastSent && (now - lastSent) < DEDUP_TTL_MS) {
+                console.log(`[Bot] ⏭️ Skipping IG DM send (dedup) for ${dedupKey} - saving to DB only`)
+            } else {
+                recentBotReplies.set(dedupKey, now)
+                await sendInstagramMessage(
                     platformAccount.accessToken,
                     conversation.externalUserId,
                     text,
@@ -690,6 +713,66 @@ async function sendFacebookMessage(
                     },
                 }),
             })
+        }
+    }
+}
+
+/**
+ * Send a message via Instagram Send API
+ * Instagram uses a different endpoint than Facebook Messenger
+ */
+async function sendInstagramMessage(
+    accessToken: string,
+    recipientId: string,
+    text: string,
+    imageUrls?: string[]
+) {
+    const apiUrl = `https://graph.instagram.com/v21.0/me/messages`
+
+    // Send text message
+    if (text) {
+        const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+                recipient: { id: recipientId },
+                message: { text },
+            }),
+        })
+        const data = await res.json()
+        if (data.error) {
+            console.error(`[IG Send] ❌ Text send failed:`, JSON.stringify(data.error))
+        } else {
+            console.log(`[IG Send] ✅ DM sent to ${recipientId}`)
+        }
+    }
+
+    // Send images
+    if (imageUrls?.length) {
+        for (const url of imageUrls) {
+            const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    recipient: { id: recipientId },
+                    message: {
+                        attachment: {
+                            type: 'image',
+                            payload: { url },
+                        },
+                    },
+                }),
+            })
+            const data = await res.json()
+            if (data.error) {
+                console.error(`[IG Send] ❌ Image send failed:`, JSON.stringify(data.error))
+            }
         }
     }
 }

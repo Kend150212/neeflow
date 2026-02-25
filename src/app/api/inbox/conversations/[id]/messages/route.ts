@@ -205,8 +205,8 @@ export async function POST(
         })
     }
 
-    // ── Send reply via Facebook/Instagram API ──
-    if (conversation.platform === 'facebook' || conversation.platform === 'instagram') {
+    // ── Send reply via Facebook Messenger API ──
+    if (conversation.platform === 'facebook') {
         const platformAccount = await prisma.channelPlatform.findUnique({
             where: { id: conversation.platformAccountId },
         })
@@ -242,7 +242,7 @@ export async function POST(
                 }
 
                 if (conv?.type === 'comment') {
-                    // Reply to comment — target the specific post's latest comment
+                    // Reply to comment
                     const postExternalId = conv.externalUserId?.replace('post_', '') || ''
                     const lastComment = await prisma.socialComment.findFirst({
                         where: {
@@ -255,9 +255,7 @@ export async function POST(
                     })
                     const commentId = lastComment?.externalCommentId
                     if (commentId) {
-                        // Strip @[Name] syntax and prepend @mention of commenter
                         let replyText = content.trim().replace(/@\[([^\]]+)\]/g, '@$1')
-                        // Auto-prepend @mention if not already present
                         if (lastComment.authorName && !replyText.startsWith(`@${lastComment.authorName}`)) {
                             replyText = `@${lastComment.authorName} ${replyText}`
                         }
@@ -284,10 +282,9 @@ export async function POST(
                         }
                     }
                 } else {
-                    // Send DM via Send API
+                    // Send DM via Messenger Send API
                     const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
 
-                    // Check 24h messaging window — find last inbound message in this conversation
                     const lastInbound = await prisma.inboxMessage.findFirst({
                         where: { conversationId: id, direction: 'inbound' },
                         orderBy: { sentAt: 'desc' },
@@ -296,7 +293,6 @@ export async function POST(
                     const hoursSinceLastInbound = lastInbound
                         ? (Date.now() - new Date(lastInbound.sentAt).getTime()) / (1000 * 60 * 60)
                         : Infinity
-                    // Facebook allows RESPONSE within 24h, after that need MESSAGE_TAG
                     const messagingType = hoursSinceLastInbound <= 24 ? 'RESPONSE' : 'MESSAGE_TAG'
                     const messageTag = messagingType === 'MESSAGE_TAG' ? 'HUMAN_AGENT' : undefined
                     if (messagingType === 'MESSAGE_TAG') {
@@ -304,7 +300,6 @@ export async function POST(
                     }
 
                     if (fbAttachmentId) {
-                        // Send image as attachment
                         const fbRes = await fetch(
                             `https://graph.facebook.com/v19.0/me/messages?access_token=${platformAccount.accessToken}`,
                             {
@@ -322,7 +317,6 @@ export async function POST(
                         if (fbData.message_id) {
                             console.log(`[FB Reply] ✅ Image DM sent: ${fbData.message_id}`)
                         }
-                        // Also send text if present (not just the placeholder)
                         if (cleanText && cleanText !== '📷 Image') {
                             await fetch(
                                 `https://graph.facebook.com/v19.0/me/messages?access_token=${platformAccount.accessToken}`,
@@ -339,7 +333,6 @@ export async function POST(
                             )
                         }
                     } else {
-                        // Text-only DM
                         const fbRes = await fetch(
                             `https://graph.facebook.com/v19.0/me/messages?access_token=${platformAccount.accessToken}`,
                             {
@@ -367,7 +360,81 @@ export async function POST(
                 }
             } catch (err) {
                 console.error(`[FB Reply] ❌ Error sending reply:`, err)
-                // Don't fail the API — message is still saved locally
+            }
+        }
+    }
+
+    // ── Send reply via Instagram Send API ──
+    if (conversation.platform === 'instagram') {
+        const platformAccount = await prisma.channelPlatform.findUnique({
+            where: { id: conversation.platformAccountId },
+        })
+
+        if (platformAccount?.accessToken) {
+            const conv = await prisma.conversation.findUnique({
+                where: { id },
+                select: { type: true, externalUserId: true },
+            })
+
+            try {
+                if (conv?.type === 'message' || !conv?.type) {
+                    const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
+                    const igApiUrl = `https://graph.instagram.com/v21.0/me/messages`
+
+                    if (cleanText) {
+                        const igRes = await fetch(igApiUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${platformAccount.accessToken}`,
+                            },
+                            body: JSON.stringify({
+                                recipient: { id: conv?.externalUserId },
+                                message: { text: cleanText },
+                            }),
+                        })
+                        const igData = await igRes.json()
+                        if (igData.error) {
+                            console.warn(`[IG Reply] ⚠️ DM send failed:`, JSON.stringify(igData.error))
+                        } else {
+                            if (igData.message_id) {
+                                await prisma.inboxMessage.update({
+                                    where: { id: message.id },
+                                    data: { externalId: igData.message_id },
+                                })
+                            }
+                            console.log(`[IG Reply] ✅ DM sent to ${conv?.externalUserId}`)
+                        }
+                    }
+                } else if (conv?.type === 'comment') {
+                    // IG comment reply — use the comment reply API
+                    const lastComment = await prisma.inboxMessage.findFirst({
+                        where: { conversationId: id, direction: 'inbound' },
+                        orderBy: { sentAt: 'desc' },
+                        select: { externalId: true },
+                    })
+                    if (lastComment?.externalId) {
+                        const igRes = await fetch(
+                            `https://graph.facebook.com/v19.0/${lastComment.externalId}/replies`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    message: content.trim(),
+                                    access_token: platformAccount.accessToken,
+                                }),
+                            }
+                        )
+                        const igData = await igRes.json()
+                        if (igData.id) {
+                            console.log(`[IG Reply] ✅ Comment reply: ${igData.id}`)
+                        } else {
+                            console.warn(`[IG Reply] ⚠️ Comment reply failed:`, JSON.stringify(igData))
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(`[IG Reply] ❌ Error sending reply:`, err)
             }
         }
     }
