@@ -620,12 +620,25 @@ async function sendAndSaveReply(
                         if (now - ts > DEDUP_TTL_MS) recentBotReplies.delete(key)
                     }
                 }
-                await sendFacebookMessage(
+                const result = await sendFacebookMessage(
                     platformAccount.accessToken,
                     conversation.externalUserId,
                     text,
                     imageUrls
                 )
+
+                // Auto-mark broken token for dashboard notification
+                if (result.permissionError && conversation.platformAccountId) {
+                    console.error(`[Bot] 🔴 Token permission error detected for platformAccount ${conversation.platformAccountId} — marking as needsReconnect`)
+                    try {
+                        await prisma.channelPlatform.update({
+                            where: { id: conversation.platformAccountId },
+                            data: { config: { ...(platformAccount.config as any || {}), needsReconnect: true, lastError: 'Permission denied', lastErrorAt: new Date().toISOString() } },
+                        })
+                    } catch (e) {
+                        console.error(`[Bot] Failed to mark token as needsReconnect:`, e)
+                    }
+                }
             }
         }
     }
@@ -644,13 +657,26 @@ async function sendAndSaveReply(
                 console.log(`[Bot] ⏭️ Skipping IG DM send (dedup) for ${dedupKey} - saving to DB only`)
             } else {
                 recentBotReplies.set(dedupKey, now)
-                await sendInstagramMessage(
+                const result = await sendInstagramMessage(
                     platformAccount.accessToken,
                     pageId,
                     conversation.externalUserId,
                     text,
                     imageUrls
                 )
+
+                // Auto-mark broken token for dashboard notification
+                if (result.permissionError && conversation.platformAccountId) {
+                    console.error(`[Bot] 🔴 IG Token permission error for platformAccount ${conversation.platformAccountId} — marking as needsReconnect`)
+                    try {
+                        await prisma.channelPlatform.update({
+                            where: { id: conversation.platformAccountId },
+                            data: { config: { ...(platformAccount.config as any || {}), needsReconnect: true, lastError: 'Permission denied', lastErrorAt: new Date().toISOString() } },
+                        })
+                    } catch (e) {
+                        console.error(`[Bot] Failed to mark IG token as needsReconnect:`, e)
+                    }
+                }
             }
         } else if (!pageId) {
             console.warn(`[Bot] ⚠️ No backing pageId found in config for IG account ${platformAccount.accountId}`)
@@ -785,8 +811,10 @@ async function sendFacebookMessage(
     recipientId: string,
     text: string,
     imageUrls?: string[]
-) {
+): Promise<{ sent: boolean; permissionError: boolean }> {
     const apiUrl = `https://graph.facebook.com/v19.0/me/messages?access_token=${accessToken}`
+    let sent = false
+    let permissionError = false
 
     // Send text message
     if (text) {
@@ -802,8 +830,13 @@ async function sendFacebookMessage(
             const data = await res.json()
             if (data.error) {
                 console.error(`[FB Send] ❌ Text send failed for ${recipientId}:`, JSON.stringify(data.error))
+                // OAuthException (190) = token expired/invalid, (10) = permission denied
+                if (data.error.code === 190 || data.error.code === 10 || data.error.type === 'OAuthException') {
+                    permissionError = true
+                }
             } else {
                 console.log(`[FB Send] ✅ Message sent to ${recipientId} (msg_id: ${data.message_id || 'unknown'})`)
+                sent = true
             }
         } catch (err) {
             console.error(`[FB Send] ❌ Network error sending to ${recipientId}:`, err)
@@ -830,12 +863,17 @@ async function sendFacebookMessage(
                 const data = await res.json()
                 if (data.error) {
                     console.error(`[FB Send] ❌ Image send failed:`, JSON.stringify(data.error))
+                    if (data.error.code === 190 || data.error.code === 10 || data.error.type === 'OAuthException') {
+                        permissionError = true
+                    }
                 }
             } catch (err) {
                 console.error(`[FB Send] ❌ Image network error:`, err)
             }
         }
     }
+
+    return { sent, permissionError }
 }
 
 /**
@@ -848,50 +886,70 @@ async function sendInstagramMessage(
     recipientId: string,
     text: string,
     imageUrls?: string[]
-) {
+): Promise<{ sent: boolean; permissionError: boolean }> {
     const apiUrl = `https://graph.facebook.com/v21.0/${pageId}/messages?access_token=${accessToken}`
+    let sent = false
+    let permissionError = false
 
     // Send text message
     if (text) {
-        const res = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                recipient: { id: recipientId },
-                message: { text },
-            }),
-        })
-        const data = await res.json()
-        if (data.error) {
-            console.error(`[IG Send] ❌ Text send failed:`, JSON.stringify(data.error))
-        } else {
-            console.log(`[IG Send] ✅ DM sent to ${recipientId}`)
+        try {
+            const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    recipient: { id: recipientId },
+                    message: { text },
+                }),
+            })
+            const data = await res.json()
+            if (data.error) {
+                console.error(`[IG Send] ❌ Text send failed:`, JSON.stringify(data.error))
+                if (data.error.code === 190 || data.error.code === 10 || data.error.type === 'OAuthException') {
+                    permissionError = true
+                }
+            } else {
+                console.log(`[IG Send] ✅ DM sent to ${recipientId}`)
+                sent = true
+            }
+        } catch (err) {
+            console.error(`[IG Send] ❌ Network error sending to ${recipientId}:`, err)
         }
     }
 
     // Send images
     if (imageUrls?.length) {
         for (const url of imageUrls) {
-            const res = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    recipient: { id: recipientId },
-                    message: {
-                        attachment: {
-                            type: 'image',
-                            payload: { url },
+            try {
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        recipient: { id: recipientId },
+                        message: {
+                            attachment: {
+                                type: 'image',
+                                payload: { url },
+                            },
                         },
-                    },
-                }),
-            })
-            const data = await res.json()
-            if (data.error) {
-                console.error(`[IG Send] ❌ Image send failed:`, JSON.stringify(data.error))
+                    }),
+                })
+                const data = await res.json()
+                if (data.error) {
+                    console.error(`[IG Send] ❌ Image send failed:`, JSON.stringify(data.error))
+                    if (data.error.code === 190 || data.error.code === 10 || data.error.type === 'OAuthException') {
+                        permissionError = true
+                    }
+                }
+            } catch (err) {
+                console.error(`[IG Send] ❌ Image network error:`, err)
             }
         }
     }
+
+    return { sent, permissionError }
 }
+
 
 /**
  * Send sender action (typing indicator, read receipt)

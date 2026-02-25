@@ -172,6 +172,22 @@ export async function GET(req: NextRequest) {
         const errors: string[] = []
         for (const page of pages) {
             try {
+                // ── Validate token before saving ──
+                // Call a basic FB API endpoint to verify the token actually works
+                let tokenValid = false
+                try {
+                    const checkRes = await fetch(
+                        `https://graph.facebook.com/v19.0/${page.id}?fields=id,name&access_token=${page.access_token}`
+                    )
+                    const checkData = await checkRes.json()
+                    tokenValid = !!checkData.id && !checkData.error
+                    if (!tokenValid) {
+                        console.warn(`[Facebook OAuth] ⚠️ Token validation failed for ${page.name}: ${checkData.error?.message || 'no id returned'}`)
+                    }
+                } catch {
+                    console.warn(`[Facebook OAuth] ⚠️ Token validation network error for ${page.name}`)
+                }
+
                 await prisma.channelPlatform.upsert({
                     where: {
                         channelId_platform_accountId: {
@@ -185,7 +201,7 @@ export async function GET(req: NextRequest) {
                         accessToken: page.access_token,
                         connectedBy: state.userId || null,
                         isActive: true,
-                        config: { source: 'oauth' },
+                        config: { source: 'oauth', needsReconnect: false, tokenValidatedAt: new Date().toISOString() },
                     },
                     create: {
                         channelId: state.channelId,
@@ -195,28 +211,32 @@ export async function GET(req: NextRequest) {
                         accessToken: page.access_token,
                         connectedBy: state.userId || null,
                         isActive: true,
-                        config: { source: 'oauth' },
+                        config: { source: 'oauth', needsReconnect: false, tokenValidatedAt: new Date().toISOString() },
                     },
                 })
 
-                // Also update ALL other channel records for the same page
-                // so reconnecting from any channel fixes all copies
-                const updated = await prisma.channelPlatform.updateMany({
-                    where: {
-                        platform: 'facebook',
-                        accountId: page.id,
-                        channelId: { not: state.channelId },
-                    },
-                    data: {
-                        accessToken: page.access_token,
-                    },
-                })
-                if (updated.count > 0) {
-                    console.log(`[Facebook OAuth] 🔄 Also updated token for ${updated.count} other channel(s) with page ${page.name}`)
+                // Only update other channels' tokens if the new token is verified valid
+                if (tokenValid) {
+                    const updated = await prisma.channelPlatform.updateMany({
+                        where: {
+                            platform: 'facebook',
+                            accountId: page.id,
+                            channelId: { not: state.channelId },
+                        },
+                        data: {
+                            accessToken: page.access_token,
+                            config: { source: 'oauth', needsReconnect: false, tokenValidatedAt: new Date().toISOString() },
+                        },
+                    })
+                    if (updated.count > 0) {
+                        console.log(`[Facebook OAuth] 🔄 Also updated token for ${updated.count} other channel(s) with page ${page.name}`)
+                    }
+                } else {
+                    console.warn(`[Facebook OAuth] ⚠️ Skipping token update for other channels — new token for ${page.name} failed validation`)
                 }
 
                 imported++
-                console.log(`[Facebook OAuth] ✅ Imported: ${page.name} (${page.id})`)
+                console.log(`[Facebook OAuth] ✅ Imported: ${page.name} (${page.id}) [token ${tokenValid ? 'valid ✅' : 'NOT validated ⚠️'}]`)
             } catch (upsertErr) {
                 console.error(`[Facebook OAuth] ❌ Failed to import ${page.name} (${page.id}):`, upsertErr)
                 errors.push(`${page.name}: ${upsertErr}`)

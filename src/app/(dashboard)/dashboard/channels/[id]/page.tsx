@@ -2162,6 +2162,24 @@ export default function ChannelDetailPage({
                             )}
 
 
+                            {/* ⚠️ Token Health Warning — show when any platform needs reconnection */}
+                            {platforms.some(p => (p.config as any)?.needsReconnect) && (
+                                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5">
+                                    <p className="text-sm font-semibold text-amber-500 flex items-center gap-2">
+                                        ⚠️ Connection Issue Detected
+                                    </p>
+                                    <p className="text-xs text-amber-400/90">
+                                        The following accounts have lost their connection permissions. Bot replies may not be delivered. Please reconnect them:
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5 mt-1">
+                                        {platforms.filter(p => (p.config as any)?.needsReconnect).map(p => (
+                                            <Badge key={p.id} variant="outline" className="text-[11px] border-amber-500/50 text-amber-500">
+                                                {platformIcons[p.platform]} {p.accountName}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Platform List — grouped by platform type */}
                             {platforms.length === 0 ? (
