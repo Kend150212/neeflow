@@ -96,8 +96,9 @@ async function publishToFacebook(
             }
             const postId = data.id || data.post_id
             return { externalId: postId }
-        } else if (mediaItems.length > 1) {
-            // Auto-carousel when 2+ images (no need for explicit carousel flag)
+        } else if (mediaItems.length > 1 && mediaItems.every(m => !isVideoMedia(m))) {
+            // Auto-carousel when 2+ images (all must be images, no video mixing)
+            console.log(`[Facebook] Multi-photo carousel with ${mediaItems.length} images`)
             // ── Carousel: upload each photo unpublished, then batch ──
             const photoIds: string[] = []
             for (const media of mediaItems) {
@@ -547,7 +548,11 @@ async function igResumableCreateChild(
         },
         body: videoBuffer,
     })
-    if (!uploadRes.ok) throw new Error(`Instagram carousel video upload failed: ${uploadRes.status}`)
+    if (!uploadRes.ok) {
+        const errBody = await uploadRes.text().catch(() => '')
+        console.error(`[Instagram] Carousel video upload failed: ${uploadRes.status}`, errBody)
+        throw new Error(`Instagram carousel video upload failed: ${uploadRes.status} — ${errBody || 'unknown error'}`)
+    }
 
     await waitForIgContainer(accessToken, containerData.id)
     return { containerId: containerData.id }
