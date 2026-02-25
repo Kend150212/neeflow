@@ -9,6 +9,7 @@
 import { prisma } from '@/lib/prisma'
 import { callAI, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { OAUTH_PLATFORMS, CREDENTIAL_PLATFORMS } from '@/lib/platform-registry'
 
 // ─── Dedup cache: prevent duplicate Messenger sends ─────────
 // Key: "recipientId" → timestamp of last bot send
@@ -180,6 +181,12 @@ export async function botAutoReply(
             .map(m => `${m.direction === 'inbound' ? 'Customer' : 'Bot'}: ${m.content}`)
             .join('\n')
 
+        // Load channel's connected platforms (auto-updated when new platforms are connected)
+        const connectedPlatforms = await prisma.channelPlatform.findMany({
+            where: { channelId: channel.id, isActive: true },
+            select: { platform: true, accountName: true },
+        })
+
         // Load image library metadata
         let imageLibrary: { originalName: string | null; url: string }[] = []
         if (botConfig?.imageFolderId) {
@@ -203,6 +210,23 @@ export async function botAutoReply(
         const forbiddenTopics = (botConfig?.forbiddenTopics as string[]) || []
 
         let systemPrompt = `You are ${botConfig?.botName || 'AI Assistant'}, an auto-reply customer service bot for "${channel.displayName || channel.name}".`
+
+        // ─── Neeflow Platform Knowledge (auto-injected) ──────────
+        const allSupportedPlatforms = [
+            ...OAUTH_PLATFORMS.map(p => `${p.label} (${p.description})`),
+            ...CREDENTIAL_PLATFORMS.map(p => `${p.label} (${p.description})`),
+        ]
+        const connectedList = connectedPlatforms.length > 0
+            ? connectedPlatforms.map(p => `${p.platform}: ${p.accountName}`).join(', ')
+            : 'No platforms connected yet'
+
+        systemPrompt += `\n\n## About NeeFlow (the platform you are part of):
+- NeeFlow is an AI-powered social media management platform
+- Website: https://neeflow.com
+- NeeFlow supports ${allSupportedPlatforms.length} platforms: ${allSupportedPlatforms.join(', ')}
+- Key features: Schedule posts, generate content with AI, manage Facebook/Instagram/YouTube/TikTok/LinkedIn/Pinterest/Threads/Google Business/X/Bluesky, unified inbox, AI auto-reply bot, media library, analytics
+- This channel currently has these platforms connected: ${connectedList}
+- When customers ask about platforms or features, use this information to answer accurately`
 
         if (botConfig?.personality) {
             systemPrompt += `\n\n## Your personality and instructions:\n${botConfig.personality}`
