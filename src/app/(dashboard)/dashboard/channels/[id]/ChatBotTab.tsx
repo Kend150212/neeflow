@@ -64,6 +64,8 @@ interface BotConfigData {
     enabledPlatforms: string[]
     applyToComments: boolean
     applyToMessages: boolean
+    commentReplyMinDelay: number
+    commentReplyMaxDelay: number
 }
 
 interface ChatBotTabProps {
@@ -250,6 +252,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         enabledPlatforms: data.enabledPlatforms || ['all'],
                         applyToComments: data.applyToComments ?? true,
                         applyToMessages: data.applyToMessages ?? true,
+                        commentReplyMinDelay: data.commentReplyMinDelay ?? 30,
+                        commentReplyMaxDelay: data.commentReplyMaxDelay ?? 600,
                     })
                 }
             } catch { /* ignore */ }
@@ -1388,6 +1392,56 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             />
                         </div>
                     </div>
+
+                    {/* Comment Reply Delay */}
+                    {config.applyToComments && (
+                        <Card className="mt-4">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                    <Clock className="h-4 w-4 text-amber-500" />
+                                    Comment Reply Delay
+                                </CardTitle>
+                                <CardDescription className="text-[11px]">
+                                    Bot sẽ đợi ngẫu nhiên trong khoảng thời gian này trước khi trả lời comment, giúp phản hồi tự nhiên hơn.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="text-[11px] text-muted-foreground">Tối thiểu (giây)</Label>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            max={config.commentReplyMaxDelay}
+                                            value={config.commentReplyMinDelay}
+                                            onChange={e => {
+                                                const v = Math.max(0, parseInt(e.target.value) || 0)
+                                                update('commentReplyMinDelay', v)
+                                            }}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-[11px] text-muted-foreground">Tối đa (giây)</Label>
+                                        <Input
+                                            type="number"
+                                            min={config.commentReplyMinDelay}
+                                            max={3600}
+                                            value={config.commentReplyMaxDelay}
+                                            onChange={e => {
+                                                const v = Math.max(config.commentReplyMinDelay, parseInt(e.target.value) || 0)
+                                                update('commentReplyMaxDelay', v)
+                                            }}
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">
+                                    ⏱️ Bot sẽ trả lời comment sau <strong>{config.commentReplyMinDelay}s</strong> → <strong>{config.commentReplyMaxDelay}s</strong> ({Math.round(config.commentReplyMinDelay / 60)} phút → {Math.round(config.commentReplyMaxDelay / 60)} phút)
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             )}
 

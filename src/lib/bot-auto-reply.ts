@@ -455,7 +455,10 @@ Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
         textReply = textReply.replace(/\[IMAGE:\s*https?:\/\/[^\]]+\]/g, '').trim()
 
         // ─── 12. Send reply via platform ──────────────────────────
-        await sendAndSaveReply(conversation, textReply, platform, imageUrls)
+        await sendAndSaveReply(conversation, textReply, platform, imageUrls, {
+            commentMinDelay: botConfig?.commentReplyMinDelay ?? 30,
+            commentMaxDelay: botConfig?.commentReplyMaxDelay ?? 600,
+        })
 
         // ─── 13. Detect AI-decided escalation ─────────────────────
         // If the AI reply contains phrases indicating it's transferring
@@ -540,7 +543,8 @@ async function sendAndSaveReply(
     conversation: any,
     text: string,
     platform: string,
-    imageUrls?: string[]
+    imageUrls?: string[],
+    delayConfig?: { commentMinDelay: number; commentMaxDelay: number }
 ) {
     // Get platform account for access token
     const platformAccount = conversation.platformAccountId
@@ -611,9 +615,11 @@ async function sendAndSaveReply(
     const isComment = conversation.type === 'comment'
 
     if (isComment && platformAccount?.accessToken) {
-        // Random delay between 30 seconds and 10 minutes (in ms)
-        const minDelay = 30_000   // 30 seconds
-        const maxDelay = 600_000  // 10 minutes
+        // Random delay between configured min and max (in seconds → ms)
+        const minDelaySec = delayConfig?.commentMinDelay ?? 30
+        const maxDelaySec = delayConfig?.commentMaxDelay ?? 600
+        const minDelay = minDelaySec * 1000
+        const maxDelay = maxDelaySec * 1000
         const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay
         const delaySec = Math.round(delay / 1000)
 

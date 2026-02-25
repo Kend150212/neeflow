@@ -962,6 +962,10 @@ model BotConfig {
   applyToComments  Boolean @default(true) @map("apply_to_comments")
   applyToMessages  Boolean @default(true) @map("apply_to_messages")
 
+  // Comment reply delay (in seconds) — randomized between min and max
+  commentReplyMinDelay Int @default(30)  @map("comment_reply_min_delay")
+  commentReplyMaxDelay Int @default(600) @map("comment_reply_max_delay")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

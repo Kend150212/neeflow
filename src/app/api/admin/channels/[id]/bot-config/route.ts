@@ -51,6 +51,8 @@ export async function GET(
             enabledPlatforms: ['all'],
             applyToComments: true,
             applyToMessages: true,
+            commentReplyMinDelay: 30,
+            commentReplyMaxDelay: 600,
         })
     }
 
@@ -83,6 +85,7 @@ export async function PUT(
         'workingHoursOnly', 'workingHoursStart', 'workingHoursEnd', 'offHoursMessage',
         'trainingPairs', 'exampleConvos',
         'enabledPlatforms', 'applyToComments', 'applyToMessages',
+        'commentReplyMinDelay', 'commentReplyMaxDelay',
     ]
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
