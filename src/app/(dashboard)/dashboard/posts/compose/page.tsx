@@ -250,10 +250,37 @@ function FacebookPreview({ content, media, accountName, postType, mediaRatio, fi
                 </p>
             </div>
             {/* Media */}
-            {media.length > 0 && (
+            {media.length === 1 && (
                 <div className={`w-full bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'
                     }`}>
                     <MediaElement media={media[0]} className="w-full h-full object-cover" />
+                </div>
+            )}
+            {media.length === 2 && (
+                <div className="grid grid-cols-2 gap-0.5">
+                    {media.slice(0, 2).map((m, i) => (
+                        <div key={i} className="aspect-square bg-muted overflow-hidden">
+                            <MediaElement media={m} className="w-full h-full object-cover" />
+                        </div>
+                    ))}
+                </div>
+            )}
+            {media.length >= 3 && (
+                <div className="grid grid-cols-2 gap-0.5">
+                    <div className="row-span-2 aspect-square bg-muted overflow-hidden">
+                        <MediaElement media={media[0]} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="aspect-[2/1] bg-muted overflow-hidden">
+                        <MediaElement media={media[1]} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="aspect-[2/1] bg-muted overflow-hidden relative">
+                        <MediaElement media={media[2]} className="w-full h-full object-cover" />
+                        {media.length > 3 && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-2xl font-bold">
+                                +{media.length - 3}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
             {/* Reactions bar */}
@@ -303,10 +330,30 @@ function InstagramPreview({ content, media, accountName, mediaRatio }: {
                 <p className="text-sm font-semibold flex-1">{accountName}</p>
                 <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
             </div>
-            {media.length > 0 ? (
+            {media.length === 1 ? (
                 <div className={`w-full bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'
                     }`}>
                     <MediaElement media={media[0]} className="w-full h-full object-cover" />
+                </div>
+            ) : media.length > 1 ? (
+                <div className="relative">
+                    <div className="overflow-x-auto flex snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        {media.map((m, i) => (
+                            <div key={i} className={`flex-none w-full snap-center bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'}`}>
+                                <MediaElement media={m} className="w-full h-full object-cover" />
+                            </div>
+                        ))}
+                    </div>
+                    {/* Carousel dots */}
+                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                        {media.map((_, i) => (
+                            <div key={i} className={`h-1.5 w-1.5 rounded-full ${i === 0 ? 'bg-blue-500' : 'bg-white/50'}`} />
+                        ))}
+                    </div>
+                    {/* Item count badge */}
+                    <div className="absolute top-3 right-3 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+                        1/{media.length}
+                    </div>
                 </div>
             ) : (
                 <div className={`w-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'
@@ -473,10 +520,37 @@ function LinkedInPreview({ content, media, accountName, mediaRatio }: {
             <div className="px-3 pb-2">
                 <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{content.slice(0, platformLimits.linkedin)}</p>
             </div>
-            {media.length > 0 && (
+            {media.length === 1 && (
                 <div className={`w-full bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'
                     }`}>
                     <MediaElement media={media[0]} className="w-full h-full object-cover" />
+                </div>
+            )}
+            {media.length === 2 && (
+                <div className="grid grid-cols-2 gap-0.5">
+                    {media.slice(0, 2).map((m, i) => (
+                        <div key={i} className="aspect-square bg-muted overflow-hidden">
+                            <MediaElement media={m} className="w-full h-full object-cover" />
+                        </div>
+                    ))}
+                </div>
+            )}
+            {media.length >= 3 && (
+                <div className="grid grid-cols-2 gap-0.5">
+                    <div className="row-span-2 aspect-square bg-muted overflow-hidden">
+                        <MediaElement media={media[0]} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="aspect-[2/1] bg-muted overflow-hidden">
+                        <MediaElement media={media[1]} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="aspect-[2/1] bg-muted overflow-hidden relative">
+                        <MediaElement media={media[2]} className="w-full h-full object-cover" />
+                        {media.length > 3 && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-2xl font-bold">
+                                +{media.length - 3}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
             <div className="px-3 py-2 text-xs text-muted-foreground border-t">
@@ -515,10 +589,24 @@ function GenericPreview({ content, media, accountName, platform, mediaRatio }: {
             <div className="px-3 pb-3">
                 <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{content.slice(0, limit)}</p>
             </div>
-            {media.length > 0 && (
+            {media.length === 1 && (
                 <div className={`px-3 pb-3 overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'
                     }`}>
                     <MediaElement media={media[0]} className="w-full h-full rounded-lg object-cover" />
+                </div>
+            )}
+            {media.length >= 2 && (
+                <div className="px-3 pb-3 grid grid-cols-2 gap-1">
+                    {media.slice(0, 4).map((m, i) => (
+                        <div key={i} className="aspect-square bg-muted rounded-lg overflow-hidden relative">
+                            <MediaElement media={m} className="w-full h-full object-cover" />
+                            {i === 3 && media.length > 4 && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xl font-bold rounded-lg">
+                                    +{media.length - 4}
+                                </div>
+                            )}
+                        </div>
+                    ))}
                 </div>
             )}
         </div>
