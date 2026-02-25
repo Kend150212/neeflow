@@ -84,6 +84,89 @@ async function transcodeVideoIfNeeded(
 }
 
 /**
+ * Background transcode: runs AFTER the response is returned.
+ * Checks codec, transcodes if not H.264, re-uploads to R2, updates DB.
+ */
+async function backgroundTranscode(
+    mediaItemId: string,
+    originalBuffer: Buffer,
+    originalName: string,
+    originalType: string,
+    channelId: string,
+    originalR2Key: string,
+): Promise<void> {
+    try {
+        const result = await transcodeVideoIfNeeded(originalBuffer, originalName, originalType)
+
+        if (!result.transcoded) {
+            // Already H.264 — just mark as done
+            console.log(`[Transcode BG] ${originalName}: already H.264, marking as done`)
+            await prisma.mediaItem.update({
+                where: { id: mediaItemId },
+                data: {
+                    aiMetadata: {
+                        storage: 'r2',
+                        r2Key: originalR2Key,
+                        transcodeStatus: 'skipped',
+                        codec: 'h264',
+                    },
+                },
+            })
+            return
+        }
+
+        // Upload transcoded file to R2 (new key with .mp4 extension)
+        const newR2Key = originalR2Key.replace(/\.[^.]+$/, '.mp4')
+        const newUrl = await uploadToR2(result.buffer, newR2Key, 'video/mp4')
+        console.log(`[Transcode BG] ${originalName}: transcoded + re-uploaded → ${newUrl}`)
+
+        // Update DB with transcoded file info
+        await prisma.mediaItem.update({
+            where: { id: mediaItemId },
+            data: {
+                url: newUrl,
+                storageFileId: newR2Key,
+                fileSize: result.buffer.length,
+                mimeType: 'video/mp4',
+                aiMetadata: {
+                    storage: 'r2',
+                    r2Key: newR2Key,
+                    originalR2Key,
+                    transcodeStatus: 'done',
+                    originalCodec: originalType,
+                    transcodedTo: 'h264/aac/mp4',
+                },
+            },
+        })
+
+        // Generate thumbnail from transcoded video (better quality)
+        const thumbUrl = await generateVideoThumbnail(result.buffer, channelId, newR2Key, true)
+        if (thumbUrl) {
+            await prisma.mediaItem.update({
+                where: { id: mediaItemId },
+                data: { thumbnailUrl: thumbUrl },
+            })
+        }
+
+        console.log(`[Transcode BG] ${originalName}: ✅ complete (${(originalBuffer.length / 1024 / 1024).toFixed(1)}MB → ${(result.buffer.length / 1024 / 1024).toFixed(1)}MB)`)
+    } catch (err) {
+        console.error(`[Transcode BG] ${originalName}: ❌ failed:`, err)
+        // Mark as failed in DB
+        await prisma.mediaItem.update({
+            where: { id: mediaItemId },
+            data: {
+                aiMetadata: {
+                    storage: 'r2',
+                    r2Key: originalR2Key,
+                    transcodeStatus: 'failed',
+                    error: err instanceof Error ? err.message : String(err),
+                },
+            },
+        }).catch(() => { })
+    }
+}
+
+/**
  * Generate a video thumbnail using ffmpeg.
  * Extracts a frame at 1s and uploads to R2 or Google Drive.
  */
@@ -250,24 +333,11 @@ export async function POST(req: NextRequest) {
 
     // Read file into buffer
     const bytes = await file.arrayBuffer()
-    let buffer = Buffer.from(bytes)
+    const buffer = Buffer.from(bytes)
     const fileType = file.type.startsWith('video/') ? 'video' : 'image'
-    let uploadMimeType = file.type
-    let uploadFileName = file.name
-
-    // ─── Auto-transcode video to H.264 if needed ─────────────────────
-    let wasTranscoded = false
-    if (fileType === 'video') {
-        const result = await transcodeVideoIfNeeded(buffer, file.name, file.type)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        buffer = result.buffer as any
-        uploadMimeType = result.mimeType
-        uploadFileName = result.fileName
-        wasTranscoded = result.transcoded
-    }
 
     // ─── Check storage quota ─────────────────────────────────────────
-    const quota = await checkStorageQuota(session.user.id, buffer.length) // Use actual buffer size (may differ after transcoding)
+    const quota = await checkStorageQuota(session.user.id, file.size)
     if (!quota.allowed) {
         return NextResponse.json(
             { error: quota.reason, code: 'STORAGE_LIMIT_REACHED', usedMB: quota.usedMB, limitMB: quota.limitMB },
@@ -280,11 +350,11 @@ export async function POST(req: NextRequest) {
 
     if (useR2) {
         try {
-            // Generate R2 key: media/{channelId}/{YYYY-MM}/{uniqueId}.{ext}
-            const r2Key = generateR2Key(channelId, uploadFileName)
-            const publicUrl = await uploadToR2(buffer, r2Key, uploadMimeType)
+            // Upload ORIGINAL file to R2 immediately (no blocking transcode)
+            const r2Key = generateR2Key(channelId, file.name)
+            const publicUrl = await uploadToR2(buffer, r2Key, file.type)
 
-            // Generate thumbnail
+            // Generate thumbnail (fast — just extract 1 frame)
             let thumbnailUrl = ''
             if (fileType === 'image') {
                 thumbnailUrl = publicUrl // Images are their own thumbnail
@@ -294,26 +364,33 @@ export async function POST(req: NextRequest) {
                 )
             }
 
-            // Save to database
+            // Save to database immediately — user gets instant response
             const mediaItem = await prisma.mediaItem.create({
                 data: {
                     channelId,
                     url: publicUrl,
                     thumbnailUrl: thumbnailUrl || publicUrl,
-                    storageFileId: r2Key, // R2 object key
+                    storageFileId: r2Key,
                     type: fileType,
                     source: 'upload',
                     originalName: file.name,
-                    fileSize: buffer.length,
-                    mimeType: uploadMimeType,
+                    fileSize: file.size,
+                    mimeType: file.type,
                     ...(mediaFolderId ? { folderId: mediaFolderId } : {}),
                     aiMetadata: {
                         storage: 'r2',
                         r2Key,
-                        ...(wasTranscoded ? { transcoded: true, originalCodec: file.type, transcodedTo: 'h264/aac/mp4' } : {}),
+                        ...(fileType === 'video' ? { transcodeStatus: 'pending' } : {}),
                     },
                 },
             })
+
+            // ── Fire background transcoding for videos (non-blocking) ──
+            if (fileType === 'video') {
+                console.log(`[Upload] ${file.name}: returned response, starting background transcode...`)
+                backgroundTranscode(mediaItem.id, buffer, file.name, file.type, channelId, r2Key)
+                    .catch(err => console.error(`[Transcode BG] Unhandled error for ${mediaItem.id}:`, err))
+            }
 
             return NextResponse.json(mediaItem, { status: 201 })
         } catch (error) {
