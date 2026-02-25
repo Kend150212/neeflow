@@ -517,6 +517,7 @@ async function igResumablePublish(
             'Authorization': `OAuth ${accessToken}`,
             'offset': '0',
             'file_size': String(fileSize),
+            'ig_user_id': accountId,
             'Content-Type': 'application/octet-stream',
             'Content-Length': String(fileSize),
         },
@@ -574,6 +575,7 @@ async function igResumableCreateChild(
             'Authorization': `OAuth ${accessToken}`,
             'offset': '0',
             'file_size': String(fileSize),
+            'ig_user_id': accountId,
             'Content-Type': 'application/octet-stream',
             'Content-Length': String(fileSize),
         },
@@ -1593,7 +1595,7 @@ export async function POST(
 
     const { id } = await params
 
-    const post = await prisma.post.findUnique({
+    let post = await prisma.post.findUnique({
         where: { id },
         include: {
             channel: {
@@ -1623,6 +1625,42 @@ export async function POST(
 
     // Get pending platform statuses
     const pendingStatuses = post.platformStatuses.filter((ps) => ps.status === 'pending')
+
+    // ── Wait for any pending video transcodes before publishing ──
+    const pendingTranscodes = post.media.filter((m) => {
+        const meta = (m.mediaItem.aiMetadata || {}) as Record<string, string>
+        return m.mediaItem.type === 'video' && meta.transcodeStatus === 'pending'
+    })
+    if (pendingTranscodes.length > 0) {
+        console.log(`[Publish] ⏳ Waiting for ${pendingTranscodes.length} video(s) to finish transcoding...`)
+        // Poll DB for up to 60 seconds
+        for (let attempt = 0; attempt < 30; attempt++) {
+            await new Promise(r => setTimeout(r, 2000))
+            const freshMedia = await prisma.postMedia.findMany({
+                where: { postId: post.id },
+                include: { mediaItem: true },
+            })
+            const stillPending = freshMedia.filter((m) => {
+                const meta = (m.mediaItem.aiMetadata || {}) as Record<string, string>
+                return m.mediaItem.type === 'video' && meta.transcodeStatus === 'pending'
+            })
+            if (stillPending.length === 0) {
+                console.log(`[Publish] ✅ All transcodes complete (waited ${(attempt + 1) * 2}s)`)
+                // Refresh post data with updated URLs
+                const refreshed = await prisma.post.findUnique({
+                    where: { id: post.id },
+                    include: { media: { include: { mediaItem: true }, orderBy: { sortOrder: 'asc' } }, platformStatuses: true },
+                })
+                if (refreshed) {
+                    post = refreshed as typeof post
+                }
+                break
+            }
+            if (attempt === 29) {
+                console.warn(`[Publish] ⚠️ Transcoding still pending after 60s, proceeding with original files`)
+            }
+        }
+    }
 
     // Build media info objects (URL + type) for platform APIs
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
