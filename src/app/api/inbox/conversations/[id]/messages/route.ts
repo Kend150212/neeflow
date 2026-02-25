@@ -385,6 +385,11 @@ export async function POST(
                 const debugData = await debugRes.json()
                 console.log(`[IG Reply] 🔍 Token test:`, JSON.stringify(debugData))
 
+                // Debug: check token permissions
+                const permRes = await fetch(`https://graph.facebook.com/v21.0/me/permissions?access_token=${platformAccount.accessToken}`)
+                const permData = await permRes.json()
+                console.log(`[IG Reply] 🔍 Token permissions:`, JSON.stringify(permData))
+
                 if (conv?.type === 'message' || !conv?.type) {
                     const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
                     const igApiUrl = `https://graph.facebook.com/v21.0/${platformAccount.accountId}/messages?access_token=${platformAccount.accessToken}`
