@@ -96,7 +96,8 @@ async function publishToFacebook(
             }
             const postId = data.id || data.post_id
             return { externalId: postId }
-        } else if (carousel && mediaItems.length > 1) {
+        } else if (mediaItems.length > 1) {
+            // Auto-carousel when 2+ images (no need for explicit carousel flag)
             // ── Carousel: upload each photo unpublished, then batch ──
             const photoIds: string[] = []
             for (const media of mediaItems) {
@@ -281,13 +282,18 @@ async function publishToInstagram(
 
     // ── Carousel: multiple images/videos ──
     if (mediaItems.length > 1) {
+        console.log(`[Instagram] Creating carousel with ${mediaItems.length} items`)
         const childIds: string[] = []
-        for (const media of mediaItems) {
+        for (let i = 0; i < mediaItems.length; i++) {
+            const media = mediaItems[i]
             if (isVideoMedia(media)) {
                 // Use resumable upload for carousel videos
+                console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: uploading video via resumable...`)
                 const result = await igResumableCreateChild(accessToken, accountId, media)
                 childIds.push(result.containerId)
+                console.log(`[Instagram] Carousel item ${i + 1}: video container ${result.containerId} created`)
             } else {
+                console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: creating image container...`)
                 const childBody: Record<string, string> = {
                     is_carousel_item: 'true',
                     image_url: media.url,
@@ -299,11 +305,13 @@ async function publishToInstagram(
                     body: JSON.stringify(childBody),
                 })
                 const childData = await childRes.json()
-                if (childData.error) throw new Error(childData.error.message || 'Instagram carousel item creation failed')
+                if (childData.error) throw new Error(childData.error.message || `Instagram carousel item ${i + 1} creation failed`)
                 await waitForIgContainer(accessToken, childData.id)
                 childIds.push(childData.id)
+                console.log(`[Instagram] Carousel item ${i + 1}: image container ${childData.id} ready`)
             }
         }
+        console.log(`[Instagram] All ${childIds.length} carousel children ready, creating carousel container...`)
         const containerUrl = `https://graph.facebook.com/v21.0/${accountId}/media`
         const containerBody: Record<string, unknown> = {
             media_type: 'CAROUSEL',
