@@ -998,55 +998,52 @@ export default function ComposePage() {
         setAttachedMedia((prev) => prev.filter((m) => m.id !== id))
     }
 
-    // Auto-detect media ratio from first attached file's dimensions
+    // Track dimensions of ALL attached media items for validation
+    const [mediaDimensions, setMediaDimensions] = useState<Record<string, { w: number; h: number; ratio: number }>>({})
+    // Auto-detect dimensions for ALL attached media (and set mediaRatio from first)
     useEffect(() => {
-        if (attachedMedia.length === 0) return
-        const first = attachedMedia[0]
-        const isVid = isVideo(first)
-        // Use the raw URL or thumbnail — no crossOrigin needed for dimensions
-        const srcUrl = isVid
-            ? (first.thumbnailUrl || first.url)
-            : first.url
-        const fullUrl = srcUrl.startsWith('http') ? srcUrl : `${window.location.origin}${srcUrl}`
-
-        if (isVid && !first.thumbnailUrl) {
-            // For video without thumbnail, try loading video metadata
-            const video = document.createElement('video')
-            video.preload = 'metadata'
-            video.onloadedmetadata = () => {
-                const w = video.videoWidth
-                const h = video.videoHeight
-                if (w && h) {
-                    const ratio = w / h
-                    if (ratio > 1.4) setMediaRatio('16:9')
-                    else if (ratio < 0.75) setMediaRatio('9:16')
-                    else setMediaRatio('1:1')
-                    console.log(`[AutoRatio] Video ${w}x${h} → ${ratio > 1.4 ? '16:9' : ratio < 0.75 ? '9:16' : '1:1'}`)
-                }
-                video.src = ''
-            }
-            video.onerror = () => console.warn('[AutoRatio] Failed to load video metadata')
-            video.src = fullUrl
-        } else {
-            // For images or video thumbnails — use Image element
-            const img = new window.Image()
-            img.onload = () => {
-                const w = img.naturalWidth
-                const h = img.naturalHeight
-                if (w && h) {
-                    const ratio = w / h
-                    if (ratio > 1.4) setMediaRatio('16:9')
-                    else if (ratio < 0.75) setMediaRatio('9:16')
-                    else setMediaRatio('1:1')
-                    console.log(`[AutoRatio] Image ${w}x${h} → ${ratio > 1.4 ? '16:9' : ratio < 0.75 ? '9:16' : '1:1'}`)
-                }
-            }
-            img.onerror = () => console.warn('[AutoRatio] Failed to load image — CORS or network issue')
-            img.src = fullUrl
+        if (attachedMedia.length === 0) {
+            setMediaDimensions({})
+            return
         }
-        // Only auto-detect when first media changes
+        for (let idx = 0; idx < attachedMedia.length; idx++) {
+            const media = attachedMedia[idx]
+            const isVid = isVideo(media)
+            const srcUrl = isVid ? (media.thumbnailUrl || media.url) : media.url
+            const fullUrl = srcUrl.startsWith('http') ? srcUrl : `${window.location.origin}${srcUrl}`
+
+            const onDimensions = (w: number, h: number) => {
+                if (!w || !h) return
+                const ratio = w / h
+                console.log(`[AutoRatio] Media "${media.originalName || media.id}" (${idx + 1}/${attachedMedia.length}): ${w}x${h} → ratio ${ratio.toFixed(2)}`)
+                setMediaDimensions(prev => ({ ...prev, [media.id]: { w, h, ratio } }))
+                // Auto-set the ratio selector from the FIRST media item
+                if (idx === 0) {
+                    if (ratio > 1.4) setMediaRatio('16:9')
+                    else if (ratio < 0.75) setMediaRatio('9:16')
+                    else setMediaRatio('1:1')
+                }
+            }
+
+            if (isVid && !media.thumbnailUrl) {
+                const video = document.createElement('video')
+                video.preload = 'metadata'
+                video.onloadedmetadata = () => {
+                    onDimensions(video.videoWidth, video.videoHeight)
+                    video.src = ''
+                }
+                video.onerror = () => console.warn(`[AutoRatio] Failed to load video: ${media.originalName}`)
+                video.src = fullUrl
+            } else {
+                const img = new window.Image()
+                img.onload = () => onDimensions(img.naturalWidth, img.naturalHeight)
+                img.onerror = () => console.warn(`[AutoRatio] Failed to load image: ${media.originalName}`)
+                img.src = fullUrl
+            }
+        }
+        // Re-detect when media list changes
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [attachedMedia.length > 0 ? attachedMedia[0]?.id : null])
+    }, [attachedMedia.map(m => m.id).join(',')])
 
     // Drag & drop handlers
     const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -1958,6 +1955,18 @@ export default function ComposePage() {
                     if (igPostType === 'story' && mediaRatio === '16:9') errors.push('📸 Instagram Stories require vertical (9:16). Landscape will be rejected.')
                     if (igPostType === 'feed' && attachedMedia.length === 0) errors.push('📸 Instagram Feed requires at least one image or video.')
                     if (igPostType === 'feed' && hasVideo && attachedMedia.length === 1 && mediaRatio === '16:9') errors.push('📸 Instagram feed videos become Reels — 16:9 landscape will be rejected. Change ratio to 9:16.')
+                    // IG aspect ratio check: all images must be within 4:5 (0.8) to 1.91:1
+                    if (igPostType === 'feed' && attachedMedia.length > 0) {
+                        for (const m of attachedMedia) {
+                            if (isVideo(m)) continue
+                            const dims = mediaDimensions[m.id]
+                            if (dims) {
+                                if (dims.ratio < 0.8 || dims.ratio > 1.91) {
+                                    errors.push(`📸 Instagram does not support the aspect ratio of "${m.originalName || 'image'}" (${dims.w}×${dims.h}, ratio ${dims.ratio.toFixed(2)}). Must be between 4:5 (portrait) and 1.91:1 (landscape).`)
+                                }
+                            }
+                        }
+                    }
                     break
                 case 'pinterest':
                     if (!hasImage) errors.push('📌 Pinterest requires an image. Please attach an image to your post.')
