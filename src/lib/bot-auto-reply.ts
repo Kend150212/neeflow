@@ -790,32 +790,50 @@ async function sendFacebookMessage(
 
     // Send text message
     if (text) {
-        await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                recipient: { id: recipientId },
-                message: { text },
-            }),
-        })
+        try {
+            const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    recipient: { id: recipientId },
+                    message: { text },
+                }),
+            })
+            const data = await res.json()
+            if (data.error) {
+                console.error(`[FB Send] ❌ Text send failed for ${recipientId}:`, JSON.stringify(data.error))
+            } else {
+                console.log(`[FB Send] ✅ Message sent to ${recipientId} (msg_id: ${data.message_id || 'unknown'})`)
+            }
+        } catch (err) {
+            console.error(`[FB Send] ❌ Network error sending to ${recipientId}:`, err)
+        }
     }
 
     // Send images
     if (imageUrls?.length) {
         for (const url of imageUrls) {
-            await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    recipient: { id: recipientId },
-                    message: {
-                        attachment: {
-                            type: 'image',
-                            payload: { url, is_reusable: true },
+            try {
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        recipient: { id: recipientId },
+                        message: {
+                            attachment: {
+                                type: 'image',
+                                payload: { url, is_reusable: true },
+                            },
                         },
-                    },
-                }),
-            })
+                    }),
+                })
+                const data = await res.json()
+                if (data.error) {
+                    console.error(`[FB Send] ❌ Image send failed:`, JSON.stringify(data.error))
+                }
+            } catch (err) {
+                console.error(`[FB Send] ❌ Image network error:`, err)
+            }
         }
     }
 }
