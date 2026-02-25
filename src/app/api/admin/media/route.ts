@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getGDriveAccessToken, getUserGDriveAccessToken, uploadFile, makeFilePublic, getOrCreateChannelFolder, getOrCreateMonthlyFolder } from '@/lib/gdrive'
-import { uploadToR2, generateR2Key, isR2Configured } from '@/lib/r2'
+import { uploadToR2, generateR2Key, isR2Configured, deleteFromR2 } from '@/lib/r2'
 import { checkStorageQuota } from '@/lib/storage-quota'
 import { randomUUID } from 'crypto'
 import { exec } from 'child_process'
@@ -146,6 +146,17 @@ async function backgroundTranscode(
                 where: { id: mediaItemId },
                 data: { thumbnailUrl: thumbUrl },
             })
+        }
+
+        // Delete original file from R2 (save storage — transcoded .mp4 replaces it)
+        if (originalR2Key !== newR2Key) {
+            await deleteFromR2(originalR2Key).catch((err) =>
+                console.warn(`[Transcode BG] ${originalName}: failed to delete original R2 file:`, err)
+            )
+            // Delete original file's thumbnail too
+            const origThumbKey = originalR2Key.replace(/\.[^.]+$/, '_thumb.jpg')
+            await deleteFromR2(origThumbKey).catch(() => { })
+            console.log(`[Transcode BG] ${originalName}: 🗑️ deleted original R2 file (${originalR2Key})`)
         }
 
         console.log(`[Transcode BG] ${originalName}: ✅ complete (${(originalBuffer.length / 1024 / 1024).toFixed(1)}MB → ${(result.buffer.length / 1024 / 1024).toFixed(1)}MB)`)
