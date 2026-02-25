@@ -1649,7 +1649,11 @@ export async function POST(
                 // Refresh post data with updated URLs
                 const refreshed = await prisma.post.findUnique({
                     where: { id: post.id },
-                    include: { media: { include: { mediaItem: true }, orderBy: { sortOrder: 'asc' } }, platformStatuses: true },
+                    include: {
+                        channel: { include: { platforms: { where: { isActive: true } } } },
+                        media: { include: { mediaItem: true }, orderBy: { sortOrder: 'asc' } },
+                        platformStatuses: true,
+                    },
                 })
                 if (refreshed) {
                     post = refreshed as typeof post
