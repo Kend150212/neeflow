@@ -170,16 +170,76 @@ export async function botAutoReply(
         })
 
         // Load recent conversation history
+        const totalMsgCount = await prisma.inboxMessage.count({ where: { conversationId } })
         const recentMessages = await prisma.inboxMessage.findMany({
             where: { conversationId },
             orderBy: { sentAt: 'desc' },
-            take: 15,
+            take: conversation.aiSummary ? 5 : 15, // fewer messages if we have summary
         })
 
         const messageHistory = recentMessages
             .reverse()
             .map(m => `${m.direction === 'inbound' ? 'Customer' : 'Bot'}: ${m.content}`)
             .join('\n')
+
+        // Load similar agent conversations as few-shot examples
+        // Find conversations where agents replied, with similar keywords
+        const inboundLower = inboundContent.toLowerCase()
+        const keywords = inboundLower.split(/\s+/).filter(w => w.length > 3).slice(0, 5)
+        let agentExamples: Array<{ customerMsg: string; agentReply: string }> = []
+
+        if (keywords.length > 0) {
+            // Find recent agent-handled conversations in same channel
+            const agentConversations = await prisma.conversation.findMany({
+                where: {
+                    channelId: channel.id,
+                    id: { not: conversationId }, // exclude current
+                },
+                select: { id: true },
+                orderBy: { updatedAt: 'desc' },
+                take: 50,
+            })
+
+            if (agentConversations.length > 0) {
+                // Load agent reply pairs from these conversations
+                const agentMessages = await prisma.inboxMessage.findMany({
+                    where: {
+                        conversationId: { in: agentConversations.map(c => c.id) },
+                        direction: 'outbound',
+                        senderType: 'agent',
+                    },
+                    select: { conversationId: true, content: true, sentAt: true },
+                    orderBy: { sentAt: 'desc' },
+                    take: 50,
+                })
+
+                // For each agent reply, find the preceding customer message
+                for (const agentMsg of agentMessages.slice(0, 20)) {
+                    const customerMsg = await prisma.inboxMessage.findFirst({
+                        where: {
+                            conversationId: agentMsg.conversationId,
+                            direction: 'inbound',
+                            sentAt: { lt: agentMsg.sentAt },
+                        },
+                        orderBy: { sentAt: 'desc' },
+                        select: { content: true },
+                    })
+
+                    if (customerMsg?.content) {
+                        // Score relevance by keyword overlap
+                        const custLower = customerMsg.content.toLowerCase()
+                        const score = keywords.filter(kw => custLower.includes(kw)).length
+                        if (score > 0) {
+                            agentExamples.push({
+                                customerMsg: customerMsg.content.substring(0, 300),
+                                agentReply: agentMsg.content.substring(0, 500),
+                            })
+                        }
+                    }
+                    if (agentExamples.length >= 5) break
+                }
+            }
+        }
 
         // Load channel's connected platforms (auto-updated when new platforms are connected)
         const connectedPlatforms = await prisma.channelPlatform.findMany({
@@ -263,11 +323,31 @@ export async function botAutoReply(
         }
 
         if (trainingPairs.length > 0) {
-            systemPrompt += `\n\n--- TRAINING Q&A ---`
-            for (const pair of trainingPairs.slice(0, 30)) {
+            // Smart match: pick training pairs most relevant to current message
+            const scoredPairs = trainingPairs.map(pair => {
+                const qLower = pair.q.toLowerCase()
+                const score = keywords.filter(kw => qLower.includes(kw)).length
+                return { ...pair, score }
+            })
+            // Sort by relevance, take top matches first, then fill with recent
+            scoredPairs.sort((a, b) => b.score - a.score)
+            const topPairs = scoredPairs.slice(0, 15)
+
+            systemPrompt += `\n\n--- TRAINING Q&A (learned from real agent responses) ---`
+            for (const pair of topPairs) {
                 systemPrompt += `\nQ: ${pair.q}\nA: ${pair.a}`
             }
             systemPrompt += `\n--- END TRAINING Q&A ---`
+        }
+
+        // Inject few-shot agent examples (from similar past conversations)
+        if (agentExamples.length > 0) {
+            systemPrompt += `\n\n--- REAL AGENT EXAMPLES (how our team actually replied to similar questions) ---`
+            systemPrompt += `\nMIMIC these response styles. These are from real agents on the team:`
+            for (const ex of agentExamples) {
+                systemPrompt += `\nCustomer: ${ex.customerMsg}\nAgent: ${ex.agentReply}`
+            }
+            systemPrompt += `\n--- END REAL AGENT EXAMPLES ---`
         }
 
         if (imageLibrary.length > 0) {
@@ -300,10 +380,16 @@ export async function botAutoReply(
         systemPrompt += `\n\n## Strict Rules:\n- NEVER say you are an AI, bot, or automated system\n- NEVER prefix with "Bot:" or any label\n- NEVER wrap reply in JSON, arrays, code blocks, or brackets\n- NEVER use [ ] or { } characters\n- PLAIN TEXT ONLY\n- If you don't know something, say "Let me check with the team and get back to you" or connect them with a human`
 
         // ─── 10. Call AI ──────────────────────────────────────────
+        let contextSection = ''
+        if (conversation.aiSummary) {
+            contextSection = `Conversation summary so far:\n${conversation.aiSummary}\n\nRecent messages:\n${messageHistory}`
+        } else {
+            contextSection = `Recent conversation:\n${messageHistory}`
+        }
+
         const userPrompt = `Customer name: ${conversation.externalUserName || 'Customer'}
 
-Recent conversation:
-${messageHistory}
+${contextSection}
 
 Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
 
@@ -395,6 +481,49 @@ Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
             })
             console.log(`[Bot Auto-Reply] 🔄 AI escalated → switched to AGENT mode`)
             return { replied: true, reason: 'Escalated to agent' }
+        }
+
+        // ─── 13b. Auto-summarize long conversations ───────────────
+        if (totalMsgCount >= 10) {
+            setImmediate(async () => {
+                try {
+                    // Only re-summarize if no summary yet or 10+ messages since last
+                    const conv = await prisma.conversation.findUnique({
+                        where: { id: conversationId },
+                        select: { aiSummary: true },
+                    })
+
+                    const shouldSummarize = !conv?.aiSummary || totalMsgCount % 10 === 0
+                    if (!shouldSummarize) return
+
+                    const allMsgs = await prisma.inboxMessage.findMany({
+                        where: { conversationId },
+                        orderBy: { sentAt: 'asc' },
+                        take: 50,
+                        select: { direction: true, senderType: true, content: true },
+                    })
+
+                    const transcript = allMsgs
+                        .map(m => `${m.direction === 'inbound' ? 'Customer' : (m.senderType === 'bot' ? 'Bot' : 'Agent')}: ${m.content}`)
+                        .join('\n')
+
+                    const summary = await callAI(
+                        provider, apiKey, model,
+                        'You are a conversation summarizer. Create a concise summary of this customer service conversation. Include: customer\'s main issue/question, key information exchanged, current status. Write in 2-4 sentences. Plain text only.',
+                        `Summarize this conversation:\n${transcript}`
+                    )
+
+                    if (summary?.trim()) {
+                        await prisma.conversation.update({
+                            where: { id: conversationId },
+                            data: { aiSummary: summary.trim() },
+                        })
+                        console.log(`[Bot Summary] ✅ Generated summary for conversation ${conversationId}`)
+                    }
+                } catch (err) {
+                    console.error('[Bot Summary] ❌ Error:', err)
+                }
+            })
         }
 
         return { replied: true }

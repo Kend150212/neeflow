@@ -153,6 +153,58 @@ export async function POST(
         },
     })
 
+    // ── Auto-learn: extract Q→A training pair from agent reply ──
+    if (senderType === 'agent' && content.trim()) {
+        // Run in background to not slow down the response
+        setImmediate(async () => {
+            try {
+                // Get last inbound (customer) message before this agent reply
+                const lastCustomerMsg = await prisma.inboxMessage.findFirst({
+                    where: {
+                        conversationId: id,
+                        direction: 'inbound',
+                        senderType: 'customer',
+                    },
+                    orderBy: { sentAt: 'desc' },
+                    select: { content: true },
+                })
+
+                if (lastCustomerMsg?.content && lastCustomerMsg.content.length > 3) {
+                    const botConfig = await prisma.botConfig.findUnique({
+                        where: { channelId: conversation.channelId },
+                        select: { id: true, trainingPairs: true },
+                    })
+
+                    if (botConfig) {
+                        const pairs = (botConfig.trainingPairs as Array<{ q: string; a: string }>) || []
+
+                        // Check for duplicate (same question)
+                        const isDuplicate = pairs.some(
+                            p => p.q.toLowerCase().trim() === lastCustomerMsg.content.toLowerCase().trim()
+                        )
+
+                        if (!isDuplicate) {
+                            // Add new pair, keep max 100 (prune oldest)
+                            pairs.push({
+                                q: lastCustomerMsg.content.substring(0, 500),
+                                a: content.trim().substring(0, 1000),
+                            })
+                            const trimmed = pairs.slice(-100) // Keep most recent 100
+
+                            await prisma.botConfig.update({
+                                where: { id: botConfig.id },
+                                data: { trainingPairs: trimmed },
+                            })
+                            console.log(`[Bot Training] ✅ Learned from agent: "${lastCustomerMsg.content.substring(0, 50)}..." → "${content.substring(0, 50)}..."`)
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[Bot Training] ❌ Auto-learn error:', err)
+            }
+        })
+    }
+
     // ── Send reply via Facebook/Instagram API ──
     if (conversation.platform === 'facebook' || conversation.platform === 'instagram') {
         const platformAccount = await prisma.channelPlatform.findUnique({
