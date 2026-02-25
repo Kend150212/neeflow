@@ -106,8 +106,9 @@ async function publishToFacebook(
             console.log(`[Facebook] Multi-photo carousel with ${imageItems.length} images`)
             // ── Carousel: upload each photo unpublished, then batch ──
             const photoIds: string[] = []
-            for (const media of mediaItems) {
-                if (isVideoMedia(media)) continue
+            for (let i = 0; i < imageItems.length; i++) {
+                const media = imageItems[i]
+                console.log(`[Facebook] Uploading photo ${i + 1}/${imageItems.length}: ${media.url.slice(0, 80)}...`)
                 const photoUrl = `https://graph.facebook.com/v21.0/${accountId}/photos`
                 const photoBody: Record<string, string | boolean> = {
                     url: media.url,
@@ -120,24 +121,27 @@ async function publishToFacebook(
                     body: JSON.stringify(photoBody),
                 })
                 const data = await res.json()
-                if (data.error) throw new Error(data.error.message || 'Facebook carousel photo error')
-                if (data.id) photoIds.push(data.id)
+                if (data.error) throw new Error(data.error.message || `Facebook carousel photo ${i + 1} error`)
+                if (data.id) {
+                    photoIds.push(data.id)
+                    console.log(`[Facebook] Photo ${i + 1} uploaded: ${data.id}`)
+                }
             }
-            // Batch publish
+            // Batch publish — use form-encoded params (Facebook Graph API requirement)
+            console.log(`[Facebook] Publishing carousel with ${photoIds.length} photos`)
             const feedUrl = `https://graph.facebook.com/v21.0/${accountId}/feed`
-            const feedBody: Record<string, unknown> = {
-                message: content,
-                access_token: accessToken,
-            }
+            const params = new URLSearchParams()
+            params.append('message', content)
+            params.append('access_token', accessToken)
             photoIds.forEach((pid, i) => {
-                feedBody[`attached_media[${i}]`] = JSON.stringify({ media_fbid: pid })
+                params.append(`attached_media[${i}]`, JSON.stringify({ media_fbid: pid }))
             })
             const res = await fetch(feedUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(feedBody),
+                body: params,
             })
             const data = await res.json()
+            console.log(`[Facebook] Carousel publish result:`, JSON.stringify(data).slice(0, 200))
             if (data.error) throw new Error(data.error.message || 'Facebook carousel publish error')
             const postId = data.id
             return { externalId: postId }

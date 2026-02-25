@@ -1002,12 +1002,16 @@ export default function ComposePage() {
     useEffect(() => {
         if (attachedMedia.length === 0) return
         const first = attachedMedia[0]
-        const url = first.url
         const isVid = isVideo(first)
+        // Use the raw URL or thumbnail — no crossOrigin needed for dimensions
+        const srcUrl = isVid
+            ? (first.thumbnailUrl || first.url)
+            : first.url
+        const fullUrl = srcUrl.startsWith('http') ? srcUrl : `${window.location.origin}${srcUrl}`
 
-        if (isVid) {
+        if (isVid && !first.thumbnailUrl) {
+            // For video without thumbnail, try loading video metadata
             const video = document.createElement('video')
-            video.crossOrigin = 'anonymous'
             video.preload = 'metadata'
             video.onloadedmetadata = () => {
                 const w = video.videoWidth
@@ -1021,11 +1025,11 @@ export default function ComposePage() {
                 }
                 video.src = ''
             }
-            video.onerror = () => { /* ignore, keep existing ratio */ }
-            video.src = url.startsWith('http') ? url : `${window.location.origin}${url}`
+            video.onerror = () => console.warn('[AutoRatio] Failed to load video metadata')
+            video.src = fullUrl
         } else {
+            // For images or video thumbnails — use Image element
             const img = new window.Image()
-            img.crossOrigin = 'anonymous'
             img.onload = () => {
                 const w = img.naturalWidth
                 const h = img.naturalHeight
@@ -1037,8 +1041,8 @@ export default function ComposePage() {
                     console.log(`[AutoRatio] Image ${w}x${h} → ${ratio > 1.4 ? '16:9' : ratio < 0.75 ? '9:16' : '1:1'}`)
                 }
             }
-            img.onerror = () => { /* ignore, keep existing ratio */ }
-            img.src = url.startsWith('http') ? url : `${window.location.origin}${url}`
+            img.onerror = () => console.warn('[AutoRatio] Failed to load image — CORS or network issue')
+            img.src = fullUrl
         }
         // Only auto-detect when first media changes
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1858,6 +1862,7 @@ export default function ComposePage() {
                     pinTitle: pinTitle || undefined,
                     pinLink: pinLink || undefined,
                 } : {}),
+                mediaRatio,
             }))
     }
 
