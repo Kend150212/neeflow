@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     authUrl.searchParams.set('client_id', clientId)
     authUrl.searchParams.set('redirect_uri', redirectUri)
     authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('scope', 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,pages_read_user_content,business_management')
+    authUrl.searchParams.set('scope', 'instagram_basic,instagram_manage_messages,instagram_manage_comments,instagram_content_publish,pages_show_list,pages_read_engagement,pages_read_user_content,pages_manage_metadata,business_management')
     authUrl.searchParams.set('auth_type', 'rerequest')
     authUrl.searchParams.set('state', state)
 
