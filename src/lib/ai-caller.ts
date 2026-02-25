@@ -85,7 +85,6 @@ async function callGemini(
             contents: [{ parts: [{ text: user }] }],
             generationConfig: {
                 temperature: 0.7,
-                responseMimeType: 'application/json',
             },
         }),
     })

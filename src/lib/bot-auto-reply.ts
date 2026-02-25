@@ -443,14 +443,21 @@ Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
                 // Fix unquoted string keys
                 jsonStr = jsonStr.replace(/(?<=\{|,)\s*(\w+)\s*:/g, '"$1":')
                 const parsed = JSON.parse(jsonStr)
-                // Handle JSON array: ["reply text"] or ["text1", "text2"]
+                // Handle JSON array
                 if (Array.isArray(parsed)) {
-                    const textItems = parsed.filter((item: any) => typeof item === 'string')
-                    if (textItems.length > 0) {
-                        cleanReply = textItems.join('\n')
+                    // Array of objects: [{"reply": "..."}]
+                    if (parsed.length > 0 && typeof parsed[0] === 'object') {
+                        const obj = parsed[0]
+                        cleanReply = obj.reply || obj.response || obj.message || obj.text || obj.content || obj.answer || JSON.stringify(obj)
+                    } else {
+                        // Array of strings: ["text"]
+                        const textItems = parsed.filter((item: any) => typeof item === 'string')
+                        if (textItems.length > 0) {
+                            cleanReply = textItems.join('\n')
+                        }
                     }
                 } else {
-                    // Try common keys: reply, response, message, text, content, answer
+                    // Single object: {"reply": "..."}
                     cleanReply = parsed.reply || parsed.response || parsed.message
                         || parsed.text || parsed.content || parsed.answer
                         || cleanReply // fallback to original if no known key
@@ -458,13 +465,14 @@ Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
             } catch {
                 // JSON.parse failed — try regex extraction as last resort
                 const valueMatch = cleanReply.match(/(?:reply|response|message|text|content|answer)["*]*\s*:\s*"([^"]+)"/i)
-                    || cleanReply.match(/(?:reply|response|message|text|content|answer)["*]*\s*:\s*"([\s\S]+?)"\s*\}?$/i)
+                    || cleanReply.match(/(?:reply|response|message|text|content|answer)["*]*\s*:\s*"([\s\S]+?)"\s*[\}\]]?$/i)
                 if (valueMatch?.[1]) {
                     cleanReply = valueMatch[1]
                 }
-                // Also try extracting from array-like pattern: ["text"]
+                // Also try extracting from array-like pattern: ["text"] or [{"reply":"text"}]
                 if (!valueMatch) {
                     const arrayMatch = cleanReply.match(/^\[\s*"([\s\S]+?)"\s*\]$/)
+                        || cleanReply.match(/"(?:reply|response|message|text|content)"\s*:\s*"([\s\S]+?)"/i)
                     if (arrayMatch?.[1]) {
                         cleanReply = arrayMatch[1]
                     }
@@ -498,11 +506,17 @@ Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
         // If the AI reply contains phrases indicating it's transferring
         // to a human agent, switch conversation mode to AGENT
         const escalationPatterns = [
-            /connect(ing)?\s+(you\s+)?(with|to)\s+(a\s+)?(human|agent|team|staff|representative)/i,
-            /transfer(ring)?\s+(you\s+)?(to|over)\s+(a\s+)?(human|agent|team|staff|representative)/i,
-            /forward(ing)?\s+(you\s+)?to\s+(a\s+)?(human|agent|team|staff|representative)/i,
+            /connect(ing)?\s+(you\s+)?(with|to)\s+(a\s+)?(human|agent|team|staff|representative|member)/i,
+            /transfer(ring)?\s+(you\s+)?(to|over)\s+(a\s+)?(human|agent|team|staff|representative|member)/i,
+            /forward(ing)?\s+(you\s+)?to\s+(a\s+)?(human|agent|team|staff|representative|member)/i,
             /human\s+agent\s+(will|can|is\s+going\s+to)\s+(help|assist|take\s+over)/i,
             /let\s+me\s+(get|find|connect|transfer)/i,
+            /i'?ll\s+(get|find|connect|grab|have)\s+(a\s+)?team/i,
+            /get\s+(a\s+)?team\s+(member|mate)/i,
+            /(just\s+)?a\s+moment\s+(while|as)\s+(i|we)\s+(connect|transfer|get)/i,
+            /team\s+member\s+(for|to\s+help)\s+you/i,
+            /passing\s+(this|you)\s+(to|along|over)/i,
+            /someone\s+(from|on)\s+(the|our)\s+team/i,
             /kết\s*nối\s*(bạn\s*)?(với|đến)\s*(nhân\s*viên|agent|người)/i,
             /chuyển\s*(bạn\s*)?(cho|đến|qua)\s*(nhân\s*viên|agent|người|tư\s*vấn)/i,
             /nhân\s*viên\s*(sẽ|sẽ\s+sớm|đang)\s*(hỗ\s*trợ|liên\s*hệ|phục\s*vụ)/i,
