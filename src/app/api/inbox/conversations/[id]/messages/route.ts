@@ -377,6 +377,14 @@ export async function POST(
             })
 
             try {
+                // Debug: log token info
+                console.log(`[IG Reply] 🔍 Debug: accountId=${platformAccount.accountId}, token=${platformAccount.accessToken?.substring(0, 20)}...`)
+
+                // Debug: test token validity
+                const debugRes = await fetch(`https://graph.facebook.com/v21.0/${platformAccount.accountId}?fields=id,username&access_token=${platformAccount.accessToken}`)
+                const debugData = await debugRes.json()
+                console.log(`[IG Reply] 🔍 Token test:`, JSON.stringify(debugData))
+
                 if (conv?.type === 'message' || !conv?.type) {
                     const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
                     const igApiUrl = `https://graph.facebook.com/v21.0/${platformAccount.accountId}/messages?access_token=${platformAccount.accessToken}`
