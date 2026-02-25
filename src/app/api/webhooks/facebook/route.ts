@@ -8,7 +8,7 @@ type BotTask = () => Promise<void>
 const pendingBotTasks: BotTask[] = []
 
 // ─── Webhook verify token ──────────────
-const VERIFY_TOKEN = process.env.FB_WEBHOOK_VERIFY_TOKEN || 'asocial_webhook_2024'
+const VERIFY_TOKEN = process.env.FB_WEBHOOK_VERIFY_TOKEN || 'Neeflow'
 
 /**
  * GET /api/webhooks/facebook
