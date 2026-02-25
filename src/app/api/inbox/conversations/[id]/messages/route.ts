@@ -377,42 +377,53 @@ export async function POST(
             })
 
             try {
-                // Debug: log token info
-                console.log(`[IG Reply] 🔍 Debug: accountId=${platformAccount.accountId}, token=${platformAccount.accessToken?.substring(0, 20)}...`)
+                // Debug: check what 'me' resolves to
+                const meRes = await fetch(`https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${platformAccount.accessToken}`)
+                const meData = await meRes.json()
+                console.log(`[IG Reply] 🔍 me =`, JSON.stringify(meData))
 
-                // Debug: test token validity
-                const debugRes = await fetch(`https://graph.facebook.com/v21.0/${platformAccount.accountId}?fields=id,username&access_token=${platformAccount.accessToken}`)
-                const debugData = await debugRes.json()
-                console.log(`[IG Reply] 🔍 Token test:`, JSON.stringify(debugData))
-
-                // Debug: check token permissions
-                const permRes = await fetch(`https://graph.facebook.com/v21.0/me/permissions?access_token=${platformAccount.accessToken}`)
-                const permData = await permRes.json()
-                console.log(`[IG Reply] 🔍 Token permissions:`, JSON.stringify(permData))
+                const pageId = (platformAccount.config as any)?.pageId
+                console.log(`[IG Reply] 🔍 pageId=${pageId}, accountId=${platformAccount.accountId}`)
 
                 if (conv?.type === 'message' || !conv?.type) {
                     const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
-                    const igApiUrl = `https://graph.facebook.com/v21.0/${platformAccount.accountId}/messages?access_token=${platformAccount.accessToken}`
 
                     if (cleanText) {
-                        const igRes = await fetch(igApiUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                recipient: { id: conv?.externalUserId },
-                                message: { text: cleanText },
-                            }),
+                        // Try approach 1: graph.facebook.com/{igAccountId}/messages
+                        let sent = false
+                        const body = JSON.stringify({ recipient: { id: conv?.externalUserId }, message: { text: cleanText } })
+
+                        // Approach 1: IG Account ID on graph.facebook.com
+                        const r1 = await fetch(`https://graph.facebook.com/v21.0/${platformAccount.accountId}/messages?access_token=${platformAccount.accessToken}`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
                         })
-                        const igData = await igRes.json()
-                        if (igData.error) {
-                            console.warn(`[IG Reply] ⚠️ DM send failed:`, JSON.stringify(igData.error))
+                        const d1 = await r1.json()
+                        console.log(`[IG Reply] 🔍 Approach 1 (fb/{igId}):`, JSON.stringify(d1))
+                        if (!d1.error) sent = true
+
+                        // Approach 2: Page ID on graph.facebook.com (if pageId exists)
+                        if (!sent && pageId) {
+                            const r2 = await fetch(`https://graph.facebook.com/v21.0/${pageId}/messages?access_token=${platformAccount.accessToken}`, {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+                            })
+                            const d2 = await r2.json()
+                            console.log(`[IG Reply] 🔍 Approach 2 (fb/{pageId}):`, JSON.stringify(d2))
+                            if (!d2.error) sent = true
+                        }
+
+                        // Approach 3: graph.instagram.com/{igAccountId}/messages
+                        if (!sent) {
+                            const r3 = await fetch(`https://graph.instagram.com/v21.0/${platformAccount.accountId}/messages?access_token=${platformAccount.accessToken}`, {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+                            })
+                            const d3 = await r3.json()
+                            console.log(`[IG Reply] 🔍 Approach 3 (ig/{igId}):`, JSON.stringify(d3))
+                            if (!d3.error) sent = true
+                        }
+
+                        if (!sent) {
+                            console.warn(`[IG Reply] ⚠️ All approaches failed`)
                         } else {
-                            if (igData.message_id) {
-                                await prisma.inboxMessage.update({
-                                    where: { id: message.id },
-                                    data: { externalId: igData.message_id },
-                                })
-                            }
                             console.log(`[IG Reply] ✅ DM sent to ${conv?.externalUserId}`)
                         }
                     }
