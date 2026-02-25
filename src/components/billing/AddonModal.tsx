@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import {
     HardDrive, Tv, Image as ImageIcon, PenTool, Users, Code2,
     CalendarClock, BarChart3, Tag, Headphones, Plus, Check, Loader2, X,
+    Sparkles, Zap, Shield,
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 
@@ -52,6 +53,71 @@ type Props = {
     open: boolean
     onClose: () => void
     onPurchased?: () => void
+}
+
+// Group definitions with visual styling
+const QUOTA_GROUPS = [
+    {
+        key: 'maxStorageMB',
+        label: '💾 Storage',
+        labelVi: '💾 Lưu trữ',
+        gradient: 'from-blue-500/10 to-cyan-500/10',
+        border: 'border-blue-500/20',
+        iconBg: 'bg-blue-500/10 text-blue-400',
+        activeBg: 'bg-blue-500/5 border-blue-500/40',
+        activeBadge: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    },
+    {
+        key: 'maxChannels',
+        label: '📺 Channels',
+        labelVi: '📺 Kênh',
+        gradient: 'from-violet-500/10 to-purple-500/10',
+        border: 'border-violet-500/20',
+        iconBg: 'bg-violet-500/10 text-violet-400',
+        activeBg: 'bg-violet-500/5 border-violet-500/40',
+        activeBadge: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+    },
+    {
+        key: 'ai',
+        match: (a: Addon) => a.quotaField === 'maxAiImagesPerMonth' || a.quotaField === 'maxAiTextPerMonth',
+        label: '✨ AI Credits',
+        labelVi: '✨ AI Credits',
+        gradient: 'from-amber-500/10 to-orange-500/10',
+        border: 'border-amber-500/20',
+        iconBg: 'bg-amber-500/10 text-amber-400',
+        activeBg: 'bg-amber-500/5 border-amber-500/40',
+        activeBadge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    },
+    {
+        key: 'maxMembersPerChannel',
+        label: '👥 Team Members',
+        labelVi: '👥 Thành viên',
+        gradient: 'from-green-500/10 to-emerald-500/10',
+        border: 'border-green-500/20',
+        iconBg: 'bg-green-500/10 text-green-400',
+        activeBg: 'bg-green-500/5 border-green-500/40',
+        activeBadge: 'bg-green-500/10 text-green-400 border-green-500/20',
+    },
+    {
+        key: 'maxApiCallsPerMonth',
+        label: '🔌 API Access',
+        labelVi: '🔌 Truy cập API',
+        gradient: 'from-rose-500/10 to-pink-500/10',
+        border: 'border-rose-500/20',
+        iconBg: 'bg-rose-500/10 text-rose-400',
+        activeBg: 'bg-rose-500/5 border-rose-500/40',
+        activeBadge: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+    },
+]
+
+const FEATURE_GROUP = {
+    label: '⚡ Premium Features',
+    labelVi: '⚡ Tính năng Premium',
+    gradient: 'from-emerald-500/10 to-teal-500/10',
+    border: 'border-emerald-500/20',
+    iconBg: 'bg-emerald-500/10 text-emerald-400',
+    activeBg: 'bg-emerald-500/5 border-emerald-500/40',
+    activeBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
 }
 
 export function AddonModal({ open, onClose, onPurchased }: Props) {
@@ -112,139 +178,154 @@ export function AddonModal({ open, onClose, onPurchased }: Props) {
         }
     }
 
+    const locale = t('lang') || 'en'
+    const isVi = locale === 'vi'
+    const getName = (a: Addon) => isVi && a.displayNameVi ? a.displayNameVi : a.displayName
+    const getDesc = (a: Addon) => isVi && a.descriptionVi ? a.descriptionVi : a.description
+
+    // Group quota addons by field
     const quotaAddons = addons.filter(a => a.category === 'quota')
     const featureAddons = addons.filter(a => a.category === 'feature')
 
-    // Helpers for locale-aware display
-    const locale = t('lang') || 'en'
-    const getName = (a: Addon) => locale === 'vi' && a.displayNameVi ? a.displayNameVi : a.displayName
-    const getDesc = (a: Addon) => locale === 'vi' && a.descriptionVi ? a.descriptionVi : a.description
+    const groupedQuotas = QUOTA_GROUPS.map(group => {
+        const items = group.match
+            ? quotaAddons.filter(group.match)
+            : quotaAddons.filter(a => a.quotaField === group.key)
+        return { ...group, items }
+    }).filter(g => g.items.length > 0)
+
+    // Count active add-ons
+    const totalActive = Object.keys(activeAddons).length
+
+    const renderAddonCard = (addon: Addon, style: typeof FEATURE_GROUP) => {
+        const isActive = !!activeAddons[addon.id]
+        const isProcessing = purchasing === addon.id
+        return (
+            <div
+                key={addon.id}
+                className={`group relative flex flex-col gap-2 p-3.5 rounded-xl border transition-all duration-200 ${isActive
+                        ? style.activeBg
+                        : 'border-border/60 hover:border-border hover:bg-accent/30'
+                    }`}
+            >
+                <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg shrink-0 transition-colors ${isActive ? style.iconBg : 'bg-muted/60 text-muted-foreground group-hover:bg-muted'
+                        }`}>
+                        {iconMap[addon.icon] ?? <Plus className="h-5 w-5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">{getName(addon)}</span>
+                            {isActive && (
+                                <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${style.activeBadge}`}>
+                                    <Check className="h-2.5 w-2.5 mr-0.5" /> Active
+                                </Badge>
+                            )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{getDesc(addon)}</p>
+                    </div>
+                </div>
+                <div className="flex items-center justify-between mt-auto pt-1">
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-base font-bold">${addon.priceMonthly}</span>
+                        <span className="text-[10px] text-muted-foreground">/mo</span>
+                    </div>
+                    <Button
+                        size="sm"
+                        variant={isActive ? 'outline' : 'default'}
+                        className={`h-7 text-xs gap-1 rounded-lg ${!isActive ? 'shadow-sm' : ''}`}
+                        disabled={isProcessing}
+                        onClick={() => handlePurchase(addon)}
+                    >
+                        {isProcessing ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : isActive ? (
+                            <><X className="h-3 w-3" /> {isVi ? 'Hủy' : 'Remove'}</>
+                        ) : (
+                            <><Plus className="h-3 w-3" /> {isVi ? 'Thêm' : 'Add'}</>
+                        )}
+                    </Button>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-lg">
-                        <Plus className="h-5 w-5 text-primary" />
-                        Add-ons
-                    </DialogTitle>
-                </DialogHeader>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0">
+                {/* Header */}
+                <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-6 py-4">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2.5 text-lg">
+                            <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5">
+                                <Sparkles className="h-5 w-5 text-primary" />
+                            </div>
+                            {isVi ? 'Nâng cấp Add-ons' : 'Power-up Add-ons'}
+                            {totalActive > 0 && (
+                                <Badge variant="secondary" className="text-xs ml-1">
+                                    {totalActive} {isVi ? 'đang dùng' : 'active'}
+                                </Badge>
+                            )}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        {isVi
+                            ? 'Mở rộng plan của bạn với các add-on linh hoạt. Thêm hoặc hủy bất cứ lúc nào.'
+                            : 'Extend your plan with flexible add-ons. Add or remove anytime.'}
+                    </p>
+                </div>
 
                 {loading ? (
-                    <div className="flex items-center justify-center py-12">
+                    <div className="flex items-center justify-center py-16">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <div className="space-y-6 mt-2">
-                        {/* Quota add-ons */}
-                        {quotaAddons.length > 0 && (
+                    <div className="px-6 pb-6 space-y-5 pt-4">
+                        {/* Quota Groups */}
+                        {groupedQuotas.map(group => (
+                            <div key={group.key}>
+                                <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${group.border}`}>
+                                    <h3 className="text-sm font-semibold tracking-wide">
+                                        {isVi ? group.labelVi : group.label}
+                                    </h3>
+                                    <div className="flex-1" />
+                                    <span className="text-[10px] text-muted-foreground">
+                                        {group.items.filter(a => !!activeAddons[a.id]).length}/{group.items.length}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    {group.items.map(addon => renderAddonCard(addon, group))}
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Feature Add-ons */}
+                        {featureAddons.length > 0 && (
                             <div>
-                                <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
-                                    {locale === 'vi' ? 'Tăng dung lượng' : 'Boost Quotas'}
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {quotaAddons.map(addon => {
-                                        const isActive = !!activeAddons[addon.id]
-                                        const isProcessing = purchasing === addon.id
-                                        return (
-                                            <div
-                                                key={addon.id}
-                                                className={`relative flex items-start gap-3 p-3 rounded-xl border transition-all ${isActive
-                                                        ? 'border-primary/50 bg-primary/5'
-                                                        : 'border-border hover:border-primary/30 hover:bg-accent/50'
-                                                    }`}
-                                            >
-                                                <div className={`p-2 rounded-lg shrink-0 ${isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                                                    {iconMap[addon.icon] ?? <Plus className="h-5 w-5" />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-medium truncate">{getName(addon)}</span>
-                                                        {isActive && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">Active</Badge>}
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{getDesc(addon)}</p>
-                                                    <div className="flex items-center justify-between mt-2">
-                                                        <span className="text-xs font-semibold">${addon.priceMonthly}/mo</span>
-                                                        <Button
-                                                            size="sm"
-                                                            variant={isActive ? 'outline' : 'default'}
-                                                            className="h-7 text-xs gap-1"
-                                                            disabled={isProcessing}
-                                                            onClick={() => handlePurchase(addon)}
-                                                        >
-                                                            {isProcessing ? (
-                                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                                            ) : isActive ? (
-                                                                <><X className="h-3 w-3" /> Cancel</>
-                                                            ) : (
-                                                                <><Plus className="h-3 w-3" /> Add</>
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
+                                <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${FEATURE_GROUP.border}`}>
+                                    <h3 className="text-sm font-semibold tracking-wide">
+                                        {isVi ? FEATURE_GROUP.labelVi : FEATURE_GROUP.label}
+                                    </h3>
+                                    <div className="flex-1" />
+                                    <span className="text-[10px] text-muted-foreground">
+                                        {featureAddons.filter(a => !!activeAddons[a.id]).length}/{featureAddons.length}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    {featureAddons.map(addon => renderAddonCard(addon, FEATURE_GROUP))}
                                 </div>
                             </div>
                         )}
 
-                        {/* Feature add-ons */}
-                        {featureAddons.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
-                                    {locale === 'vi' ? 'Mở khóa tính năng' : 'Unlock Features'}
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {featureAddons.map(addon => {
-                                        const isActive = !!activeAddons[addon.id]
-                                        const isProcessing = purchasing === addon.id
-                                        return (
-                                            <div
-                                                key={addon.id}
-                                                className={`relative flex items-start gap-3 p-3 rounded-xl border transition-all ${isActive
-                                                        ? 'border-emerald-500/50 bg-emerald-500/5'
-                                                        : 'border-border hover:border-emerald-500/30 hover:bg-accent/50'
-                                                    }`}
-                                            >
-                                                <div className={`p-2 rounded-lg shrink-0 ${isActive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'}`}>
-                                                    {iconMap[addon.icon] ?? <Plus className="h-5 w-5" />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-medium truncate">{getName(addon)}</span>
-                                                        {isActive && (
-                                                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                                                                <Check className="h-2.5 w-2.5 mr-0.5" /> Active
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{getDesc(addon)}</p>
-                                                    <div className="flex items-center justify-between mt-2">
-                                                        <span className="text-xs font-semibold">${addon.priceMonthly}/mo</span>
-                                                        <Button
-                                                            size="sm"
-                                                            variant={isActive ? 'outline' : 'default'}
-                                                            className="h-7 text-xs gap-1"
-                                                            disabled={isProcessing}
-                                                            onClick={() => handlePurchase(addon)}
-                                                        >
-                                                            {isProcessing ? (
-                                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                                            ) : isActive ? (
-                                                                <><X className="h-3 w-3" /> Cancel</>
-                                                            ) : (
-                                                                <><Plus className="h-3 w-3" /> Add</>
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        )}
+                        {/* Footer */}
+                        <div className="flex items-center gap-2 pt-3 border-t text-xs text-muted-foreground">
+                            <Shield className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                                {isVi
+                                    ? 'Add-on sẽ được tính vào hóa đơn hàng tháng. Hủy bất cứ lúc nào.'
+                                    : 'Add-ons are billed monthly. Cancel anytime with no penalty.'}
+                            </span>
+                        </div>
                     </div>
                 )}
             </DialogContent>
