@@ -605,61 +605,106 @@ async function sendAndSaveReply(
         }
     }
 
-    // YouTube comment reply
-    if (platform === 'youtube' && platformAccount?.accessToken && conversation.type === 'comment') {
-        try {
-            // Find the most recent inbound comment to reply to
-            const lastComment = await prisma.inboxMessage.findFirst({
-                where: {
-                    conversationId: conversation.id,
-                    direction: 'inbound',
-                },
-                orderBy: { sentAt: 'desc' },
-                select: { externalId: true },
-            })
+    // ── COMMENT REPLIES (with human-like random delay) ──
+    // For comments, we schedule the API call with a random delay (30s - 10min)
+    // to appear more natural. The DB message is saved immediately below.
+    const isComment = conversation.type === 'comment'
 
-            if (lastComment?.externalId) {
-                await replyToYouTubeComment(
-                    platformAccount.accessToken,
-                    lastComment.externalId,
-                    text
-                )
+    if (isComment && platformAccount?.accessToken) {
+        // Random delay between 30 seconds and 10 minutes (in ms)
+        const minDelay = 30_000   // 30 seconds
+        const maxDelay = 600_000  // 10 minutes
+        const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay
+        const delaySec = Math.round(delay / 1000)
+
+        // Find the most recent inbound comment to reply to
+        const lastComment = await prisma.inboxMessage.findFirst({
+            where: { conversationId: conversation.id, direction: 'inbound' },
+            orderBy: { sentAt: 'desc' },
+            select: { externalId: true },
+        })
+
+        if (lastComment?.externalId) {
+            const token = platformAccount.accessToken
+            const commentExternalId = lastComment.externalId
+
+            if (platform === 'facebook') {
+                console.log(`[Bot] ⏱️ FB comment reply scheduled in ${delaySec}s`)
+                setTimeout(async () => {
+                    try {
+                        const res = await fetch(
+                            `https://graph.facebook.com/v19.0/${commentExternalId}/comments?access_token=${token}`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ message: text }),
+                            }
+                        )
+                        const data = await res.json()
+                        if (data.error) {
+                            console.error(`[Bot] ❌ FB comment reply failed:`, JSON.stringify(data.error))
+                        } else {
+                            console.log(`[Bot] ✅ FB comment reply posted (after ${delaySec}s delay)`)
+                        }
+                    } catch (err) {
+                        console.error('[Bot] ❌ FB comment reply error:', err)
+                    }
+                }, delay)
             }
-        } catch (err) {
-            console.error('[Bot] YouTube comment reply failed:', err)
-        }
-    }
 
-    // TikTok comment reply
-    if (platform === 'tiktok' && platformAccount?.accessToken && conversation.type === 'comment') {
-        try {
-            const lastComment = await prisma.inboxMessage.findFirst({
-                where: {
-                    conversationId: conversation.id,
-                    direction: 'inbound',
-                },
-                orderBy: { sentAt: 'desc' },
-                select: { externalId: true },
-            })
-
-            if (lastComment?.externalId) {
-                // Extract video ID from conversation metadata
-                const metadata = conversation.metadata as any
-                const videoId = metadata?.videoId
-                // Strip the 'tt_' prefix we added during polling
-                const commentId = lastComment.externalId.replace(/^tt_/, '')
-
-                if (videoId && commentId) {
-                    await replyToTikTokComment(
-                        platformAccount.accessToken,
-                        videoId,
-                        commentId,
-                        text
-                    )
+            if (platform === 'instagram') {
+                const pageId = (platformAccount.config as any)?.pageId
+                if (pageId) {
+                    console.log(`[Bot] ⏱️ IG comment reply scheduled in ${delaySec}s`)
+                    setTimeout(async () => {
+                        try {
+                            const res = await fetch(
+                                `https://graph.facebook.com/v19.0/${commentExternalId}/replies?access_token=${token}`,
+                                {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ message: text }),
+                                }
+                            )
+                            const data = await res.json()
+                            if (data.error) {
+                                console.error(`[Bot] ❌ IG comment reply failed:`, JSON.stringify(data.error))
+                            } else {
+                                console.log(`[Bot] ✅ IG comment reply posted (after ${delaySec}s delay)`)
+                            }
+                        } catch (err) {
+                            console.error('[Bot] ❌ IG comment reply error:', err)
+                        }
+                    }, delay)
                 }
             }
-        } catch (err) {
-            console.error('[Bot] TikTok comment reply failed:', err)
+
+            if (platform === 'youtube') {
+                console.log(`[Bot] ⏱️ YT comment reply scheduled in ${delaySec}s`)
+                setTimeout(async () => {
+                    try {
+                        await replyToYouTubeComment(token, commentExternalId, text)
+                    } catch (err) {
+                        console.error('[Bot] ❌ YouTube comment reply error:', err)
+                    }
+                }, delay)
+            }
+
+            if (platform === 'tiktok') {
+                const metadata = conversation.metadata as any
+                const videoId = metadata?.videoId
+                const commentId = commentExternalId.replace(/^tt_/, '')
+                if (videoId && commentId) {
+                    console.log(`[Bot] ⏱️ TT comment reply scheduled in ${delaySec}s`)
+                    setTimeout(async () => {
+                        try {
+                            await replyToTikTokComment(token, videoId, commentId, text)
+                        } catch (err) {
+                            console.error('[Bot] ❌ TikTok comment reply error:', err)
+                        }
+                    }, delay)
+                }
+            }
         }
     }
 
