@@ -546,7 +546,7 @@ async function sendAndSaveReply(
     const platformAccount = conversation.platformAccountId
         ? await prisma.channelPlatform.findUnique({
             where: { id: conversation.platformAccountId },
-            select: { accessToken: true, accountId: true },
+            select: { accessToken: true, accountId: true, config: true },
         })
         : null
 
@@ -578,11 +578,12 @@ async function sendAndSaveReply(
         }
     }
 
-    // Instagram DM reply — uses Instagram Send API (different from Facebook Messenger)
+    // Instagram DM reply — sent via the backing Facebook Page's messaging endpoint
     if (platform === 'instagram' && platformAccount?.accessToken) {
         const conversationType = conversation.type || 'message'
+        const pageId = (platformAccount.config as any)?.pageId
 
-        if (conversationType === 'message') {
+        if (conversationType === 'message' && pageId) {
             const dedupKey = `ig_${conversation.externalUserId}`
             const lastSent = recentBotReplies.get(dedupKey)
             const now = Date.now()
@@ -593,12 +594,14 @@ async function sendAndSaveReply(
                 recentBotReplies.set(dedupKey, now)
                 await sendInstagramMessage(
                     platformAccount.accessToken,
-                    platformAccount.accountId,
+                    pageId,
                     conversation.externalUserId,
                     text,
                     imageUrls
                 )
             }
+        } else if (!pageId) {
+            console.warn(`[Bot] ⚠️ No backing pageId found in config for IG account ${platformAccount.accountId}`)
         }
     }
 
@@ -719,17 +722,17 @@ async function sendFacebookMessage(
 }
 
 /**
- * Send a message via Instagram Send API
- * Instagram uses a different endpoint than Facebook Messenger
+ * Send a message via Instagram through the backing Facebook Page's messaging endpoint
+ * Uses graph.facebook.com/{pageId}/messages with the Page Access Token
  */
 async function sendInstagramMessage(
     accessToken: string,
-    igAccountId: string,
+    pageId: string,
     recipientId: string,
     text: string,
     imageUrls?: string[]
 ) {
-    const apiUrl = `https://graph.facebook.com/v21.0/${igAccountId}/messages?access_token=${accessToken}`
+    const apiUrl = `https://graph.facebook.com/v21.0/${pageId}/messages?access_token=${accessToken}`
 
     // Send text message
     if (text) {
