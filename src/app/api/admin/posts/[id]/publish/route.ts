@@ -34,10 +34,19 @@ async function publishToFacebook(
     // Facebook Graph API — Post to Page
     const carousel = config?.carousel === true
 
-    // ── Reel: use /video_reels endpoint (2-phase: start → finish) ──
+    // ── Reel: use /video_reels with direct binary upload ──
     if (postType === 'reel') {
         const videoMedia = mediaItems.find(m => isVideoMedia(m))
         if (!videoMedia) throw new Error('Reels require a video attachment')
+
+        // Download video bytes from R2
+        console.log(`[Facebook] Reel: downloading video from ${videoMedia.url.substring(0, 80)}...`)
+        const videoRes = await fetch(videoMedia.url)
+        if (!videoRes.ok) throw new Error(`Failed to download video for Facebook Reel: ${videoRes.statusText}`)
+        const videoBuffer = await videoRes.arrayBuffer()
+        const fileSize = videoBuffer.byteLength
+        console.log(`[Facebook] Reel: downloaded ${(fileSize / 1024 / 1024).toFixed(1)}MB`)
+
         const reelUrl = `https://graph.facebook.com/v21.0/${accountId}/video_reels`
 
         // Phase 1: START — get a video_id
@@ -55,14 +64,33 @@ async function publishToFacebook(
         if (!videoId) throw new Error('Facebook Reel start did not return video_id')
         console.log(`[Facebook] Reel start: video_id=${videoId}`)
 
-        // Phase 2: FINISH — provide video_url + video_id + description
+        // Phase 2: Upload video bytes directly
+        console.log(`[Facebook] Reel: uploading ${(fileSize / 1024 / 1024).toFixed(1)}MB to rupload.facebook.com...`)
+        const uploadRes = await fetch(`https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `OAuth ${accessToken}`,
+                'offset': '0',
+                'file_size': String(fileSize),
+                'Content-Type': 'application/octet-stream',
+            },
+            body: videoBuffer,
+        })
+        if (!uploadRes.ok) {
+            const errText = await uploadRes.text().catch(() => '')
+            console.error(`[Facebook] Reel upload failed: ${uploadRes.status}`, errText)
+            throw new Error(`Facebook Reel video upload failed: ${uploadRes.status}`)
+        }
+        console.log(`[Facebook] Reel: binary upload complete`)
+
+        // Phase 3: FINISH — publish
         const finishRes = await fetch(reelUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 upload_phase: 'finish',
                 video_id: videoId,
-                video_url: videoMedia.url,
+                title: content.substring(0, 100),
                 description: content,
                 access_token: accessToken,
             }),
@@ -256,8 +284,30 @@ async function publishToInstagram(
     if (postType === 'story') {
         const firstMedia = mediaItems[0]
         if (isVideoMedia(firstMedia)) {
-            // Use resumable upload for video stories
-            return await igResumablePublish(accessToken, accountId, '', firstMedia, 'STORIES')
+            // Video story — use video_url (URL-based, avoids resumable upload App ID issues)
+            console.log(`[Instagram] Video story: using video_url approach`)
+            const containerBody: Record<string, string> = {
+                media_type: 'STORIES',
+                video_url: firstMedia.url,
+                access_token: accessToken,
+            }
+            const containerRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(containerBody),
+            })
+            const containerData = await containerRes.json()
+            if (containerData.error) throw new Error(containerData.error.message || 'Instagram video story creation failed')
+            console.log(`[Instagram] Video story container created: ${containerData.id}`)
+            await waitForIgContainer(accessToken, containerData.id)
+            const publishRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media_publish`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ creation_id: containerData.id, access_token: accessToken }),
+            })
+            const publishData = await publishRes.json()
+            if (publishData.error) throw new Error(publishData.error.message || 'Instagram video story publish failed')
+            return { externalId: publishData.id }
         }
         // Image story — use video_url/image_url as before
         const containerBody: Record<string, string> = {
@@ -283,11 +333,38 @@ async function publishToInstagram(
         return { externalId: publishData.id }
     }
 
-    // ── Reel: use REELS media type with resumable upload ──
+    // ── Reel: use REELS media type with video_url (URL-based) ──
     if (postType === 'reel') {
         const videoMedia = mediaItems.find(m => isVideoMedia(m))
         if (!videoMedia) throw new Error('Reels require a video attachment')
-        return await igResumablePublish(accessToken, accountId, content, videoMedia, 'REELS', collaboratorUsernames)
+        console.log(`[Instagram] Reel: using video_url approach`)
+        const containerBody: Record<string, unknown> = {
+            media_type: 'REELS',
+            video_url: videoMedia.url,
+            caption: content,
+            access_token: accessToken,
+        }
+        if (collaboratorUsernames.length > 0) {
+            containerBody.collaborators = collaboratorUsernames
+        }
+        const containerRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(containerBody),
+        })
+        const containerData = await containerRes.json()
+        if (containerData.error) throw new Error(containerData.error.message || 'Instagram reel creation failed')
+        console.log(`[Instagram] Reel container created: ${containerData.id}`)
+        await waitForIgContainer(accessToken, containerData.id)
+        const publishRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media_publish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ creation_id: containerData.id, access_token: accessToken }),
+        })
+        const publishData = await publishRes.json()
+        if (publishData.error) throw new Error(publishData.error.message || 'Instagram reel publish failed')
+        console.log(`[Instagram] ✅ Reel published: ${publishData.id}`)
+        return { externalId: publishData.id }
     }
 
     // ── Carousel: multiple images/videos ──
@@ -299,11 +376,24 @@ async function publishToInstagram(
             const media = mediaItems[i]
             try {
                 if (isVideoMedia(media)) {
-                    // Use resumable upload for carousel videos
-                    console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: uploading video via resumable...`)
-                    const result = await igResumableCreateChild(accessToken, accountId, media)
-                    childIds.push(result.containerId)
-                    console.log(`[Instagram] Carousel item ${i + 1}: video container ${result.containerId} created`)
+                    // Use video_url for carousel videos (URL-based, avoids resumable App ID issues)
+                    console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: creating video container via video_url...`)
+                    const childBody: Record<string, string> = {
+                        is_carousel_item: 'true',
+                        media_type: 'VIDEO',
+                        video_url: media.url,
+                        access_token: accessToken,
+                    }
+                    const childRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(childBody),
+                    })
+                    const childData = await childRes.json()
+                    if (childData.error) throw new Error(childData.error.message || `Instagram carousel video ${i + 1} creation failed`)
+                    await waitForIgContainer(accessToken, childData.id)
+                    childIds.push(childData.id)
+                    console.log(`[Instagram] Carousel item ${i + 1}: video container ${childData.id} ready`)
                 } else {
                     console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: creating image container...`)
                     const childBody: Record<string, string> = {
@@ -375,8 +465,34 @@ async function publishToInstagram(
     const firstMedia = mediaItems[0]
     if (isVideoMedia(firstMedia)) {
         // Instagram deprecated VIDEO type — all videos are now REELS (even for feed)
-        console.log(`[Instagram] Video detected in feed post — auto-switching to REELS media type`)
-        return await igResumablePublish(accessToken, accountId, content, firstMedia, 'REELS', collaboratorUsernames)
+        console.log(`[Instagram] Video detected in feed post — using REELS with video_url`)
+        const containerBody: Record<string, unknown> = {
+            media_type: 'REELS',
+            video_url: firstMedia.url,
+            caption: content,
+            access_token: accessToken,
+        }
+        if (collaboratorUsernames.length > 0) {
+            containerBody.collaborators = collaboratorUsernames
+        }
+        const containerRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(containerBody),
+        })
+        const containerData = await containerRes.json()
+        if (containerData.error) throw new Error(containerData.error.message || 'Instagram video feed post creation failed')
+        console.log(`[Instagram] Feed video container created: ${containerData.id}`)
+        await waitForIgContainer(accessToken, containerData.id)
+        const publishRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media_publish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ creation_id: containerData.id, access_token: accessToken }),
+        })
+        const publishData = await publishRes.json()
+        if (publishData.error) throw new Error(publishData.error.message || 'Instagram video feed publish failed')
+        console.log(`[Instagram] ✅ Feed video published: ${publishData.id}`)
+        return { externalId: publishData.id }
     }
 
     const containerUrl = `https://graph.facebook.com/v21.0/${accountId}/media`
