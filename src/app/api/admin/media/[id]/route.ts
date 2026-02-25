@@ -39,6 +39,15 @@ export async function DELETE(
                     const thumbKey = media.storageFileId.replace(/\.[^.]+$/, '_thumb.jpg')
                     await deleteFromR2(thumbKey).catch(() => { })
                 }
+
+                // Also delete the original R2 file if this was transcoded
+                // (background transcoding creates a new .mp4 but the original .mov stays in R2)
+                if (metadata.originalR2Key && metadata.originalR2Key !== media.storageFileId) {
+                    await deleteFromR2(metadata.originalR2Key).catch(() => { })
+                    // Delete original file's thumbnail too
+                    const origThumbKey = metadata.originalR2Key.replace(/\.[^.]+$/, '_thumb.jpg')
+                    await deleteFromR2(origThumbKey).catch(() => { })
+                }
             } else {
                 // Delete from Google Drive (legacy)
                 const accessToken = await getGDriveAccessToken()

@@ -42,11 +42,18 @@ export async function POST(req: NextRequest) {
         if (r2Items.length > 0) {
             await Promise.allSettled(
                 r2Items.map(async (m) => {
+                    const meta = (m.aiMetadata || {}) as Record<string, string>
                     await deleteFromR2(m.storageFileId!)
                     // Also delete thumbnail if separate
                     if (m.thumbnailUrl && m.thumbnailUrl !== m.url) {
                         const thumbKey = m.storageFileId!.replace(/\.[^.]+$/, '_thumb.jpg')
                         await deleteFromR2(thumbKey).catch(() => { })
+                    }
+                    // Also delete the original R2 file if this was transcoded
+                    if (meta.originalR2Key && meta.originalR2Key !== m.storageFileId) {
+                        await deleteFromR2(meta.originalR2Key).catch(() => { })
+                        const origThumbKey = meta.originalR2Key.replace(/\.[^.]+$/, '_thumb.jpg')
+                        await deleteFromR2(origThumbKey).catch(() => { })
                     }
                 })
             )
