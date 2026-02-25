@@ -14,8 +14,74 @@ import { join } from 'path'
 const execAsync = promisify(exec)
 
 // Allow large file uploads (up to 60MB)
-export const maxDuration = 60 // seconds
+export const maxDuration = 120 // seconds (increased for transcoding)
 export const dynamic = 'force-dynamic'
+
+/**
+ * Check video codec and transcode to H.264/AAC MP4 if needed.
+ * Instagram/Facebook/TikTok require H.264. Screen recordings often use HEVC.
+ * Returns: { buffer, mimeType, fileName } — either original or transcoded.
+ */
+async function transcodeVideoIfNeeded(
+    videoBuffer: Buffer,
+    originalName: string,
+    originalType: string,
+): Promise<{ buffer: Buffer; mimeType: string; fileName: string; transcoded: boolean }> {
+    const id = randomUUID().slice(0, 8)
+    const tmpInput = join(tmpdir(), `input_${id}_${originalName}`)
+    const ext = originalName.replace(/.*\./, '.').toLowerCase()
+    const tmpOutput = join(tmpdir(), `transcoded_${id}.mp4`)
+
+    try {
+        // Write video to temp file
+        await writeFile(tmpInput, videoBuffer)
+
+        // Check codec with ffprobe
+        let codec = 'unknown'
+        try {
+            const { stdout } = await execAsync(
+                `ffprobe -v quiet -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "${tmpInput}"`,
+                { timeout: 10000 }
+            )
+            codec = stdout.trim().toLowerCase()
+        } catch {
+            console.warn(`[Transcode] ffprobe failed for ${originalName}, assuming needs transcoding`)
+        }
+
+        console.log(`[Transcode] ${originalName}: codec=${codec}, ext=${ext}, type=${originalType}`)
+
+        // Skip transcoding if already H.264 MP4
+        if (codec === 'h264' && (ext === '.mp4' || originalType === 'video/mp4')) {
+            console.log(`[Transcode] ${originalName}: already H.264 MP4, skipping transcoding`)
+            await unlink(tmpInput).catch(() => { })
+            return { buffer: videoBuffer, mimeType: originalType, fileName: originalName, transcoded: false }
+        }
+
+        // Transcode to H.264/AAC MP4
+        console.log(`[Transcode] ${originalName}: transcoding ${codec} → H.264/AAC MP4...`)
+        await execAsync(
+            `ffmpeg -i "${tmpInput}" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -movflags +faststart -y "${tmpOutput}"`,
+            { timeout: 300000 } // 5 min timeout for large files
+        )
+
+        const transcodedBuffer = await readFile(tmpOutput)
+        const newName = originalName.replace(/\.[^.]+$/, '.mp4')
+        console.log(`[Transcode] ${originalName}: done! ${(videoBuffer.length / 1024 / 1024).toFixed(1)}MB → ${(transcodedBuffer.length / 1024 / 1024).toFixed(1)}MB`)
+
+        // Clean up
+        await unlink(tmpInput).catch(() => { })
+        await unlink(tmpOutput).catch(() => { })
+
+        return { buffer: transcodedBuffer, mimeType: 'video/mp4', fileName: newName, transcoded: true }
+    } catch (err) {
+        console.error(`[Transcode] Failed for ${originalName}:`, err)
+        // Clean up on error
+        await unlink(tmpInput).catch(() => { })
+        await unlink(tmpOutput).catch(() => { })
+        // Return original if transcoding fails
+        return { buffer: videoBuffer, mimeType: originalType, fileName: originalName, transcoded: false }
+    }
+}
 
 /**
  * Generate a video thumbnail using ffmpeg.
@@ -184,11 +250,24 @@ export async function POST(req: NextRequest) {
 
     // Read file into buffer
     const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    let buffer = Buffer.from(bytes)
     const fileType = file.type.startsWith('video/') ? 'video' : 'image'
+    let uploadMimeType = file.type
+    let uploadFileName = file.name
+
+    // ─── Auto-transcode video to H.264 if needed ─────────────────────
+    let wasTranscoded = false
+    if (fileType === 'video') {
+        const result = await transcodeVideoIfNeeded(buffer, file.name, file.type)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        buffer = result.buffer as any
+        uploadMimeType = result.mimeType
+        uploadFileName = result.fileName
+        wasTranscoded = result.transcoded
+    }
 
     // ─── Check storage quota ─────────────────────────────────────────
-    const quota = await checkStorageQuota(session.user.id, file.size)
+    const quota = await checkStorageQuota(session.user.id, buffer.length) // Use actual buffer size (may differ after transcoding)
     if (!quota.allowed) {
         return NextResponse.json(
             { error: quota.reason, code: 'STORAGE_LIMIT_REACHED', usedMB: quota.usedMB, limitMB: quota.limitMB },
@@ -202,8 +281,8 @@ export async function POST(req: NextRequest) {
     if (useR2) {
         try {
             // Generate R2 key: media/{channelId}/{YYYY-MM}/{uniqueId}.{ext}
-            const r2Key = generateR2Key(channelId, file.name)
-            const publicUrl = await uploadToR2(buffer, r2Key, file.type)
+            const r2Key = generateR2Key(channelId, uploadFileName)
+            const publicUrl = await uploadToR2(buffer, r2Key, uploadMimeType)
 
             // Generate thumbnail
             let thumbnailUrl = ''
@@ -225,12 +304,13 @@ export async function POST(req: NextRequest) {
                     type: fileType,
                     source: 'upload',
                     originalName: file.name,
-                    fileSize: file.size,
-                    mimeType: file.type,
+                    fileSize: buffer.length,
+                    mimeType: uploadMimeType,
                     ...(mediaFolderId ? { folderId: mediaFolderId } : {}),
                     aiMetadata: {
                         storage: 'r2',
                         r2Key,
+                        ...(wasTranscoded ? { transcoded: true, originalCodec: file.type, transcodedTo: 'h264/aac/mp4' } : {}),
                     },
                 },
             })
