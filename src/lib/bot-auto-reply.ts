@@ -593,6 +593,7 @@ async function sendAndSaveReply(
                 recentBotReplies.set(dedupKey, now)
                 await sendInstagramMessage(
                     platformAccount.accessToken,
+                    platformAccount.accountId,
                     conversation.externalUserId,
                     text,
                     imageUrls
@@ -723,11 +724,12 @@ async function sendFacebookMessage(
  */
 async function sendInstagramMessage(
     accessToken: string,
+    igAccountId: string,
     recipientId: string,
     text: string,
     imageUrls?: string[]
 ) {
-    const apiUrl = `https://graph.instagram.com/v21.0/me/messages?access_token=${accessToken}`
+    const apiUrl = `https://graph.facebook.com/v21.0/${igAccountId}/messages?access_token=${accessToken}`
 
     // Send text message
     if (text) {

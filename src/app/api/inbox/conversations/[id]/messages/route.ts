@@ -379,7 +379,7 @@ export async function POST(
             try {
                 if (conv?.type === 'message' || !conv?.type) {
                     const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
-                    const igApiUrl = `https://graph.instagram.com/v21.0/me/messages?access_token=${platformAccount.accessToken}`
+                    const igApiUrl = `https://graph.facebook.com/v21.0/${platformAccount.accountId}/messages?access_token=${platformAccount.accessToken}`
 
                     if (cleanText) {
                         const igRes = await fetch(igApiUrl, {
