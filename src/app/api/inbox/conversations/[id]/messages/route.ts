@@ -379,15 +379,12 @@ export async function POST(
             try {
                 if (conv?.type === 'message' || !conv?.type) {
                     const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
-                    const igApiUrl = `https://graph.instagram.com/v21.0/me/messages`
+                    const igApiUrl = `https://graph.instagram.com/v21.0/me/messages?access_token=${platformAccount.accessToken}`
 
                     if (cleanText) {
                         const igRes = await fetch(igApiUrl, {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${platformAccount.accessToken}`,
-                            },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 recipient: { id: conv?.externalUserId },
                                 message: { text: cleanText },

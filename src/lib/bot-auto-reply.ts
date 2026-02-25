@@ -727,16 +727,13 @@ async function sendInstagramMessage(
     text: string,
     imageUrls?: string[]
 ) {
-    const apiUrl = `https://graph.instagram.com/v21.0/me/messages`
+    const apiUrl = `https://graph.instagram.com/v21.0/me/messages?access_token=${accessToken}`
 
     // Send text message
     if (text) {
         const res = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 recipient: { id: recipientId },
                 message: { text },
@@ -755,10 +752,7 @@ async function sendInstagramMessage(
         for (const url of imageUrls) {
             const res = await fetch(apiUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`,
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     recipient: { id: recipientId },
                     message: {
