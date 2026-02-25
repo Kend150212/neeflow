@@ -355,6 +355,7 @@ export default function MediaLibraryPage() {
             toast.success(`${t('media.deleted').replace('{count}', String(selectedIds.size))}`)
             setSelectedIds(new Set())
             fetchMedia()
+            fetchStorageUsage()
         } catch {
             toast.error('Failed to delete')
         }
@@ -373,6 +374,7 @@ export default function MediaLibraryPage() {
                 return next
             })
             fetchMedia()
+            fetchStorageUsage()
         } catch {
             toast.error('Failed to delete')
         }
