@@ -1178,19 +1178,6 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         />
                     </div>
 
-                    <div>
-                        <Label className="text-xs">{t('chatbot.behavior.maxReplies')}</Label>
-                        <Input
-                            type="number" min={1} max={100}
-                            value={config.maxBotReplies}
-                            onChange={e => update('maxBotReplies', parseInt(e.target.value) || 10)}
-                            className="mt-1 w-24"
-                        />
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                            {t('chatbot.behavior.maxRepliesDesc').replace('{count}', String(config.maxBotReplies))}
-                        </p>
-                    </div>
-
                     <Separator />
 
                     <div className="grid grid-cols-2 gap-3">
@@ -1485,8 +1472,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 {chatMessages.map((msg, i) => (
                                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
-                                                ? 'bg-primary text-primary-foreground rounded-br-md'
-                                                : 'bg-muted rounded-bl-md'
+                                            ? 'bg-primary text-primary-foreground rounded-br-md'
+                                            : 'bg-muted rounded-bl-md'
                                             }`}>
                                             {msg.content}
                                         </div>

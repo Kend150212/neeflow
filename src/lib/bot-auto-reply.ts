@@ -119,26 +119,7 @@ export async function botAutoReply(
             }
         }
 
-        // ─── 5. Count bot replies for max check ───────────────────
-        if (botConfig?.maxBotReplies) {
-            const botReplyCount = await prisma.inboxMessage.count({
-                where: {
-                    conversationId,
-                    direction: 'outbound',
-                    senderType: 'bot',
-                },
-            })
-            if (botReplyCount >= botConfig.maxBotReplies) {
-                // Escalate to agent
-                await prisma.conversation.update({
-                    where: { id: conversationId },
-                    data: { mode: 'AGENT' },
-                })
-                return { replied: false, reason: 'Max bot replies reached, escalated to agent' }
-            }
-        }
-
-        // ─── 6. Escalation keyword check ──────────────────────────
+        // ─── 5. Escalation keyword check ──────────────────────────
         if (botConfig?.autoEscalateKeywords) {
             const keywords = (botConfig.autoEscalateKeywords as string[]) || []
             const lowerContent = inboundContent.toLowerCase()
