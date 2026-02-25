@@ -294,34 +294,56 @@ async function publishToInstagram(
     if (mediaItems.length > 1) {
         console.log(`[Instagram] Creating carousel with ${mediaItems.length} items`)
         const childIds: string[] = []
+        const skippedItems: string[] = []
         for (let i = 0; i < mediaItems.length; i++) {
             const media = mediaItems[i]
-            if (isVideoMedia(media)) {
-                // Use resumable upload for carousel videos
-                console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: uploading video via resumable...`)
-                const result = await igResumableCreateChild(accessToken, accountId, media)
-                childIds.push(result.containerId)
-                console.log(`[Instagram] Carousel item ${i + 1}: video container ${result.containerId} created`)
-            } else {
-                console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: creating image container...`)
-                const childBody: Record<string, string> = {
-                    is_carousel_item: 'true',
-                    image_url: media.url,
-                    access_token: accessToken,
+            try {
+                if (isVideoMedia(media)) {
+                    // Use resumable upload for carousel videos
+                    console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: uploading video via resumable...`)
+                    const result = await igResumableCreateChild(accessToken, accountId, media)
+                    childIds.push(result.containerId)
+                    console.log(`[Instagram] Carousel item ${i + 1}: video container ${result.containerId} created`)
+                } else {
+                    console.log(`[Instagram] Carousel item ${i + 1}/${mediaItems.length}: creating image container...`)
+                    const childBody: Record<string, string> = {
+                        is_carousel_item: 'true',
+                        image_url: media.url,
+                        access_token: accessToken,
+                    }
+                    const childRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(childBody),
+                    })
+                    const childData = await childRes.json()
+                    if (childData.error) throw new Error(childData.error.message || `Instagram carousel item ${i + 1} creation failed`)
+                    await waitForIgContainer(accessToken, childData.id)
+                    childIds.push(childData.id)
+                    console.log(`[Instagram] Carousel item ${i + 1}: image container ${childData.id} ready`)
                 }
-                const childRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/media`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(childBody),
-                })
-                const childData = await childRes.json()
-                if (childData.error) throw new Error(childData.error.message || `Instagram carousel item ${i + 1} creation failed`)
-                await waitForIgContainer(accessToken, childData.id)
-                childIds.push(childData.id)
-                console.log(`[Instagram] Carousel item ${i + 1}: image container ${childData.id} ready`)
+            } catch (itemErr) {
+                // Skip failed items — carousel can still work with remaining items
+                const name = (media as { originalName?: string }).originalName || `item ${i + 1}`
+                console.warn(`[Instagram] ⚠️ Carousel item ${i + 1} (${name}) failed, skipping: ${itemErr instanceof Error ? itemErr.message : itemErr}`)
+                skippedItems.push(name)
             }
         }
-        console.log(`[Instagram] All ${childIds.length} carousel children ready, creating carousel container...`)
+
+        // Need at least 2 items for carousel
+        if (childIds.length < 2) {
+            if (childIds.length === 0) {
+                throw new Error(`Instagram carousel: all ${mediaItems.length} items failed to process.${skippedItems.length > 0 ? ` Skipped: ${skippedItems.join(', ')}` : ''}`)
+            }
+            // Only 1 item succeeded — can't do carousel, throw with info
+            throw new Error(`Instagram carousel: only 1 of ${mediaItems.length} items succeeded (need at least 2). Skipped: ${skippedItems.join(', ')}`)
+        }
+
+        if (skippedItems.length > 0) {
+            console.log(`[Instagram] ⚠️ Skipped ${skippedItems.length} item(s): ${skippedItems.join(', ')}. Publishing carousel with ${childIds.length} items.`)
+        }
+
+        console.log(`[Instagram] ${childIds.length} carousel children ready, creating carousel container...`)
         const containerUrl = `https://graph.facebook.com/v21.0/${accountId}/media`
         const containerBody: Record<string, unknown> = {
             media_type: 'CAROUSEL',
