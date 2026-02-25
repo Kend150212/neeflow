@@ -99,9 +99,51 @@ async function publishToFacebook(
         const finishData = await finishRes.json()
         console.log(`[Facebook] Reel finish response:`, JSON.stringify(finishData))
         if (finishData.error) throw new Error(finishData.error.message || 'Facebook Reel finish error')
-        const postId = finishData.id || finishData.post_id || finishData.success?.toString()
-        console.log(`[Facebook] ✅ Reel published successfully: ${postId}`)
-        return { externalId: postId || videoId }
+
+        // Phase 4: POLL video processing status (Facebook processes async)
+        console.log(`[Facebook] Reel: checking video processing status for video_id=${videoId}...`)
+        let finalStatus = 'processing'
+        for (let attempt = 1; attempt <= 30; attempt++) {
+            await new Promise(r => setTimeout(r, 3000)) // wait 3s between polls
+            try {
+                const statusRes = await fetch(
+                    `https://graph.facebook.com/v21.0/${videoId}?fields=status,published,permalink_url&access_token=${accessToken}`
+                )
+                const statusData = await statusRes.json()
+                const videoStatus = statusData?.status?.video_status || 'unknown'
+                const processingPhase = statusData?.status?.processing_phase?.status || ''
+                const publishingPhase = statusData?.status?.publishing_phase?.status || ''
+
+                console.log(`[Facebook] Reel status (attempt ${attempt}/30): video_status=${videoStatus}, processing=${processingPhase}, publishing=${publishingPhase}${statusData.permalink_url ? `, url=${statusData.permalink_url}` : ''}`)
+
+                if (videoStatus === 'ready') {
+                    finalStatus = 'ready'
+                    const permalink = statusData.permalink_url || ''
+                    console.log(`[Facebook] ✅ Reel video is READY! permalink=${permalink}`)
+                    break
+                }
+                if (videoStatus === 'error' || videoStatus === 'expired') {
+                    const errors = statusData?.status?.errors || []
+                    const errorMsg = errors.length > 0
+                        ? errors.map((e: { message?: string }) => e.message || JSON.stringify(e)).join('; ')
+                        : `Video processing failed with status: ${videoStatus}`
+                    console.error(`[Facebook] ❌ Reel video FAILED: ${errorMsg}`)
+                    throw new Error(`Facebook Reel failed: ${errorMsg}`)
+                }
+                // Still processing — continue polling
+            } catch (pollErr) {
+                if (pollErr instanceof Error && pollErr.message.startsWith('Facebook Reel failed')) throw pollErr
+                console.warn(`[Facebook] Reel status poll error (attempt ${attempt}):`, pollErr)
+            }
+        }
+
+        if (finalStatus !== 'ready') {
+            console.warn(`[Facebook] ⚠️ Reel video still processing after 90s — may appear later`)
+        }
+
+        const postId = finishData.post_id || finishData.id || videoId
+        console.log(`[Facebook] ✅ Reel published: post_id=${postId}, video_id=${videoId}, reel_url=https://www.facebook.com/reel/${videoId}`)
+        return { externalId: postId }
     }
 
     if (mediaItems.length > 0 && postType !== 'story') {
