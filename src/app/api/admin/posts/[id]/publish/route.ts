@@ -75,14 +75,19 @@ async function publishToFacebook(
     }
 
     if (mediaItems.length > 0 && postType !== 'story') {
-        const firstMedia = mediaItems[0]
+        const videoItems = mediaItems.filter(m => isVideoMedia(m))
+        const imageItems = mediaItems.filter(m => !isVideoMedia(m))
 
-        if (isVideoMedia(firstMedia)) {
-            // ── Video: use /videos endpoint ──
+        if (videoItems.length > 0) {
+            // ── Video takes priority (FB doesn't support image+video carousel) ──
+            const videoMedia = videoItems[0]
+            if (imageItems.length > 0) {
+                console.log(`[Facebook] Mixed media: posting video, skipping ${imageItems.length} image(s) (FB doesn't support mixed carousel)`)
+            }
             const videoUrl = `https://graph.facebook.com/v21.0/${accountId}/videos`
             const videoBody: Record<string, string> = {
                 description: content,
-                file_url: firstMedia.url,
+                file_url: videoMedia.url,
                 access_token: accessToken,
             }
             const res = await fetch(videoUrl, {
@@ -96,9 +101,9 @@ async function publishToFacebook(
             }
             const postId = data.id || data.post_id
             return { externalId: postId }
-        } else if (mediaItems.length > 1 && mediaItems.every(m => !isVideoMedia(m))) {
-            // Auto-carousel when 2+ images (all must be images, no video mixing)
-            console.log(`[Facebook] Multi-photo carousel with ${mediaItems.length} images`)
+        } else if (imageItems.length > 1) {
+            // Auto-carousel when 2+ images
+            console.log(`[Facebook] Multi-photo carousel with ${imageItems.length} images`)
             // ── Carousel: upload each photo unpublished, then batch ──
             const photoIds: string[] = []
             for (const media of mediaItems) {
@@ -141,7 +146,7 @@ async function publishToFacebook(
             const photoUrl = `https://graph.facebook.com/v21.0/${accountId}/photos`
             const photoBody: Record<string, string> = {
                 caption: content,
-                url: firstMedia.url,
+                url: imageItems[0].url,
                 access_token: accessToken,
             }
             const res = await fetch(photoUrl, {

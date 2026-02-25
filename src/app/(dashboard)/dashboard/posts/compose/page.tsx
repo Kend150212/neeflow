@@ -910,6 +910,52 @@ export default function ComposePage() {
         setAttachedMedia((prev) => prev.filter((m) => m.id !== id))
     }
 
+    // Auto-detect media ratio from first attached file's dimensions
+    useEffect(() => {
+        if (attachedMedia.length === 0) return
+        const first = attachedMedia[0]
+        const url = first.url
+        const isVid = isVideo(first)
+
+        if (isVid) {
+            const video = document.createElement('video')
+            video.crossOrigin = 'anonymous'
+            video.preload = 'metadata'
+            video.onloadedmetadata = () => {
+                const w = video.videoWidth
+                const h = video.videoHeight
+                if (w && h) {
+                    const ratio = w / h
+                    if (ratio > 1.4) setMediaRatio('16:9')
+                    else if (ratio < 0.75) setMediaRatio('9:16')
+                    else setMediaRatio('1:1')
+                    console.log(`[AutoRatio] Video ${w}x${h} → ${ratio > 1.4 ? '16:9' : ratio < 0.75 ? '9:16' : '1:1'}`)
+                }
+                video.src = ''
+            }
+            video.onerror = () => { /* ignore, keep existing ratio */ }
+            video.src = url.startsWith('http') ? url : `${window.location.origin}${url}`
+        } else {
+            const img = new window.Image()
+            img.crossOrigin = 'anonymous'
+            img.onload = () => {
+                const w = img.naturalWidth
+                const h = img.naturalHeight
+                if (w && h) {
+                    const ratio = w / h
+                    if (ratio > 1.4) setMediaRatio('16:9')
+                    else if (ratio < 0.75) setMediaRatio('9:16')
+                    else setMediaRatio('1:1')
+                    console.log(`[AutoRatio] Image ${w}x${h} → ${ratio > 1.4 ? '16:9' : ratio < 0.75 ? '9:16' : '1:1'}`)
+                }
+            }
+            img.onerror = () => { /* ignore, keep existing ratio */ }
+            img.src = url.startsWith('http') ? url : `${window.location.origin}${url}`
+        }
+        // Only auto-detect when first media changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [attachedMedia.length > 0 ? attachedMedia[0]?.id : null])
+
     // Drag & drop handlers
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault()
@@ -1799,18 +1845,26 @@ export default function ComposePage() {
             switch (p.platform) {
                 case 'tiktok':
                     if (!hasVideo) errors.push('🎵 TikTok requires a video. Please upload a video.')
+                    else if (mediaRatio === '16:9') errors.push('🎵 TikTok videos should be vertical (9:16). Landscape videos will be rejected.')
                     break
                 case 'youtube':
                     if (!hasVideo) errors.push('▶️ YouTube requires a video. Please upload a video.')
                     break
-                case 'facebook':
-                    if ((fbPostTypes[p.id] || 'feed') === 'reel' && !hasVideo) errors.push('📘 Facebook Reels require a video.')
-                    if ((fbPostTypes[p.id] || 'feed') === 'story' && !hasVideo && !hasImage) errors.push('📘 Facebook Stories require media (image or video).')
+                case 'facebook': {
+                    const fbType = fbPostTypes[p.id] || 'feed'
+                    if (fbType === 'reel' && !hasVideo) errors.push('📘 Facebook Reels require a video.')
+                    if (fbType === 'reel' && hasVideo && mediaRatio === '16:9') errors.push('📘 Facebook Reels require vertical video (9:16). Your video is landscape — please change aspect ratio.')
+                    if (fbType === 'story' && !hasVideo && !hasImage) errors.push('📘 Facebook Stories require media (image or video).')
+                    if (fbType === 'story' && mediaRatio === '16:9') errors.push('📘 Facebook Stories should be vertical (9:16). Landscape media may be cropped.')
                     break
+                }
                 case 'instagram':
                     if (igPostType === 'reel' && !hasVideo) errors.push('📸 Instagram Reels require a video.')
+                    if (igPostType === 'reel' && hasVideo && mediaRatio === '16:9') errors.push('📸 Instagram Reels require vertical video (9:16). Landscape will be rejected.')
                     if (igPostType === 'story' && !hasVideo && !hasImage) errors.push('📸 Instagram Stories require media (image or video).')
+                    if (igPostType === 'story' && mediaRatio === '16:9') errors.push('📸 Instagram Stories require vertical (9:16). Landscape will be rejected.')
                     if (igPostType === 'feed' && attachedMedia.length === 0) errors.push('📸 Instagram Feed requires at least one image or video.')
+                    if (igPostType === 'feed' && hasVideo && attachedMedia.length === 1 && mediaRatio === '16:9') errors.push('📸 Instagram feed videos become Reels — 16:9 landscape will be rejected. Change ratio to 9:16.')
                     break
                 case 'pinterest':
                     if (!hasImage) errors.push('📌 Pinterest requires an image. Please attach an image to your post.')
