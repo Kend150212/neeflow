@@ -9,6 +9,7 @@ import {
     Image as ImageIcon, Video, HelpCircle, FileText,
     Link as LinkIcon, FileSpreadsheet, ExternalLink,
     Upload, FolderOpen, X, Check, Sparkles,
+    MessageCircle, Zap, Send, BarChart3,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -107,8 +108,19 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>([])
 
     // Tab navigation
-    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'escalation' | 'hours' | 'scope'>('general')
+    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'escalation' | 'hours' | 'scope' | 'chattest' | 'learning'>('general')
     const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa'>('saved')
+
+    // Chat test state
+    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; content: string }[]>([])
+    const [chatInput, setChatInput] = useState('')
+    const [chatLoading, setChatLoading] = useState(false)
+    const chatEndRef = useRef<HTMLDivElement>(null)
+
+    // Agent learning state
+    const [learningData, setLearningData] = useState<any>(null)
+    const [learningLoading, setLearningLoading] = useState(false)
+    const [learningFetched, setLearningFetched] = useState(false)
 
     // Per-page bot toggle
     const [pageAccounts, setPageAccounts] = useState<{ id: string; accountName: string; platform: string; botEnabled: boolean }[]>([])
@@ -481,6 +493,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                     { key: 'escalation' as const, icon: Shield, label: t('chatbot.escalation.title'), color: 'text-red-500' },
                     { key: 'hours' as const, icon: Clock, label: t('chatbot.hours.title'), color: 'text-amber-500' },
                     { key: 'scope' as const, icon: Target, label: t('chatbot.scope.title'), color: 'text-teal-500' },
+                    { key: 'chattest' as const, icon: MessageCircle, label: '💬 Chat Test', color: 'text-pink-500' },
+                    { key: 'learning' as const, icon: Zap, label: '🧠 Learning', color: 'text-yellow-500' },
                 ].map(tab => (
                     <button
                         key={tab.key}
@@ -1441,6 +1455,372 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 </p>
                             </CardContent>
                         </Card>
+                    )}
+                </div>
+            )}
+
+            {/* ─── CHAT TEST TAB ───────────────────── */}
+            {botTab === 'chattest' && (
+                <div className="space-y-4">
+                    <Card className="overflow-hidden">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center gap-2">
+                                <MessageCircle className="h-4 w-4 text-pink-500" />
+                                Chat Test — Trò chuyện thử với Bot
+                            </CardTitle>
+                            <CardDescription className="text-[11px]">
+                                Nhắn tin test trực tiếp với bot. Bot sẽ dùng đúng personality, knowledge base, và agent learning data.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {/* Chat messages area */}
+                            <div className="h-[400px] overflow-y-auto p-4 space-y-3 bg-muted/20">
+                                {chatMessages.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center h-full text-center">
+                                        <Bot className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                                        <p className="text-sm text-muted-foreground">Bắt đầu trò chuyện với bot</p>
+                                        <p className="text-[10px] text-muted-foreground/60 mt-1">Gõ tin nhắn bên dưới để test</p>
+                                    </div>
+                                )}
+                                {chatMessages.map((msg, i) => (
+                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
+                                                ? 'bg-primary text-primary-foreground rounded-br-md'
+                                                : 'bg-muted rounded-bl-md'
+                                            }`}>
+                                            {msg.content}
+                                        </div>
+                                    </div>
+                                ))}
+                                {chatLoading && (
+                                    <div className="flex justify-start">
+                                        <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                                            <div className="flex gap-1.5">
+                                                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={chatEndRef} />
+                            </div>
+
+                            {/* Input area */}
+                            <div className="border-t p-3 flex gap-2">
+                                <Input
+                                    value={chatInput}
+                                    onChange={e => setChatInput(e.target.value)}
+                                    placeholder="Nhập tin nhắn test..."
+                                    className="flex-1"
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !chatLoading) {
+                                            e.preventDefault()
+                                            const msg = chatInput.trim()
+                                            setChatInput('')
+                                            const newMessages = [...chatMessages, { role: 'user' as const, content: msg }]
+                                            setChatMessages(newMessages)
+                                            setChatLoading(true)
+                                            setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                                            fetch(`/api/admin/channels/${channelId}/bot-config/test-chat`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ message: msg, history: chatMessages }),
+                                            })
+                                                .then(r => r.json())
+                                                .then(data => {
+                                                    setChatMessages(prev => [...prev, { role: 'bot', content: data.reply || data.error || 'No response' }])
+                                                    setChatLoading(false)
+                                                    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                                                })
+                                                .catch(() => {
+                                                    setChatMessages(prev => [...prev, { role: 'bot', content: '❌ Lỗi kết nối' }])
+                                                    setChatLoading(false)
+                                                })
+                                        }
+                                    }}
+                                />
+                                <Button
+                                    size="sm"
+                                    disabled={!chatInput.trim() || chatLoading}
+                                    onClick={() => {
+                                        const msg = chatInput.trim()
+                                        if (!msg) return
+                                        setChatInput('')
+                                        const newMessages = [...chatMessages, { role: 'user' as const, content: msg }]
+                                        setChatMessages(newMessages)
+                                        setChatLoading(true)
+                                        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                                        fetch(`/api/admin/channels/${channelId}/bot-config/test-chat`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ message: msg, history: chatMessages }),
+                                        })
+                                            .then(r => r.json())
+                                            .then(data => {
+                                                setChatMessages(prev => [...prev, { role: 'bot', content: data.reply || data.error || 'No response' }])
+                                                setChatLoading(false)
+                                                setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                                            })
+                                            .catch(() => {
+                                                setChatMessages(prev => [...prev, { role: 'bot', content: '❌ Lỗi kết nối' }])
+                                                setChatLoading(false)
+                                            })
+                                    }}
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    size="sm" variant="outline"
+                                    onClick={() => setChatMessages([])}
+                                    title="Clear chat"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* ─── LEARNING TAB ─────────────────────── */}
+            {botTab === 'learning' && (
+                <div className="space-y-4">
+                    {/* Analyze Button */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center gap-2">
+                                <Zap className="h-4 w-4 text-yellow-500" />
+                                🧠 Agent Learning — Bot tự học từ Agent thật
+                            </CardTitle>
+                            <CardDescription className="text-[11px]">
+                                Bot phân tích tất cả conversations mà agent đã reply → học vocabulary, từ lóng, viết tắt, genZ, phong cách chat, cách deal với khách. Hoạt động ngay cả khi bot disabled.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="flex gap-2">
+                                <Button
+                                    size="sm"
+                                    disabled={learningLoading}
+                                    onClick={async () => {
+                                        setLearningLoading(true)
+                                        try {
+                                            const res = await fetch(`/api/admin/channels/${channelId}/bot-config/learn`, { method: 'POST' })
+                                            const data = await res.json()
+                                            if (data.agentLearning) {
+                                                setLearningData(data.agentLearning)
+                                                toast.success(data.message || 'Learning complete!')
+                                            } else {
+                                                toast.error(data.error || 'Learning failed')
+                                            }
+                                        } catch { toast.error('Network error') }
+                                        setLearningLoading(false)
+                                    }}
+                                >
+                                    {learningLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Brain className="h-4 w-4 mr-1" />}
+                                    {learningLoading ? 'Đang phân tích...' : '🧠 Analyze & Learn from Agents'}
+                                </Button>
+                                {!learningFetched && (
+                                    <Button
+                                        size="sm" variant="outline"
+                                        onClick={async () => {
+                                            try {
+                                                const res = await fetch(`/api/admin/channels/${channelId}/bot-config/learn`)
+                                                const data = await res.json()
+                                                if (data.agentLearning && Object.keys(data.agentLearning).length > 0) {
+                                                    setLearningData(data.agentLearning)
+                                                }
+                                                setLearningFetched(true)
+                                            } catch { /* ignore */ }
+                                        }}
+                                    >
+                                        <BarChart3 className="h-4 w-4 mr-1" /> Load Existing Report
+                                    </Button>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Learning Report */}
+                    {learningData && Object.keys(learningData).length > 0 && (
+                        <div className="space-y-3">
+                            {/* Stats Overview */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <Card className="bg-blue-50 dark:bg-blue-950/30">
+                                    <CardContent className="py-3 text-center">
+                                        <p className="text-2xl font-bold text-blue-600">{learningData.totalConversationsAnalyzed || 0}</p>
+                                        <p className="text-[10px] text-muted-foreground">Conversations Analyzed</p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="bg-green-50 dark:bg-green-950/30">
+                                    <CardContent className="py-3 text-center">
+                                        <p className="text-2xl font-bold text-green-600">{learningData.totalAgentMessages || 0}</p>
+                                        <p className="text-[10px] text-muted-foreground">Agent Messages</p>
+                                    </CardContent>
+                                </Card>
+                                <Card className="bg-purple-50 dark:bg-purple-950/30">
+                                    <CardContent className="py-3 text-center">
+                                        <p className="text-2xl font-bold text-purple-600">{learningData.totalPairsAnalyzed || 0}</p>
+                                        <p className="text-[10px] text-muted-foreground">Q&A Pairs Learned</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Vocabulary */}
+                            {learningData.vocabulary?.length > 0 && (
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-xs flex items-center gap-2">📝 Vocabulary — Từ vựng thường dùng</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {learningData.vocabulary.map((word: string, i: number) => (
+                                                <Badge key={i} variant="secondary" className="text-[10px]">{word}</Badge>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Slang & Abbreviations */}
+                            {learningData.slangAndAbbreviations?.length > 0 && (
+                                <Card className="border-pink-200 dark:border-pink-800">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-xs flex items-center gap-2">🔥 Slang, Viết tắt & GenZ</CardTitle>
+                                        <CardDescription className="text-[10px]">Từ lóng, từ địa phương, viết tắt, ngôn ngữ GenZ — đa ngôn ngữ</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {learningData.slangAndAbbreviations.map((term: string, i: number) => (
+                                                <Badge key={i} variant="outline" className="text-[10px] border-pink-300 text-pink-700 dark:text-pink-400">{term}</Badge>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Greeting & Closing Styles */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {learningData.greetingStyles?.length > 0 && (
+                                    <Card>
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-xs">👋 Cách chào hỏi</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <ul className="space-y-1">
+                                                {learningData.greetingStyles.map((s: string, i: number) => (
+                                                    <li key={i} className="text-[11px] text-muted-foreground">• {s}</li>
+                                                ))}
+                                            </ul>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                                {learningData.closingStyles?.length > 0 && (
+                                    <Card>
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-xs">🤝 Cách kết thúc</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <ul className="space-y-1">
+                                                {learningData.closingStyles.map((s: string, i: number) => (
+                                                    <li key={i} className="text-[11px] text-muted-foreground">• {s}</li>
+                                                ))}
+                                            </ul>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </div>
+
+                            {/* Dealing Patterns */}
+                            {learningData.dealingPatterns?.length > 0 && (
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-xs flex items-center gap-2">🎯 Cách Deal với Khách</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-2">
+                                            {learningData.dealingPatterns.map((p: any, i: number) => (
+                                                <div key={i} className="p-2 bg-muted/40 rounded-md">
+                                                    <p className="text-[11px] font-medium">🔹 {p.scenario}</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5">→ {p.approach}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Key Phrases */}
+                            {learningData.keyPhrases?.length > 0 && (
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-xs">💬 Key Phrases — Cụm từ đặc trưng</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {learningData.keyPhrases.map((phrase: string, i: number) => (
+                                                <Badge key={i} className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{phrase}</Badge>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Customer Handling Techniques */}
+                            {learningData.customerHandlingTechniques?.length > 0 && (
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-xs">🛠️ Kỹ thuật xử lý khách hàng</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ul className="space-y-1">
+                                            {learningData.customerHandlingTechniques.map((t: string, i: number) => (
+                                                <li key={i} className="text-[11px] text-muted-foreground">• {t}</li>
+                                            ))}
+                                        </ul>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Tone Analysis */}
+                            {learningData.toneAnalysis && (
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-xs">🎭 Phân tích Tone & Style</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="p-2 bg-muted/40 rounded text-[11px]">
+                                                <span className="text-muted-foreground">Formality:</span> <strong>{learningData.toneAnalysis.formality}</strong>
+                                            </div>
+                                            <div className="p-2 bg-muted/40 rounded text-[11px]">
+                                                <span className="text-muted-foreground">Emoji:</span> <strong>{learningData.toneAnalysis.emojiUsage}</strong>
+                                            </div>
+                                            <div className="p-2 bg-muted/40 rounded text-[11px]">
+                                                <span className="text-muted-foreground">Avg length:</span> <strong>{learningData.toneAnalysis.avgMessageLength} chars</strong>
+                                            </div>
+                                            {learningData.toneAnalysis.writingStyle && (
+                                                <div className="p-2 bg-muted/40 rounded text-[11px]">
+                                                    <span className="text-muted-foreground">Style:</span> <strong>{learningData.toneAnalysis.writingStyle}</strong>
+                                                </div>
+                                            )}
+                                            {learningData.toneAnalysis.languages?.length > 0 && (
+                                                <div className="p-2 bg-muted/40 rounded text-[11px] col-span-2">
+                                                    <span className="text-muted-foreground">Languages:</span> <strong>{learningData.toneAnalysis.languages.join(', ')}</strong>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Last analyzed */}
+                            {learningData.lastAnalyzedAt && (
+                                <p className="text-[10px] text-muted-foreground text-right">
+                                    ⏰ Last analyzed: {new Date(learningData.lastAnalyzedAt).toLocaleString()}
+                                </p>
+                            )}
+                        </div>
                     )}
                 </div>
             )}

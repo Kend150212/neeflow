@@ -53,6 +53,8 @@ export async function GET(
             applyToMessages: true,
             commentReplyMinDelay: 30,
             commentReplyMaxDelay: 600,
+            agentLearning: {},
+            lastLearnedAt: null,
         })
     }
 
@@ -86,6 +88,7 @@ export async function PUT(
         'trainingPairs', 'exampleConvos',
         'enabledPlatforms', 'applyToComments', 'applyToMessages',
         'commentReplyMinDelay', 'commentReplyMaxDelay',
+        'agentLearning', 'lastLearnedAt',
     ]
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

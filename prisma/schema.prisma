@@ -966,6 +966,10 @@ model BotConfig {
   commentReplyMinDelay Int @default(30)  @map("comment_reply_min_delay")
   commentReplyMaxDelay Int @default(600) @map("comment_reply_max_delay")
 
+  // Agent learning — auto-discovered from real agent conversations
+  agentLearning  Json?     @default("{}") @map("agent_learning")
+  lastLearnedAt  DateTime? @map("last_learned_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

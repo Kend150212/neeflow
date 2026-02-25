@@ -350,6 +350,40 @@ export async function botAutoReply(
             systemPrompt += `\n--- END REAL AGENT EXAMPLES ---`
         }
 
+        // Inject agent learning data (auto-discovered patterns from real agent chats)
+        const agentLearning = (botConfig?.agentLearning as any) || {}
+        if (agentLearning && Object.keys(agentLearning).length > 0 && agentLearning.totalConversationsAnalyzed) {
+            systemPrompt += `\n\n--- AGENT LEARNING (auto-discovered from ${agentLearning.totalConversationsAnalyzed} real conversations) ---`
+            if (agentLearning.vocabulary?.length) {
+                systemPrompt += `\n## Vocabulary commonly used by our team: ${agentLearning.vocabulary.join(', ')}`
+            }
+            if (agentLearning.slangAndAbbreviations?.length) {
+                systemPrompt += `\n## Slang, abbreviations & informal language our team uses: ${agentLearning.slangAndAbbreviations.join(', ')}`
+                systemPrompt += `\nIMPORTANT: Use these slang terms and abbreviations naturally when appropriate.`
+            }
+            if (agentLearning.greetingStyles?.length) {
+                systemPrompt += `\n## How our agents typically greet customers: ${agentLearning.greetingStyles.join(' | ')}`
+            }
+            if (agentLearning.closingStyles?.length) {
+                systemPrompt += `\n## How our agents close conversations: ${agentLearning.closingStyles.join(' | ')}`
+            }
+            if (agentLearning.dealingPatterns?.length) {
+                systemPrompt += `\n## How our agents handle different customer scenarios:`
+                for (const p of agentLearning.dealingPatterns) {
+                    systemPrompt += `\n- When "${p.scenario}": ${p.approach}`
+                }
+            }
+            if (agentLearning.keyPhrases?.length) {
+                systemPrompt += `\n## Signature phrases our team uses: ${agentLearning.keyPhrases.join(', ')}`
+            }
+            if (agentLearning.toneAnalysis) {
+                const t = agentLearning.toneAnalysis
+                systemPrompt += `\n## Our team's tone: formality=${t.formality}, emoji usage=${t.emojiUsage}`
+                if (t.writingStyle) systemPrompt += `, style: ${t.writingStyle}`
+            }
+            systemPrompt += `\n--- END AGENT LEARNING ---`
+        }
+
         if (imageLibrary.length > 0) {
             systemPrompt += `\n\n--- IMAGE LIBRARY ---`
             systemPrompt += `\nYou have access to the following images. If a customer asks to see something, find matching images and include their URLs in your reply.`
