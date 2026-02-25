@@ -92,10 +92,12 @@ async function publishToFacebook(
                 video_id: videoId,
                 title: content.substring(0, 100),
                 description: content,
+                published: true,
                 access_token: accessToken,
             }),
         })
         const finishData = await finishRes.json()
+        console.log(`[Facebook] Reel finish response:`, JSON.stringify(finishData))
         if (finishData.error) throw new Error(finishData.error.message || 'Facebook Reel finish error')
         const postId = finishData.id || finishData.post_id || finishData.success?.toString()
         console.log(`[Facebook] ✅ Reel published successfully: ${postId}`)
