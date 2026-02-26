@@ -120,33 +120,33 @@ export async function POST() {
                         console.log(`[Pipeline] No uploadedBy on job`)
                     }
 
-                    // 3) Try channel admin's API key
+                    // 3) Try channel owner/admin's API key
                     if (!userApiKey) {
-                        const admin = await prisma.channelMember.findFirst({
-                            where: { channelId: channel.id, role: 'ADMIN' },
-                            select: { userId: true },
+                        const owner = await prisma.channelMember.findFirst({
+                            where: { channelId: channel.id, role: { in: ['OWNER', 'ADMIN'] } },
+                            select: { userId: true, role: true },
                         })
-                        console.log(`[Pipeline] Admin lookup: channelId=${channel.id}, found=${!!admin}, adminUserId=${admin?.userId}`)
-                        if (admin) {
-                            const adminKeys = await prisma.userApiKey.findMany({
-                                where: { userId: admin.userId },
+                        console.log(`[Pipeline] Owner/Admin lookup: channelId=${channel.id}, found=${!!owner}, userId=${owner?.userId}, role=${owner?.role}`)
+                        if (owner) {
+                            const ownerKeys = await prisma.userApiKey.findMany({
+                                where: { userId: owner.userId },
                                 select: { provider: true, isActive: true, isDefault: true },
                             })
-                            console.log(`[Pipeline] Admin's API keys:`, JSON.stringify(adminKeys))
+                            console.log(`[Pipeline] Owner's API keys:`, JSON.stringify(ownerKeys))
 
                             if (channel.defaultAiProvider) {
                                 userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: admin.userId, provider: channel.defaultAiProvider, isActive: true },
+                                    where: { userId: owner.userId, provider: channel.defaultAiProvider, isActive: true },
                                 })
                             }
                             if (!userApiKey) {
                                 userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: admin.userId, isDefault: true, isActive: true },
+                                    where: { userId: owner.userId, isDefault: true, isActive: true },
                                 })
                             }
                             if (!userApiKey) {
                                 userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: admin.userId, isActive: true },
+                                    where: { userId: owner.userId, isActive: true },
                                     orderBy: { provider: 'asc' },
                                 })
                             }
@@ -206,12 +206,12 @@ export async function POST() {
                     postStatus = 'PENDING_APPROVAL'
                 }
 
-                // ─── Step 5: Get admin author ────────────────────────
-                const admin = await prisma.channelMember.findFirst({
-                    where: { channelId: channel.id, role: 'ADMIN' },
+                // ─── Step 5: Get channel owner as author ─────────────
+                const authorMember = await prisma.channelMember.findFirst({
+                    where: { channelId: channel.id, role: { in: ['OWNER', 'ADMIN'] } },
                     select: { userId: true },
                 })
-                if (!admin) throw new Error('No admin found for channel')
+                if (!authorMember) throw new Error('No owner/admin found for channel')
 
                 // ─── Step 6: Get active platforms ────────────────────
                 const platforms = await prisma.channelPlatform.findMany({
@@ -223,7 +223,7 @@ export async function POST() {
                 const post = await prisma.post.create({
                     data: {
                         channelId: channel.id,
-                        authorId: admin.userId,
+                        authorId: authorMember.userId,
                         content: aiCaption,
                         status: postStatus,
                         scheduledAt,
