@@ -874,7 +874,17 @@ export default function MediaLibraryPage() {
                                                                     src={item.thumbnailUrl || item.url}
                                                                     alt={item.originalName || ''}
                                                                     className="h-full w-full object-cover"
+                                                                    onError={(e) => {
+                                                                        // If thumbnail fails to load, show video icon fallback
+                                                                        const target = e.currentTarget
+                                                                        target.style.display = 'none'
+                                                                        const fallback = target.parentElement?.querySelector('.thumb-fallback') as HTMLElement
+                                                                        if (fallback) fallback.style.display = 'flex'
+                                                                    }}
                                                                 />
+                                                                <div className="thumb-fallback absolute inset-0 items-center justify-center bg-muted" style={{ display: 'none' }}>
+                                                                    <FileVideo className="h-8 w-8 text-muted-foreground" />
+                                                                </div>
                                                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                                     <div className="h-7 w-7 rounded-full bg-black/60 flex items-center justify-center">
                                                                         <Play className="h-3.5 w-3.5 text-white ml-0.5" />

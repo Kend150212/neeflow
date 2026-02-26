@@ -153,9 +153,13 @@ async function backgroundTranscode(
             await deleteFromR2(originalR2Key).catch((err) =>
                 console.warn(`[Transcode BG] ${originalName}: failed to delete original R2 file:`, err)
             )
-            // Delete original file's thumbnail too
+            // Delete original file's thumbnail ONLY if it differs from the new thumbnail
+            // (both keys collapse to _thumb.jpg, so they'll be the same — don't delete!)
             const origThumbKey = originalR2Key.replace(/\.[^.]+$/, '_thumb.jpg')
-            await deleteFromR2(origThumbKey).catch(() => { })
+            const newThumbKey = newR2Key.replace(/\.[^.]+$/, '_thumb.jpg')
+            if (origThumbKey !== newThumbKey) {
+                await deleteFromR2(origThumbKey).catch(() => { })
+            }
             console.log(`[Transcode BG] ${originalName}: 🗑️ deleted original R2 file (${originalR2Key})`)
         }
 
