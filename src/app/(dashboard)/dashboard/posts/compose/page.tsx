@@ -2564,23 +2564,19 @@ export default function ComposePage() {
 
 
 
-                    {/* Per-Platform Content Customization */}
+                    {/* Platform Content */}
                     {selectedPlatformIds.size > 0 && (
                         <Card>
                             <CardHeader className="py-1.5 px-2.5">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-xs flex items-center gap-1.5">
-                                        <Sparkles className="h-3.5 w-3.5" /> Platform Content
+                                        Content
                                     </CardTitle>
-                                    <button
-                                        type="button"
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-medium hover:from-violet-700 hover:to-indigo-700 transition-all disabled:opacity-50 cursor-pointer"
-                                        disabled={customizingContent || !content.trim()}
-                                        onClick={handleCustomizeContent}
-                                    >
-                                        {customizingContent ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                        {customizingContent ? 'Customizing...' : 'AI Customize'}
-                                    </button>
+                                    {activeContentTab && (
+                                        <span className={`text-[10px] ${(contentPerPlatform[activeContentTab] || '').length > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                                            {(contentPerPlatform[activeContentTab] || '').length > 0 ? (contentPerPlatform[activeContentTab] || '').length : ''}
+                                        </span>
+                                    )}
                                 </div>
                                 {/* Platform tabs */}
                                 {(() => {
@@ -2597,13 +2593,6 @@ export default function ComposePage() {
                                         facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok',
                                         x: 'X', linkedin: 'LinkedIn', pinterest: 'Pinterest', youtube: 'YouTube',
                                     }
-                                    if (Object.keys(contentPerPlatform).length === 0) {
-                                        return (
-                                            <p className="text-[10px] text-muted-foreground mt-1">
-                                                Click &quot;AI Customize&quot; to generate optimized content for each platform, or all platforms will use the master content above.
-                                            </p>
-                                        )
-                                    }
                                     return (
                                         <div className="flex flex-wrap gap-1 mt-1.5">
                                             {uniquePlatforms.map((platform) => (
@@ -2612,56 +2601,42 @@ export default function ComposePage() {
                                                     type="button"
                                                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${activeContentTab === platform
                                                         ? 'bg-primary text-primary-foreground shadow-sm'
-                                                        : contentPerPlatform[platform]
+                                                        : (contentPerPlatform[platform] || '').length > 0
                                                             ? 'bg-muted text-foreground hover:bg-muted/80'
                                                             : 'bg-muted/50 text-muted-foreground hover:bg-muted/80'
                                                         }`}
-                                                    onClick={() => setActiveContentTab(activeContentTab === platform ? null : platform)}
+                                                    onClick={() => {
+                                                        if (activeContentTab === platform) {
+                                                            setActiveContentTab(null)
+                                                        } else {
+                                                            setActiveContentTab(platform)
+                                                            if (!contentPerPlatform[platform]) {
+                                                                setContentPerPlatform(prev => ({ ...prev, [platform]: '' }))
+                                                            }
+                                                        }
+                                                    }}
                                                 >
                                                     <span>{platformIcons[platform] || '📱'}</span>
                                                     {platformLabels[platform] || platform}
-                                                    {contentPerPlatform[platform] && <Check className="h-2.5 w-2.5" />}
+                                                    {(contentPerPlatform[platform] || '').length > 0 && <Check className="h-2.5 w-2.5" />}
                                                 </button>
                                             ))}
                                         </div>
                                     )
                                 })()}
                             </CardHeader>
-                            {activeContentTab && contentPerPlatform[activeContentTab] && (
+                            {activeContentTab && (
                                 <CardContent>
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] text-muted-foreground font-medium">
-                                                {activeContentTab.charAt(0).toUpperCase() + activeContentTab.slice(1)} version
-                                            </span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] text-muted-foreground">
-                                                    {contentPerPlatform[activeContentTab]?.length || 0}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    className="text-[10px] text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                                                    onClick={() => {
-                                                        const updated = { ...contentPerPlatform }
-                                                        delete updated[activeContentTab!]
-                                                        setContentPerPlatform(updated)
-                                                        if (Object.keys(updated).length === 0) setActiveContentTab(null)
-                                                    }}
-                                                >
-                                                    ↺ Reset to Master
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <textarea
-                                            value={contentPerPlatform[activeContentTab] || ''}
-                                            onChange={(e) => setContentPerPlatform({
-                                                ...contentPerPlatform,
-                                                [activeContentTab]: e.target.value,
-                                            })}
-                                            className="w-full min-h-[100px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                                            rows={4}
-                                        />
-                                    </div>
+                                    <textarea
+                                        value={contentPerPlatform[activeContentTab] || ''}
+                                        onChange={(e) => setContentPerPlatform({
+                                            ...contentPerPlatform,
+                                            [activeContentTab]: e.target.value,
+                                        })}
+                                        placeholder={`Write your ${activeContentTab.charAt(0).toUpperCase() + activeContentTab.slice(1)} post content here...`}
+                                        className="w-full min-h-[150px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                                        rows={8}
+                                    />
                                 </CardContent>
                             )}
                         </Card>
