@@ -3,14 +3,15 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/portal/posts
-// Returns posts for all channels the customer belongs to
+// Returns posts for ALL channels the customer belongs to
 // Includes CLIENT_REVIEW, PENDING_APPROVAL, SCHEDULED, and PUBLISHED posts
 export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (session.user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    // Get customer's channels
+    // Get customer's channels — no approval-mode filter!
+    // The customer should see posts in ALL channels they belong to.
     const memberships = await prisma.channelMember.findMany({
         where: { userId: session.user.id, role: 'CUSTOMER' },
         select: { channelId: true },
@@ -19,28 +20,9 @@ export async function GET(req: NextRequest) {
 
     if (channelIds.length === 0) return NextResponse.json({ posts: [] })
 
-    // Get channels that use customer approval (old or new system)
-    const channels = await prisma.channel.findMany({
-        where: { id: { in: channelIds } },
-        select: { id: true, requireApproval: true, pipelineApprovalMode: true },
-    })
-
-    // Include channels with:
-    // - Old system: requireApproval = 'customer' or 'customer_and_manager'
-    // - New SmartFlow: pipelineApprovalMode = 'client' or 'smartflow'
-    const approvalChannelIds = channels
-        .filter((c) => {
-            const r = String((c as Record<string, unknown>).requireApproval || '')
-            const p = String(c.pipelineApprovalMode || '')
-            return r === 'customer' || r === 'customer_and_manager' || p === 'client' || p === 'smartflow'
-        })
-        .map((c) => c.id)
-
-    if (approvalChannelIds.length === 0) return NextResponse.json({ posts: [] })
-
     const posts = await prisma.post.findMany({
         where: {
-            channelId: { in: approvalChannelIds },
+            channelId: { in: channelIds },
             status: { in: ['PENDING_APPROVAL', 'CLIENT_REVIEW', 'SCHEDULED', 'PUBLISHED'] },
         },
         include: {

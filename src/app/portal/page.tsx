@@ -459,7 +459,7 @@ export default function PortalPage() {
                 </header>
 
                 {activeTab === 'review' ? (
-                    <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+                    <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex flex-col">
                         <ReviewTab
                             posts={selectedChannel === 'all' ? pendingPosts : pendingPosts.filter(p => p.channel.id === selectedChannel)}
                             comments={comments}
@@ -553,10 +553,15 @@ function ReviewTab({
         {
             key: 'pending',
             title: 'Pending Review',
-            icon: '🔍',
+            icon: (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            ),
             posts: pendingPosts,
-            gradient: theme === 'dark' ? 'from-amber-500/15 to-amber-600/5' : 'from-amber-50 to-orange-50',
-            border: theme === 'dark' ? 'border-amber-500/20' : 'border-amber-200',
+            gradient: theme === 'dark' ? 'from-amber-500/20 to-amber-600/5' : 'from-amber-50 to-orange-50',
+            border: theme === 'dark' ? 'border-amber-500/30' : 'border-amber-200',
             headerBg: theme === 'dark' ? 'bg-amber-500/10' : 'bg-amber-50',
             badge: theme === 'dark' ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700',
             showActions: true,
@@ -564,10 +569,14 @@ function ReviewTab({
         {
             key: 'scheduled',
             title: 'Approved',
-            icon: '✅',
+            icon: (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            ),
             posts: scheduledPosts,
-            gradient: theme === 'dark' ? 'from-emerald-500/15 to-emerald-600/5' : 'from-emerald-50 to-teal-50',
-            border: theme === 'dark' ? 'border-emerald-500/20' : 'border-emerald-200',
+            gradient: theme === 'dark' ? 'from-emerald-500/20 to-emerald-600/5' : 'from-emerald-50 to-teal-50',
+            border: theme === 'dark' ? 'border-emerald-500/30' : 'border-emerald-200',
             headerBg: theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50',
             badge: theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700',
             showActions: false,
@@ -575,10 +584,14 @@ function ReviewTab({
         {
             key: 'published',
             title: 'Published',
-            icon: '📤',
+            icon: (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
+                </svg>
+            ),
             posts: publishedPosts,
-            gradient: theme === 'dark' ? 'from-blue-500/15 to-blue-600/5' : 'from-blue-50 to-indigo-50',
-            border: theme === 'dark' ? 'border-blue-500/20' : 'border-blue-200',
+            gradient: theme === 'dark' ? 'from-blue-500/20 to-blue-600/5' : 'from-blue-50 to-indigo-50',
+            border: theme === 'dark' ? 'border-blue-500/30' : 'border-blue-200',
             headerBg: theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50',
             badge: theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700',
             showActions: false,
@@ -607,13 +620,13 @@ function ReviewTab({
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
                 {columns.map(col => (
-                    <div key={col.key} className={`rounded-2xl border ${col.border} bg-gradient-to-b ${col.gradient} flex flex-col min-h-[300px]`}>
+                    <div key={col.key} className={`rounded-2xl border ${col.border} bg-gradient-to-b ${col.gradient} flex flex-col`}>
                         {/* Column header */}
                         <div className={`${col.headerBg} rounded-t-2xl px-4 py-3 flex items-center justify-between border-b ${col.border}`}>
                             <div className="flex items-center gap-2">
-                                <span className="text-sm">{col.icon}</span>
+                                {col.icon}
                                 <span className="text-sm font-semibold">{col.title}</span>
                             </div>
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${col.badge}`}>
