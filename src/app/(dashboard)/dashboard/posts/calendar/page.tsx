@@ -625,7 +625,7 @@ function WeekView({
                         <DroppableCell
                             key={i}
                             id={`day-${dateStr}`}
-                            className={cn('border-r last:border-r-0 p-1.5 flex flex-col gap-1.5 min-h-[400px]', isToday && 'bg-primary/5')}
+                            className={cn('border-r last:border-r-0 p-1.5 flex flex-col gap-1.5', isToday && 'bg-primary/5')}
                         >
                             {/* Holiday banner */}
                             {holiday && <HolidayBadge holiday={holiday} />}
@@ -1017,24 +1017,22 @@ export default function CalendarPage() {
                         </Select>
 
                         {/* Platform filter pills */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1 flex-wrap">
                             {PLATFORMS.map(platform => {
                                 const isActive = activePlatforms.has(platform)
                                 return (
                                     <button
                                         key={platform}
                                         onClick={() => togglePlatform(platform)}
+                                        title={platform.charAt(0).toUpperCase() + platform.slice(1)}
                                         className={cn(
-                                            'flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide border transition-all cursor-pointer',
+                                            'w-7 h-7 flex items-center justify-center rounded-full border transition-all cursor-pointer',
                                             isActive
-                                                ? `${PLATFORM_COLORS[platform]} text-white border-transparent`
+                                                ? `${PLATFORM_COLORS[platform]} text-white border-transparent shadow-sm`
                                                 : 'bg-transparent text-muted-foreground border-muted hover:border-muted-foreground'
                                         )}
                                     >
                                         <PlatformIcon platform={platform} size="xs" />
-                                        <span className={cn(
-                                            isActive ? 'text-foreground' : 'text-muted-foreground'
-                                        )}>{PLATFORM_LABELS[platform]}</span>
                                     </button>
                                 )
                             })}

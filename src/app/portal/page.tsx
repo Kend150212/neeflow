@@ -5,9 +5,97 @@ import { useBranding } from '@/lib/use-branding'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image' // used for branding logos (not R2 media)
+import Image from 'next/image'
 import { PlatformIcon } from '@/components/platform-icons'
 
+// ─── Locale Detection ────────────────────────────────────
+function usePortalLocale(): 'en' | 'vi' {
+    const [locale, setLocale] = useState<'en' | 'vi'>('en')
+    useEffect(() => {
+        const lang = navigator.language || 'en'
+        setLocale(lang.startsWith('vi') ? 'vi' : 'en')
+    }, [])
+    return locale
+}
+
+const PORTAL_LABELS = {
+    en: {
+        clientPortal: 'Client Portal',
+        yourChannels: 'Your Channels',
+        allChannels: 'All Channels',
+        pendingReview: 'Pending Review',
+        calendar: 'Calendar',
+        uploadMedia: 'Upload Media',
+        signOut: 'Sign out',
+        switchDashboard: 'Switch to Dashboard',
+        customer: 'Customer',
+        months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+        days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        today: 'Today',
+        month: 'Month',
+        week: 'Week',
+        noPostsDay: 'No posts',
+        dateToday: 'Today',
+        dateWeek: 'This Week',
+        dateMonth: 'This Month',
+        dateAll: 'All',
+        status: {
+            PUBLISHED: 'Published', SCHEDULED: 'Scheduled', PENDING_APPROVAL: 'Pending',
+            CLIENT_REVIEW: 'Review', DRAFT: 'Draft', FAILED: 'Failed',
+            APPROVED: 'Approved', REJECTED: 'Rejected',
+        } as Record<string, string>,
+        approve: 'Approve',
+        reject: 'Reject',
+        addComment: 'Add feedback...',
+        approved: 'Approved ✓',
+        rejected: 'Rejected',
+        noContent: 'No content',
+        lightMode: 'Switch to light mode',
+        darkMode: 'Switch to dark mode',
+        dragDrop: 'Drag & drop files or click to upload',
+        uploading: 'Uploading...',
+        uploadSuccess: 'Uploaded successfully',
+        allPlatforms: 'All Platforms',
+    },
+    vi: {
+        clientPortal: 'Cổng khách hàng',
+        yourChannels: 'Kênh của bạn',
+        allChannels: 'Tất cả kênh',
+        pendingReview: 'Chờ duyệt',
+        calendar: 'Lịch',
+        uploadMedia: 'Upload',
+        signOut: 'Đăng xuất',
+        switchDashboard: 'Chuyển Dashboard',
+        customer: 'Khách hàng',
+        months: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
+        days: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+        today: 'Hôm nay',
+        month: 'Tháng',
+        week: 'Tuần',
+        noPostsDay: 'Không có bài',
+        dateToday: 'Hôm nay',
+        dateWeek: 'Tuần này',
+        dateMonth: 'Tháng này',
+        dateAll: 'Tất cả',
+        status: {
+            PUBLISHED: 'Đã đăng', SCHEDULED: 'Đã lên lịch', PENDING_APPROVAL: 'Chờ duyệt',
+            CLIENT_REVIEW: 'Đang xem', DRAFT: 'Nháp', FAILED: 'Thất bại',
+            APPROVED: 'Đã duyệt', REJECTED: 'Đã từ chối',
+        } as Record<string, string>,
+        approve: 'Duyệt',
+        reject: 'Từ chối',
+        addComment: 'Thêm nhận xét...',
+        approved: 'Đã duyệt ✓',
+        rejected: 'Đã từ chối',
+        noContent: 'Không có nội dung',
+        lightMode: 'Chế độ sáng',
+        darkMode: 'Chế độ tối',
+        dragDrop: 'Kéo thả hoặc nhấn để upload',
+        uploading: 'Đang upload...',
+        uploadSuccess: 'Upload thành công',
+        allPlatforms: 'Tất cả nền tảng',
+    },
+}
 // ─── Types ───────────────────────────────────────────────
 interface MediaItem { url: string; thumbnailUrl: string | null; type: string; id?: string }
 interface PostMedia { mediaItem: MediaItem }
@@ -40,6 +128,8 @@ const STATUS_LABELS: Record<string, string> = {
     PUBLISHED: 'Published', SCHEDULED: 'Scheduled', PENDING_APPROVAL: 'Pending',
     DRAFT: 'Draft', FAILED: 'Failed',
 }
+
+// NOTE: STATUS_LABELS is kept as fallback; prefer PORTAL_LABELS[locale].status
 
 // ─── Theme ───────────────────────────────────────────────
 type Theme = 'dark' | 'light'
@@ -114,6 +204,8 @@ export default function PortalPage() {
     const router = useRouter()
     const { theme, toggle: toggleTheme } = useTheme()
     const c = t(theme)
+    const locale = usePortalLocale()
+    const L = PORTAL_LABELS[locale]
 
     // Data
     const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -165,7 +257,7 @@ export default function PortalPage() {
             const tt = new Date(f)
             tt.setDate(f.getDate() + 41)
             tt.setHours(23, 59, 59, 999)
-            return { from: f, to: tt, title: `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}` }
+            return { from: f, to: tt, title: `${L.months[currentDate.getMonth()]} ${currentDate.getFullYear()}` }
         } else {
             const f = getWeekStart(currentDate)
             const tt = new Date(f)
@@ -174,8 +266,8 @@ export default function PortalPage() {
             const startDay = f.getDate()
             const endDay = tt.getDate()
             const label = f.getMonth() === tt.getMonth()
-                ? `${MONTH_NAMES[f.getMonth()]} ${startDay} – ${endDay}, ${tt.getFullYear()}`
-                : `${MONTH_NAMES[f.getMonth()]} ${startDay} – ${MONTH_NAMES[tt.getMonth()]} ${endDay}, ${tt.getFullYear()}`
+                ? `${L.months[f.getMonth()]} ${startDay} – ${endDay}, ${tt.getFullYear()}`
+                : `${L.months[f.getMonth()]} ${startDay} – ${L.months[tt.getMonth()]} ${endDay}, ${tt.getFullYear()}`
             return { from: f, to: tt, title: label }
         }
     }, [calView, currentDate])
@@ -333,13 +425,13 @@ export default function PortalPage() {
                     <Image src={branding.logoUrl} alt={branding.appName} width={32} height={32} className="rounded-xl" unoptimized />
                     <div className="flex-1 min-w-0">
                         <h1 className="font-bold text-sm tracking-tight">{branding.appName}</h1>
-                        <p className={`text-[9px] ${c.textMicro} uppercase tracking-[0.15em]`}>Client Portal</p>
+                        <p className={`text-[9px] ${c.textMicro} uppercase tracking-[0.15em]`}>{L.clientPortal}</p>
                     </div>
                     {/* Theme toggle */}
                     <button
                         onClick={toggleTheme}
                         className={`p-1.5 rounded-lg ${c.hoverBg} transition-colors`}
-                        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                        title={theme === 'dark' ? L.lightMode : L.darkMode}
                     >
                         {theme === 'dark' ? (
                             <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
@@ -355,7 +447,7 @@ export default function PortalPage() {
 
                 {/* Channel Switcher — directly under logo */}
                 <div className={`px-3 pt-3 pb-2 border-b ${c.sidebarBorder}`}>
-                    <p className={`px-2 mb-1.5 text-[9px] ${c.textMicro} uppercase tracking-[0.15em] font-semibold`}>Your Channels</p>
+                    <p className={`px-2 mb-1.5 text-[9px] ${c.textMicro} uppercase tracking-[0.15em] font-semibold`}>{L.yourChannels}</p>
                     <button
                         onClick={() => setSelectedChannel('all')}
                         className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all mb-0.5 ${selectedChannel === 'all'
@@ -364,7 +456,7 @@ export default function PortalPage() {
                             }`}
                     >
                         <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'}`}>⊕</span>
-                        All Channels
+                        {L.allChannels}
                     </button>
                     {channels.map((ch) => (
                         <button
@@ -393,7 +485,7 @@ export default function PortalPage() {
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
                         </svg>
-                        Pending Review
+                        {L.pendingReview}
                         {filteredPending.length > 0 && (
                             <span className="ml-auto bg-indigo-500/20 text-indigo-400 text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                                 {filteredPending.length}
@@ -410,7 +502,7 @@ export default function PortalPage() {
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                         </svg>
-                        Calendar
+                        {L.calendar}
                     </button>
                     <button
                         onClick={() => { setActiveTab('upload'); setSidebarOpen(false) }}
@@ -422,7 +514,7 @@ export default function PortalPage() {
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                         </svg>
-                        Upload Media
+                        {L.uploadMedia}
                     </button>
                 </nav>
 
@@ -433,12 +525,12 @@ export default function PortalPage() {
                             {profile?.name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || '?'}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{profile?.name || 'Customer'}</p>
+                            <p className="text-xs font-medium truncate">{profile?.name || L.customer}</p>
                             <p className={`text-[10px] ${c.textSubtle} truncate`}>{profile?.email}</p>
                         </div>
                         <button
                             onClick={() => signOut({ callbackUrl: '/login' })}
-                            title="Sign out"
+                            title={L.signOut}
                             className={`p-1 rounded-lg ${c.textSubtle} ${c.hoverBg} transition-colors`}
                         >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
@@ -457,7 +549,7 @@ export default function PortalPage() {
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
                             </svg>
-                            Switch to Dashboard
+                            {L.switchDashboard}
                         </button>
                     )}
                 </div>
@@ -558,6 +650,8 @@ function ReviewTab({
     onDatePresetChange: (preset: 'today' | 'week' | 'month' | 'all') => void
 }) {
     const c = t(theme)
+    const locale = usePortalLocale()
+    const L = PORTAL_LABELS[locale]
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editText, setEditText] = useState('')
     const [saving, setSaving] = useState(false)
@@ -587,7 +681,7 @@ function ReviewTab({
     const columns = [
         {
             key: 'pending',
-            title: 'Pending Review',
+            title: L.pendingReview,
             icon: (
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
@@ -603,7 +697,7 @@ function ReviewTab({
         },
         {
             key: 'scheduled',
-            title: 'Approved',
+            title: L.approved,
             icon: (
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -618,7 +712,7 @@ function ReviewTab({
         },
         {
             key: 'published',
-            title: 'Published',
+            title: L.status.PUBLISHED,
             icon: (
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
@@ -638,7 +732,7 @@ function ReviewTab({
             <div className="mb-5">
                 <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight">Content Board</h1>
+                        <h1 className="text-xl font-bold tracking-tight">{locale === 'vi' ? 'Bảng nội dung' : 'Content Board'}</h1>
                         <p className={`${c.textMuted} text-sm mt-1`}>
                             {pendingPosts.length} pending
                             {reviewedCount > 0 && <span className="text-emerald-400"> · {reviewedCount} reviewed ✓</span>}
@@ -647,21 +741,21 @@ function ReviewTab({
                     </div>
                     <div className={`flex items-center gap-1 ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'} rounded-xl p-1`}>
                         {([
-                            { key: 'today' as const, label: 'Today' },
-                            { key: 'week' as const, label: 'This Week' },
-                            { key: 'month' as const, label: 'This Month' },
-                            { key: 'all' as const, label: 'All' },
+                            { key: 'today' as const, label: L.dateToday },
+                            { key: 'week' as const, label: L.dateWeek },
+                            { key: 'month' as const, label: L.dateMonth },
+                            { key: 'all' as const, label: L.dateAll },
                         ]).map(p => (
                             <button
                                 key={p.key}
                                 onClick={() => onDatePresetChange(p.key)}
                                 className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${datePreset === p.key
-                                        ? theme === 'dark'
-                                            ? 'bg-indigo-500/20 text-indigo-400 shadow-sm'
-                                            : 'bg-white text-indigo-600 shadow-sm'
-                                        : theme === 'dark'
-                                            ? 'text-white/40 hover:text-white/60'
-                                            : 'text-gray-500 hover:text-gray-700'
+                                    ? theme === 'dark'
+                                        ? 'bg-indigo-500/20 text-indigo-400 shadow-sm'
+                                        : 'bg-white text-indigo-600 shadow-sm'
+                                    : theme === 'dark'
+                                        ? 'text-white/40 hover:text-white/60'
+                                        : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
                                 {p.label}
@@ -825,7 +919,7 @@ function ReviewTab({
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                                     </svg>
-                                                    Reject
+                                                    {L.reject}
                                                 </button>
                                                 <button
                                                     onClick={() => handleAction(post.id, 'APPROVED')}
@@ -835,7 +929,7 @@ function ReviewTab({
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                                                     </svg>
-                                                    Approve
+                                                    {L.approve}
                                                 </button>
                                             </div>
                                         </div>
@@ -873,6 +967,8 @@ function FullCalendar({
     theme: Theme
 }) {
     const c = t(theme)
+    const locale = usePortalLocale()
+    const L = PORTAL_LABELS[locale]
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -883,12 +979,12 @@ function FullCalendar({
                         <svg className={`w-5 h-5 ${c.activeText}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                         </svg>
-                        <h1 className="text-lg font-bold tracking-tight">Content Calendar</h1>
+                        <h1 className="text-lg font-bold tracking-tight">{locale === 'vi' ? 'Lịch nội dung' : 'Content Calendar'}</h1>
                     </div>
 
                     {/* Today button */}
                     <button onClick={handleToday} className={`px-3 py-1.5 rounded-lg ${theme === 'dark' ? 'bg-white/[0.06] hover:bg-white/[0.1] text-white/60 hover:text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700'} text-xs font-medium transition-all`}>
-                        Today
+                        {L.today}
                     </button>
 
                     {/* Nav */}
@@ -911,11 +1007,11 @@ function FullCalendar({
                         <button
                             onClick={() => setCalView('month')}
                             className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${calView === 'month' ? 'bg-indigo-500 text-white' : `${c.textMuted}`}`}
-                        >Month</button>
+                        >{L.month}</button>
                         <button
                             onClick={() => setCalView('week')}
                             className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${calView === 'week' ? 'bg-indigo-500 text-white' : `${c.textMuted}`}`}
-                        >Week</button>
+                        >{L.week}</button>
                     </div>
 
                     {calLoading && <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />}
@@ -935,7 +1031,6 @@ function FullCalendar({
                                     }`}
                             >
                                 <PlatformIcon platform={platform} size="xs" />
-                                {platform.toUpperCase().slice(0, 2)}
                             </button>
                         )
                     })}
@@ -943,7 +1038,7 @@ function FullCalendar({
                         <button
                             onClick={() => togglePlatform('')}
                             className={`text-[10px] ${c.textMuted} underline underline-offset-2 ml-1 transition-colors`}
-                        >Clear</button>
+                        >{locale === 'vi' ? 'Xoá bộ lọc' : 'Clear'}</button>
                     )}
                 </div>
             </div>
@@ -965,6 +1060,8 @@ function CalMonthView({ currentDate, postsByDate, onDayClick, theme }: {
     currentDate: Date; postsByDate: Record<string, Post[]>; onDayClick: (d: Date) => void; theme: Theme
 }) {
     const c = t(theme)
+    const locale = usePortalLocale()
+    const L = PORTAL_LABELS[locale]
     const today = toLocalDateStr(new Date())
     const monthStart = getMonthStart(currentDate)
     const gridStart = getWeekStart(monthStart)
@@ -981,7 +1078,7 @@ function CalMonthView({ currentDate, postsByDate, onDayClick, theme }: {
         <div className="flex flex-col h-full">
             {/* Day headers */}
             <div className={`grid grid-cols-7 border-b ${c.calCell}`}>
-                {DAY_NAMES.map(d => (
+                {L.days.map(d => (
                     <div key={d} className={`py-2 text-center text-[10px] font-semibold ${c.textSubtle} uppercase tracking-wider`}>{d}</div>
                 ))}
             </div>
@@ -1032,7 +1129,7 @@ function CalMonthView({ currentDate, postsByDate, onDayClick, theme }: {
                             ))}
                             {posts.length > 3 && (
                                 <button onClick={() => onDayClick(date)} className={`text-[9px] ${c.textSubtle} text-left pl-1 transition-colors`}>
-                                    +{posts.length - 3} more
+                                    +{posts.length - 3} {locale === 'vi' ? 'thêm' : 'more'}
                                 </button>
                             )}
                         </div>
@@ -1048,6 +1145,8 @@ function CalWeekView({ currentDate, postsByDate, theme }: {
     currentDate: Date; postsByDate: Record<string, Post[]>; theme: Theme
 }) {
     const c = t(theme)
+    const locale = usePortalLocale()
+    const L = PORTAL_LABELS[locale]
     const today = toLocalDateStr(new Date())
     const weekStart = getWeekStart(currentDate)
     const days: Date[] = []
@@ -1065,7 +1164,7 @@ function CalWeekView({ currentDate, postsByDate, theme }: {
                     const isToday = toLocalDateStr(date) === today
                     return (
                         <div key={i} className={`py-2 text-center border-r ${c.calCell} last:border-r-0`}>
-                            <p className={`text-[10px] ${c.textSubtle} uppercase`}>{DAY_NAMES[i]}</p>
+                            <p className={`text-[10px] ${c.textSubtle} uppercase`}>{L.days[i]}</p>
                             <div className={`h-7 w-7 mx-auto flex items-center justify-center rounded-full text-sm font-semibold mt-0.5 ${isToday ? 'bg-indigo-500 text-white' : c.textSoft
                                 }`}>
                                 {date.getDate()}
@@ -1083,7 +1182,7 @@ function CalWeekView({ currentDate, postsByDate, theme }: {
                     return (
                         <div key={i} className={`border-r ${c.calCell} last:border-r-0 p-1.5 flex flex-col gap-1.5 min-h-[300px] ${isToday ? 'bg-indigo-500/[0.04]' : ''}`}>
                             {posts.length === 0 ? (
-                                <p className={`text-[10px] ${c.textMicro} text-center mt-8`}>No posts</p>
+                                <p className={`text-[10px] ${c.textMicro} text-center mt-8`}>{L.noPostsDay}</p>
                             ) : (
                                 posts.map(post => {
                                     const thumb = post.media[0]?.mediaItem

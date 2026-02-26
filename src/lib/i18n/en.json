@@ -1401,7 +1401,7 @@
       "all": "All",
       "page": "Page {page} / {total}",
       "platforms": "Platforms",
-      "editPost": "Edit",
+      "editPost": "Edit post",
       "approve": "Approve",
       "reject": "Reject",
       "retry": "Retry",
@@ -1418,7 +1418,91 @@
       "statusPendingApproval": "Pending Approval",
       "statusClientReview": "Client Review",
       "statusScheduled": "Scheduled",
-      "portalCopied": "Portal link copied"
+      "portalCopied": "Portal link copied",
+      "dateToday": "Today",
+      "dateWeek": "This Week",
+      "dateMonth": "This Month",
+      "dateAll": "All",
+      "platformActive": "Active",
+      "platformInactive": "Disabled",
+      "staticImage": "static image",
+      "media": "Media"
     }
+  },
+  "portal": {
+    "title": "Client Portal",
+    "tabs": {
+      "review": "Review",
+      "calendar": "Calendar",
+      "upload": "Upload",
+      "analytics": "Analytics"
+    },
+    "review": {
+      "title": "Content Review",
+      "noContent": "No content to review",
+      "approve": "Approve",
+      "reject": "Reject",
+      "comment": "Add comment...",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "calendar": {
+      "title": "Content Calendar",
+      "today": "Today",
+      "month": "Month",
+      "week": "Week",
+      "allChannels": "All Channels",
+      "allPlatforms": "All Platforms",
+      "noPostsDay": "No posts"
+    },
+    "upload": {
+      "title": "Upload Media",
+      "dragDrop": "Drag & drop files or click to upload",
+      "uploading": "Uploading...",
+      "uploaded": "Uploaded successfully"
+    },
+    "status": {
+      "PUBLISHED": "Published",
+      "SCHEDULED": "Scheduled",
+      "PENDING_APPROVAL": "Pending",
+      "CLIENT_REVIEW": "Review",
+      "DRAFT": "Draft",
+      "FAILED": "Failed",
+      "APPROVED": "Approved",
+      "REJECTED": "Rejected"
+    },
+    "months": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "days": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
+    ],
+    "dateToday": "Today",
+    "dateWeek": "This Week",
+    "dateMonth": "This Month",
+    "dateAll": "All",
+    "theme": "Theme",
+    "lightMode": "Light",
+    "darkMode": "Dark",
+    "logout": "Logout",
+    "welcome": "Welcome",
+    "noChannels": "No channels available"
   }
 }

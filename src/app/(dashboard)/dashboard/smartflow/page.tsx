@@ -80,13 +80,13 @@ function LinkedInIcon({ className }: { className?: string }) {
 }
 
 const PLATFORM_ICONS: Record<string, { icon: React.FC<{ className?: string }>; color: string; activeColor: string }> = {
-    facebook: { icon: FacebookIcon, color: 'text-white/15', activeColor: 'text-blue-400' },
-    instagram: { icon: InstagramIcon, color: 'text-white/15', activeColor: 'text-pink-400' },
-    tiktok: { icon: TikTokIcon, color: 'text-white/15', activeColor: 'text-cyan-300' },
-    youtube: { icon: YouTubeIcon, color: 'text-white/15', activeColor: 'text-red-400' },
-    twitter: { icon: TwitterIcon, color: 'text-white/15', activeColor: 'text-white' },
-    threads: { icon: ThreadsIcon, color: 'text-white/15', activeColor: 'text-purple-300' },
-    linkedin: { icon: LinkedInIcon, color: 'text-white/15', activeColor: 'text-blue-300' },
+    facebook: { icon: FacebookIcon, color: 'text-muted-foreground/30', activeColor: 'text-blue-500 dark:text-blue-400' },
+    instagram: { icon: InstagramIcon, color: 'text-muted-foreground/30', activeColor: 'text-pink-500 dark:text-pink-400' },
+    tiktok: { icon: TikTokIcon, color: 'text-muted-foreground/30', activeColor: 'text-cyan-600 dark:text-cyan-300' },
+    youtube: { icon: YouTubeIcon, color: 'text-muted-foreground/30', activeColor: 'text-red-500 dark:text-red-400' },
+    twitter: { icon: TwitterIcon, color: 'text-muted-foreground/30', activeColor: 'text-foreground' },
+    threads: { icon: ThreadsIcon, color: 'text-muted-foreground/30', activeColor: 'text-purple-500 dark:text-purple-300' },
+    linkedin: { icon: LinkedInIcon, color: 'text-muted-foreground/30', activeColor: 'text-blue-600 dark:text-blue-300' },
 }
 
 // Platforms that don't accept static images (photo)
@@ -307,7 +307,7 @@ export default function SmartFlowPage() {
             : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'
 
     return (
-        <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
+        <div className="min-h-screen bg-background text-foreground flex flex-col">
             <div className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6 shrink-0">
@@ -317,30 +317,30 @@ export default function SmartFlowPage() {
                         </div>
                         <div>
                             <h1 className="text-xl font-bold">{t('smartflow.queue.title')}</h1>
-                            <p className="text-sm text-white/40">{t('smartflow.queue.subtitle')}</p>
+                            <p className="text-sm text-muted-foreground">{t('smartflow.queue.subtitle')}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 bg-white/[0.04] rounded-xl p-1">
+                        <div className="flex items-center gap-1 bg-muted/50 rounded-xl p-1">
                             {([
-                                { key: 'today' as const, label: 'Today' },
-                                { key: 'week' as const, label: 'This Week' },
-                                { key: 'month' as const, label: 'This Month' },
-                                { key: 'all' as const, label: 'All' },
+                                { key: 'today' as const, label: t('smartflow.queue.dateToday') },
+                                { key: 'week' as const, label: t('smartflow.queue.dateWeek') },
+                                { key: 'month' as const, label: t('smartflow.queue.dateMonth') },
+                                { key: 'all' as const, label: t('smartflow.queue.dateAll') },
                             ]).map(p => (
                                 <button
                                     key={p.key}
                                     onClick={() => setDatePreset(p.key)}
                                     className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${datePreset === p.key
-                                            ? 'bg-indigo-500/20 text-indigo-400 shadow-sm'
-                                            : 'text-white/40 hover:text-white/60'
+                                        ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
                                         }`}
                                 >
                                     {p.label}
                                 </button>
                             ))}
                         </div>
-                        <span className="text-[10px] px-2 py-1 rounded-full bg-white/[0.04] text-white/30 border border-white/[0.06]">
+                        <span className="text-[10px] px-2 py-1 rounded-full bg-muted/50 text-muted-foreground border border-border">
                             {detectedMode.toUpperCase()}
                         </span>
                         {failedJobs.length > 0 && (
@@ -355,7 +355,7 @@ export default function SmartFlowPage() {
                         )}
                         <button
                             onClick={fetchJobs}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] border border-white/[0.06] text-white/60 rounded-lg text-xs hover:bg-white/[0.06] transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 border border-border text-muted-foreground rounded-lg text-xs hover:bg-muted transition-all"
                         >
                             <RefreshCw className="h-3 w-3" />
                             {t('smartflow.queue.refresh')}
@@ -365,7 +365,7 @@ export default function SmartFlowPage() {
 
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-white/30" />
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
                     <div className="flex-1 flex flex-col gap-4 min-h-0">
@@ -380,14 +380,14 @@ export default function SmartFlowPage() {
                                                 {col.icon}
                                                 <span className="text-sm font-semibold">{t(col.labelKey)}</span>
                                             </div>
-                                            <span className="text-xs font-bold bg-white/10 px-2 py-0.5 rounded-full">
+                                            <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded-full">
                                                 {colJobs.length}
                                             </span>
                                         </div>
 
                                         <div className="flex-1 p-2 space-y-2 overflow-y-auto">
                                             {colJobs.length === 0 ? (
-                                                <div className="flex items-center justify-center h-full min-h-[120px] text-white/10">
+                                                <div className="flex items-center justify-center h-full min-h-[120px] text-muted-foreground/30">
                                                     <Zap className="h-5 w-5" />
                                                 </div>
                                             ) : colJobs.map(job => (
@@ -463,13 +463,13 @@ function JobCard({
     const hasApprovalStatus = job.post?.status === 'PENDING_APPROVAL' || job.post?.status === 'CLIENT_REVIEW'
 
     return (
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 hover:bg-white/[0.05] transition-all group">
+        <div className="bg-muted/30 border border-border rounded-xl p-3 hover:bg-muted/50 transition-all group">
             {/* Media thumbnail + title */}
             <div className="flex items-center gap-2.5 mb-2">
-                <div className="w-10 h-10 rounded-lg bg-black/50 overflow-hidden shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden shrink-0">
                     {job.mediaItem.type === 'video' ? (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/30">
-                            <Video className="w-4 h-4 text-white/30" />
+                            <Video className="w-4 h-4 text-muted-foreground/50" />
                         </div>
                     ) : (
                         <img
@@ -480,15 +480,15 @@ function JobCard({
                     )}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{job.mediaItem.originalName || 'Media'}</p>
-                    <p className="text-[10px] text-white/20">{job.channel.displayName}</p>
+                    <p className="text-xs font-medium truncate">{job.mediaItem.originalName || t('smartflow.queue.media')}</p>
+                    <p className="text-[10px] text-muted-foreground">{job.channel.displayName}</p>
                 </div>
                 {/* Edit button → navigate to post page */}
                 {job.post && (
                     <button
                         onClick={() => onEdit(job.post!.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.08]"
-                        title="Edit post"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                        title={t('smartflow.queue.editPost')}
                     >
                         <ExternalLink className="w-3 h-3" />
                     </button>
@@ -497,22 +497,22 @@ function JobCard({
 
             {/* Caption */}
             {job.post?.content && (
-                <p className="text-[11px] text-white/40 line-clamp-3 mb-2 leading-relaxed">{job.post.content}</p>
+                <p className="text-[11px] text-muted-foreground line-clamp-3 mb-2 leading-relaxed">{job.post.content}</p>
             )}
 
             {/* Client Feedback */}
             {job.post?.approvals && job.post.approvals.length > 0 && job.post.approvals.some(a => a.comment) && (
                 <div className="mb-2 space-y-1">
                     {job.post.approvals.filter(a => a.comment).slice(0, 2).map((a, i) => (
-                        <div key={i} className="flex items-start gap-1.5 bg-white/[0.03] rounded-lg px-2 py-1.5">
+                        <div key={i} className="flex items-start gap-1.5 bg-muted/30 rounded-lg px-2 py-1.5">
                             <div className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px] font-bold ${a.action === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                                 {a.action === 'APPROVED' ? '✓' : '✗'}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-[9px] text-white/30 font-medium">
+                                <p className="text-[9px] text-muted-foreground font-medium">
                                     {a.user?.name || a.user?.email?.split('@')[0] || 'Client'}
                                 </p>
-                                <p className="text-[10px] text-white/50 leading-snug line-clamp-2">{a.comment}</p>
+                                <p className="text-[10px] text-muted-foreground/80 leading-snug line-clamp-2">{a.comment}</p>
                             </div>
                         </div>
                     ))}
@@ -544,10 +544,10 @@ function JobCard({
                                 key={ps.id}
                                 onClick={() => onTogglePlatform(ps)}
                                 className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive
-                                    ? `${pCfg.activeColor} bg-white/[0.08] shadow-sm`
-                                    : `${pCfg.color} bg-white/[0.02] opacity-40`
+                                    ? `${pCfg.activeColor} bg-muted shadow-sm`
+                                    : `${pCfg.color} bg-muted/30 opacity-40`
                                     } hover:scale-110`}
-                                title={`${ps.platform} — ${isActive ? 'Đang đăng' : 'Đã tắt'}${isTikTokImage ? ' (ảnh tĩnh)' : ''}`}
+                                title={`${ps.platform} — ${isActive ? t('smartflow.queue.platformActive') : t('smartflow.queue.platformInactive')}${isTikTokImage ? ` (${t('smartflow.queue.staticImage')})` : ''}`}
                             >
                                 <Icon className="w-3.5 h-3.5" />
                             </button>
@@ -559,7 +559,7 @@ function JobCard({
                         const meta = job.post?.metadata as Record<string, Record<string, number>> | null
                         if (!meta?.mediaDimensions) return null
                         return (
-                            <span className="text-[9px] text-white/15 ml-auto">
+                            <span className="text-[9px] text-muted-foreground/50 ml-auto">
                                 {String(meta.mediaDimensions.width)}×{String(meta.mediaDimensions.height)}
                             </span>
                         )
@@ -568,10 +568,10 @@ function JobCard({
             )}
 
             {/* Meta info */}
-            <div className="flex items-center gap-2 text-[9px] text-white/20 mb-2">
+            <div className="flex items-center gap-2 text-[9px] text-muted-foreground mb-2">
                 <span>📤 {job.uploadedBy?.split('@')[0] || '?'}</span>
                 {job.post?.scheduledAt && (
-                    <span className="text-blue-400/40">
+                    <span className="text-blue-500/60 dark:text-blue-400/40">
                         🗓 {new Date(job.post.scheduledAt).toLocaleDateString('vi-VN', {
                             day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
                         })}

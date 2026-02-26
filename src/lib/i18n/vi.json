@@ -1401,7 +1401,7 @@
       "all": "Tất cả",
       "page": "Trang {page} / {total}",
       "platforms": "Nền tảng",
-      "editPost": "Sửa",
+      "editPost": "Sửa bài",
       "approve": "Duyệt",
       "reject": "Từ chối",
       "retry": "Thử lại",
@@ -1418,7 +1418,91 @@
       "statusPendingApproval": "Chờ duyệt",
       "statusClientReview": "Client đang xem",
       "statusScheduled": "Đã lên lịch",
-      "portalCopied": "Đã copy link Portal"
+      "portalCopied": "Đã copy link Portal",
+      "dateToday": "Hôm nay",
+      "dateWeek": "Tuần này",
+      "dateMonth": "Tháng này",
+      "dateAll": "Tất cả",
+      "platformActive": "Đang đăng",
+      "platformInactive": "Đã tắt",
+      "staticImage": "ảnh tĩnh",
+      "media": "Tệp phương tiện"
     }
+  },
+  "portal": {
+    "title": "Cổng khách hàng",
+    "tabs": {
+      "review": "Duyệt bài",
+      "calendar": "Lịch",
+      "upload": "Upload",
+      "analytics": "Phân tích"
+    },
+    "review": {
+      "title": "Duyệt nội dung",
+      "noContent": "Không có nội dung cần duyệt",
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "comment": "Thêm nhận xét...",
+      "approved": "Đã duyệt",
+      "rejected": "Đã từ chối"
+    },
+    "calendar": {
+      "title": "Lịch nội dung",
+      "today": "Hôm nay",
+      "month": "Tháng",
+      "week": "Tuần",
+      "allChannels": "Tất cả kênh",
+      "allPlatforms": "Tất cả nền tảng",
+      "noPostsDay": "Không có bài"
+    },
+    "upload": {
+      "title": "Upload tệp",
+      "dragDrop": "Kéo thả hoặc nhấn để upload",
+      "uploading": "Đang upload...",
+      "uploaded": "Upload thành công"
+    },
+    "status": {
+      "PUBLISHED": "Đã đăng",
+      "SCHEDULED": "Đã lên lịch",
+      "PENDING_APPROVAL": "Chờ duyệt",
+      "CLIENT_REVIEW": "Đang xem",
+      "DRAFT": "Nháp",
+      "FAILED": "Thất bại",
+      "APPROVED": "Đã duyệt",
+      "REJECTED": "Đã từ chối"
+    },
+    "months": [
+      "Tháng 1",
+      "Tháng 2",
+      "Tháng 3",
+      "Tháng 4",
+      "Tháng 5",
+      "Tháng 6",
+      "Tháng 7",
+      "Tháng 8",
+      "Tháng 9",
+      "Tháng 10",
+      "Tháng 11",
+      "Tháng 12"
+    ],
+    "days": [
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "T7",
+      "CN"
+    ],
+    "dateToday": "Hôm nay",
+    "dateWeek": "Tuần này",
+    "dateMonth": "Tháng này",
+    "dateAll": "Tất cả",
+    "theme": "Giao diện",
+    "lightMode": "Sáng",
+    "darkMode": "Tối",
+    "logout": "Đăng xuất",
+    "welcome": "Chào mừng",
+    "noChannels": "Không có kênh nào"
   }
 }
