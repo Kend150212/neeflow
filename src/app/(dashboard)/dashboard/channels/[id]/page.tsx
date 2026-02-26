@@ -1260,7 +1260,7 @@ export default function ChannelDetailPage({
                     </TabsTrigger>
                     <TabsTrigger value="auto-content" className="gap-1.5 text-xs">
                         <Zap className="h-3.5 w-3.5" />
-                        <span className="hidden lg:inline">Auto Content</span>
+                        <span className="hidden lg:inline">SmartFlow</span>
                     </TabsTrigger>
                     <TabsTrigger value="platforms" className="gap-1.5 text-xs">
                         <Globe className="h-3.5 w-3.5" />

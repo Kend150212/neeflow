@@ -98,7 +98,7 @@ type ContentJob = {
     processedAt: string | null
     createdAt: string
     mediaItem: { url: string; thumbnailUrl: string | null; type: string; originalName: string | null }
-    channel: { id: string; displayName: string }
+    channel: { id: string; displayName: string; pipelineApprovalMode: string | null }
     post: {
         id: string
         status: string
@@ -109,7 +109,7 @@ type ContentJob = {
     } | null
 }
 
-// ─── Kanban Column Config ───────────────────────────────
+// ─── Column Definitions ─────────────────────────────────
 interface KanbanColumn {
     key: string
     labelKey: string
@@ -118,6 +118,53 @@ interface KanbanColumn {
     borderColor: string
     headerBg: string
     filter: (job: ContentJob) => boolean
+}
+
+const ALL_COLUMNS: KanbanColumn[] = [
+    {
+        key: 'queued',
+        labelKey: 'smartflow.queue.statusQueued',
+        icon: <Clock className="h-4 w-4" />,
+        gradient: 'from-blue-500/20 to-blue-600/5',
+        borderColor: 'border-blue-500/30',
+        headerBg: 'bg-blue-500/10',
+        filter: (job) => job.status === 'QUEUED' || job.status === 'PROCESSING',
+    },
+    {
+        key: 'pending',
+        labelKey: 'smartflow.queue.statusPendingApproval',
+        icon: <Eye className="h-4 w-4" />,
+        gradient: 'from-amber-500/20 to-amber-600/5',
+        borderColor: 'border-amber-500/30',
+        headerBg: 'bg-amber-500/10',
+        filter: (job) => job.post?.status === 'PENDING_APPROVAL',
+    },
+    {
+        key: 'client_review',
+        labelKey: 'smartflow.queue.statusClientReview',
+        icon: <CheckCircle2 className="h-4 w-4" />,
+        gradient: 'from-purple-500/20 to-purple-600/5',
+        borderColor: 'border-purple-500/30',
+        headerBg: 'bg-purple-500/10',
+        filter: (job) => job.post?.status === 'CLIENT_REVIEW',
+    },
+    {
+        key: 'scheduled',
+        labelKey: 'smartflow.queue.statusScheduled',
+        icon: <CalendarCheck className="h-4 w-4" />,
+        gradient: 'from-emerald-500/20 to-emerald-600/5',
+        borderColor: 'border-emerald-500/30',
+        headerBg: 'bg-emerald-500/10',
+        filter: (job) => job.post?.status === 'SCHEDULED' || job.post?.status === 'PUBLISHED',
+    },
+]
+
+// Map: approval mode → which column keys are visible
+const MODE_COLUMNS: Record<string, string[]> = {
+    auto: ['queued', 'scheduled'],
+    admin: ['queued', 'pending', 'scheduled'],
+    client: ['queued', 'pending', 'scheduled'],
+    smartflow: ['queued', 'pending', 'client_review', 'scheduled'],
 }
 
 export default function SmartFlowPage() {
@@ -130,44 +177,8 @@ export default function SmartFlowPage() {
     const [editingPost, setEditingPost] = useState<string | null>(null)
     const [editContent, setEditContent] = useState('')
 
-    const COLUMNS: KanbanColumn[] = [
-        {
-            key: 'queued',
-            labelKey: 'smartflow.queue.statusQueued',
-            icon: <Clock className="h-4 w-4" />,
-            gradient: 'from-blue-500/20 to-blue-600/5',
-            borderColor: 'border-blue-500/30',
-            headerBg: 'bg-blue-500/10',
-            filter: (job) => job.status === 'QUEUED' || job.status === 'PROCESSING',
-        },
-        {
-            key: 'pending',
-            labelKey: 'smartflow.queue.statusPendingApproval',
-            icon: <Eye className="h-4 w-4" />,
-            gradient: 'from-amber-500/20 to-amber-600/5',
-            borderColor: 'border-amber-500/30',
-            headerBg: 'bg-amber-500/10',
-            filter: (job) => job.post?.status === 'PENDING_APPROVAL',
-        },
-        {
-            key: 'client_review',
-            labelKey: 'smartflow.queue.statusClientReview',
-            icon: <CheckCircle2 className="h-4 w-4" />,
-            gradient: 'from-purple-500/20 to-purple-600/5',
-            borderColor: 'border-purple-500/30',
-            headerBg: 'bg-purple-500/10',
-            filter: (job) => job.post?.status === 'CLIENT_REVIEW',
-        },
-        {
-            key: 'scheduled',
-            labelKey: 'smartflow.queue.statusScheduled',
-            icon: <CalendarCheck className="h-4 w-4" />,
-            gradient: 'from-emerald-500/20 to-emerald-600/5',
-            borderColor: 'border-emerald-500/30',
-            headerBg: 'bg-emerald-500/10',
-            filter: (job) => job.post?.status === 'SCHEDULED' || job.post?.status === 'PUBLISHED',
-        },
-    ]
+    // Detect the dominant approval mode from job data
+    const [detectedMode, setDetectedMode] = useState<string>('smartflow')
 
     const fetchJobs = useCallback(async () => {
         try {
@@ -179,6 +190,17 @@ export default function SmartFlowPage() {
                 const data = await res.json()
                 setJobs(data.jobs)
                 setStats(data.stats || {})
+
+                // Detect approval mode from channels
+                const modes = (data.jobs as ContentJob[])
+                    .map(j => j.channel.pipelineApprovalMode)
+                    .filter(Boolean)
+                if (modes.length > 0) {
+                    // Use the most specific mode (smartflow > client > admin > auto)
+                    const priority = ['smartflow', 'client', 'admin', 'auto']
+                    const bestMode = priority.find(m => modes.includes(m)) || 'smartflow'
+                    setDetectedMode(bestMode)
+                }
             }
         } catch (e) {
             console.error(e)
@@ -238,14 +260,23 @@ export default function SmartFlowPage() {
         }
     }
 
-    // Group jobs by column & include failed as separate
+    // Get active columns based on detected mode
+    const activeColumnKeys = MODE_COLUMNS[detectedMode] || MODE_COLUMNS.smartflow
+    const activeColumns = ALL_COLUMNS.filter(c => activeColumnKeys.includes(c.key))
     const failedJobs = jobs.filter(j => j.status === 'FAILED')
 
+    // Grid classes based on number of columns
+    const gridClass = activeColumns.length === 2
+        ? 'grid-cols-1 md:grid-cols-2'
+        : activeColumns.length === 3
+            ? 'grid-cols-1 md:grid-cols-3'
+            : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'
+
     return (
-        <div className="min-h-screen bg-[#0a0a0f] text-white">
-            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
+            <div className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
                             <Zap className="h-5 w-5 text-white" />
@@ -256,6 +287,10 @@ export default function SmartFlowPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {/* Mode indicator */}
+                        <span className="text-[10px] px-2 py-1 rounded-full bg-white/[0.04] text-white/30 border border-white/[0.06]">
+                            {detectedMode.toUpperCase()}
+                        </span>
                         {failedJobs.length > 0 && (
                             <button
                                 onClick={() => handleAction('retry_all_failed')}
@@ -278,19 +313,19 @@ export default function SmartFlowPage() {
 
                 {/* Loading */}
                 {loading ? (
-                    <div className="flex items-center justify-center py-20">
+                    <div className="flex-1 flex items-center justify-center">
                         <Loader2 className="h-6 w-6 animate-spin text-white/30" />
                     </div>
                 ) : (
-                    <>
-                        {/* Kanban Board */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                            {COLUMNS.map(col => {
+                    <div className="flex-1 flex flex-col gap-4 min-h-0">
+                        {/* Kanban Board — full height */}
+                        <div className={`grid ${gridClass} gap-4 flex-1`}>
+                            {activeColumns.map(col => {
                                 const colJobs = jobs.filter(col.filter)
                                 return (
-                                    <div key={col.key} className={`rounded-2xl border ${col.borderColor} bg-gradient-to-b ${col.gradient} min-h-[300px] flex flex-col`}>
+                                    <div key={col.key} className={`rounded-2xl border ${col.borderColor} bg-gradient-to-b ${col.gradient} flex flex-col`}>
                                         {/* Column header */}
-                                        <div className={`${col.headerBg} rounded-t-2xl px-4 py-3 flex items-center justify-between border-b ${col.borderColor}`}>
+                                        <div className={`${col.headerBg} rounded-t-2xl px-4 py-3 flex items-center justify-between border-b ${col.borderColor} shrink-0`}>
                                             <div className="flex items-center gap-2">
                                                 {col.icon}
                                                 <span className="text-sm font-semibold">{t(col.labelKey)}</span>
@@ -300,10 +335,10 @@ export default function SmartFlowPage() {
                                             </span>
                                         </div>
 
-                                        {/* Column body */}
-                                        <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-220px)]">
+                                        {/* Column body — scrollable, stretches to fill */}
+                                        <div className="flex-1 p-2 space-y-2 overflow-y-auto">
                                             {colJobs.length === 0 ? (
-                                                <div className="flex items-center justify-center py-8 text-white/10">
+                                                <div className="flex items-center justify-center h-full min-h-[120px] text-white/10">
                                                     <Zap className="h-5 w-5" />
                                                 </div>
                                             ) : colJobs.map(job => (
@@ -330,7 +365,7 @@ export default function SmartFlowPage() {
 
                         {/* Failed jobs section */}
                         {failedJobs.length > 0 && (
-                            <div className="mt-6 rounded-2xl border border-red-500/30 bg-gradient-to-b from-red-500/10 to-red-600/5">
+                            <div className="rounded-2xl border border-red-500/30 bg-gradient-to-b from-red-500/10 to-red-600/5 shrink-0">
                                 <div className="bg-red-500/10 rounded-t-2xl px-4 py-3 flex items-center justify-between border-b border-red-500/30">
                                     <div className="flex items-center gap-2">
                                         <AlertTriangle className="h-4 w-4 text-red-400" />
@@ -340,7 +375,7 @@ export default function SmartFlowPage() {
                                         {failedJobs.length}
                                     </span>
                                 </div>
-                                <div className="p-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2">
+                                <div className={`p-2 grid ${gridClass} gap-2`}>
                                     {failedJobs.map(job => (
                                         <JobCard
                                             key={job.id}
@@ -360,7 +395,7 @@ export default function SmartFlowPage() {
                                 </div>
                             </div>
                         )}
-                    </>
+                    </div>
                 )}
             </div>
         </div>

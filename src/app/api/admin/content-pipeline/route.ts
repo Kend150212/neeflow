@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
                     select: { url: true, thumbnailUrl: true, type: true, originalName: true },
                 },
                 channel: {
-                    select: { id: true, displayName: true },
+                    select: { id: true, displayName: true, pipelineApprovalMode: true },
                 },
                 post: {
                     select: {
