@@ -65,40 +65,103 @@ export async function POST() {
             try {
                 const { channel, mediaItem } = job
 
-                // Resolve AI API key: channel key → global integration
+                // Resolve AI API key: channel key → uploader's key → admin key → global integration
                 let apiKey: string
                 let provider: string
                 let model: string
                 let baseUrl: string | null | undefined
 
                 if (channel.aiApiKeyEncrypted) {
+                    // 1) Channel has its own AI key
                     apiKey = decrypt(channel.aiApiKeyEncrypted)
                     provider = channel.defaultAiProvider || 'gemini'
                     model = channel.defaultAiModel || 'gemini-2.0-flash'
                 } else {
-                    // Fallback: global API integration
-                    let aiIntegration = channel.defaultAiProvider
-                        ? await prisma.apiIntegration.findFirst({
-                            where: { provider: channel.defaultAiProvider, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
+                    // 2) Try uploader's personal API key
+                    let userApiKey = null
+                    if (job.uploadedBy) {
+                        const uploader = await prisma.user.findUnique({
+                            where: { email: job.uploadedBy },
+                            select: { id: true },
                         })
-                        : null
-
-                    if (!aiIntegration) {
-                        aiIntegration = await prisma.apiIntegration.findFirst({
-                            where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-                            orderBy: { provider: 'asc' },
-                        })
+                        if (uploader) {
+                            // Try preferred provider first
+                            if (channel.defaultAiProvider) {
+                                userApiKey = await prisma.userApiKey.findFirst({
+                                    where: { userId: uploader.id, provider: channel.defaultAiProvider, isActive: true },
+                                })
+                            }
+                            // Then default key
+                            if (!userApiKey) {
+                                userApiKey = await prisma.userApiKey.findFirst({
+                                    where: { userId: uploader.id, isDefault: true, isActive: true },
+                                })
+                            }
+                            // Then any active key
+                            if (!userApiKey) {
+                                userApiKey = await prisma.userApiKey.findFirst({
+                                    where: { userId: uploader.id, isActive: true },
+                                    orderBy: { provider: 'asc' },
+                                })
+                            }
+                        }
                     }
 
-                    if (!aiIntegration || !aiIntegration.apiKeyEncrypted) {
-                        throw new Error('No AI API key configured — set one in Channel Settings or API Hub')
+                    // 3) Try channel admin's API key
+                    if (!userApiKey) {
+                        const admin = await prisma.channelMember.findFirst({
+                            where: { channelId: channel.id, role: 'ADMIN' },
+                            select: { userId: true },
+                        })
+                        if (admin) {
+                            if (channel.defaultAiProvider) {
+                                userApiKey = await prisma.userApiKey.findFirst({
+                                    where: { userId: admin.userId, provider: channel.defaultAiProvider, isActive: true },
+                                })
+                            }
+                            if (!userApiKey) {
+                                userApiKey = await prisma.userApiKey.findFirst({
+                                    where: { userId: admin.userId, isDefault: true, isActive: true },
+                                })
+                            }
+                            if (!userApiKey) {
+                                userApiKey = await prisma.userApiKey.findFirst({
+                                    where: { userId: admin.userId, isActive: true },
+                                    orderBy: { provider: 'asc' },
+                                })
+                            }
+                        }
                     }
 
-                    apiKey = decrypt(aiIntegration.apiKeyEncrypted)
-                    provider = aiIntegration.provider
-                    const intConfig = (aiIntegration.config as Record<string, string>) || {}
-                    model = channel.defaultAiModel || intConfig.defaultTextModel || 'gemini-2.0-flash'
-                    baseUrl = aiIntegration.baseUrl
+                    if (userApiKey) {
+                        apiKey = decrypt(userApiKey.apiKeyEncrypted)
+                        provider = userApiKey.provider
+                        model = channel.defaultAiModel || userApiKey.defaultModel || 'gemini-2.0-flash'
+                    } else {
+                        // 4) Fallback: global API integration
+                        let aiIntegration = channel.defaultAiProvider
+                            ? await prisma.apiIntegration.findFirst({
+                                where: { provider: channel.defaultAiProvider, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
+                            })
+                            : null
+
+                        if (!aiIntegration) {
+                            aiIntegration = await prisma.apiIntegration.findFirst({
+                                where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
+                                orderBy: { provider: 'asc' },
+                            })
+                        }
+
+                        if (!aiIntegration || !aiIntegration.apiKeyEncrypted) {
+                            throw new Error('No AI API key found — configure in AI Providers or API Hub')
+                        }
+
+                        apiKey = decrypt(aiIntegration.apiKeyEncrypted)
+                        provider = aiIntegration.provider
+                        const intConfig = (aiIntegration.config as Record<string, string>) || {}
+                        model = channel.defaultAiModel || intConfig.defaultTextModel || 'gemini-2.0-flash'
+                        baseUrl = aiIntegration.baseUrl
+                    }
                 }
 
                 const lang = channel.language || 'vi'
