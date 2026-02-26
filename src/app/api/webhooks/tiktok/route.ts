@@ -7,8 +7,10 @@ import { prisma } from '@/lib/prisma'
  * GET  — TikTok sends a challenge param for URL verification.
  *         We must echo it back as plain text.
  *
- * POST — TikTok sends real-time events (video status updates, publish complete etc.)
- *         We handle each event type and update DB accordingly.
+ * POST — TikTok sends real-time events:
+ *         • post.publish.complete  — video finished publishing
+ *         • video.status_update    — legacy video status tracking
+ *         • authorization.removed  — user revoked app access
  */
 
 // ─── GET: URL Verification ──────────────────────────────────────────────────
@@ -46,6 +48,12 @@ export async function POST(req: NextRequest) {
         // ── video.status_update (legacy / non-sandbox) ──────────────────────
         if (eventType === 'video.status_update') {
             await handleVideoStatusUpdate(payload)
+        }
+
+        // ── authorization.removed ───────────────────────────────────────────
+        // Fired when user revokes app access from TikTok
+        if (eventType === 'authorization.removed') {
+            await handleAuthorizationRemoved(payload)
         }
 
         return NextResponse.json({ received: true })
@@ -161,5 +169,64 @@ async function handleVideoStatusUpdate(payload: {
         }
     } catch (err) {
         console.error('[TikTok Webhook] DB update failed:', err)
+    }
+}
+
+/**
+ * authorization.removed
+ * Fired when user revokes app access from TikTok settings.
+ * Payload: { client_key, event, create_time, user_openid, content: JSON string }
+ * content: { reason: number }
+ *   0=Unknown, 1=User disconnect, 2=Account deleted, 3=Age changed, 4=Banned, 5=Developer revoke
+ */
+async function handleAuthorizationRemoved(payload: {
+    user_openid?: string
+    content?: string
+}) {
+    const openId = payload.user_openid
+    if (!openId) {
+        console.warn('[TikTok Webhook] authorization.removed: no user_openid')
+        return
+    }
+
+    let reason = 0
+    try {
+        const content = JSON.parse(payload.content ?? '{}')
+        reason = content.reason ?? 0
+    } catch { /* ignore */ }
+
+    const reasonLabels: Record<number, string> = {
+        0: 'Unknown',
+        1: 'User disconnected from TikTok',
+        2: 'Account deleted',
+        3: 'Age changed',
+        4: 'Account banned',
+        5: 'Developer revoked',
+    }
+
+    console.log(`[TikTok Webhook] authorization.removed — openId: ${openId}, reason: ${reasonLabels[reason] || reason}`)
+
+    try {
+        // Deactivate all TikTok platform accounts matching this openId
+        const result = await prisma.channelPlatform.updateMany({
+            where: {
+                platform: 'tiktok',
+                accountId: openId,
+            },
+            data: {
+                isActive: false,
+                accessToken: null,
+                refreshToken: null,
+                tokenExpiresAt: null,
+            },
+        })
+
+        if (result.count > 0) {
+            console.log(`[TikTok Webhook] Deactivated ${result.count} TikTok account(s) for openId ${openId}`)
+        } else {
+            console.log(`[TikTok Webhook] No TikTok accounts found for openId ${openId}`)
+        }
+    } catch (err) {
+        console.error('[TikTok Webhook] Failed to deactivate account:', err)
     }
 }
