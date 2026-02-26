@@ -177,8 +177,8 @@ export async function resolveImageAIKey(
         }
     }
 
-    // 3. Within quota → get platform ApiIntegration key
-    const platformKey = await getPlatformAIKey(preferredProvider)
+    // 3. Within quota → get platform image key (only image-capable providers)
+    const platformKey = await getPlatformImageKey(preferredProvider)
     if (!platformKey) {
         return {
             ok: false,
@@ -314,6 +314,49 @@ async function getPlatformAIKey(preferredProvider?: string | null): Promise<{
     if (!integration) {
         integration = await prisma.apiIntegration.findFirst({
             where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
+            orderBy: { provider: 'asc' },
+        })
+    }
+
+    if (!integration?.apiKeyEncrypted) return null
+
+    return {
+        id: integration.id,
+        apiKey: decrypt(integration.apiKeyEncrypted),
+        provider: integration.provider,
+        baseUrl: integration.baseUrl,
+        config: (integration.config as Record<string, string>) || {},
+    }
+}
+
+// Image-specific: only look for providers that can generate images
+const IMAGE_CAPABLE_PROVIDERS = ['runware', 'openai', 'gemini']
+
+async function getPlatformImageKey(preferredProvider?: string | null): Promise<{
+    id: string
+    apiKey: string
+    provider: string
+    baseUrl: string | null
+    config: Record<string, string>
+} | null> {
+    let integration = null
+
+    // 1. Try preferred provider first
+    if (preferredProvider && IMAGE_CAPABLE_PROVIDERS.includes(preferredProvider)) {
+        integration = await prisma.apiIntegration.findFirst({
+            where: { provider: preferredProvider, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
+        })
+    }
+
+    // 2. Fallback: any image-capable provider
+    if (!integration) {
+        integration = await prisma.apiIntegration.findFirst({
+            where: {
+                provider: { in: IMAGE_CAPABLE_PROVIDERS },
+                category: 'AI',
+                status: 'ACTIVE',
+                apiKeyEncrypted: { not: null },
+            },
             orderBy: { provider: 'asc' },
         })
     }
