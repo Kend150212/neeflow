@@ -20,12 +20,14 @@ export type EffectiveLimits = {
     maxAiImagesPerMonth: number
     maxAiTextPerMonth: number
     maxApiCallsPerMonth: number
+    maxSmartFlowJobsPerMonth: number
     // Features
     hasAutoSchedule: boolean
     hasWebhooks: boolean
     hasAdvancedReports: boolean
     hasPrioritySupport: boolean
     hasWhiteLabel: boolean
+    hasSmartFlow: boolean
 }
 
 // Fields that can be boosted by addons
@@ -37,6 +39,7 @@ const QUOTA_FIELDS = [
     'maxAiImagesPerMonth',
     'maxAiTextPerMonth',
     'maxApiCallsPerMonth',
+    'maxSmartFlowJobsPerMonth',
 ] as const
 
 const FEATURE_FIELDS = [
@@ -45,6 +48,7 @@ const FEATURE_FIELDS = [
     'hasAdvancedReports',
     'hasPrioritySupport',
     'hasWhiteLabel',
+    'hasSmartFlow',
 ] as const
 
 /**
@@ -72,11 +76,13 @@ export async function getEffectiveLimits(userId: string): Promise<EffectiveLimit
         maxAiImagesPerMonth: plan?.maxAiImagesPerMonth ?? FREE_PLAN_DEFAULTS.maxAiImagesPerMonth,
         maxAiTextPerMonth: plan?.maxAiTextPerMonth ?? FREE_PLAN_DEFAULTS.maxAiTextPerMonth,
         maxApiCallsPerMonth: plan?.maxApiCallsPerMonth ?? FREE_PLAN_DEFAULTS.maxApiCallsPerMonth,
+        maxSmartFlowJobsPerMonth: plan?.maxSmartFlowJobsPerMonth ?? FREE_PLAN_DEFAULTS.maxSmartFlowJobsPerMonth,
         hasAutoSchedule: plan?.hasAutoSchedule ?? FREE_PLAN_DEFAULTS.hasAutoSchedule,
         hasWebhooks: plan?.hasWebhooks ?? FREE_PLAN_DEFAULTS.hasWebhooks,
         hasAdvancedReports: plan?.hasAdvancedReports ?? FREE_PLAN_DEFAULTS.hasAdvancedReports,
         hasPrioritySupport: plan?.hasPrioritySupport ?? FREE_PLAN_DEFAULTS.hasPrioritySupport,
         hasWhiteLabel: plan?.hasWhiteLabel ?? FREE_PLAN_DEFAULTS.hasWhiteLabel,
+        hasSmartFlow: plan?.hasSmartFlow ?? FREE_PLAN_DEFAULTS.hasSmartFlow,
     }
 
     // No active add-ons → return base

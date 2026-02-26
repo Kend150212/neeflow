@@ -1438,6 +1438,18 @@
       "platformInactive": "Đã tắt",
       "staticImage": "ảnh tĩnh",
       "media": "Tệp phương tiện"
+    },
+    "quota": {
+      "upgradeTitle": "Mở khóa SmartFlow™",
+      "upgradeDescription": "SmartFlow tự động hóa quy trình nội dung — AI phân tích media, viết caption và lên lịch đăng bài. Nâng cấp gói để bắt đầu.",
+      "upgradeButton": "Nâng cấp gói",
+      "jobsLabel": "bài",
+      "unlimited": "Không giới hạn",
+      "byokOnly": "Chỉ BYOK",
+      "nearingLimit": "Sắp đạt giới hạn SmartFlow của tháng. Sau giới hạn, API key của bạn sẽ được sử dụng.",
+      "exhaustedByok": "Đã hết quota tháng. API key của bạn đang được sử dụng cho SmartFlow.",
+      "exhaustedNoKey": "Đã hết quota tháng. Thêm API key để tiếp tục sử dụng SmartFlow.",
+      "addApiKey": "Thêm API Key"
     }
   },
   "portal": {

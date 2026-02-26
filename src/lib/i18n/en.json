@@ -1438,6 +1438,18 @@
       "platformInactive": "Disabled",
       "staticImage": "static image",
       "media": "Media"
+    },
+    "quota": {
+      "upgradeTitle": "Unlock SmartFlow™",
+      "upgradeDescription": "SmartFlow automates your content pipeline — AI analyzes media, writes captions, and schedules posts. Upgrade your plan to get started.",
+      "upgradeButton": "Upgrade Plan",
+      "jobsLabel": "jobs",
+      "unlimited": "Unlimited",
+      "byokOnly": "BYOK Only",
+      "nearingLimit": "You're approaching your monthly SmartFlow quota. After the limit, your own API key will be used.",
+      "exhaustedByok": "Monthly quota exhausted. Your own API key is now being used for SmartFlow jobs.",
+      "exhaustedNoKey": "Monthly quota exhausted. Add your API key to continue using SmartFlow.",
+      "addApiKey": "Add API Key"
     }
   },
   "portal": {

@@ -27,6 +27,7 @@ export async function GET(_req: NextRequest) {
     const month = getCurrentMonth()
     let postsThisMonth = 0
     let imagesThisMonth = 0
+    let smartFlowJobsThisMonth = 0
 
     if (sub) {
         const usage = await db.usage.findUnique({
@@ -34,6 +35,7 @@ export async function GET(_req: NextRequest) {
         })
         postsThisMonth = usage?.postsCreated ?? 0
         imagesThisMonth = usage?.imagesGenerated ?? 0
+        smartFlowJobsThisMonth = usage?.smartFlowJobs ?? 0
     } else {
         const startOfMonth = new Date(`${month}-01T00:00:00.000Z`)
         postsThisMonth = await prisma.post.count({
@@ -93,11 +95,18 @@ export async function GET(_req: NextRequest) {
             month,
             imagesThisMonth,
             apiCallsThisMonth,
+            smartFlowJobsThisMonth,
         },
         aiImage: {
             hasByokKey: !!byokKey,
             byokProvider: byokKey?.provider ?? null,
             maxPerMonth: effectiveLimits?.maxAiImagesPerMonth ?? sub?.plan?.maxAiImagesPerMonth ?? 0,
+        },
+        smartFlow: {
+            hasAccess: plan.hasSmartFlow,
+            maxPerMonth: effectiveLimits?.maxSmartFlowJobsPerMonth ?? plan.maxSmartFlowJobsPerMonth,
+            usedThisMonth: smartFlowJobsThisMonth,
+            hasByokKey: !!byokKey,
         },
         activeAddons: activeAddons.map((sa: { addon: { id: string; displayName: string; displayNameVi: string; category: string; quotaField: string | null; quotaAmount: number; featureField: string | null; icon: string; priceMonthly: number }; quantity: number }) => ({
             id: sa.addon.id,

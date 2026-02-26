@@ -19,6 +19,8 @@ export const FREE_PLAN_DEFAULTS = {
     hasAdvancedReports: false,
     hasPrioritySupport: false,
     hasWhiteLabel: false,
+    hasSmartFlow: false,
+    maxSmartFlowJobsPerMonth: 0,
 }
 
 export type PlanLimits = typeof FREE_PLAN_DEFAULTS & {
@@ -90,6 +92,8 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             hasAdvancedReports: p.hasAdvancedReports,
             hasPrioritySupport: p.hasPrioritySupport,
             hasWhiteLabel: p.hasWhiteLabel,
+            hasSmartFlow: (p as any).hasSmartFlow ?? false,
+            maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
             isInTrial: false,
             trialEndsAt,
             daysLeftInTrial: 0,
@@ -121,6 +125,8 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
                 hasAdvancedReports: proPlan.hasAdvancedReports,
                 hasPrioritySupport: proPlan.hasPrioritySupport,
                 hasWhiteLabel: proPlan.hasWhiteLabel,
+                hasSmartFlow: (proPlan as any).hasSmartFlow ?? true,
+                maxSmartFlowJobsPerMonth: (proPlan as any).maxSmartFlowJobsPerMonth ?? 10,
                 isInTrial: true,
                 trialEndsAt,
                 daysLeftInTrial,

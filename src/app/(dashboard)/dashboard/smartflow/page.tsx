@@ -189,6 +189,10 @@ export default function SmartFlowPage() {
     const [actionLoading, setActionLoading] = useState<string | null>(null)
     const [detectedMode, setDetectedMode] = useState<string>('smartflow')
     const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'all'>('week')
+    // SmartFlow quota state
+    const [smartFlowQuota, setSmartFlowQuota] = useState<{
+        hasAccess: boolean; maxPerMonth: number; usedThisMonth: number; hasByokKey: boolean
+    } | null>(null)
 
     function getDateRange(preset: typeof datePreset) {
         const now = new Date()
@@ -243,6 +247,22 @@ export default function SmartFlowPage() {
         const interval = setInterval(fetchJobs, 15000)
         return () => clearInterval(interval)
     }, [fetchJobs])
+
+    // Fetch SmartFlow quota info
+    useEffect(() => {
+        async function fetchQuota() {
+            try {
+                const res = await fetch('/api/billing')
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.smartFlow) setSmartFlowQuota(data.smartFlow)
+                }
+            } catch (e) {
+                console.warn('Failed to fetch SmartFlow quota:', e)
+            }
+        }
+        fetchQuota()
+    }, [])
 
     const handleAction = async (action: string, jobId?: string, postId?: string, extra?: Record<string, string>) => {
         setActionLoading(jobId || postId || 'all')
@@ -306,6 +326,34 @@ export default function SmartFlowPage() {
             ? 'grid-cols-1 md:grid-cols-3'
             : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'
 
+    // Quota helpers
+    const quotaPercent = smartFlowQuota && smartFlowQuota.maxPerMonth > 0
+        ? Math.round((smartFlowQuota.usedThisMonth / smartFlowQuota.maxPerMonth) * 100)
+        : 0
+    const quotaColor = quotaPercent >= 100 ? 'text-red-500' : quotaPercent >= 80 ? 'text-amber-500' : 'text-emerald-500'
+    const quotaBgColor = quotaPercent >= 100 ? 'bg-red-500/10 border-red-500/20' : quotaPercent >= 80 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'
+
+    // If plan doesn't include SmartFlow, show upgrade CTA
+    if (smartFlowQuota && !smartFlowQuota.hasAccess) {
+        return (
+            <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+                <div className="max-w-md text-center px-6">
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20 mx-auto mb-6">
+                        <Zap className="h-8 w-8 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-3">{t('smartflow.quota.upgradeTitle')}</h2>
+                    <p className="text-muted-foreground mb-6">{t('smartflow.quota.upgradeDescription')}</p>
+                    <button
+                        onClick={() => router.push('/dashboard/billing')}
+                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all"
+                    >
+                        {t('smartflow.quota.upgradeButton')}
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
             <div className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
@@ -343,6 +391,20 @@ export default function SmartFlowPage() {
                         <span className="text-[10px] px-2 py-1 rounded-full bg-muted/50 text-muted-foreground border border-border">
                             {detectedMode.toUpperCase()}
                         </span>
+                        {/* SmartFlow Quota Badge */}
+                        {smartFlowQuota && smartFlowQuota.maxPerMonth !== -1 && (
+                            <span className={`text-[10px] px-2.5 py-1 rounded-full border font-medium ${quotaBgColor} ${quotaColor}`}>
+                                {smartFlowQuota.maxPerMonth === 0
+                                    ? t('smartflow.quota.byokOnly')
+                                    : `${smartFlowQuota.usedThisMonth} / ${smartFlowQuota.maxPerMonth} ${t('smartflow.quota.jobsLabel')}`
+                                }
+                            </span>
+                        )}
+                        {smartFlowQuota && smartFlowQuota.maxPerMonth === -1 && (
+                            <span className="text-[10px] px-2.5 py-1 rounded-full border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 font-medium">
+                                {t('smartflow.quota.unlimited')}
+                            </span>
+                        )}
                         {failedJobs.length > 0 && (
                             <button
                                 onClick={() => handleAction('retry_all_failed')}
@@ -362,6 +424,32 @@ export default function SmartFlowPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* Quota Warning Banner */}
+                {smartFlowQuota && smartFlowQuota.maxPerMonth > 0 && quotaPercent >= 80 && (
+                    <div className={`mb-4 px-4 py-3 rounded-xl border text-sm flex items-center gap-2 shrink-0 ${quotaPercent >= 100
+                            ? 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
+                            : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
+                        }`}>
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <span>
+                            {quotaPercent >= 100
+                                ? smartFlowQuota.hasByokKey
+                                    ? t('smartflow.quota.exhaustedByok')
+                                    : t('smartflow.quota.exhaustedNoKey')
+                                : t('smartflow.quota.nearingLimit')
+                            }
+                        </span>
+                        {quotaPercent >= 100 && !smartFlowQuota.hasByokKey && (
+                            <button
+                                onClick={() => router.push('/dashboard/api-keys')}
+                                className="ml-auto text-xs font-semibold underline underline-offset-2 hover:no-underline shrink-0"
+                            >
+                                {t('smartflow.quota.addApiKey')}
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center">

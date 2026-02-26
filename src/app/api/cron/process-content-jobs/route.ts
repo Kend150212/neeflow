@@ -4,6 +4,7 @@ import { callAI } from '@/lib/ai-caller'
 import { decrypt } from '@/lib/encryption'
 import sharp from 'sharp'
 import { uploadToR2, generateR2Key } from '@/lib/r2'
+import { checkSmartFlowQuota, incrementSmartFlowUsage } from '@/lib/billing/check-limits'
 
 const BATCH_SIZE = 5 // process up to 5 jobs per cron invocation
 
@@ -67,75 +68,103 @@ export async function POST() {
             try {
                 const { channel, mediaItem } = job
 
-                // Resolve AI API key: channel key → uploader's key → channel admin's key
-                // NEVER use global API integration — only admin's own keys
+                // ─── Resolve uploader user ID ───────────────────────
+                let uploaderUserId: string | null = null
+                if (job.uploadedBy) {
+                    const uploader = await prisma.user.findUnique({
+                        where: { email: job.uploadedBy },
+                        select: { id: true },
+                    })
+                    uploaderUserId = uploader?.id ?? null
+                }
+                if (!uploaderUserId) {
+                    // Fallback: channel owner/admin
+                    const owner = await prisma.channelMember.findFirst({
+                        where: { channelId: channel.id, role: { in: ['OWNER', 'ADMIN'] } },
+                        select: { userId: true },
+                    })
+                    uploaderUserId = owner?.userId ?? null
+                }
+                if (!uploaderUserId) {
+                    throw new Error('No uploader or channel admin found — cannot determine plan quota')
+                }
+
+                // ─── SmartFlow quota check ───────────────────────────
+                const quotaResult = await checkSmartFlowQuota(uploaderUserId)
+                if (!quotaResult.allowed) {
+                    throw new Error(quotaResult.error.message)
+                }
+
+                console.log(`[Pipeline] Job ${job.id}: quota=${quotaResult.used}/${quotaResult.limit}, usePlatformKey=${quotaResult.usePlatformKey}`)
+
+                // ─── Resolve AI API key based on quota ───────────────
                 let apiKey: string
                 let provider: string
                 let model: string
 
-                console.log(`[Pipeline] Job ${job.id}: channelProvider=${channel.defaultAiProvider}, uploadedBy=${job.uploadedBy}, hasChannelKey=${!!channel.aiApiKeyEncrypted}`)
-
                 if (channel.aiApiKeyEncrypted) {
-                    // 1) Channel has its own AI key
+                    // 1) Channel has its own dedicated AI key — always use it
                     apiKey = decrypt(channel.aiApiKeyEncrypted)
                     provider = channel.defaultAiProvider || 'gemini'
                     model = channel.defaultAiModel || 'gemini-2.0-flash'
                     console.log(`[Pipeline] Using channel's own AI key, provider=${provider}`)
-                } else {
-                    // 2) Try uploader's personal API key
-                    let userApiKey = null
-                    if (job.uploadedBy) {
-                        const uploader = await prisma.user.findUnique({
-                            where: { email: job.uploadedBy },
-                            select: { id: true },
+                } else if (quotaResult.usePlatformKey) {
+                    // 2) Within quota — platform pays: use global ApiIntegration key
+                    const preferredProvider = channel.defaultAiProvider || 'gemini'
+                    const platformIntegration = await prisma.apiIntegration.findFirst({
+                        where: {
+                            category: 'AI',
+                            provider: preferredProvider,
+                            isActive: true,
+                        },
+                    })
+                    if (!platformIntegration?.apiKeyEncrypted) {
+                        // Fallback: try any active AI integration
+                        const fallbackIntegration = await prisma.apiIntegration.findFirst({
+                            where: { category: 'AI', isActive: true, apiKeyEncrypted: { not: null } },
                         })
-                        console.log(`[Pipeline] Uploader lookup: email=${job.uploadedBy}, found=${!!uploader}, userId=${uploader?.id}`)
-                        if (uploader) {
-                            // List all their keys for debugging
-                            const allKeys = await prisma.userApiKey.findMany({
-                                where: { userId: uploader.id },
-                                select: { provider: true, isActive: true, isDefault: true },
-                            })
-                            console.log(`[Pipeline] Uploader's API keys:`, JSON.stringify(allKeys))
-
-                            if (channel.defaultAiProvider) {
-                                userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: uploader.id, provider: channel.defaultAiProvider, isActive: true },
-                                })
-                                console.log(`[Pipeline] Provider match (${channel.defaultAiProvider}): found=${!!userApiKey}`)
-                            }
-                            if (!userApiKey) {
-                                userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: uploader.id, isDefault: true, isActive: true },
-                                })
-                                console.log(`[Pipeline] Default key: found=${!!userApiKey}`)
-                            }
-                            if (!userApiKey) {
-                                userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: uploader.id, isActive: true },
-                                    orderBy: { provider: 'asc' },
-                                })
-                                console.log(`[Pipeline] Any active key: found=${!!userApiKey}`)
-                            }
+                        if (!fallbackIntegration?.apiKeyEncrypted) {
+                            throw new Error('No platform AI key configured — admin cần setup API key trong API Hub')
                         }
+                        apiKey = decrypt(fallbackIntegration.apiKeyEncrypted)
+                        provider = fallbackIntegration.provider
+                        model = channel.defaultAiModel || 'gemini-2.0-flash'
+                        console.log(`[Pipeline] ✅ Using platform key (fallback): provider=${provider}`)
                     } else {
-                        console.log(`[Pipeline] No uploadedBy on job`)
+                        apiKey = decrypt(platformIntegration.apiKeyEncrypted)
+                        provider = platformIntegration.provider
+                        model = channel.defaultAiModel || 'gemini-2.0-flash'
+                        console.log(`[Pipeline] ✅ Using platform key: provider=${provider}`)
+                    }
+                } else {
+                    // 3) Over quota or BYOK-only — use user's own key
+                    let userApiKey = null
+
+                    // Try uploader's personal API key
+                    if (channel.defaultAiProvider) {
+                        userApiKey = await prisma.userApiKey.findFirst({
+                            where: { userId: uploaderUserId, provider: channel.defaultAiProvider, isActive: true },
+                        })
+                    }
+                    if (!userApiKey) {
+                        userApiKey = await prisma.userApiKey.findFirst({
+                            where: { userId: uploaderUserId, isDefault: true, isActive: true },
+                        })
+                    }
+                    if (!userApiKey) {
+                        userApiKey = await prisma.userApiKey.findFirst({
+                            where: { userId: uploaderUserId, isActive: true },
+                            orderBy: { provider: 'asc' },
+                        })
                     }
 
-                    // 3) Try channel owner/admin's API key
+                    // Try channel admin/owner if uploader has no key
                     if (!userApiKey) {
                         const owner = await prisma.channelMember.findFirst({
                             where: { channelId: channel.id, role: { in: ['OWNER', 'ADMIN'] } },
-                            select: { userId: true, role: true },
+                            select: { userId: true },
                         })
-                        console.log(`[Pipeline] Owner/Admin lookup: channelId=${channel.id}, found=${!!owner}, userId=${owner?.userId}, role=${owner?.role}`)
-                        if (owner) {
-                            const ownerKeys = await prisma.userApiKey.findMany({
-                                where: { userId: owner.userId },
-                                select: { provider: true, isActive: true, isDefault: true },
-                            })
-                            console.log(`[Pipeline] Owner's API keys:`, JSON.stringify(ownerKeys))
-
+                        if (owner && owner.userId !== uploaderUserId) {
                             if (channel.defaultAiProvider) {
                                 userApiKey = await prisma.userApiKey.findFirst({
                                     where: { userId: owner.userId, provider: channel.defaultAiProvider, isActive: true },
@@ -156,13 +185,16 @@ export async function POST() {
                     }
 
                     if (!userApiKey) {
-                        throw new Error('No AI API key found — channel admin cần setup AI key trong AI Providers')
+                        const quotaMsg = quotaResult.limit > 0
+                            ? `SmartFlow quota đã hết (${quotaResult.used}/${quotaResult.limit}). Thêm API key tại Dashboard > API Keys để tiếp tục.`
+                            : 'Cần setup AI API key trong Dashboard > API Keys để sử dụng SmartFlow.'
+                        throw new Error(quotaMsg)
                     }
 
                     apiKey = decrypt(userApiKey.apiKeyEncrypted)
                     provider = userApiKey.provider
                     model = channel.defaultAiModel || userApiKey.defaultModel || 'gemini-2.0-flash'
-                    console.log(`[Pipeline] ✅ Using key: provider=${provider}, model=${model}`)
+                    console.log(`[Pipeline] ✅ Using BYOK key: provider=${provider}, model=${model}`)
                 }
 
                 const lang = channel.language || 'vi'
@@ -359,6 +391,13 @@ export async function POST() {
 
                 results.push({ jobId: job.id, status: 'COMPLETED', postId: post.id })
                 console.log(`[Pipeline] ✅ Job ${job.id} → Post ${post.id} (${postStatus})`)
+
+                // ─── Step 9: Increment SmartFlow usage counter ────────
+                try {
+                    await incrementSmartFlowUsage(uploaderUserId)
+                } catch (e) {
+                    console.warn('[Pipeline] Failed to increment SmartFlow usage:', e)
+                }
 
             } catch (error) {
                 const errorMsg = error instanceof Error ? error.message : String(error)
