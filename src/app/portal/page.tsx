@@ -992,8 +992,8 @@ function UploadTab({
         files.forEach((f, i) => { progress[`${f.name}-${i}`] = 'pending' })
         setUploadProgress({ ...progress })
 
-        const uploadedItems: string[] = []
-        let errorMessages: string[] = []
+        let successCount = 0
+        const errorMessages: string[] = []
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i]
@@ -1002,68 +1002,21 @@ function UploadTab({
             setUploadProgress({ ...progress })
 
             try {
-                // Step 1: Init upload — get presigned URL and storage metadata
-                const initRes = await fetch('/api/admin/media/init-upload', {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('channelId', targetChannel)
+
+                const res = await fetch('/api/portal/upload/file', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        channelId: targetChannel,
-                        fileName: file.name,
-                        mimeType: file.type,
-                        fileSize: file.size,
-                    }),
+                    body: formData,
                 })
-                const initData = await initRes.json()
+                const data = await res.json()
 
-                if (!initRes.ok) {
-                    throw new Error(initData.error || `Init upload failed (${initRes.status})`)
+                if (!res.ok) {
+                    throw new Error(data.error || `Upload failed (${res.status})`)
                 }
 
-                if (initData.uploadUri) {
-                    // Step 2: Upload file to presigned URL (R2) or resumable URI (GDrive)
-                    const uploadRes = await fetch(initData.uploadUri, {
-                        method: 'PUT',
-                        body: file,
-                        headers: { 'Content-Type': file.type },
-                    })
-                    if (!uploadRes.ok) {
-                        throw new Error(`File upload failed (${uploadRes.status})`)
-                    }
-                }
-
-                // Step 3: Complete upload — pass the correct fields based on storage type
-                const completeBody: Record<string, unknown> = {
-                    channelId: targetChannel,
-                    originalName: file.name,
-                    mimeType: file.type,
-                    fileSize: file.size,
-                }
-
-                if (initData.storage === 'r2') {
-                    completeBody.storage = 'r2'
-                    completeBody.r2Key = initData.r2Key
-                    completeBody.publicUrl = initData.publicUrl
-                } else if (initData.storage === 'gdrive') {
-                    completeBody.driveFileId = initData.driveFileId
-                    completeBody.channelFolderId = initData.channelFolderId
-                }
-
-                const completeRes = await fetch('/api/admin/media/complete-upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(completeBody),
-                })
-                const completeData = await completeRes.json()
-
-                if (!completeRes.ok) {
-                    throw new Error(completeData.error || `Complete upload failed (${completeRes.status})`)
-                }
-
-                if (completeData.id) {
-                    uploadedItems.push(completeData.id)
-                } else {
-                    console.warn('[Upload] complete-upload did not return id:', completeData)
-                }
+                successCount++
                 progress[key] = 'done'
             } catch (err) {
                 const msg = err instanceof Error ? err.message : 'Upload failed'
@@ -1074,30 +1027,11 @@ function UploadTab({
             setUploadProgress({ ...progress })
         }
 
-        // Create pipeline jobs for all successfully uploaded items
-        if (uploadedItems.length > 0) {
-            try {
-                const pipeRes = await fetch('/api/portal/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        channelId: targetChannel,
-                        mediaItemIds: uploadedItems,
-                    }),
-                })
-                const pipeData = await pipeRes.json()
-                if (!pipeRes.ok) {
-                    console.error('[Pipeline] Create jobs failed:', pipeData)
-                    alert(`Lỗi tạo pipeline jobs: ${pipeData.error || 'Unknown error'}`)
-                } else {
-                    alert(`✅ Đã upload ${uploadedItems.length} file và tạo ${pipeData.jobs?.length || 0} AI jobs`)
-                }
-            } catch (e) {
-                console.error('[Pipeline] Failed to create pipeline jobs:', e)
-                alert('Lỗi tạo pipeline jobs')
-            }
-        } else if (errorMessages.length > 0) {
-            alert(`Upload thất bại:\n${errorMessages.join('\n')}`)
+        if (successCount > 0) {
+            alert(`✅ Đã upload ${successCount} file và tạo ${successCount} AI jobs`)
+        }
+        if (errorMessages.length > 0) {
+            alert(`Lỗi upload:\n${errorMessages.join('\n')}`)
         }
 
         // Refresh jobs list
