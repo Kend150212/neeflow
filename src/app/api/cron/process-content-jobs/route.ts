@@ -65,14 +65,42 @@ export async function POST() {
             try {
                 const { channel, mediaItem } = job
 
-                // Validate AI config
-                if (!channel.aiApiKeyEncrypted) {
-                    throw new Error('No AI API key configured for this channel')
+                // Resolve AI API key: channel key → global integration
+                let apiKey: string
+                let provider: string
+                let model: string
+                let baseUrl: string | null | undefined
+
+                if (channel.aiApiKeyEncrypted) {
+                    apiKey = decrypt(channel.aiApiKeyEncrypted)
+                    provider = channel.defaultAiProvider || 'gemini'
+                    model = channel.defaultAiModel || 'gemini-2.0-flash'
+                } else {
+                    // Fallback: global API integration
+                    let aiIntegration = channel.defaultAiProvider
+                        ? await prisma.apiIntegration.findFirst({
+                            where: { provider: channel.defaultAiProvider, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
+                        })
+                        : null
+
+                    if (!aiIntegration) {
+                        aiIntegration = await prisma.apiIntegration.findFirst({
+                            where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
+                            orderBy: { provider: 'asc' },
+                        })
+                    }
+
+                    if (!aiIntegration || !aiIntegration.apiKeyEncrypted) {
+                        throw new Error('No AI API key configured — set one in Channel Settings or API Hub')
+                    }
+
+                    apiKey = decrypt(aiIntegration.apiKeyEncrypted)
+                    provider = aiIntegration.provider
+                    const intConfig = (aiIntegration.config as Record<string, string>) || {}
+                    model = channel.defaultAiModel || intConfig.defaultTextModel || 'gemini-2.0-flash'
+                    baseUrl = aiIntegration.baseUrl
                 }
 
-                const apiKey = decrypt(channel.aiApiKeyEncrypted)
-                const provider = channel.defaultAiProvider || 'gemini'
-                const model = channel.defaultAiModel || 'gemini-2.0-flash'
                 const lang = channel.language || 'vi'
                 const brandProfile = (channel.brandProfile as Record<string, string>) || {}
                 const businessInfo = (channel.businessInfo as Record<string, string>) || {}
