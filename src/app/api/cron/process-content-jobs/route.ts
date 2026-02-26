@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { callAI } from '@/lib/ai-caller'
 import { decrypt } from '@/lib/encryption'
+import sharp from 'sharp'
+import { uploadToR2, generateR2Key } from '@/lib/r2'
 
 const BATCH_SIZE = 5 // process up to 5 jobs per cron invocation
 
@@ -252,6 +254,61 @@ export async function POST() {
                     ? platforms.filter(p => recommendedPlatforms.includes(p.platform.toLowerCase()))
                     : platforms
 
+                // ─── Step 6b: Server-side auto-crop per platform ─────
+                const croppedUrls: Record<string, string> = {} // platform → cropped URL
+                if (mediaDimensions && (mediaItem.type === 'image' || mediaItem.type === 'photo')) {
+                    try {
+                        const imgRes = await fetch(mediaItem.url)
+                        if (imgRes.ok) {
+                            const imgBuffer = Buffer.from(await imgRes.arrayBuffer())
+                            const { width, height } = mediaDimensions
+
+                            for (const p of filteredPlatforms) {
+                                const pName = p.platform.toLowerCase()
+                                // Skip TikTok for images
+                                if (pName === 'tiktok') continue
+
+                                const targetRatio = getPlatformOptimalRatio(pName)
+                                if (!targetRatio) continue
+
+                                const currentRatio = width / height
+                                // Skip if already within 5% of target
+                                if (Math.abs(currentRatio - targetRatio) / targetRatio < 0.05) continue
+
+                                try {
+                                    // Calculate crop dimensions (center crop)
+                                    let cropW = width
+                                    let cropH = height
+                                    if (currentRatio > targetRatio) {
+                                        // Too wide → crop width
+                                        cropW = Math.round(height * targetRatio)
+                                    } else {
+                                        // Too tall → crop height
+                                        cropH = Math.round(width / targetRatio)
+                                    }
+                                    const left = Math.round((width - cropW) / 2)
+                                    const top = Math.round((height - cropH) / 2)
+
+                                    const cropped = await sharp(imgBuffer)
+                                        .extract({ left, top, width: cropW, height: cropH })
+                                        .jpeg({ quality: 90 })
+                                        .toBuffer()
+
+                                    // Upload to R2
+                                    const r2Key = generateR2Key(channel.id, `${pName}-crop.jpg`)
+                                    const croppedUrl = await uploadToR2(cropped, r2Key, 'image/jpeg')
+                                    croppedUrls[pName] = croppedUrl
+                                    console.log(`[Pipeline] Auto-cropped for ${pName}: ${width}x${height} → ${cropW}x${cropH} (ratio ${targetRatio})`)
+                                } catch (cropErr) {
+                                    console.warn(`[Pipeline] Auto-crop failed for ${pName}:`, cropErr)
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[Pipeline] Auto-crop download failed:', e)
+                    }
+                }
+
                 // ─── Step 7: Create post ─────────────────────────────
                 const post = await prisma.post.create({
                     data: {
@@ -264,6 +321,7 @@ export async function POST() {
                             mediaDimensions,
                             recommendedPlatforms,
                             allConnectedPlatforms: platforms.map(p => p.platform),
+                            croppedUrls: Object.keys(croppedUrls).length > 0 ? croppedUrls : undefined,
                         } : undefined,
                         media: {
                             create: {
@@ -272,14 +330,17 @@ export async function POST() {
                             },
                         },
                         platformStatuses: filteredPlatforms.length > 0 ? {
-                            create: filteredPlatforms.map(p => ({
-                                platform: p.platform,
-                                accountId: p.accountId,
-                                // TikTok doesn't accept static images → default to skipped
-                                status: (p.platform.toLowerCase() === 'tiktok' && (mediaItem.type === 'image' || mediaItem.type === 'photo'))
-                                    ? 'skipped'
-                                    : 'pending',
-                            })),
+                            create: filteredPlatforms.map(p => {
+                                const pName = p.platform.toLowerCase()
+                                const isSkipped = pName === 'tiktok' && (mediaItem.type === 'image' || mediaItem.type === 'photo')
+                                return {
+                                    platform: p.platform,
+                                    accountId: p.accountId,
+                                    status: isSkipped ? 'skipped' : 'pending',
+                                    // Store cropped image URL in config
+                                    ...(croppedUrls[pName] ? { config: { croppedUrl: croppedUrls[pName] } } : {}),
+                                }
+                            }),
                         } : undefined,
                     },
                 })
@@ -615,4 +676,17 @@ function getRecommendedPlatforms(aspectRatio: string): string[] {
         'other': ['facebook', 'instagram', 'twitter', 'threads', 'youtube', 'tiktok', 'linkedin'],
     }
     return map[aspectRatio] || map['other']
+}
+
+// ─── Helper: Optimal aspect ratio per platform (width/height) ─────
+function getPlatformOptimalRatio(platform: string): number | null {
+    const ratios: Record<string, number> = {
+        instagram: 4 / 5,       // 0.8  — portrait feed
+        facebook: 1,             // 1.0  — square
+        youtube: 16 / 9,         // 1.78 — landscape
+        twitter: 16 / 9,         // 1.78 — landscape
+        threads: 1,              // 1.0  — square
+        linkedin: 16 / 9,        // 1.78 — landscape
+    }
+    return ratios[platform] ?? null
 }
