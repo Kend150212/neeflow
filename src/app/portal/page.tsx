@@ -992,10 +992,7 @@ function UploadTab({
         files.forEach((f, i) => { progress[`${f.name}-${i}`] = 'pending' })
         setUploadProgress({ ...progress })
 
-        const uploadedItems: Array<{
-            url: string; thumbnailUrl?: string; type: string; originalName?: string
-            fileSize?: number; mimeType?: string
-        }> = []
+        const uploadedItems: string[] = []
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i]
@@ -1004,43 +1001,56 @@ function UploadTab({
             setUploadProgress({ ...progress })
 
             try {
-                // Use existing init-upload → complete-upload flow
+                // Step 1: Init upload — get presigned URL and storage metadata
                 const initRes = await fetch('/api/admin/media/init-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         channelId: targetChannel,
                         fileName: file.name,
-                        fileType: file.type,
+                        mimeType: file.type,
                         fileSize: file.size,
                     }),
                 })
                 const initData = await initRes.json()
 
-                if (initData.uploadUrl) {
-                    // Upload to presigned URL
-                    await fetch(initData.uploadUrl, {
+                if (initData.uploadUri) {
+                    // Step 2: Upload file to presigned URL (R2) or resumable URI (GDrive)
+                    await fetch(initData.uploadUri, {
                         method: 'PUT',
                         body: file,
                         headers: { 'Content-Type': file.type },
                     })
                 }
 
-                // Complete upload
+                // Step 3: Complete upload — pass the correct fields based on storage type
+                const completeBody: Record<string, unknown> = {
+                    channelId: targetChannel,
+                    originalName: file.name,
+                    mimeType: file.type,
+                    fileSize: file.size,
+                }
+
+                if (initData.storage === 'r2') {
+                    completeBody.storage = 'r2'
+                    completeBody.r2Key = initData.r2Key
+                    completeBody.publicUrl = initData.publicUrl
+                } else if (initData.storage === 'gdrive') {
+                    // For GDrive, the upload creates the file — extract driveFileId from response
+                    completeBody.driveFileId = initData.driveFileId
+                    completeBody.channelFolderId = initData.channelFolderId
+                }
+
                 const completeRes = await fetch('/api/admin/media/complete-upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        channelId: targetChannel,
-                        uploadId: initData.uploadId,
-                        fileName: file.name,
-                        fileType: file.type,
-                        fileSize: file.size,
-                    }),
+                    body: JSON.stringify(completeBody),
                 })
                 const completeData = await completeRes.json()
 
-                uploadedItems.push(completeData.id)
+                if (completeData.id) {
+                    uploadedItems.push(completeData.id)
+                }
                 progress[key] = 'done'
             } catch {
                 progress[key] = 'error'
