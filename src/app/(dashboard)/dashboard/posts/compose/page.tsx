@@ -676,6 +676,7 @@ export default function ComposePage() {
     const [overrideImageModel, setOverrideImageModel] = useState('')
     const [availableImageModels, setAvailableImageModels] = useState<{ id: string; name: string; type?: string }[]>([])
     const [loadingImageModels, setLoadingImageModels] = useState(false)
+    const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'>('1:1')
     const [stockQuery, setStockQuery] = useState('')
     const [stockPhotos, setStockPhotos] = useState<{ id: number; src: { original: string; medium: string; small: string }; photographer: string; alt: string }[]>([])
     const [searchingStock, setSearchingStock] = useState(false)
@@ -1676,7 +1677,12 @@ export default function ComposePage() {
         setAiGeneratedPreview(null)
         try {
             const promptToUse = useContentAsPrompt && content.trim() ? content.substring(0, 500) : aiImagePrompt
-            const body: Record<string, unknown> = { channelId: selectedChannel.id, prompt: promptToUse }
+            const aspectDims: Record<string, [number, number]> = {
+                '1:1': [1024, 1024], '16:9': [1280, 720], '9:16': [720, 1280],
+                '4:3': [1024, 768], '3:4': [768, 1024], '4:5': [864, 1080],
+            }
+            const [w, h] = aspectDims[imageAspectRatio] || [1024, 1024]
+            const body: Record<string, unknown> = { channelId: selectedChannel.id, prompt: promptToUse, width: w, height: h }
             if (overrideImageProvider) body.provider = overrideImageProvider
             if (overrideImageModel) body.model = overrideImageModel
             const res = await fetch('/api/admin/posts/generate-image', {
@@ -4372,6 +4378,34 @@ export default function ComposePage() {
                                         )}
                                     </select>
                                     {loadingImageModels && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                </div>
+
+                                {/* Aspect Ratio selector */}
+                                <div>
+                                    <label className="text-[10px] text-muted-foreground font-medium mb-1.5 block">Aspect Ratio</label>
+                                    <div className="flex gap-1.5">
+                                        {[
+                                            { value: '1:1' as const, label: '1:1', icon: <span className="w-4 h-4 border border-current rounded-[2px]" /> },
+                                            { value: '16:9' as const, label: '16:9', icon: <span className="w-5 h-3 border border-current rounded-[2px]" /> },
+                                            { value: '9:16' as const, label: '9:16', icon: <span className="w-3 h-5 border border-current rounded-[2px]" /> },
+                                            { value: '4:3' as const, label: '4:3', icon: <span className="w-4.5 h-3.5 border border-current rounded-[2px]" style={{ width: '18px', height: '14px' }} /> },
+                                            { value: '3:4' as const, label: '3:4', icon: <span className="border border-current rounded-[2px]" style={{ width: '14px', height: '18px' }} /> },
+                                            { value: '4:5' as const, label: '4:5', icon: <span className="border border-current rounded-[2px]" style={{ width: '16px', height: '20px' }} /> },
+                                        ].map(ratio => (
+                                            <button
+                                                key={ratio.value}
+                                                type="button"
+                                                onClick={() => setImageAspectRatio(ratio.value)}
+                                                className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-md border text-[10px] font-medium transition-all cursor-pointer ${imageAspectRatio === ratio.value
+                                                        ? 'border-primary bg-primary/10 text-primary'
+                                                        : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+                                                    }`}
+                                            >
+                                                {ratio.icon}
+                                                {ratio.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {/* Option: Use content as prompt or custom */}
