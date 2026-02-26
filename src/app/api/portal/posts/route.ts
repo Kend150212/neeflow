@@ -18,10 +18,22 @@ export async function GET(req: NextRequest) {
 
     if (channelIds.length === 0) return NextResponse.json({ posts: [] })
 
+    // Date range filter
+    const from = req.nextUrl.searchParams.get('from')
+    const to = req.nextUrl.searchParams.get('to')
+    const dateFilter: Record<string, unknown> = {}
+    if (from) dateFilter.gte = new Date(from)
+    if (to) {
+        const toDate = new Date(to)
+        toDate.setHours(23, 59, 59, 999)
+        dateFilter.lte = toDate
+    }
+
     const posts = await prisma.post.findMany({
         where: {
             channelId: { in: channelIds },
             status: { in: ['CLIENT_REVIEW', 'SCHEDULED', 'PUBLISHED'] },
+            ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {}),
         },
         include: {
             channel: { select: { id: true, displayName: true } },

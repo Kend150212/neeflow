@@ -131,6 +131,26 @@ export default function PortalPage() {
     const [done, setDone] = useState<Record<string, 'APPROVED' | 'REJECTED'>>({})
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [hasDualAccess, setHasDualAccess] = useState(false)
+    const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'all'>('week')
+
+    // Compute date range from preset
+    function getDateRange(preset: typeof datePreset) {
+        const now = new Date()
+        if (preset === 'all') return { from: undefined, to: undefined }
+        if (preset === 'today') {
+            const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            return { from: d.toISOString(), to: now.toISOString() }
+        }
+        if (preset === 'week') {
+            const d = new Date(now)
+            d.setDate(d.getDate() - d.getDay()) // start of week (Sunday)
+            d.setHours(0, 0, 0, 0)
+            return { from: d.toISOString(), to: now.toISOString() }
+        }
+        // month
+        const d = new Date(now.getFullYear(), now.getMonth(), 1)
+        return { from: d.toISOString(), to: now.toISOString() }
+    }
 
     // Calendar state
     const [calView, setCalView] = useState<'month' | 'week'>('month')
@@ -164,9 +184,14 @@ export default function PortalPage() {
     const loadData = useCallback(async () => {
         setLoading(true)
         try {
+            const range = getDateRange(datePreset)
+            const postParams = new URLSearchParams()
+            if (range.from) postParams.set('from', range.from)
+            if (range.to) postParams.set('to', range.to)
+            const postUrl = `/api/portal/posts${postParams.toString() ? '?' + postParams.toString() : ''}`
             const [profileRes, postsRes] = await Promise.all([
                 fetch('/api/portal/profile'),
-                fetch('/api/portal/posts'),
+                fetch(postUrl),
             ])
             const profileData = await profileRes.json()
             const postsData = await postsRes.json()
@@ -175,7 +200,8 @@ export default function PortalPage() {
             setPendingPosts(postsData.posts || [])
         } catch (e) { console.error(e) }
         finally { setLoading(false) }
-    }, [])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [datePreset])
 
     // Load calendar data
     const loadCalendar = useCallback(async () => {
@@ -475,6 +501,8 @@ export default function PortalPage() {
                             selectedChannel={selectedChannel}
                             theme={theme}
                             onRefresh={loadData}
+                            datePreset={datePreset}
+                            onDatePresetChange={(p) => { setDatePreset(p) }}
                         />
                     </div>
                 ) : activeTab === 'calendar' ? (
@@ -514,7 +542,7 @@ export default function PortalPage() {
 // ─────────────────────────────────────────────────────────
 function ReviewTab({
     posts, comments, setComments, submitting, handleAction, reviewedCount, selectedChannel, theme,
-    onRefresh,
+    onRefresh, datePreset, onDatePresetChange,
 }: {
     posts: Post[]
     comments: Record<string, string>
@@ -526,6 +554,8 @@ function ReviewTab({
     selectedChannel: string
     theme: Theme
     onRefresh?: () => void
+    datePreset: 'today' | 'week' | 'month' | 'all'
+    onDatePresetChange: (preset: 'today' | 'week' | 'month' | 'all') => void
 }) {
     const c = t(theme)
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -606,12 +636,39 @@ function ReviewTab({
     return (
         <>
             <div className="mb-5">
-                <h1 className="text-xl font-bold tracking-tight">Content Board</h1>
-                <p className={`${c.textMuted} text-sm mt-1`}>
-                    {pendingPosts.length} pending
-                    {reviewedCount > 0 && <span className="text-emerald-400"> · {reviewedCount} reviewed ✓</span>}
-                    {selectedChannel !== 'all' && <span className={c.activeText}> · filtered</span>}
-                </p>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                        <h1 className="text-xl font-bold tracking-tight">Content Board</h1>
+                        <p className={`${c.textMuted} text-sm mt-1`}>
+                            {pendingPosts.length} pending
+                            {reviewedCount > 0 && <span className="text-emerald-400"> · {reviewedCount} reviewed ✓</span>}
+                            {selectedChannel !== 'all' && <span className={c.activeText}> · filtered</span>}
+                        </p>
+                    </div>
+                    <div className={`flex items-center gap-1 ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'} rounded-xl p-1`}>
+                        {([
+                            { key: 'today' as const, label: 'Today' },
+                            { key: 'week' as const, label: 'This Week' },
+                            { key: 'month' as const, label: 'This Month' },
+                            { key: 'all' as const, label: 'All' },
+                        ]).map(p => (
+                            <button
+                                key={p.key}
+                                onClick={() => onDatePresetChange(p.key)}
+                                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${datePreset === p.key
+                                        ? theme === 'dark'
+                                            ? 'bg-indigo-500/20 text-indigo-400 shadow-sm'
+                                            : 'bg-white text-indigo-600 shadow-sm'
+                                        : theme === 'dark'
+                                            ? 'text-white/40 hover:text-white/60'
+                                            : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {reviewedCount > 0 && (
