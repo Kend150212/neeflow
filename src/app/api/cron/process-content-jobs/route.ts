@@ -65,11 +65,11 @@ export async function POST() {
             try {
                 const { channel, mediaItem } = job
 
-                // Resolve AI API key: channel key → uploader's key → admin key → global integration
+                // Resolve AI API key: channel key → uploader's key → channel admin's key
+                // NEVER use global API integration — only admin's own keys
                 let apiKey: string
                 let provider: string
                 let model: string
-                let baseUrl: string | null | undefined
 
                 if (channel.aiApiKeyEncrypted) {
                     // 1) Channel has its own AI key
@@ -85,19 +85,16 @@ export async function POST() {
                             select: { id: true },
                         })
                         if (uploader) {
-                            // Try preferred provider first
                             if (channel.defaultAiProvider) {
                                 userApiKey = await prisma.userApiKey.findFirst({
                                     where: { userId: uploader.id, provider: channel.defaultAiProvider, isActive: true },
                                 })
                             }
-                            // Then default key
                             if (!userApiKey) {
                                 userApiKey = await prisma.userApiKey.findFirst({
                                     where: { userId: uploader.id, isDefault: true, isActive: true },
                                 })
                             }
-                            // Then any active key
                             if (!userApiKey) {
                                 userApiKey = await prisma.userApiKey.findFirst({
                                     where: { userId: uploader.id, isActive: true },
@@ -133,35 +130,13 @@ export async function POST() {
                         }
                     }
 
-                    if (userApiKey) {
-                        apiKey = decrypt(userApiKey.apiKeyEncrypted)
-                        provider = userApiKey.provider
-                        model = channel.defaultAiModel || userApiKey.defaultModel || 'gemini-2.0-flash'
-                    } else {
-                        // 4) Fallback: global API integration
-                        let aiIntegration = channel.defaultAiProvider
-                            ? await prisma.apiIntegration.findFirst({
-                                where: { provider: channel.defaultAiProvider, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-                            })
-                            : null
-
-                        if (!aiIntegration) {
-                            aiIntegration = await prisma.apiIntegration.findFirst({
-                                where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-                                orderBy: { provider: 'asc' },
-                            })
-                        }
-
-                        if (!aiIntegration || !aiIntegration.apiKeyEncrypted) {
-                            throw new Error('No AI API key found — configure in AI Providers or API Hub')
-                        }
-
-                        apiKey = decrypt(aiIntegration.apiKeyEncrypted)
-                        provider = aiIntegration.provider
-                        const intConfig = (aiIntegration.config as Record<string, string>) || {}
-                        model = channel.defaultAiModel || intConfig.defaultTextModel || 'gemini-2.0-flash'
-                        baseUrl = aiIntegration.baseUrl
+                    if (!userApiKey) {
+                        throw new Error('No AI API key found — channel admin cần setup AI key trong AI Providers')
                     }
+
+                    apiKey = decrypt(userApiKey.apiKeyEncrypted)
+                    provider = userApiKey.provider
+                    model = channel.defaultAiModel || userApiKey.defaultModel || 'gemini-2.0-flash'
                 }
 
                 const lang = channel.language || 'vi'
