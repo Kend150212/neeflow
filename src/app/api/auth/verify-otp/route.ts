@@ -58,9 +58,17 @@ export async function POST(req: NextRequest) {
 
         // Create user + subscription in a transaction
         const user = await prisma.$transaction(async (tx) => {
-            // Create user with 14-day trial
-            const trialEndsAt = new Date()
-            trialEndsAt.setDate(trialEndsAt.getDate() + 14)
+            // Read trial config from SiteSettings
+            const siteSettings = await (tx as any).siteSettings.findUnique({ where: { id: 'default' } })
+            const trialEnabled = siteSettings?.trialEnabled ?? true
+            const trialDays = siteSettings?.trialDays ?? 14
+
+            // Calculate trial end date (null if trial disabled)
+            let trialEndsAt: Date | null = null
+            if (trialEnabled && trialDays > 0) {
+                trialEndsAt = new Date()
+                trialEndsAt.setDate(trialEndsAt.getDate() + trialDays)
+            }
 
             const newUser = await tx.user.create({
                 data: {
@@ -72,7 +80,7 @@ export async function POST(req: NextRequest) {
                     role: 'MANAGER',
                     isActive: true,
                     emailVerified: new Date(),
-                    trialEndsAt, // 14-day Pro trial
+                    trialEndsAt, // dynamic trial from SiteSettings
                 },
             })
 

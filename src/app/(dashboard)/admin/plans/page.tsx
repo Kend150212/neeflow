@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Users, AlertTriangle, Package } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, AlertTriangle, Package, Clock, Zap } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
 
@@ -126,6 +126,12 @@ export default function AdminPlansPage() {
     const t = useTranslation()
     const isVi = t('lang') === 'vi'
 
+    // Trial config state
+    const [trialEnabled, setTrialEnabled] = useState(true)
+    const [trialDays, setTrialDays] = useState(14)
+    const [trialPlanId, setTrialPlanId] = useState<string | null>(null)
+    const [savingTrial, setSavingTrial] = useState(false)
+
     const fetchPlans = useCallback(async () => {
         setLoading(true)
         const res = await fetch('/api/admin/plans')
@@ -143,6 +149,35 @@ export default function AdminPlansPage() {
     }, [])
 
     useEffect(() => { fetchAddons() }, [fetchAddons])
+
+    // Fetch trial config from branding API
+    const fetchTrialConfig = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/branding')
+            const data = await res.json()
+            setTrialEnabled(data.trialEnabled ?? true)
+            setTrialDays(data.trialDays ?? 14)
+            setTrialPlanId(data.trialPlanId ?? null)
+        } catch { /* ignore */ }
+    }, [])
+
+    useEffect(() => { fetchTrialConfig() }, [fetchTrialConfig])
+
+    const saveTrialConfig = async () => {
+        setSavingTrial(true)
+        try {
+            await fetch('/api/admin/branding', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trialEnabled, trialDays, trialPlanId }),
+            })
+            toast.success(isVi ? 'Đã lưu cấu hình trial' : 'Trial settings saved')
+        } catch {
+            toast.error(isVi ? 'Lỗi khi lưu' : 'Failed to save')
+        } finally {
+            setSavingTrial(false)
+        }
+    }
 
     const openCreate = () => {
         setEditPlan(EMPTY_PLAN)
@@ -246,6 +281,89 @@ export default function AdminPlansPage() {
                     New Plan
                 </Button>
             </div>
+
+            {/* ── Trial Settings Card ────────────────────────────── */}
+            <Card className="border-dashed">
+                <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-orange-500" />
+                        <CardTitle className="text-base">{isVi ? 'Cấu Hình Trial' : 'Trial Settings'}</CardTitle>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        {isVi ? 'Bật/tắt trial cho người dùng mới đăng ký' : 'Enable/disable trial for new user registrations'}
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-wrap items-end gap-6">
+                        {/* Toggle */}
+                        <div className="flex items-center gap-3">
+                            <Switch
+                                checked={trialEnabled}
+                                onCheckedChange={setTrialEnabled}
+                                id="trial-toggle"
+                            />
+                            <Label htmlFor="trial-toggle" className="text-sm font-medium">
+                                {trialEnabled
+                                    ? <span className="text-green-600">{isVi ? 'Đang bật' : 'Enabled'}</span>
+                                    : <span className="text-muted-foreground">{isVi ? 'Đã tắt' : 'Disabled'}</span>
+                                }
+                            </Label>
+                        </div>
+
+                        {/* Duration */}
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{isVi ? 'Số ngày' : 'Duration (days)'}</Label>
+                            <Input
+                                type="number"
+                                min={1}
+                                max={365}
+                                value={trialDays}
+                                onChange={e => setTrialDays(Number(e.target.value))}
+                                className="w-24 text-sm"
+                                disabled={!trialEnabled}
+                            />
+                        </div>
+
+                        {/* Plan selector */}
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{isVi ? 'Gói Trial' : 'Trial Plan'}</Label>
+                            <select
+                                value={trialPlanId ?? ''}
+                                onChange={e => setTrialPlanId(e.target.value || null)}
+                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                disabled={!trialEnabled}
+                            >
+                                <option value="">{isVi ? '— Mặc định (Pro) —' : '— Default (Pro) —'}</option>
+                                {plans.filter(p => p.priceMonthly > 0 && p.isActive).map(p => (
+                                    <option key={p.id} value={p.id}>{isVi ? p.nameVi || p.name : p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Save */}
+                        <Button
+                            size="sm"
+                            onClick={saveTrialConfig}
+                            disabled={savingTrial}
+                            className="gap-1.5"
+                        >
+                            <Zap className="h-3.5 w-3.5" />
+                            {savingTrial ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu Trial' : 'Save Trial')}
+                        </Button>
+                    </div>
+
+                    {/* Summary text */}
+                    <p className="mt-3 text-xs text-muted-foreground">
+                        {trialEnabled
+                            ? (isVi
+                                ? `✅ Người dùng mới sẽ được dùng thử ${trialDays} ngày với gói ${plans.find(p => p.id === trialPlanId)?.name || 'Pro'}`
+                                : `✅ New users get ${trialDays}-day trial with ${plans.find(p => p.id === trialPlanId)?.name || 'Pro'} plan`)
+                            : (isVi
+                                ? '⛔ Trial đã tắt — người dùng mới sẽ bắt đầu ở gói Free'
+                                : '⛔ Trial disabled — new users start on Free plan')}
+                    </p>
+                </CardContent>
+            </Card>
 
             {loading ? (
                 <div className="text-muted-foreground text-sm">Loading...</div>

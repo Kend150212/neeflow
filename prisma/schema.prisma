@@ -836,6 +836,12 @@ model SiteSettings {
   termsContent   String   @default("") @map("terms_content") @db.Text
   privacyContent String   @default("") @map("privacy_content") @db.Text
   siteMode       String   @default("live") @map("site_mode") // live | coming_soon | maintenance
+
+  // Trial config
+  trialEnabled   Boolean  @default(true) @map("trial_enabled")
+  trialDays      Int      @default(14) @map("trial_days")
+  trialPlanId    String?  @map("trial_plan_id")  // which plan to use during trial (null = first Pro plan)
+
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@map("site_settings")

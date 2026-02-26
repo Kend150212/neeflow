@@ -15,6 +15,9 @@ const DEFAULT_SETTINGS = {
     supportEmail: '',
     copyrightText: '',
     footerLinks: [],
+    trialEnabled: true,
+    trialDays: 14,
+    trialPlanId: null as string | null,
 }
 
 /**
@@ -51,6 +54,7 @@ export async function PUT(req: NextRequest) {
         appName, tagline, logoUrl, faviconUrl,
         primaryColor, supportEmail, copyrightText, footerLinks,
         siteMode,
+        trialEnabled, trialDays, trialPlanId,
     } = body
 
     try {
@@ -66,6 +70,9 @@ export async function PUT(req: NextRequest) {
                 ...(copyrightText !== undefined && { copyrightText }),
                 ...(footerLinks !== undefined && { footerLinks }),
                 ...(siteMode !== undefined && { siteMode }),
+                ...(trialEnabled !== undefined && { trialEnabled }),
+                ...(trialDays !== undefined && { trialDays }),
+                ...(trialPlanId !== undefined && { trialPlanId }),
             },
             create: {
                 id: 'default',

@@ -100,33 +100,41 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
         }
     }
 
-    // ── Free trial active — apply Pro limits ─────────────────────────────────
+    // ── Free trial active — apply trial plan limits ────────────────────────────
     if (isInTrial) {
-        const proPlan = await prisma.plan.findFirst({ where: { name: 'Pro' } })
-        if (proPlan) {
+        // Read trial plan config from SiteSettings
+        const siteSettings = await (prisma as any).siteSettings.findUnique({ where: { id: 'default' } })
+        const trialPlanId = siteSettings?.trialPlanId ?? null
+
+        // Use configured trial plan, or fallback to first Pro plan
+        const trialPlan = trialPlanId
+            ? await prisma.plan.findUnique({ where: { id: trialPlanId } })
+            : await prisma.plan.findFirst({ where: { name: 'Pro' } })
+
+        if (trialPlan) {
             return {
-                planName: 'Pro',
-                planNameVi: 'Pro (Dùng thử)',
-                priceMonthly: proPlan.priceMonthly,
-                priceAnnual: proPlan.priceAnnual,
+                planName: `${trialPlan.name} (Trial)`,
+                planNameVi: `${trialPlan.nameVi || trialPlan.name} (Dùng thử)`,
+                priceMonthly: trialPlan.priceMonthly,
+                priceAnnual: trialPlan.priceAnnual,
                 billingInterval: 'monthly',
                 status: 'trialing',
                 currentPeriodEnd: trialEndsAt,
                 cancelAtPeriodEnd: false,
-                maxChannels: proPlan.maxChannels,
-                maxPostsPerMonth: proPlan.maxPostsPerMonth,
-                maxMembersPerChannel: proPlan.maxMembersPerChannel,
-                maxStorageMB: (proPlan as any).maxStorageMB ?? 10240,
-                maxAiImagesPerMonth: (proPlan as any).maxAiImagesPerMonth ?? 50,
-                maxAiTextPerMonth: (proPlan as any).maxAiTextPerMonth ?? 100,
-                maxApiCallsPerMonth: (proPlan as any).maxApiCallsPerMonth ?? 0,
-                hasAutoSchedule: proPlan.hasAutoSchedule,
-                hasWebhooks: proPlan.hasWebhooks,
-                hasAdvancedReports: proPlan.hasAdvancedReports,
-                hasPrioritySupport: proPlan.hasPrioritySupport,
-                hasWhiteLabel: proPlan.hasWhiteLabel,
-                hasSmartFlow: (proPlan as any).hasSmartFlow ?? true,
-                maxSmartFlowJobsPerMonth: (proPlan as any).maxSmartFlowJobsPerMonth ?? 10,
+                maxChannels: trialPlan.maxChannels,
+                maxPostsPerMonth: trialPlan.maxPostsPerMonth,
+                maxMembersPerChannel: trialPlan.maxMembersPerChannel,
+                maxStorageMB: (trialPlan as any).maxStorageMB ?? 10240,
+                maxAiImagesPerMonth: (trialPlan as any).maxAiImagesPerMonth ?? 50,
+                maxAiTextPerMonth: (trialPlan as any).maxAiTextPerMonth ?? 100,
+                maxApiCallsPerMonth: (trialPlan as any).maxApiCallsPerMonth ?? 0,
+                hasAutoSchedule: trialPlan.hasAutoSchedule,
+                hasWebhooks: trialPlan.hasWebhooks,
+                hasAdvancedReports: trialPlan.hasAdvancedReports,
+                hasPrioritySupport: trialPlan.hasPrioritySupport,
+                hasWhiteLabel: trialPlan.hasWhiteLabel,
+                hasSmartFlow: (trialPlan as any).hasSmartFlow ?? true,
+                maxSmartFlowJobsPerMonth: (trialPlan as any).maxSmartFlowJobsPerMonth ?? 10,
                 isInTrial: true,
                 trialEndsAt,
                 daysLeftInTrial,
