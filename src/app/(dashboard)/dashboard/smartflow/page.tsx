@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
     Zap,
@@ -12,13 +13,13 @@ import {
     XCircle,
     AlertTriangle,
     Video,
-    Pencil,
     ThumbsUp,
     ThumbsDown,
     Clock,
     CheckCircle2,
     Eye,
     CalendarCheck,
+    ExternalLink,
 } from 'lucide-react'
 
 // ─── Platform SVG Icons ──────────────────────────────────
@@ -78,17 +79,27 @@ function LinkedInIcon({ className }: { className?: string }) {
     )
 }
 
-const PLATFORM_ICONS: Record<string, { icon: React.FC<{ className?: string }>; color: string }> = {
-    facebook: { icon: FacebookIcon, color: 'text-blue-400' },
-    instagram: { icon: InstagramIcon, color: 'text-pink-400' },
-    tiktok: { icon: TikTokIcon, color: 'text-cyan-300' },
-    youtube: { icon: YouTubeIcon, color: 'text-red-400' },
-    twitter: { icon: TwitterIcon, color: 'text-white' },
-    threads: { icon: ThreadsIcon, color: 'text-purple-300' },
-    linkedin: { icon: LinkedInIcon, color: 'text-blue-300' },
+const PLATFORM_ICONS: Record<string, { icon: React.FC<{ className?: string }>; color: string; activeColor: string }> = {
+    facebook: { icon: FacebookIcon, color: 'text-white/15', activeColor: 'text-blue-400' },
+    instagram: { icon: InstagramIcon, color: 'text-white/15', activeColor: 'text-pink-400' },
+    tiktok: { icon: TikTokIcon, color: 'text-white/15', activeColor: 'text-cyan-300' },
+    youtube: { icon: YouTubeIcon, color: 'text-white/15', activeColor: 'text-red-400' },
+    twitter: { icon: TwitterIcon, color: 'text-white/15', activeColor: 'text-white' },
+    threads: { icon: ThreadsIcon, color: 'text-white/15', activeColor: 'text-purple-300' },
+    linkedin: { icon: LinkedInIcon, color: 'text-white/15', activeColor: 'text-blue-300' },
 }
 
+// Platforms that don't accept static images (photo)
+const IMAGE_INCOMPATIBLE_PLATFORMS = ['tiktok']
+
 // ─── Types ──────────────────────────────────────────────
+type PlatformStatus = {
+    id: string
+    platform: string
+    accountId: string
+    status: string
+}
+
 type ContentJob = {
     id: string
     status: string
@@ -105,7 +116,7 @@ type ContentJob = {
         scheduledAt: string | null
         content: string | null
         metadata: Record<string, unknown> | null
-        platformStatuses: { platform: string; status: string }[]
+        platformStatuses: PlatformStatus[]
     } | null
 }
 
@@ -170,14 +181,11 @@ const MODE_COLUMNS: Record<string, string[]> = {
 export default function SmartFlowPage() {
     const t = useTranslation()
     const { data: session } = useSession()
+    const router = useRouter()
     const [jobs, setJobs] = useState<ContentJob[]>([])
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState<Record<string, number>>({})
     const [actionLoading, setActionLoading] = useState<string | null>(null)
-    const [editingPost, setEditingPost] = useState<string | null>(null)
-    const [editContent, setEditContent] = useState('')
-
-    // Detect the dominant approval mode from job data
     const [detectedMode, setDetectedMode] = useState<string>('smartflow')
 
     const fetchJobs = useCallback(async () => {
@@ -191,12 +199,10 @@ export default function SmartFlowPage() {
                 setJobs(data.jobs)
                 setStats(data.stats || {})
 
-                // Detect approval mode from channels
                 const modes = (data.jobs as ContentJob[])
                     .map(j => j.channel.pipelineApprovalMode)
                     .filter(Boolean)
                 if (modes.length > 0) {
-                    // Use the most specific mode (smartflow > client > admin > auto)
                     const priority = ['smartflow', 'client', 'admin', 'auto']
                     const bestMode = priority.find(m => modes.includes(m)) || 'smartflow'
                     setDetectedMode(bestMode)
@@ -215,24 +221,26 @@ export default function SmartFlowPage() {
         return () => clearInterval(interval)
     }, [fetchJobs])
 
-    const handleAction = async (action: string, jobId?: string, postId?: string) => {
+    const handleAction = async (action: string, jobId?: string, postId?: string, extra?: Record<string, string>) => {
         setActionLoading(jobId || postId || 'all')
         try {
             const res = await fetch('/api/admin/content-pipeline', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, jobId, postId }),
+                body: JSON.stringify({ action, jobId, postId, ...extra }),
             })
             if (res.ok) {
-                const messages: Record<string, string> = {
-                    retry: t('smartflow.queue.retried'),
-                    cancel: t('smartflow.queue.cancelled'),
-                    retry_all_failed: t('smartflow.queue.retried'),
-                    approve: t('smartflow.queue.approved'),
-                    reject: t('smartflow.queue.rejected'),
-                    client_approve: t('smartflow.queue.approved'),
+                if (action !== 'toggle_platform') {
+                    const messages: Record<string, string> = {
+                        retry: t('smartflow.queue.retried'),
+                        cancel: t('smartflow.queue.cancelled'),
+                        retry_all_failed: t('smartflow.queue.retried'),
+                        approve: t('smartflow.queue.approved'),
+                        reject: t('smartflow.queue.rejected'),
+                        client_approve: t('smartflow.queue.approved'),
+                    }
+                    toast.success(messages[action] || '✅')
                 }
-                toast.success(messages[action] || '✅')
                 fetchJobs()
             } else {
                 toast.error(t('smartflow.queue.actionFailed'))
@@ -243,21 +251,25 @@ export default function SmartFlowPage() {
         setActionLoading(null)
     }
 
-    const handleEditSave = async (postId: string) => {
-        try {
-            const res = await fetch(`/api/admin/posts/${postId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: editContent }),
-            })
-            if (res.ok) {
-                toast.success(t('smartflow.configSaved'))
-                setEditingPost(null)
-                fetchJobs()
+    const handleTogglePlatform = async (ps: PlatformStatus) => {
+        const newStatus = ps.status === 'skipped' ? 'pending' : 'skipped'
+        // Optimistic update
+        setJobs(prev => prev.map(j => {
+            if (!j.post) return j
+            return {
+                ...j,
+                post: {
+                    ...j.post,
+                    platformStatuses: j.post.platformStatuses.map(p =>
+                        p.id === ps.id ? { ...p, status: newStatus } : p
+                    ),
+                },
             }
-        } catch {
-            toast.error(t('smartflow.queue.actionFailed'))
-        }
+        }))
+        await handleAction('toggle_platform', undefined, undefined, {
+            platformStatusId: ps.id,
+            newStatus,
+        })
     }
 
     // Get active columns based on detected mode
@@ -265,7 +277,6 @@ export default function SmartFlowPage() {
     const activeColumns = ALL_COLUMNS.filter(c => activeColumnKeys.includes(c.key))
     const failedJobs = jobs.filter(j => j.status === 'FAILED')
 
-    // Grid classes based on number of columns
     const gridClass = activeColumns.length === 2
         ? 'grid-cols-1 md:grid-cols-2'
         : activeColumns.length === 3
@@ -287,7 +298,6 @@ export default function SmartFlowPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {/* Mode indicator */}
                         <span className="text-[10px] px-2 py-1 rounded-full bg-white/[0.04] text-white/30 border border-white/[0.06]">
                             {detectedMode.toUpperCase()}
                         </span>
@@ -311,7 +321,6 @@ export default function SmartFlowPage() {
                     </div>
                 </div>
 
-                {/* Loading */}
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center">
                         <Loader2 className="h-6 w-6 animate-spin text-white/30" />
@@ -324,7 +333,6 @@ export default function SmartFlowPage() {
                                 const colJobs = jobs.filter(col.filter)
                                 return (
                                     <div key={col.key} className={`rounded-2xl border ${col.borderColor} bg-gradient-to-b ${col.gradient} flex flex-col`}>
-                                        {/* Column header */}
                                         <div className={`${col.headerBg} rounded-t-2xl px-4 py-3 flex items-center justify-between border-b ${col.borderColor} shrink-0`}>
                                             <div className="flex items-center gap-2">
                                                 {col.icon}
@@ -335,7 +343,6 @@ export default function SmartFlowPage() {
                                             </span>
                                         </div>
 
-                                        {/* Column body — scrollable, stretches to fill */}
                                         <div className="flex-1 p-2 space-y-2 overflow-y-auto">
                                             {colJobs.length === 0 ? (
                                                 <div className="flex items-center justify-center h-full min-h-[120px] text-white/10">
@@ -346,15 +353,12 @@ export default function SmartFlowPage() {
                                                     key={job.id}
                                                     job={job}
                                                     columnKey={col.key}
-                                                    isEditing={editingPost === job.post?.id}
-                                                    editContent={editContent}
                                                     actionLoading={actionLoading}
+                                                    detectedMode={detectedMode}
                                                     t={t}
                                                     onAction={handleAction}
-                                                    onEditStart={(postId, content) => { setEditingPost(postId); setEditContent(content) }}
-                                                    onEditChange={setEditContent}
-                                                    onEditSave={handleEditSave}
-                                                    onEditCancel={() => setEditingPost(null)}
+                                                    onTogglePlatform={handleTogglePlatform}
+                                                    onEdit={(postId) => router.push(`/dashboard/posts/${postId}`)}
                                                 />
                                             ))}
                                         </div>
@@ -363,7 +367,7 @@ export default function SmartFlowPage() {
                             })}
                         </div>
 
-                        {/* Failed jobs section */}
+                        {/* Failed jobs */}
                         {failedJobs.length > 0 && (
                             <div className="rounded-2xl border border-red-500/30 bg-gradient-to-b from-red-500/10 to-red-600/5 shrink-0">
                                 <div className="bg-red-500/10 rounded-t-2xl px-4 py-3 flex items-center justify-between border-b border-red-500/30">
@@ -381,15 +385,12 @@ export default function SmartFlowPage() {
                                             key={job.id}
                                             job={job}
                                             columnKey="failed"
-                                            isEditing={false}
-                                            editContent=""
                                             actionLoading={actionLoading}
+                                            detectedMode={detectedMode}
                                             t={t}
                                             onAction={handleAction}
-                                            onEditStart={() => { }}
-                                            onEditChange={() => { }}
-                                            onEditSave={() => Promise.resolve()}
-                                            onEditCancel={() => { }}
+                                            onTogglePlatform={handleTogglePlatform}
+                                            onEdit={(postId) => router.push(`/dashboard/posts/${postId}`)}
                                         />
                                     ))}
                                 </div>
@@ -402,23 +403,23 @@ export default function SmartFlowPage() {
     )
 }
 
-// ─── Job Card Component ─────────────────────────────────
+// ─── Job Card ───────────────────────────────────────────
 function JobCard({
-    job, columnKey, isEditing, editContent, actionLoading, t,
-    onAction, onEditStart, onEditChange, onEditSave, onEditCancel,
+    job, columnKey, actionLoading, detectedMode, t,
+    onAction, onTogglePlatform, onEdit,
 }: {
     job: ContentJob
     columnKey: string
-    isEditing: boolean
-    editContent: string
     actionLoading: string | null
+    detectedMode: string
     t: (key: string) => string
     onAction: (action: string, jobId?: string, postId?: string) => void
-    onEditStart: (postId: string, content: string) => void
-    onEditChange: (content: string) => void
-    onEditSave: (postId: string) => Promise<void>
-    onEditCancel: () => void
+    onTogglePlatform: (ps: PlatformStatus) => void
+    onEdit: (postId: string) => void
 }) {
+    const isImage = job.mediaItem.type === 'image' || job.mediaItem.type === 'photo'
+    const hasApprovalStatus = job.post?.status === 'PENDING_APPROVAL' || job.post?.status === 'CLIENT_REVIEW'
+
     return (
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 hover:bg-white/[0.05] transition-all group">
             {/* Media thumbnail + title */}
@@ -440,35 +441,22 @@ function JobCard({
                     <p className="text-xs font-medium truncate">{job.mediaItem.originalName || 'Media'}</p>
                     <p className="text-[10px] text-white/20">{job.channel.displayName}</p>
                 </div>
+                {/* Edit button → navigate to post page */}
+                {job.post && (
+                    <button
+                        onClick={() => onEdit(job.post!.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.08]"
+                        title="Edit post"
+                    >
+                        <ExternalLink className="w-3 h-3" />
+                    </button>
+                )}
             </div>
 
             {/* Caption */}
-            {isEditing ? (
-                <div className="mb-2">
-                    <textarea
-                        value={editContent}
-                        onChange={(e) => onEditChange(e.target.value)}
-                        rows={4}
-                        className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-[11px] text-white/80 resize-none focus:outline-none focus:border-indigo-500/50"
-                    />
-                    <div className="flex gap-1 mt-1">
-                        <button
-                            onClick={() => onEditSave(job.post!.id)}
-                            className="flex-1 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-medium hover:bg-emerald-500/30"
-                        >
-                            ✓ Save
-                        </button>
-                        <button
-                            onClick={onEditCancel}
-                            className="flex-1 py-1 bg-white/5 text-white/40 rounded-lg text-[10px] hover:bg-white/10"
-                        >
-                            ✕ Cancel
-                        </button>
-                    </div>
-                </div>
-            ) : job.post?.content ? (
+            {job.post?.content && (
                 <p className="text-[11px] text-white/40 line-clamp-3 mb-2 leading-relaxed">{job.post.content}</p>
-            ) : null}
+            )}
 
             {/* Error message */}
             {job.errorMessage && (
@@ -478,21 +466,30 @@ function JobCard({
                 </p>
             )}
 
-            {/* Platform SVG badges */}
+            {/* Platform SVG badges — interactive toggle */}
             {job.post?.platformStatuses && job.post.platformStatuses.length > 0 && (
                 <div className="flex items-center gap-1.5 mb-2">
                     {job.post.platformStatuses.map(ps => {
-                        const pCfg = PLATFORM_ICONS[ps.platform.toLowerCase()]
+                        const pKey = ps.platform.toLowerCase()
+                        const pCfg = PLATFORM_ICONS[pKey]
                         if (!pCfg) return null
                         const Icon = pCfg.icon
+                        const isActive = ps.status !== 'skipped'
+                        // TikTok default off for images
+                        const isTikTokImage = isImage && IMAGE_INCOMPATIBLE_PLATFORMS.includes(pKey)
+
                         return (
-                            <div
-                                key={ps.platform}
-                                className={`w-6 h-6 rounded-md bg-white/[0.06] flex items-center justify-center hover:bg-white/[0.12] transition-colors ${pCfg.color}`}
-                                title={ps.platform}
+                            <button
+                                key={ps.id}
+                                onClick={() => onTogglePlatform(ps)}
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive
+                                        ? `${pCfg.activeColor} bg-white/[0.08] shadow-sm`
+                                        : `${pCfg.color} bg-white/[0.02] opacity-40`
+                                    } hover:scale-110`}
+                                title={`${ps.platform} — ${isActive ? 'Đang đăng' : 'Đã tắt'}${isTikTokImage ? ' (ảnh tĩnh)' : ''}`}
                             >
                                 <Icon className="w-3.5 h-3.5" />
-                            </div>
+                            </button>
                         )
                     })}
 
@@ -521,20 +518,9 @@ function JobCard({
                 )}
             </div>
 
-            {/* Action buttons */}
-            <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                {/* Edit */}
-                {job.post && (job.post.status === 'PENDING_APPROVAL' || job.post.status === 'CLIENT_REVIEW') && (
-                    <button
-                        onClick={() => onEditStart(job.post!.id, job.post!.content || '')}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60 text-[10px] transition-all"
-                    >
-                        <Pencil className="h-3 w-3" />
-                        {t('smartflow.queue.editPost')}
-                    </button>
-                )}
-
-                {/* Approve */}
+            {/* Action buttons — always visible for posts with approval status */}
+            <div className={`flex gap-1.5 ${hasApprovalStatus ? '' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                {/* Approve — always show for approval-status posts regardless of channel config */}
                 {job.post && job.post.status === 'PENDING_APPROVAL' && (
                     <button
                         onClick={() => onAction('approve', undefined, job.post!.id)}
@@ -546,8 +532,20 @@ function JobCard({
                     </button>
                 )}
 
-                {/* Reject */}
-                {job.post && (job.post.status === 'PENDING_APPROVAL' || job.post.status === 'CLIENT_REVIEW') && (
+                {/* Client Approve */}
+                {job.post && job.post.status === 'CLIENT_REVIEW' && (
+                    <button
+                        onClick={() => onAction('client_approve', undefined, job.post!.id)}
+                        disabled={actionLoading === job.post.id}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-medium transition-all"
+                    >
+                        {actionLoading === job.post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsUp className="h-3 w-3" />}
+                        {t('smartflow.queue.approve')}
+                    </button>
+                )}
+
+                {/* Reject — always show for approval-status posts */}
+                {job.post && hasApprovalStatus && (
                     <button
                         onClick={() => onAction('reject', undefined, job.post!.id)}
                         disabled={actionLoading === job.post.id}

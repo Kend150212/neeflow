@@ -275,7 +275,10 @@ export async function POST() {
                             create: filteredPlatforms.map(p => ({
                                 platform: p.platform,
                                 accountId: p.accountId,
-                                status: 'pending',
+                                // TikTok doesn't accept static images → default to skipped
+                                status: (p.platform.toLowerCase() === 'tiktok' && (mediaItem.type === 'image' || mediaItem.type === 'photo'))
+                                    ? 'skipped'
+                                    : 'pending',
                             })),
                         } : undefined,
                     },

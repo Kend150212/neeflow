@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
                     select: {
                         id: true, status: true, scheduledAt: true, content: true,
                         metadata: true,
-                        platformStatuses: { select: { platform: true, status: true } },
+                        platformStatuses: { select: { id: true, platform: true, accountId: true, status: true } },
                     },
                 },
             },
@@ -66,11 +66,13 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { action, jobId, jobIds, postId } = body as {
-        action: 'retry' | 'cancel' | 'retry_all_failed' | 'approve' | 'reject' | 'client_approve'
+    const { action, jobId, jobIds, postId, platformStatusId, newStatus } = body as {
+        action: 'retry' | 'cancel' | 'retry_all_failed' | 'approve' | 'reject' | 'client_approve' | 'toggle_platform'
         jobId?: string
         jobIds?: string[]
         postId?: string
+        platformStatusId?: string
+        newStatus?: string
     }
 
     if (action === 'retry' && jobId) {
@@ -135,6 +137,15 @@ export async function POST(req: NextRequest) {
         await prisma.post.update({
             where: { id: postId },
             data: { status: 'REJECTED' },
+        })
+        return NextResponse.json({ success: true })
+    }
+
+    // ─── Toggle platform on/off ──────────────────────────────
+    if (action === 'toggle_platform' && platformStatusId && newStatus) {
+        await prisma.postPlatformStatus.update({
+            where: { id: platformStatusId },
+            data: { status: newStatus }, // 'pending' or 'skipped'
         })
         return NextResponse.json({ success: true })
     }
