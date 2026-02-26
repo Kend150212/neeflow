@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// POST /api/portal/posts/[id]/approve
-// Body: { action: 'APPROVED' | 'REJECTED', comment?: string }
-export async function POST(
+// PATCH /api/portal/posts/[id]/edit
+// Body: { content: string }
+// Client can only edit the text content of a post
+export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
@@ -13,10 +14,10 @@ export async function POST(
     if (session.user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id: postId } = await params
-    const { action, comment } = await req.json()
+    const { content } = await req.json()
 
-    if (!['APPROVED', 'REJECTED'].includes(action)) {
-        return NextResponse.json({ error: 'action must be APPROVED or REJECTED' }, { status: 400 })
+    if (typeof content !== 'string') {
+        return NextResponse.json({ error: 'content must be a string' }, { status: 400 })
     }
 
     // Verify customer has access to this post's channel
@@ -26,34 +27,22 @@ export async function POST(
     })
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
+    // Only allow editing posts that are pending review
+    if (!['PENDING_APPROVAL', 'CLIENT_REVIEW'].includes(post.status)) {
+        return NextResponse.json({ error: 'Can only edit posts pending review' }, { status: 400 })
+    }
+
     const membership = await prisma.channelMember.findUnique({
         where: { userId_channelId: { userId: session.user.id, channelId: post.channelId } },
     })
     if (!membership) return NextResponse.json({ error: 'Not authorized for this channel' }, { status: 403 })
 
-    // Upsert approval record
-    await prisma.postApproval.create({
-        data: {
-            postId,
-            userId: session.user.id,
-            action,
-            comment: comment || null,
-        },
+    // Update content only
+    const updated = await prisma.post.update({
+        where: { id: postId },
+        data: { content },
+        select: { id: true, content: true },
     })
 
-    // Update post status
-    if (action === 'APPROVED') {
-        // Client approve → SCHEDULED (ready to publish)
-        await prisma.post.update({
-            where: { id: postId },
-            data: { status: 'SCHEDULED' },
-        })
-    } else {
-        await prisma.post.update({
-            where: { id: postId },
-            data: { status: 'REJECTED' },
-        })
-    }
-
-    return NextResponse.json({ ok: true, action })
+    return NextResponse.json({ ok: true, post: updated })
 }

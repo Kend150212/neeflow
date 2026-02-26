@@ -12,7 +12,7 @@ import { PlatformIcon } from '@/components/platform-icons'
 interface MediaItem { url: string; thumbnailUrl: string | null; type: string; id?: string }
 interface PostMedia { mediaItem: MediaItem }
 interface Approval { action: string }
-interface PlatformStatus { platform: string; status?: string }
+interface PlatformStatus { id?: string; platform: string; accountId?: string; status?: string }
 interface Post {
     id: string; content: string | null; scheduledAt: string | null; createdAt: string
     status?: string; publishedAt?: string | null
@@ -459,9 +459,9 @@ export default function PortalPage() {
                 </header>
 
                 {activeTab === 'review' ? (
-                    <div className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+                    <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
                         <ReviewTab
-                            posts={filteredPending}
+                            posts={selectedChannel === 'all' ? pendingPosts : pendingPosts.filter(p => p.channel.id === selectedChannel)}
                             comments={comments}
                             setComments={setComments}
                             submitting={submitting}
@@ -470,6 +470,7 @@ export default function PortalPage() {
                             handleAction={handleAction}
                             selectedChannel={selectedChannel}
                             theme={theme}
+                            onRefresh={loadData}
                         />
                     </div>
                 ) : activeTab === 'calendar' ? (
@@ -505,10 +506,11 @@ export default function PortalPage() {
 }
 
 // ─────────────────────────────────────────────────────────
-// Review Tab
+// Review Tab — Kanban Board
 // ─────────────────────────────────────────────────────────
 function ReviewTab({
     posts, comments, setComments, submitting, handleAction, reviewedCount, selectedChannel, theme,
+    onRefresh,
 }: {
     posts: Post[]
     comments: Record<string, string>
@@ -519,15 +521,76 @@ function ReviewTab({
     handleAction: (id: string, action: 'APPROVED' | 'REJECTED') => void
     selectedChannel: string
     theme: Theme
+    onRefresh?: () => void
 }) {
     const c = t(theme)
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [editText, setEditText] = useState('')
+    const [saving, setSaving] = useState(false)
+
+    // Kanban columns
+    const pendingPosts = posts.filter(p => p.status === 'PENDING_APPROVAL' || p.status === 'CLIENT_REVIEW')
+    const scheduledPosts = posts.filter(p => p.status === 'SCHEDULED')
+    const publishedPosts = posts.filter(p => p.status === 'PUBLISHED')
+
+    const handleSaveEdit = async (postId: string) => {
+        setSaving(true)
+        try {
+            const res = await fetch(`/api/portal/posts/${postId}/edit`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: editText }),
+            })
+            if (res.ok) {
+                setEditingId(null)
+                onRefresh?.()
+            }
+        } catch (e) { console.error(e) }
+        setSaving(false)
+    }
+
+    const columns = [
+        {
+            key: 'pending',
+            title: 'Pending Review',
+            icon: '🔍',
+            posts: pendingPosts,
+            gradient: theme === 'dark' ? 'from-amber-500/15 to-amber-600/5' : 'from-amber-50 to-orange-50',
+            border: theme === 'dark' ? 'border-amber-500/20' : 'border-amber-200',
+            headerBg: theme === 'dark' ? 'bg-amber-500/10' : 'bg-amber-50',
+            badge: theme === 'dark' ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700',
+            showActions: true,
+        },
+        {
+            key: 'scheduled',
+            title: 'Approved',
+            icon: '✅',
+            posts: scheduledPosts,
+            gradient: theme === 'dark' ? 'from-emerald-500/15 to-emerald-600/5' : 'from-emerald-50 to-teal-50',
+            border: theme === 'dark' ? 'border-emerald-500/20' : 'border-emerald-200',
+            headerBg: theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50',
+            badge: theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700',
+            showActions: false,
+        },
+        {
+            key: 'published',
+            title: 'Published',
+            icon: '📤',
+            posts: publishedPosts,
+            gradient: theme === 'dark' ? 'from-blue-500/15 to-blue-600/5' : 'from-blue-50 to-indigo-50',
+            border: theme === 'dark' ? 'border-blue-500/20' : 'border-blue-200',
+            headerBg: theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50',
+            badge: theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700',
+            showActions: false,
+        },
+    ]
 
     return (
         <>
-            <div className="mb-6">
-                <h1 className="text-xl font-bold tracking-tight">Pending Review</h1>
+            <div className="mb-5">
+                <h1 className="text-xl font-bold tracking-tight">Content Board</h1>
                 <p className={`${c.textMuted} text-sm mt-1`}>
-                    {posts.length} post{posts.length !== 1 ? 's' : ''} waiting for your approval
+                    {pendingPosts.length} pending
                     {reviewedCount > 0 && <span className="text-emerald-400"> · {reviewedCount} reviewed ✓</span>}
                     {selectedChannel !== 'all' && <span className={c.activeText}> · filtered</span>}
                 </p>
@@ -544,95 +607,146 @@ function ReviewTab({
                 </div>
             )}
 
-            {posts.length === 0 && (
-                <div className="text-center py-20">
-                    <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'} flex items-center justify-center`}>
-                        <svg className={`w-7 h-7 ${c.textMicro}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <h2 className={`text-base font-semibold mb-1 ${c.textSoft}`}>All caught up!</h2>
-                    <p className={`${c.textMuted} text-sm`}>No posts are waiting for your review.</p>
-                </div>
-            )}
-
-            <div className="space-y-4">
-                {posts.map((post) => (
-                    <div key={post.id} className={`${c.card} border ${c.cardBorder} rounded-2xl overflow-hidden ${c.cardHover} transition-colors`}>
-                        <div className="px-4 pt-3.5 pb-2.5 flex items-start justify-between">
-                            <div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                    <span className={`${c.activeText} font-medium text-xs`}>{post.channel.displayName}</span>
-                                </div>
-                                <p className={`${c.textSubtle} text-[11px] mt-0.5 ml-3`}>
-                                    by {post.author?.name || post.author?.email || 'Unknown'}
-                                    {post.scheduledAt && (
-                                        <> · <span className="text-amber-400/60">📅 {new Date(post.scheduledAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></>
-                                    )}
-                                </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {columns.map(col => (
+                    <div key={col.key} className={`rounded-2xl border ${col.border} bg-gradient-to-b ${col.gradient} flex flex-col min-h-[300px]`}>
+                        {/* Column header */}
+                        <div className={`${col.headerBg} rounded-t-2xl px-4 py-3 flex items-center justify-between border-b ${col.border}`}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">{col.icon}</span>
+                                <span className="text-sm font-semibold">{col.title}</span>
                             </div>
-                            <div className="flex gap-1.5 items-center">
-                                {post.platformStatuses.map((ps) => (
-                                    <PlatformIcon key={ps.platform} platform={ps.platform} size="xs" />
-                                ))}
-                            </div>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${col.badge}`}>
+                                {col.posts.length}
+                            </span>
                         </div>
 
-                        {post.media.length > 0 && (
-                            <div className={`grid gap-0.5 ${post.media.length === 1 ? '' : 'grid-cols-2'}`}>
-                                {post.media.slice(0, 4).map((m, i) => (
-                                    <div key={i} className="relative aspect-video bg-black/60 overflow-hidden">
-                                        {m.mediaItem.type === 'video' ? (
-                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/30">
-                                                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                                                    <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                        {/* Column body */}
+                        <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+                            {col.posts.length === 0 ? (
+                                <div className={`flex items-center justify-center h-full min-h-[120px] ${c.textMicro}`}>
+                                    <span className="text-2xl opacity-20">📋</span>
+                                </div>
+                            ) : col.posts.map(post => (
+                                <div key={post.id} className={`${c.card} border ${c.cardBorder} rounded-xl overflow-hidden ${c.cardHover} transition-all group`}>
+                                    {/* Header */}
+                                    <div className="px-3 pt-3 pb-1.5 flex items-start justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                                <span className={`${c.activeText} font-medium text-[11px]`}>{post.channel.displayName}</span>
+                                            </div>
+                                            <p className={`${c.textSubtle} text-[10px] mt-0.5 ml-3`}>
+                                                by {post.author?.name || post.author?.email || 'Unknown'}
+                                                {post.scheduledAt && (
+                                                    <> · <span className="text-amber-400/60">📅 {new Date(post.scheduledAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-1 items-center">
+                                            {post.platformStatuses.map((ps) => (
+                                                <PlatformIcon key={ps.platform} platform={ps.platform} size="xs" />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Media */}
+                                    {post.media.length > 0 && (
+                                        <div className={`grid gap-0.5 ${post.media.length === 1 ? '' : 'grid-cols-2'}`}>
+                                            {post.media.slice(0, 2).map((m, i) => (
+                                                <div key={i} className="relative aspect-video bg-black/60 overflow-hidden">
+                                                    {m.mediaItem.type === 'video' ? (
+                                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/30">
+                                                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                                                <svg className="w-3.5 h-3.5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <Image src={m.mediaItem.thumbnailUrl || m.mediaItem.url} alt="" fill className="object-cover" />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Content — inline editable */}
+                                    <div className="px-3 py-2">
+                                        {editingId === post.id ? (
+                                            <div className="space-y-2">
+                                                <textarea
+                                                    value={editText}
+                                                    onChange={(e) => setEditText(e.target.value)}
+                                                    rows={4}
+                                                    className={`w-full ${c.inputBg} border ${c.inputBorder} rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:border-indigo-500/40 transition-all`}
+                                                    autoFocus
+                                                />
+                                                <div className="flex gap-1.5">
+                                                    <button
+                                                        onClick={() => handleSaveEdit(post.id)}
+                                                        disabled={saving}
+                                                        className="flex-1 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 text-[10px] font-medium hover:bg-indigo-500/30 transition-all disabled:opacity-30"
+                                                    >
+                                                        {saving ? 'Saving...' : 'Save'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditingId(null)}
+                                                        className={`px-3 py-1.5 rounded-lg ${c.hoverBg} ${c.textMuted} text-[10px] transition-all`}
+                                                    >
+                                                        Cancel
+                                                    </button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <Image src={m.mediaItem.thumbnailUrl || m.mediaItem.url} alt="" fill className="object-cover" />
+                                            <p
+                                                className={`${c.textSoft} text-xs leading-relaxed whitespace-pre-wrap line-clamp-4 ${col.showActions ? 'cursor-pointer hover:opacity-70' : ''} transition-opacity`}
+                                                onClick={() => {
+                                                    if (!col.showActions) return
+                                                    setEditingId(post.id)
+                                                    setEditText(post.content || '')
+                                                }}
+                                                title={col.showActions ? 'Click to edit caption' : undefined}
+                                            >
+                                                {post.content || <span className={c.textMicro}>No caption</span>}
+                                            </p>
                                         )}
                                     </div>
-                                ))}
-                            </div>
-                        )}
 
-                        {post.content && (
-                            <div className="px-4 py-3">
-                                <p className={`${c.textSoft} text-sm leading-relaxed whitespace-pre-wrap line-clamp-5`}>{post.content}</p>
-                            </div>
-                        )}
-
-                        <div className="px-4 pb-4 space-y-2.5">
-                            <textarea
-                                value={comments[post.id] || ''}
-                                onChange={(e) => setComments((cc) => ({ ...cc, [post.id]: e.target.value }))}
-                                placeholder="Add feedback (optional)..."
-                                rows={2}
-                                className={`w-full ${c.inputBg} border ${c.inputBorder} rounded-xl px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:border-indigo-500/40 transition-all ${theme === 'dark' ? 'placeholder:text-white/15' : 'placeholder:text-gray-400'}`}
-                            />
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => handleAction(post.id, 'REJECTED')}
-                                    disabled={submitting[post.id]}
-                                    className="flex-1 border border-red-500/30 hover:bg-red-500/10 text-red-400 font-medium py-2 rounded-xl transition-all text-sm disabled:opacity-30 flex items-center justify-center gap-1.5"
-                                >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                    Reject
-                                </button>
-                                <button
-                                    onClick={() => handleAction(post.id, 'APPROVED')}
-                                    disabled={submitting[post.id]}
-                                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium py-2 rounded-xl transition-all text-sm disabled:opacity-30 flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/10"
-                                >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                    </svg>
-                                    Approve
-                                </button>
-                            </div>
+                                    {/* Action buttons — only for pending column */}
+                                    {col.showActions && (
+                                        <div className="px-3 pb-3 space-y-2">
+                                            <textarea
+                                                value={comments[post.id] || ''}
+                                                onChange={(e) => setComments((cc) => ({ ...cc, [post.id]: e.target.value }))}
+                                                placeholder="Add feedback (optional)..."
+                                                rows={1}
+                                                className={`w-full ${c.inputBg} border ${c.inputBorder} rounded-lg px-3 py-2 text-[11px] resize-none focus:outline-none focus:border-indigo-500/40 transition-all ${theme === 'dark' ? 'placeholder:text-white/15' : 'placeholder:text-gray-400'}`}
+                                            />
+                                            <div className="flex gap-1.5">
+                                                <button
+                                                    onClick={() => handleAction(post.id, 'REJECTED')}
+                                                    disabled={submitting[post.id]}
+                                                    className="flex-1 border border-red-500/30 hover:bg-red-500/10 text-red-400 font-medium py-1.5 rounded-lg transition-all text-[11px] disabled:opacity-30 flex items-center justify-center gap-1"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                    Reject
+                                                </button>
+                                                <button
+                                                    onClick={() => handleAction(post.id, 'APPROVED')}
+                                                    disabled={submitting[post.id]}
+                                                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium py-1.5 rounded-lg transition-all text-[11px] disabled:opacity-30 flex items-center justify-center gap-1 shadow-lg shadow-emerald-500/10"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                                    </svg>
+                                                    Approve
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 ))}
