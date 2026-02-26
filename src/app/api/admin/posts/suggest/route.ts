@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { UserRole } from '@prisma/client'
-import { decrypt } from '@/lib/encryption'
-import { callAI, getDefaultModel } from '@/lib/ai-caller'
-import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { callAI } from '@/lib/ai-caller'
+import { resolveTextAIKey } from '@/lib/resolve-ai-key'
+import { incrementTextUsage } from '@/lib/ai-quota'
 
 // POST /api/admin/posts/suggest — AI-generate topic suggestions for a channel
 export async function POST(req: NextRequest) {
@@ -40,35 +40,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
     }
 
-    // ── Resolve AI provider/key ──
+    // ── Quota-aware key resolution ──
     const providerToUse = channel.defaultAiProvider
-    let apiKey: string
-    let providerName: string
-    let config: Record<string, string> = {}
-    let baseUrl: string | undefined | null
-
-    const ownerKey = await getChannelOwnerKey(channelId, providerToUse || null)
-
-    if (!ownerKey.error) {
-        apiKey = ownerKey.apiKey!
-        providerName = ownerKey.provider!
-    } else if (session.user.role === 'ADMIN') {
-        const aiIntegration = await prisma.apiIntegration.findFirst({
-            where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-            orderBy: { provider: 'asc' },
-        })
-        if (!aiIntegration?.apiKeyEncrypted) {
-            return NextResponse.json({ error: 'No AI provider configured' }, { status: 400 })
-        }
-        apiKey = decrypt(aiIntegration.apiKeyEncrypted)
-        providerName = aiIntegration.provider
-        config = (aiIntegration.config as Record<string, string>) || {}
-        baseUrl = aiIntegration.baseUrl
-    } else {
-        return NextResponse.json({ error: 'No AI API key found' }, { status: 400 })
+    const keyResult = await resolveTextAIKey(channelId, providerToUse || null)
+    if (!keyResult.ok) {
+        return NextResponse.json({ error: keyResult.data.error, errorType: keyResult.data.errorType }, { status: keyResult.status })
     }
-
-    const model = ownerKey.model || channel.defaultAiModel || getDefaultModel(providerName, config)
+    const { apiKey, provider: providerName, model, usingPlatformKey, ownerId, integrationId } = keyResult.data
+    const baseUrl = keyResult.data.baseUrl
 
     // ── Build rich channel context ──
     const langMap: Record<string, string> = { vi: 'Vietnamese', en: 'English', fr: 'French', de: 'German', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', es: 'Spanish' }

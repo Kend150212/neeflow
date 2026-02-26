@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/encryption'
-import { callAI, getDefaultModel } from '@/lib/ai-caller'
-import { getChannelOwnerKey } from '@/lib/channel-owner-key'
-import { checkTextQuota, incrementTextUsage } from '@/lib/ai-quota'
+import { callAI } from '@/lib/ai-caller'
+import { resolveTextAIKey } from '@/lib/resolve-ai-key'
+import { incrementTextUsage } from '@/lib/ai-quota'
 
 // POST /api/admin/channels/[id]/analyze — AI analysis of channel
 // API key priority:
@@ -31,52 +30,12 @@ export async function POST(
         return NextResponse.json({ error: 'Channel name and description are required' }, { status: 400 })
     }
 
-    // ─── 1. Try channel owner's own key ───────────────────────────────────
-    const ownerKey = await getChannelOwnerKey(channelId, requestedProvider)
-    let apiKey: string
-    let provider: string
-    let model: string
-    let usingByok = false
-    let adminIntegrationId: string | null = null
-
-    if (ownerKey.apiKey) {
-        apiKey = ownerKey.apiKey
-        provider = ownerKey.provider!
-        model = requestedModel || ownerKey.model || getDefaultModel(provider, {})
-        usingByok = true
-    } else {
-        // ─── 2. Fall back to admin's shared key, check quota first ───────
-        const ownerId = ownerKey.ownerId ?? session.user.id
-        const quota = await checkTextQuota(ownerId, false)
-        if (!quota.allowed) {
-            return NextResponse.json({ error: quota.reason }, { status: 429 })
-        }
-
-        let aiIntegration = null
-        if (requestedProvider) {
-            aiIntegration = await prisma.apiIntegration.findFirst({
-                where: { provider: requestedProvider, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-            })
-        }
-        if (!aiIntegration) {
-            aiIntegration = await prisma.apiIntegration.findFirst({
-                where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-                orderBy: { provider: 'asc' },
-            })
-        }
-        if (!aiIntegration?.apiKeyEncrypted) {
-            return NextResponse.json(
-                { error: 'No AI key available. Please configure an AI API key in your AI API Keys page (/dashboard/api-keys) or ask your admin to set up a shared AI integration.' },
-                { status: 400 }
-            )
-        }
-
-        apiKey = decrypt(aiIntegration.apiKeyEncrypted)
-        provider = aiIntegration.provider
-        const config = (aiIntegration.config as Record<string, string>) || {}
-        model = requestedModel || getDefaultModel(provider, config)
-        adminIntegrationId = aiIntegration.id
+    // ─── Quota-aware key resolution ───
+    const keyResult = await resolveTextAIKey(channelId, requestedProvider, requestedModel)
+    if (!keyResult.ok) {
+        return NextResponse.json({ error: keyResult.data.error, errorType: keyResult.data.errorType }, { status: keyResult.status })
     }
+    const { apiKey, provider, model, usingPlatformKey, ownerId, integrationId } = keyResult.data
 
     const langLabel = language === 'vi' ? 'Vietnamese' : language === 'fr' ? 'French' : language === 'de' ? 'German' : language === 'ja' ? 'Japanese' : language === 'ko' ? 'Korean' : language === 'zh' ? 'Chinese' : language === 'es' ? 'Spanish' : 'English'
 
@@ -155,15 +114,11 @@ Requirements:
         const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         const analysis = JSON.parse(cleaned)
 
-        // Track usage
-        if (adminIntegrationId) {
-            const ownerId = ownerKey.ownerId ?? session.user.id
+        // Track usage when using platform key
+        if (usingPlatformKey && ownerId) {
             await Promise.all([
-                prisma.apiIntegration.update({
-                    where: { id: adminIntegrationId },
-                    data: { usageCount: { increment: 1 } },
-                }),
-                incrementTextUsage(ownerId, usingByok),
+                incrementTextUsage(ownerId, false),
+                integrationId ? prisma.apiIntegration.update({ where: { id: integrationId }, data: { usageCount: { increment: 1 } } }) : Promise.resolve(),
             ])
         }
 

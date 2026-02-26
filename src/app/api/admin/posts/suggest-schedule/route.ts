@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/encryption'
-import { callAI, getDefaultModel } from '@/lib/ai-caller'
-import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { callAI } from '@/lib/ai-caller'
+import { resolveTextAIKey } from '@/lib/resolve-ai-key'
 
 // POST /api/admin/posts/suggest-schedule — AI-suggest optimal posting times
 export async function POST(req: NextRequest) {
@@ -27,51 +26,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
     }
 
-    // ─── Key resolution: same pattern as generate route ───
+    // ─── Quota-aware key resolution ───
     const providerToUse = channel.defaultAiProvider
-    let apiKey: string
-    let providerName: string
-    let config: Record<string, string> = {}
-    let baseUrl: string | undefined | null
-
-    // 1. Try channel owner's BYOK key first
-    const ownerKey = await getChannelOwnerKey(channelId, providerToUse || null)
-
-    if (!ownerKey.error) {
-        apiKey = ownerKey.apiKey!
-        providerName = ownerKey.provider!
-    } else if (session.user.role === 'ADMIN') {
-        // 2. Admin fallback: global API Hub
-        let aiIntegration
-        if (providerToUse) {
-            aiIntegration = await prisma.apiIntegration.findFirst({
-                where: { provider: providerToUse, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-            })
-        }
-        if (!aiIntegration) {
-            aiIntegration = await prisma.apiIntegration.findFirst({
-                where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-                orderBy: { provider: 'asc' },
-            })
-        }
-        if (!aiIntegration?.apiKeyEncrypted) {
-            return NextResponse.json(
-                { error: 'No AI provider configured. Set up an AI API key in API Hub first.' },
-                { status: 400 }
-            )
-        }
-        apiKey = decrypt(aiIntegration.apiKeyEncrypted)
-        providerName = aiIntegration.provider
-        config = (aiIntegration.config as Record<string, string>) || {}
-        baseUrl = aiIntegration.baseUrl
-    } else {
-        return NextResponse.json(
-            { error: ownerKey.error ?? 'No API key found. Please ask the channel owner to add an AI API key.' },
-            { status: 400 }
-        )
+    const keyResult = await resolveTextAIKey(channelId, providerToUse || null)
+    if (!keyResult.ok) {
+        return NextResponse.json({ error: keyResult.data.error, errorType: keyResult.data.errorType }, { status: keyResult.status })
     }
-
-    const model = ownerKey.model || channel.defaultAiModel || getDefaultModel(providerName, config)
+    const { apiKey, provider: providerName, model } = keyResult.data
+    const baseUrl = keyResult.data.baseUrl
 
     const langMap: Record<string, string> = {
         vi: 'Vietnamese', fr: 'French', de: 'German', ja: 'Japanese',
@@ -166,7 +128,7 @@ Respond with ONLY this JSON (no markdown, no backticks):
             model,
             systemPrompt,
             userPrompt,
-            baseUrl || (config as Record<string, string>).baseUrl || null,
+            baseUrl || null,
         )
 
         // Parse JSON from response

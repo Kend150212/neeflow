@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/encryption'
-import { callAI, getDefaultModel } from '@/lib/ai-caller'
+import { callAI } from '@/lib/ai-caller'
+import { resolveTextAIKey } from '@/lib/resolve-ai-key'
 
 // POST /api/admin/posts/customize-content
 // AI adapts master content for each selected platform's best practices
@@ -34,79 +34,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
     }
 
-    // ── Resolve AI provider (same logic as generate-metadata) ──
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const channelData = channel as any
+    // ── Quota-aware key resolution ──
     const providerToUse = channel.defaultAiProvider
-    const channelAiKey = channelData.aiApiKeyEncrypted
-    const mustUseOwnKey = channelData.requireOwnApiKey === true
-    let apiKey: string
-    let providerName: string
-    let config: Record<string, string> = {}
-    let baseUrl: string | undefined | null
-
-    let userApiKey = providerToUse
-        ? await prisma.userApiKey.findFirst({
-            where: { userId: session.user.id!, provider: providerToUse, isActive: true },
-        })
-        : null
-
-    if (!userApiKey) {
-        userApiKey = await prisma.userApiKey.findFirst({
-            where: { userId: session.user.id!, isDefault: true, isActive: true },
-        })
+    const keyResult = await resolveTextAIKey(channelId, providerToUse || null)
+    if (!keyResult.ok) {
+        return NextResponse.json({ error: keyResult.data.error, errorType: keyResult.data.errorType }, { status: keyResult.status })
     }
-    if (!userApiKey) {
-        userApiKey = await prisma.userApiKey.findFirst({
-            where: { userId: session.user.id!, isActive: true },
-            orderBy: { provider: 'asc' },
-        })
-    }
-
-    if (userApiKey) {
-        apiKey = decrypt(userApiKey.apiKeyEncrypted)
-        providerName = userApiKey.provider
-    } else if (channelAiKey) {
-        apiKey = decrypt(channelAiKey)
-        providerName = providerToUse || 'gemini'
-    } else if (mustUseOwnKey) {
-        return NextResponse.json(
-            { error: 'No API key found. Please set up your AI API Key.' },
-            { status: 400 }
-        )
-    } else if (session.user.role === 'ADMIN') {
-        let aiIntegration
-        if (providerToUse) {
-            aiIntegration = await prisma.apiIntegration.findFirst({
-                where: { provider: providerToUse, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-            })
-        }
-        if (!aiIntegration) {
-            aiIntegration = await prisma.apiIntegration.findFirst({
-                where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-                orderBy: { provider: 'asc' },
-            })
-        }
-
-        if (!aiIntegration || !aiIntegration.apiKeyEncrypted) {
-            return NextResponse.json(
-                { error: 'No AI provider configured.' },
-                { status: 400 }
-            )
-        }
-
-        apiKey = decrypt(aiIntegration.apiKeyEncrypted)
-        providerName = aiIntegration.provider
-        config = (aiIntegration.config as Record<string, string>) || {}
-        baseUrl = aiIntegration.baseUrl
-    } else {
-        return NextResponse.json(
-            { error: 'No AI API key found.' },
-            { status: 400 }
-        )
-    }
-
-    const model = userApiKey?.defaultModel || channel.defaultAiModel || getDefaultModel(providerName, config)
+    const { apiKey, provider: providerName, model } = keyResult.data
+    const baseUrl = keyResult.data.baseUrl
 
     // Detect language
     const langLabel = channel.language || 'Vietnamese'

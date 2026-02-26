@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkImageQuota, incrementImageUsage } from '@/lib/ai-quota'
-import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { incrementImageUsage } from '@/lib/ai-quota'
+import { resolveImageAIKey } from '@/lib/resolve-ai-key'
 import { randomUUID } from 'crypto'
 import {
     getGDriveAccessToken,
@@ -50,49 +50,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
     }
 
-    // ─── Resolve API key: use Channel Owner's BYOK ────────────────────
-    // Staff and managers in a channel share the Owner's API key.
-    // No admin API Hub fallback — the owner must configure their own key.
+    // ─── Quota-aware image key resolution ────────────────────
     const preferredProvider = requestedProvider || channel.defaultImageProvider || null
-
-    const ownerKey = await getChannelOwnerKey(channelId, preferredProvider)
-
-    if (ownerKey.error) {
+    const keyResult = await resolveImageAIKey(channelId, preferredProvider, requestedModel)
+    if (!keyResult.ok) {
         return NextResponse.json(
-            {
-                error: ownerKey.error,
-                errorType: ownerKey.ownerHasNoKey ? 'no_api_key' : 'no_owner',
-            },
-            { status: 403 }
+            { error: keyResult.data.error, errorType: keyResult.data.errorType, used: keyResult.data.used, limit: keyResult.data.limit },
+            { status: keyResult.status }
         )
     }
-
-    // Check quota against the OWNER's plan (not the current user's)
-    const ownerId = ownerKey.ownerId!
-    const quota = await checkImageQuota(ownerId, true /* already resolved from owner */)
-    if (!quota.allowed) {
-        return NextResponse.json(
-            {
-                error: quota.reason,
-                errorType: 'quota_exceeded',
-                used: quota.used,
-                limit: quota.limit,
-            },
-            { status: 403 }
-        )
-    }
-
-    const resolvedProvider = ownerKey.provider!
-    const apiKey = ownerKey.apiKey!
-    const imageModel = requestedModel || ownerKey.model || channel.defaultImageModel || null
-
-
-    if (!resolvedProvider || !apiKey) {
-        return NextResponse.json(
-            { error: 'No image AI provider configured. Add a Runware, OpenAI, or Gemini API key in Settings → AI API Keys, or upgrade your plan to use the platform\'s Runware API.' },
-            { status: 400 }
-        )
-    }
+    const { apiKey, provider: resolvedProvider, usingPlatformKey, ownerId } = keyResult.data
+    const imageModel = requestedModel || keyResult.data.model || channel.defaultImageModel || null
 
     // ─── Generate image via provider ──────────────────
     let imageUrl: string
@@ -254,8 +222,10 @@ export async function POST(req: NextRequest) {
         const msg = error instanceof Error ? error.message : 'Failed to process image'
         return NextResponse.json({ error: msg }, { status: 500 })
     } finally {
-        // Increment quota usage against the owner's account (after successful upload)
-        await incrementImageUsage(ownerId).catch(() => { })
+        // Increment quota usage against the owner's account (only when using platform key)
+        if (usingPlatformKey) {
+            await incrementImageUsage(ownerId!).catch(() => { })
+        }
         // Always clean up temp file
         fs.unlink(tmpPath, () => { })
     }

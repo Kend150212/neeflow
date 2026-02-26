@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/encryption'
-import { callAI, getDefaultModel } from '@/lib/ai-caller'
-import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { callAI } from '@/lib/ai-caller'
+import { resolveTextAIKey } from '@/lib/resolve-ai-key'
+import { incrementTextUsage } from '@/lib/ai-quota'
 
 // ─── URL detection & article scraping ────────────────────────────────
 const URL_REGEX = /https?:\/\/[^\s<>"']+/gi
@@ -103,57 +103,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
     }
 
-    // Find AI provider
+    // ─── Quota-aware key resolution ───────────────────────────────
     const providerToUse = requestedProvider || channel.defaultAiProvider
-
-    let apiKey: string
-    let providerName: string
-    let config: Record<string, string> = {}
-    let baseUrl: string | undefined | null
-    let integrationId: string | null = null
-
-    // ─── Key resolution: Channel Owner's BYOK (staff/manager share owner key) ───
-    const ownerKey = await getChannelOwnerKey(channelId, providerToUse || null)
-
-    if (!ownerKey.error) {
-        // Owner has a key — use it
-        apiKey = ownerKey.apiKey!
-        providerName = ownerKey.provider!
-    } else if (session.user.role === 'ADMIN') {
-        // Admin users only: fall back to global API Hub
-        let aiIntegration
-        if (providerToUse) {
-            aiIntegration = await prisma.apiIntegration.findFirst({
-                where: { provider: providerToUse, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-            })
-        }
-        if (!aiIntegration) {
-            aiIntegration = await prisma.apiIntegration.findFirst({
-                where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
-                orderBy: { provider: 'asc' },
-            })
-        }
-        if (!aiIntegration?.apiKeyEncrypted) {
-            return NextResponse.json(
-                { error: 'No AI provider configured in API Hub. Set up a provider in the Admin API Hub.' },
-                { status: 400 }
-            )
-        }
-        apiKey = decrypt(aiIntegration.apiKeyEncrypted)
-        providerName = aiIntegration.provider
-        config = (aiIntegration.config as Record<string, string>) || {}
-        baseUrl = aiIntegration.baseUrl
-        integrationId = aiIntegration.id
-    } else {
-        // No key found — tell user the owner must configure a key
-        return NextResponse.json(
-            { error: ownerKey.error ?? 'No API key found. Please ask the channel owner to add an AI API key in Settings → AI API Keys.' },
-            { status: 400 }
-        )
+    const keyResult = await resolveTextAIKey(channelId, providerToUse || null, requestedModel)
+    if (!keyResult.ok) {
+        return NextResponse.json({ error: keyResult.data.error, errorType: keyResult.data.errorType }, { status: keyResult.status })
     }
-
-
-    const model = requestedModel || ownerKey.model || channel.defaultAiModel || getDefaultModel(providerName, config)
+    const { apiKey, provider: providerName, model, usingPlatformKey, ownerId, integrationId } = keyResult.data
+    const baseUrl = keyResult.data.baseUrl
 
     // Build context from knowledge base
     const kbContext = channel.knowledgeBase
@@ -422,12 +379,12 @@ ${sourceUrlText}`
             parsed = { content: result, hashtags: [], hook: '' }
         }
 
-        // Increment usage (only if using global integration)
-        if (integrationId) {
-            await prisma.apiIntegration.update({
-                where: { id: integrationId },
-                data: { usageCount: { increment: 1 } },
-            })
+        // Increment usage: count towards quota when using platform key
+        if (usingPlatformKey && ownerId) {
+            await Promise.all([
+                incrementTextUsage(ownerId, false),
+                integrationId ? prisma.apiIntegration.update({ where: { id: integrationId }, data: { usageCount: { increment: 1 } } }) : Promise.resolve(),
+            ])
         }
 
         // Build fallback main content from first platform if contentPerPlatform exists

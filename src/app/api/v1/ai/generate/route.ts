@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateApiKey, apiSuccess } from '@/lib/api-auth'
 import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/encryption'
-import { callAI, getDefaultModel } from '@/lib/ai-caller'
-import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { callAI } from '@/lib/ai-caller'
+import { resolveTextAIKey } from '@/lib/resolve-ai-key'
+import { incrementTextUsage } from '@/lib/ai-quota'
 
 // ─── URL detection ─────────────────────────────────────────────
 const URL_REGEX = /https?:\/\/[^\s<>"']+/gi
@@ -51,41 +51,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: { code: 'NOT_FOUND', message: 'Channel not found' } }, { status: 404 })
     }
 
-    // Resolve AI provider key (same logic as admin/generate)
+    // ─── Quota-aware key resolution ───
     const providerToUse = requestedProvider || channel.defaultAiProvider
-    let apiKey: string
-    let providerName: string
-    let config: Record<string, string> = {}
-    let baseUrl: string | undefined | null
-
-    const ownerKey = await getChannelOwnerKey(channelId, providerToUse || null)
-
-    if (!ownerKey.error) {
-        apiKey = ownerKey.apiKey!
-        providerName = ownerKey.provider!
-    } else if (user.role === 'ADMIN') {
-        const aiIntegration = providerToUse
-            ? await prisma.apiIntegration.findFirst({ where: { provider: providerToUse, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } } })
-            : await prisma.apiIntegration.findFirst({ where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } }, orderBy: { provider: 'asc' } })
-
-        if (!aiIntegration?.apiKeyEncrypted) {
-            return NextResponse.json(
-                { success: false, error: { code: 'NO_AI_PROVIDER', message: 'No AI provider configured' } },
-                { status: 400 },
-            )
-        }
-        apiKey = decrypt(aiIntegration.apiKeyEncrypted)
-        providerName = aiIntegration.provider
-        config = (aiIntegration.config as Record<string, string>) || {}
-        baseUrl = aiIntegration.baseUrl
-    } else {
+    const keyResult = await resolveTextAIKey(channelId, providerToUse || null, requestedModel)
+    if (!keyResult.ok) {
         return NextResponse.json(
-            { success: false, error: { code: 'NO_AI_KEY', message: ownerKey.error || 'No AI API key found' } },
-            { status: 400 },
+            { success: false, error: { code: 'AI_KEY_ERROR', message: keyResult.data.error } },
+            { status: keyResult.status },
         )
     }
-
-    const model = requestedModel || ownerKey.model || channel.defaultAiModel || getDefaultModel(providerName, config)
+    const { apiKey, provider: providerName, model, usingPlatformKey, ownerId, integrationId } = keyResult.data
+    const baseUrl = keyResult.data.baseUrl
 
     // Build context
     const kbContext = channel.knowledgeBase.map(kb => `[${kb.title}]: ${kb.content.slice(0, 500)}`).join('\n')
@@ -161,6 +137,14 @@ Rules:
             parsed = JSON.parse(cleaned)
         } catch {
             parsed = { content: result, contentPerPlatform: {}, hashtags: [], hook: '' }
+        }
+
+        // Increment usage when using platform key
+        if (usingPlatformKey && ownerId) {
+            await Promise.all([
+                incrementTextUsage(ownerId, false),
+                integrationId ? prisma.apiIntegration.update({ where: { id: integrationId }, data: { usageCount: { increment: 1 } } }) : Promise.resolve(),
+            ])
         }
 
         return apiSuccess({
