@@ -71,11 +71,14 @@ export async function POST() {
                 let provider: string
                 let model: string
 
+                console.log(`[Pipeline] Job ${job.id}: channelProvider=${channel.defaultAiProvider}, uploadedBy=${job.uploadedBy}, hasChannelKey=${!!channel.aiApiKeyEncrypted}`)
+
                 if (channel.aiApiKeyEncrypted) {
                     // 1) Channel has its own AI key
                     apiKey = decrypt(channel.aiApiKeyEncrypted)
                     provider = channel.defaultAiProvider || 'gemini'
                     model = channel.defaultAiModel || 'gemini-2.0-flash'
+                    console.log(`[Pipeline] Using channel's own AI key, provider=${provider}`)
                 } else {
                     // 2) Try uploader's personal API key
                     let userApiKey = null
@@ -84,24 +87,37 @@ export async function POST() {
                             where: { email: job.uploadedBy },
                             select: { id: true },
                         })
+                        console.log(`[Pipeline] Uploader lookup: email=${job.uploadedBy}, found=${!!uploader}, userId=${uploader?.id}`)
                         if (uploader) {
+                            // List all their keys for debugging
+                            const allKeys = await prisma.userApiKey.findMany({
+                                where: { userId: uploader.id },
+                                select: { provider: true, isActive: true, isDefault: true },
+                            })
+                            console.log(`[Pipeline] Uploader's API keys:`, JSON.stringify(allKeys))
+
                             if (channel.defaultAiProvider) {
                                 userApiKey = await prisma.userApiKey.findFirst({
                                     where: { userId: uploader.id, provider: channel.defaultAiProvider, isActive: true },
                                 })
+                                console.log(`[Pipeline] Provider match (${channel.defaultAiProvider}): found=${!!userApiKey}`)
                             }
                             if (!userApiKey) {
                                 userApiKey = await prisma.userApiKey.findFirst({
                                     where: { userId: uploader.id, isDefault: true, isActive: true },
                                 })
+                                console.log(`[Pipeline] Default key: found=${!!userApiKey}`)
                             }
                             if (!userApiKey) {
                                 userApiKey = await prisma.userApiKey.findFirst({
                                     where: { userId: uploader.id, isActive: true },
                                     orderBy: { provider: 'asc' },
                                 })
+                                console.log(`[Pipeline] Any active key: found=${!!userApiKey}`)
                             }
                         }
+                    } else {
+                        console.log(`[Pipeline] No uploadedBy on job`)
                     }
 
                     // 3) Try channel admin's API key
@@ -110,7 +126,14 @@ export async function POST() {
                             where: { channelId: channel.id, role: 'ADMIN' },
                             select: { userId: true },
                         })
+                        console.log(`[Pipeline] Admin lookup: channelId=${channel.id}, found=${!!admin}, adminUserId=${admin?.userId}`)
                         if (admin) {
+                            const adminKeys = await prisma.userApiKey.findMany({
+                                where: { userId: admin.userId },
+                                select: { provider: true, isActive: true, isDefault: true },
+                            })
+                            console.log(`[Pipeline] Admin's API keys:`, JSON.stringify(adminKeys))
+
                             if (channel.defaultAiProvider) {
                                 userApiKey = await prisma.userApiKey.findFirst({
                                     where: { userId: admin.userId, provider: channel.defaultAiProvider, isActive: true },
@@ -137,6 +160,7 @@ export async function POST() {
                     apiKey = decrypt(userApiKey.apiKeyEncrypted)
                     provider = userApiKey.provider
                     model = channel.defaultAiModel || userApiKey.defaultModel || 'gemini-2.0-flash'
+                    console.log(`[Pipeline] ✅ Using key: provider=${provider}, model=${model}`)
                 }
 
                 const lang = channel.language || 'vi'
