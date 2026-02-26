@@ -309,12 +309,12 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 body: JSON.stringify(config),
             })
             if (res.ok) {
-                toast.success('Bot settings saved!')
+                toast.success(t('chatbot.toasts.saved'))
             } else {
-                toast.error('Failed to save bot settings')
+                toast.error(t('chatbot.toasts.saveFailed'))
             }
         } catch {
-            toast.error('Network error')
+            toast.error(t('chatbot.toasts.networkError'))
         } finally {
             setSaving(false)
         }
@@ -352,10 +352,10 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 toast.success(`Training data added: ${title}`)
                 refreshKnowledgeEntries()
             } else {
-                toast.error('Failed to add training data')
+                toast.error(t('chatbot.toasts.trainingAddFailed'))
             }
         } catch {
-            toast.error('Network error')
+            toast.error(t('chatbot.toasts.networkError'))
         }
     }
 
@@ -366,12 +366,12 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
             })
             if (res.ok) {
                 setKnowledgeEntries(prev => prev.filter(e => e.id !== entryId))
-                toast.success('Training entry deleted')
+                toast.success(t('chatbot.toasts.trainingDeleted'))
             } else {
-                toast.error('Failed to delete')
+                toast.error(t('chatbot.toasts.trainingDeleteFailed'))
             }
         } catch {
-            toast.error('Network error')
+            toast.error(t('chatbot.toasts.networkError'))
         }
     }
 
@@ -471,7 +471,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                             })
                                             toast.success(v ? `Bot enabled for ${page.accountName}` : `Bot disabled for ${page.accountName}`)
                                         } catch {
-                                            toast.error('Failed to update')
+                                            toast.error(t('chatbot.toasts.updateFailed'))
                                             setPageAccounts(prev => prev.map(p =>
                                                 p.id === page.id ? { ...p, botEnabled: !v } : p
                                             ))
@@ -519,7 +519,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             <Input
                                 value={config.botName}
                                 onChange={e => update('botName', e.target.value)}
-                                placeholder="AI Assistant"
+                                placeholder={t('chatbot.botNamePlaceholder')}
                                 className="mt-1"
                             />
                         </div>
@@ -637,13 +637,13 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                     {/* Left Sidebar Menu */}
                     <div className="w-44 shrink-0 space-y-1">
                         {[
-                            { key: 'saved' as const, icon: Check, label: 'Saved Data', color: 'text-green-500', count: knowledgeEntries.length },
-                            { key: 'text' as const, icon: FileText, label: 'Text', color: 'text-blue-500' },
-                            { key: 'url' as const, icon: LinkIcon, label: 'URL', color: 'text-green-500' },
-                            { key: 'sheet' as const, icon: FileSpreadsheet, label: 'Google Sheet', color: 'text-emerald-500' },
-                            { key: 'images' as const, icon: ImageIcon, label: 'Images', color: 'text-orange-500' },
-                            { key: 'video' as const, icon: Video, label: 'Video', color: 'text-red-500' },
-                            { key: 'qa' as const, icon: HelpCircle, label: 'Q&A Pairs', color: 'text-indigo-500' },
+                            { key: 'saved' as const, icon: Check, label: t('chatbot.learning.savedTrainingData'), color: 'text-green-500', count: knowledgeEntries.length },
+                            { key: 'text' as const, icon: FileText, label: t('chatbot.trainingTabs.text'), color: 'text-blue-500' },
+                            { key: 'url' as const, icon: LinkIcon, label: t('chatbot.trainingTabs.url'), color: 'text-green-500' },
+                            { key: 'sheet' as const, icon: FileSpreadsheet, label: t('chatbot.trainingTabs.googleSheet'), color: 'text-emerald-500' },
+                            { key: 'images' as const, icon: ImageIcon, label: t('chatbot.trainingTabs.images'), color: 'text-orange-500' },
+                            { key: 'video' as const, icon: Video, label: t('chatbot.trainingTabs.video'), color: 'text-red-500' },
+                            { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
                         ].map(item => (
                             <button
                                 key={item.key}
@@ -671,7 +671,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 <CardHeader className="py-3 px-4">
                                     <CardTitle className="text-sm flex items-center gap-2">
                                         <Check className="h-4 w-4 text-green-500" />
-                                        Saved Training Data
+                                        {t('chatbot.learning.savedTrainingData')}
                                         <Badge variant="secondary" className="text-[9px]">{knowledgeEntries.length}</Badge>
                                     </CardTitle>
                                 </CardHeader>
@@ -1096,10 +1096,10 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                                         }
                                                     } else {
                                                         const err = await res.json().catch(() => ({}))
-                                                        toast.error(err.error || 'Failed to generate Q&A')
+                                                        toast.error(err.error || t('chatbot.toasts.networkError'))
                                                     }
                                                 } catch {
-                                                    toast.error('Network error')
+                                                    toast.error(t('chatbot.toasts.networkError'))
                                                 }
                                                 setGeneratingQa(false)
                                             }}
@@ -1301,16 +1301,16 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                     {config.workingHoursOnly && (
                         <>
                             <div className="space-y-2">
-                                <Label className="text-xs font-medium">Weekly Schedule</Label>
+                                <Label className="text-xs font-medium">{t('chatbot.learning.weeklySchedule')}</Label>
                                 <div className="space-y-1">
                                     {[
-                                        { key: 'mon', label: 'Monday' },
-                                        { key: 'tue', label: 'Tuesday' },
-                                        { key: 'wed', label: 'Wednesday' },
-                                        { key: 'thu', label: 'Thursday' },
-                                        { key: 'fri', label: 'Friday' },
-                                        { key: 'sat', label: 'Saturday' },
-                                        { key: 'sun', label: 'Sunday' },
+                                        { key: 'mon', label: t('chatbot.days.monday') },
+                                        { key: 'tue', label: t('chatbot.days.tuesday') },
+                                        { key: 'wed', label: t('chatbot.days.wednesday') },
+                                        { key: 'thu', label: t('chatbot.days.thursday') },
+                                        { key: 'fri', label: t('chatbot.days.friday') },
+                                        { key: 'sat', label: t('chatbot.days.saturday') },
+                                        { key: 'sun', label: t('chatbot.days.sunday') },
                                     ].map(day => {
                                         const dayConfig = config.workingDays[day.key] || { enabled: true, start: '08:00', end: '22:00' }
                                         return (
@@ -1346,7 +1346,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[10px] text-muted-foreground ml-auto italic">Bot off</span>
+                                                    <span className="text-[10px] text-muted-foreground ml-auto italic">{t('chatbot.learning.botOff')}</span>
                                                 )}
                                             </div>
                                         )
@@ -1400,7 +1400,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-amber-500" />
-                                    Comment Reply Delay
+                                    {t('chatbot.learning.commentReplyDelay')}
                                 </CardTitle>
                                 <CardDescription className="text-[11px]">
                                     Bot sẽ đợi ngẫu nhiên trong khoảng thời gian này trước khi trả lời comment, giúp phản hồi tự nhiên hơn.
@@ -1560,7 +1560,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 <Button
                                     size="sm" variant="outline"
                                     onClick={() => setChatMessages([])}
-                                    title="Clear chat"
+                                    title={t('chatbot.learning.clearChat')}
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -1621,7 +1621,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                             } catch { /* ignore */ }
                                         }}
                                     >
-                                        <BarChart3 className="h-4 w-4 mr-1" /> Load Existing Report
+                                        <BarChart3 className="h-4 w-4 mr-1" /> {t('chatbot.learning.loadReport')}
                                     </Button>
                                 )}
                             </div>
@@ -1636,19 +1636,19 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 <Card className="bg-blue-50 dark:bg-blue-950/30">
                                     <CardContent className="py-3 text-center">
                                         <p className="text-2xl font-bold text-blue-600">{learningData.totalConversationsAnalyzed || 0}</p>
-                                        <p className="text-[10px] text-muted-foreground">Conversations Analyzed</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('chatbot.learning.conversationsAnalyzed')}</p>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-green-50 dark:bg-green-950/30">
                                     <CardContent className="py-3 text-center">
                                         <p className="text-2xl font-bold text-green-600">{learningData.totalAgentMessages || 0}</p>
-                                        <p className="text-[10px] text-muted-foreground">Agent Messages</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('chatbot.learning.agentMessages')}</p>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-purple-50 dark:bg-purple-950/30">
                                     <CardContent className="py-3 text-center">
                                         <p className="text-2xl font-bold text-purple-600">{learningData.totalPairsAnalyzed || 0}</p>
-                                        <p className="text-[10px] text-muted-foreground">Q&A Pairs Learned</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('chatbot.learning.qaPairsLearned')}</p>
                                     </CardContent>
                                 </Card>
                             </div>
@@ -1778,22 +1778,22 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     <CardContent>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="p-2 bg-muted/40 rounded text-[11px]">
-                                                <span className="text-muted-foreground">Formality:</span> <strong>{learningData.toneAnalysis.formality}</strong>
+                                                <span className="text-muted-foreground">{t('chatbot.learning.formality')}</span> <strong>{learningData.toneAnalysis.formality}</strong>
                                             </div>
                                             <div className="p-2 bg-muted/40 rounded text-[11px]">
-                                                <span className="text-muted-foreground">Emoji:</span> <strong>{learningData.toneAnalysis.emojiUsage}</strong>
+                                                <span className="text-muted-foreground">{t('chatbot.learning.emoji')}</span> <strong>{learningData.toneAnalysis.emojiUsage}</strong>
                                             </div>
                                             <div className="p-2 bg-muted/40 rounded text-[11px]">
-                                                <span className="text-muted-foreground">Avg length:</span> <strong>{learningData.toneAnalysis.avgMessageLength} chars</strong>
+                                                <span className="text-muted-foreground">{t('chatbot.learning.avgLength')}</span> <strong>{learningData.toneAnalysis.avgMessageLength} chars</strong>
                                             </div>
                                             {learningData.toneAnalysis.writingStyle && (
                                                 <div className="p-2 bg-muted/40 rounded text-[11px]">
-                                                    <span className="text-muted-foreground">Style:</span> <strong>{learningData.toneAnalysis.writingStyle}</strong>
+                                                    <span className="text-muted-foreground">{t('chatbot.learning.style')}</span> <strong>{learningData.toneAnalysis.writingStyle}</strong>
                                                 </div>
                                             )}
                                             {learningData.toneAnalysis.languages?.length > 0 && (
                                                 <div className="p-2 bg-muted/40 rounded text-[11px] col-span-2">
-                                                    <span className="text-muted-foreground">Languages:</span> <strong>{learningData.toneAnalysis.languages.join(', ')}</strong>
+                                                    <span className="text-muted-foreground">{t('chatbot.learning.languages')}</span> <strong>{learningData.toneAnalysis.languages.join(', ')}</strong>
                                                 </div>
                                             )}
                                         </div>

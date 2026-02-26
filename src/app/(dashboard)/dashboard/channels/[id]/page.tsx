@@ -1230,10 +1230,10 @@ export default function ChannelDetailPage({
                 </div>
                 <div className="flex items-center gap-3">
                     {autoSaveStatus === 'saving' && (
-                        <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>
+                        <span className="text-xs text-muted-foreground animate-pulse">{t('channels.saving')}</span>
                     )}
                     {autoSaveStatus === 'saved' && (
-                        <span className="text-xs text-green-500">Auto-saved ✓</span>
+                        <span className="text-xs text-green-500">{t('channels.autoSaved')} ✓</span>
                     )}
                     <Button onClick={handleSave} disabled={saving} className="gap-2 w-full sm:w-auto">
                         <Save className="h-4 w-4" />
@@ -1321,13 +1321,13 @@ export default function ChannelDetailPage({
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Timezone</Label>
+                                    <Label>{t('channels.timezone')}</Label>
                                     <select
                                         value={timezone}
                                         onChange={(e) => setTimezone(e.target.value)}
                                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring"
                                     >
-                                        <optgroup label="North America">
+                                        <optgroup label={t('channels.timezoneGroups.northAmerica')}>
                                             <option value="America/New_York">Eastern (New York)</option>
                                             <option value="America/Chicago">Central (Chicago)</option>
                                             <option value="America/Denver">Mountain (Denver)</option>
@@ -1337,7 +1337,7 @@ export default function ChannelDetailPage({
                                             <option value="America/Toronto">Toronto</option>
                                             <option value="America/Vancouver">Vancouver</option>
                                         </optgroup>
-                                        <optgroup label="Europe">
+                                        <optgroup label={t('channels.timezoneGroups.europe')}>
                                             <option value="Europe/London">London (GMT)</option>
                                             <option value="Europe/Paris">Paris (CET)</option>
                                             <option value="Europe/Berlin">Berlin (CET)</option>
@@ -1345,7 +1345,7 @@ export default function ChannelDetailPage({
                                             <option value="Europe/Moscow">Moscow</option>
                                             <option value="Europe/Istanbul">Istanbul</option>
                                         </optgroup>
-                                        <optgroup label="Asia">
+                                        <optgroup label={t('channels.timezoneGroups.asia')}>
                                             <option value="Asia/Ho_Chi_Minh">Ho Chi Minh (ICT)</option>
                                             <option value="Asia/Bangkok">Bangkok (ICT)</option>
                                             <option value="Asia/Singapore">Singapore (SGT)</option>
@@ -1358,17 +1358,17 @@ export default function ChannelDetailPage({
                                             <option value="Asia/Kolkata">India (IST)</option>
                                             <option value="Asia/Jakarta">Jakarta (WIB)</option>
                                         </optgroup>
-                                        <optgroup label="Oceania">
+                                        <optgroup label={t('channels.timezoneGroups.oceania')}>
                                             <option value="Australia/Sydney">Sydney (AEST)</option>
                                             <option value="Australia/Melbourne">Melbourne (AEST)</option>
                                             <option value="Pacific/Auckland">Auckland (NZST)</option>
                                         </optgroup>
-                                        <optgroup label="South America">
+                                        <optgroup label={t('channels.timezoneGroups.southAmerica')}>
                                             <option value="America/Sao_Paulo">São Paulo (BRT)</option>
                                             <option value="America/Argentina/Buenos_Aires">Buenos Aires (ART)</option>
                                             <option value="America/Bogota">Bogotá (COT)</option>
                                         </optgroup>
-                                        <optgroup label="Other">
+                                        <optgroup label={t('channels.timezoneGroups.other')}>
                                             <option value="UTC">UTC</option>
                                         </optgroup>
                                     </select>
@@ -1384,14 +1384,14 @@ export default function ChannelDetailPage({
                                         <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">RECOMMENDED</span>
                                     </h4>
                                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                                        ⚡ <strong>Fill these in BEFORE generating content.</strong> AI uses this information to write the Description, generate SEO content, create brand-specific posts, and analyze your brand voice. The more detail you provide, the more accurate and personalized AI output will be.
+                                        ⚡ <strong>{t('channels.businessInfo.fillBefore')}</strong> {t('channels.businessInfo.aiUsesInfo')}
                                     </p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
                                         <Label className="text-xs flex items-center gap-1.5">
-                                            <Target className="h-3 w-3" /> Target Audience
+                                            <Target className="h-3 w-3" /> {t('channels.businessInfo.targetAudience')}
                                         </Label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
                                             Who are your ideal customers/followers? Include age, interests, problems they face.
@@ -1407,7 +1407,7 @@ export default function ChannelDetailPage({
 
                                     <div className="space-y-1.5">
                                         <Label className="text-xs flex items-center gap-1.5">
-                                            <FileText className="h-3 w-3" /> Content Types
+                                            <FileText className="h-3 w-3" /> {t('channels.businessInfo.contentTypes')}
                                         </Label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
                                             What kinds of content does your brand create? List all types.
@@ -1423,7 +1423,7 @@ export default function ChannelDetailPage({
 
                                     <div className="space-y-1.5">
                                         <Label className="text-xs flex items-center gap-1.5">
-                                            <Lightbulb className="h-3 w-3" /> Core Brand Values
+                                            <Lightbulb className="h-3 w-3" /> {t('channels.businessInfo.coreBrandValues')}
                                         </Label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
                                             What does your brand stand for? List 3-5 core values.
@@ -1439,7 +1439,7 @@ export default function ChannelDetailPage({
 
                                     <div className="space-y-1.5">
                                         <Label className="text-xs flex items-center gap-1.5">
-                                            <Megaphone className="h-3 w-3" /> Communication Style
+                                            <Megaphone className="h-3 w-3" /> {t('channels.businessInfo.communicationStyle')}
                                         </Label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
                                             How does your brand speak? Describe the tone and feel.
@@ -1562,8 +1562,8 @@ export default function ChannelDetailPage({
                             </div>
                             <div className="space-y-2">
                                 <div>
-                                    <Label>Approval Mode</Label>
-                                    <p className="text-xs text-muted-foreground">Control whether posts need to be approved before publishing</p>
+                                    <Label>{t('channels.approval.title')}</Label>
+                                    <p className="text-xs text-muted-foreground">{t('channels.approval.desc')}</p>
                                 </div>
                                 <Select value={requireApproval} onValueChange={(v) => setRequireApproval(v as 'none' | 'optional' | 'required')}>
                                     <SelectTrigger className="h-8 text-xs">
@@ -1572,20 +1572,20 @@ export default function ChannelDetailPage({
                                     <SelectContent>
                                         <SelectItem value="none">
                                             <div className="flex flex-col">
-                                                <span className="font-medium">None</span>
-                                                <span className="text-[10px] text-muted-foreground">Posts publish directly, no approval needed</span>
+                                                <span className="font-medium">{t('channels.approval.none')}</span>
+                                                <span className="text-[10px] text-muted-foreground">{t('channels.approval.noneDesc')}</span>
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="optional">
                                             <div className="flex flex-col">
-                                                <span className="font-medium">Optional</span>
-                                                <span className="text-[10px] text-muted-foreground">Users choose per post whether to request approval</span>
+                                                <span className="font-medium">{t('channels.approval.optional')}</span>
+                                                <span className="text-[10px] text-muted-foreground">{t('channels.approval.optionalDesc')}</span>
                                             </div>
                                         </SelectItem>
                                         <SelectItem value="required">
                                             <div className="flex flex-col">
-                                                <span className="font-medium">Required</span>
-                                                <span className="text-[10px] text-muted-foreground">All posts must be approved before publishing</span>
+                                                <span className="font-medium">{t('channels.approval.required')}</span>
+                                                <span className="text-[10px] text-muted-foreground">{t('channels.approval.requiredDesc')}</span>
                                             </div>
                                         </SelectItem>
                                     </SelectContent>
@@ -1610,7 +1610,7 @@ export default function ChannelDetailPage({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <Label className="text-xs flex items-center gap-1.5">
-                                        <Phone className="h-3 w-3" /> Phone
+                                        <Phone className="h-3 w-3" /> {t('channels.businessInfo.phone')}
                                     </Label>
                                     <Input
                                         placeholder="+1 (234) 567-8900"
@@ -1621,7 +1621,7 @@ export default function ChannelDetailPage({
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label className="text-xs flex items-center gap-1.5">
-                                        <Globe2 className="h-3 w-3" /> Website
+                                        <Globe2 className="h-3 w-3" /> {t('channels.businessInfo.website')}
                                     </Label>
                                     <Input
                                         placeholder="https://example.com"
@@ -1633,7 +1633,7 @@ export default function ChannelDetailPage({
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs flex items-center gap-1.5">
-                                    <MapPin className="h-3 w-3" /> Address
+                                    <MapPin className="h-3 w-3" /> {t('channels.businessInfo.address')}
                                 </Label>
                                 <Input
                                     placeholder="123 Main St, City, State, ZIP"
@@ -1647,7 +1647,7 @@ export default function ChannelDetailPage({
 
                             {/* Social Links */}
                             <div className="space-y-3">
-                                <Label className="text-xs font-medium">Social Media Links</Label>
+                                <Label className="text-xs font-medium">{t('channels.businessInfo.socialMediaLinks')}</Label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {[
                                         { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/brand' },
@@ -1693,7 +1693,7 @@ export default function ChannelDetailPage({
 
                             {/* Custom Links */}
                             <div className="space-y-3">
-                                <Label className="text-xs font-medium">Custom Links</Label>
+                                <Label className="text-xs font-medium">{t('channels.businessInfo.customLinks')}</Label>
                                 {bizCustomLinks.length > 0 && (
                                     <div className="space-y-2">
                                         {bizCustomLinks.map((link, i) => (
@@ -1737,7 +1737,7 @@ export default function ChannelDetailPage({
                                             setNewCustomUrl('')
                                         }}
                                     >
-                                        <Plus className="h-3 w-3 mr-1" /> Add
+                                        <Plus className="h-3 w-3 mr-1" /> {t('channels.businessInfo.add')}
                                     </Button>
                                 </div>
                             </div>
@@ -1794,7 +1794,7 @@ export default function ChannelDetailPage({
                                         ) : (
                                             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 flex items-center justify-between">
                                                 <p className="text-xs text-emerald-500">✓ You have {userConfiguredProviders.length} AI provider{userConfiguredProviders.length > 1 ? 's' : ''} configured</p>
-                                                <a href="/dashboard/api-keys" className="text-[11px] text-primary hover:underline">Manage keys →</a>
+                                                <a href="/dashboard/api-keys" className="text-[11px] text-primary hover:underline">{t('channels.aiConfig.manageKeys')}</a>
                                             </div>
                                         )}
 
@@ -1817,7 +1817,7 @@ export default function ChannelDetailPage({
                                                             ))}
                                                     </SelectContent>
                                                 </Select>
-                                                <p className="text-xs text-muted-foreground">Only shows providers you&apos;ve set up in AI API Keys</p>
+                                                <p className="text-xs text-muted-foreground">{t('channels.aiConfig.providerHint')}</p>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="flex items-center gap-2">
@@ -1854,7 +1854,7 @@ export default function ChannelDetailPage({
                                         </p>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label>Image Provider</Label>
+                                                <Label>{t('channels.aiConfig.imageProvider')}</Label>
                                                 <Select value={imageProvider || '__default__'} onValueChange={(v) => { setImageProvider(v === '__default__' ? '' : v); setImageModel('') }}>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Auto-detect" />
@@ -1882,7 +1882,7 @@ export default function ChannelDetailPage({
                                                         <SelectValue placeholder={imageProvider ? 'Select a model...' : 'Select provider first'} />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="__default__">Default model</SelectItem>
+                                                        <SelectItem value="__default__">{t('channels.aiConfig.defaultModel')}</SelectItem>
                                                         {availableImageModels.map((m) => (
                                                             <SelectItem key={m.id} value={m.id}>
                                                                 {m.name} {m.description ? `— ${m.description}` : ''}
@@ -1897,7 +1897,7 @@ export default function ChannelDetailPage({
                                 </>
                             ) : (
                                 <div className="rounded-lg border border-dashed p-4 bg-muted/30 space-y-2">
-                                    <p className="text-sm font-medium text-muted-foreground">AI Configuration</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{t('channels.aiConfig.title')}</p>
                                     <p className="text-xs text-muted-foreground">
                                         Channel AI settings are managed by the admin. You can set up your own AI API keys to use for content generation.
                                     </p>
@@ -1922,7 +1922,7 @@ export default function ChannelDetailPage({
                         <CardContent className="space-y-4">
                             {/* OAuth Connect Strip — always visible */}
                             <div className="border rounded-lg p-3 bg-muted/20">
-                                <p className="text-[11px] font-medium text-muted-foreground mb-2">Connect a platform</p>
+                                <p className="text-[11px] font-medium text-muted-foreground mb-2">{t('channels.aiConfig.connectPlatform')}</p>
                                 <div className="flex flex-wrap gap-2">
                                     {[
                                         { key: 'facebook', label: 'Facebook', border: 'border-blue-500/30', hover: 'hover:bg-blue-500/10' },
@@ -2030,7 +2030,7 @@ export default function ChannelDetailPage({
                                                 }
                                             }}
                                         >
-                                            {blueskyConnecting ? 'Connecting...' : 'Connect'}
+                                            {blueskyConnecting ? t('channels.blueskyBtn.connecting') : t('channels.blueskyBtn.connect')}
                                         </Button>
                                     </div>
                                 )}
@@ -2111,7 +2111,7 @@ export default function ChannelDetailPage({
                                                 }
                                             }}
                                         >
-                                            {xConnecting ? 'Verifying & Connecting...' : 'Connect X Account'}
+                                            {xConnecting ? t('channels.xConnectBtn.connecting') : t('channels.xConnectBtn.connect')}
                                         </Button>
                                     </div>
                                 )}
@@ -2122,7 +2122,7 @@ export default function ChannelDetailPage({
                                     <div className="relative flex-1">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                         <Input
-                                            placeholder="Search accounts..."
+                                            placeholder={t('channels.platformActions.searchAccounts')}
                                             value={platformSearch}
                                             onChange={(e) => setPlatformSearch(e.target.value)}
                                             className="pl-9 h-8 text-sm"
@@ -2137,7 +2137,7 @@ export default function ChannelDetailPage({
                                             title={hideDisabled ? 'Show all accounts' : 'Hide disabled accounts'}
                                         >
                                             {hideDisabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                                            {hideDisabled ? 'Show All' : 'Hide Disabled'}
+                                            {hideDisabled ? t('channels.platformActions.showAll') : t('channels.platformActions.hideDisabled')}
                                         </Button>
                                         <Button
                                             variant="outline"
@@ -2146,7 +2146,7 @@ export default function ChannelDetailPage({
                                             className="gap-1.5 h-8 text-xs"
                                         >
                                             <ToggleRight className="h-3.5 w-3.5" />
-                                            Enable All
+                                            {t('channels.platformActions.enableAll')}
                                         </Button>
                                         <Button
                                             variant="outline"
@@ -2155,7 +2155,7 @@ export default function ChannelDetailPage({
                                             className="gap-1.5 h-8 text-xs"
                                         >
                                             <ToggleLeft className="h-3.5 w-3.5" />
-                                            Disable All
+                                            {t('channels.platformActions.disableAll')}
                                         </Button>
                                     </div>
                                 </div>
@@ -2166,10 +2166,10 @@ export default function ChannelDetailPage({
                             {platforms.some(p => (p.config as any)?.needsReconnect) && (
                                 <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5">
                                     <p className="text-sm font-semibold text-amber-500 flex items-center gap-2">
-                                        ⚠️ Connection Issue Detected
+                                        ⚠️ {t('channels.platformActions.connectionIssue')}
                                     </p>
                                     <p className="text-xs text-amber-400/90">
-                                        The following accounts have lost their connection permissions. Bot replies may not be delivered. Please reconnect them:
+                                        {t('channels.platformActions.connectionIssueDesc')}
                                     </p>
                                     <div className="flex flex-wrap gap-1.5 mt-1">
                                         {platforms.filter(p => (p.config as any)?.needsReconnect).map(p => (
@@ -2306,10 +2306,10 @@ export default function ChannelDetailPage({
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle className="text-sm flex items-center gap-2">
-                                        <span>🔗</span> EasyConnect Links
+                                        <span>🔗</span> {t('channels.easyConnect.title')}
                                     </CardTitle>
                                     <CardDescription className="text-xs mt-1">
-                                        Share a secure link with clients — they connect their social accounts directly without sharing passwords.
+                                        {t('channels.easyConnect.desc')}
                                     </CardDescription>
                                 </div>
                                 <Button
@@ -2318,7 +2318,7 @@ export default function ChannelDetailPage({
                                     onClick={() => setShowCreateLink(v => !v)}
                                 >
                                     <Plus className="h-3.5 w-3.5" />
-                                    New Link
+                                    {t('channels.easyConnect.newLinkBtn')}
                                 </Button>
                             </div>
                         </CardHeader>
@@ -2326,38 +2326,38 @@ export default function ChannelDetailPage({
                             {/* Create Link Form */}
                             {showCreateLink && (
                                 <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
-                                    <p className="text-xs font-medium text-muted-foreground">New EasyConnect Link</p>
+                                    <p className="text-xs font-medium text-muted-foreground">{t('channels.easyConnect.newLink')}</p>
                                     <Input
-                                        placeholder='Link title (e.g. "For client Nike")'
+                                        placeholder={t('channels.easyConnect.titlePlaceholder')}
                                         className="h-8 text-sm"
                                         value={newLinkTitle}
                                         onChange={e => setNewLinkTitle(e.target.value)}
                                     />
                                     <Input
                                         type="password"
-                                        placeholder="Password (optional)"
+                                        placeholder={t('channels.easyConnect.passwordPlaceholder')}
                                         className="h-8 text-sm"
                                         value={newLinkPassword}
                                         onChange={e => setNewLinkPassword(e.target.value)}
                                     />
                                     <div className="flex gap-2">
                                         <Button size="sm" className="h-8 text-xs" onClick={createEasyLink} disabled={creatingLink || !newLinkTitle.trim()}>
-                                            {creatingLink ? 'Creating...' : 'Create Link'}
+                                            {creatingLink ? t('channels.easyConnect.creatingBtn') : t('channels.easyConnect.createBtn')}
                                         </Button>
                                         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowCreateLink(false)}>
-                                            Cancel
+                                            {t('common.cancel')}
                                         </Button>
                                     </div>
                                 </div>
                             )}
 
                             {/* Load links when tab is opened */}
-                            {easyLinksLoading && <p className="text-xs text-muted-foreground py-2">Loading links...</p>}
+                            {easyLinksLoading && <p className="text-xs text-muted-foreground py-2">{t('channels.easyConnect.loading')}</p>}
 
                             {!easyLinksLoading && easyLinks.length === 0 && !showCreateLink && (
                                 <div className="text-center py-6">
-                                    <p className="text-sm text-muted-foreground">No EasyConnect links yet.</p>
-                                    <p className="text-xs text-muted-foreground mt-1">Create a link to share with your clients.</p>
+                                    <p className="text-sm text-muted-foreground">{t('channels.easyConnect.noLinks')}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">{t('channels.easyConnect.noLinksDesc')}</p>
                                 </div>
                             )}
 
@@ -3210,10 +3210,10 @@ export default function ChannelDetailPage({
                                                     onChange={(e) => setSelectedRole(e.target.value)}
                                                     className="w-full h-9 rounded-md border bg-background px-3 text-sm"
                                                 >
-                                                    <option value="OWNER">Owner</option>
-                                                    <option value="MANAGER">Manager</option>
-                                                    <option value="STAFF">Staff</option>
-                                                    <option value="CUSTOMER">Customer</option>
+                                                    <option value="OWNER">{t('channels.memberRoles.owner')}</option>
+                                                    <option value="MANAGER">{t('channels.memberRoles.manager')}</option>
+                                                    <option value="STAFF">{t('channels.memberRoles.staff')}</option>
+                                                    <option value="CUSTOMER">{t('channels.memberRoles.customer')}</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -3277,10 +3277,10 @@ export default function ChannelDetailPage({
                                                 onChange={(e) => setSelectedRole(e.target.value)}
                                                 className="w-full h-9 rounded-md border bg-background px-3 text-sm"
                                             >
-                                                <option value="OWNER">Owner</option>
-                                                <option value="MANAGER">Manager</option>
-                                                <option value="STAFF">Staff</option>
-                                                <option value="CUSTOMER">Customer</option>
+                                                <option value="OWNER">{t('channels.memberRoles.owner')}</option>
+                                                <option value="MANAGER">{t('channels.memberRoles.manager')}</option>
+                                                <option value="STAFF">{t('channels.memberRoles.staff')}</option>
+                                                <option value="CUSTOMER">{t('channels.memberRoles.customer')}</option>
                                             </select>
                                         </div>
                                     </div>
@@ -3439,13 +3439,13 @@ export default function ChannelDetailPage({
                                                                     if (!res.ok) throw new Error()
                                                                     const updated = await res.json()
                                                                     setMembers(prev => prev.map(m => m.id === member.id ? updated : m))
-                                                                    toast.success('Permissions reset to role defaults')
+                                                                    toast.success(t('channels.memberPerms.resetSuccess'))
                                                                 } catch {
-                                                                    toast.error('Failed to reset permissions')
+                                                                    toast.error(t('channels.memberPerms.resetFailed'))
                                                                 }
                                                             }}
                                                         >
-                                                            Reset to role defaults
+                                                            {t('channels.memberPerms.resetToDefaults')}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -3478,6 +3478,7 @@ export default function ChannelDetailPage({
 // Customers Tab Component
 // ─────────────────────────────────────────────────────────
 function CustomersTab({ channelId }: { channelId: string }) {
+    const t = useTranslation()
     const [customers, setCustomers] = useState<{ user: { id: string; name: string | null; email: string; isActive: boolean } }[]>([])
     const [invites, setInvites] = useState<{ id: string; email: string; name: string | null; expiresAt: string; token: string }[]>([])
     const [loading, setLoading] = useState(true)
@@ -3547,8 +3548,8 @@ function CustomersTab({ channelId }: { channelId: string }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><UserPlus className="h-4 w-4" /> Customers</CardTitle>
-                <CardDescription>Invite clients to review and approve posts in this channel</CardDescription>
+                <CardTitle className="flex items-center gap-2"><UserPlus className="h-4 w-4" /> {t('channels.customers.title')}</CardTitle>
+                <CardDescription>{t('channels.customers.desc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
 
@@ -3556,14 +3557,14 @@ function CustomersTab({ channelId }: { channelId: string }) {
                 <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-2">
                     <input
                         type="text"
-                        placeholder="Name (optional)"
+                        placeholder={t('channels.customers.namePlaceholder')}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         className="border border-border rounded-md px-3 py-2 text-sm bg-background flex-1"
                     />
                     <input
                         type="email"
-                        placeholder="Email address *"
+                        placeholder={t('channels.customers.emailPlaceholder')}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
@@ -3571,18 +3572,18 @@ function CustomersTab({ channelId }: { channelId: string }) {
                     />
                     <Button type="submit" disabled={inviting || !email} size="sm" className="gap-1.5">
                         <UserPlus className="h-3.5 w-3.5" />
-                        {inviting ? 'Sending...' : 'Send Invite'}
+                        {inviting ? t('channels.customers.sending') : t('channels.customers.sendInvite')}
                     </Button>
                 </form>
 
                 {/* Show invite URL after sending */}
                 {inviteUrl && (
                     <div className="bg-muted rounded-lg px-4 py-3 text-sm">
-                        <p className="text-muted-foreground mb-1">Invite link sent. Copy to share manually:</p>
+                        <p className="text-muted-foreground mb-1">{t('channels.customers.inviteLinkSent')}</p>
                         <div className="flex items-center gap-2">
                             <code className="text-xs bg-background border border-border rounded px-2 py-1 flex-1 overflow-x-auto">{inviteUrl}</code>
                             <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(inviteUrl); setInviteUrl(null) }}>
-                                Copy &amp; Close
+                                {t('channels.customers.copyClose')}
                             </Button>
                         </div>
                     </div>
@@ -3592,11 +3593,11 @@ function CustomersTab({ channelId }: { channelId: string }) {
 
                 {/* Active customers */}
                 <div>
-                    <h4 className="text-sm font-medium mb-3">Active Customers ({customers.length})</h4>
+                    <h4 className="text-sm font-medium mb-3">{t('channels.customers.activeCustomers')} ({customers.length})</h4>
                     {loading ? (
                         <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
                     ) : customers.length === 0 ? (
-                        <p className="text-sm text-muted-foreground italic">No customers yet. Send your first invite above.</p>
+                        <p className="text-sm text-muted-foreground italic">{t('channels.customers.noCustomers')}</p>
                     ) : (
                         <div className="space-y-2">
                             {customers.map(({ user }) => (
@@ -3625,7 +3626,7 @@ function CustomersTab({ channelId }: { channelId: string }) {
                 {/* Pending invites */}
                 {invites.length > 0 && (
                     <div>
-                        <h4 className="text-sm font-medium mb-3">Pending Invites ({invites.length})</h4>
+                        <h4 className="text-sm font-medium mb-3">{t('channels.customers.pendingInvites')} ({invites.length})</h4>
                         <div className="space-y-2">
                             {invites.map((inv) => (
                                 <div key={inv.id} className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border px-4 py-2.5">

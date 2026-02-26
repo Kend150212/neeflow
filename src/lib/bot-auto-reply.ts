@@ -16,7 +16,7 @@ import { OAUTH_PLATFORMS, CREDENTIAL_PLATFORMS } from '@/lib/platform-registry'
 // When same page is in multiple channels, only the first channel's
 // bot actually sends to Messenger; others are saved to DB only.
 const recentBotReplies = new Map<string, number>()
-const DEDUP_TTL_MS = 30_000 // 30 seconds
+const DEDUP_TTL_MS = 5_000 // 5 seconds — reduced from 30s to avoid silently dropping rapid customer messages
 
 interface BotReplyResult {
     replied: boolean
@@ -73,17 +73,8 @@ export async function botAutoReply(
         // (in upsertConversation). Here we trust conversation.mode — agents
         // can manually transfer any conversation to BOT mode.
 
-        // ─── 2b. Send read receipt + typing indicator ─────────────
-        if (conversation.platformAccountId) {
-            const pa = await prisma.channelPlatform.findUnique({
-                where: { id: conversation.platformAccountId },
-                select: { accessToken: true },
-            })
-            if (pa?.accessToken) {
-                await sendSenderAction(pa.accessToken, conversation.externalUserId, 'mark_seen').catch(() => { })
-                await sendSenderAction(pa.accessToken, conversation.externalUserId, 'typing_on').catch(() => { })
-            }
-        }
+        // NOTE: mark_seen + typing_on moved to AFTER validation checks
+        // to avoid showing "seen" when the bot won't actually reply
 
         // ─── 3. Working Hours Check ───────────────────────────────
         if (botConfig?.workingHoursOnly && botConfig.workingHoursStart && botConfig.workingHoursEnd) {
@@ -393,6 +384,21 @@ export async function botAutoReply(
         systemPrompt += `\n\n## Intelligence:\n- Analyze the customer's intent, sentiment, and urgency from their messages.\n- If they seem frustrated, be empathetic first before offering solutions.\n- If they ask for pricing/services, give specific information from the knowledge base.\n- If something is outside your knowledge, be honest and offer to connect them with the team.\n- Anticipate follow-up questions and proactively address them.\n- Remember context from earlier in the conversation and reference it naturally.`
         systemPrompt += `\n\n## Language:\n- Default: ${langLabel}\n- CRITICAL: Always reply in the SAME language the customer is writing in. If they switch languages, you switch too.`
         systemPrompt += `\n\n## Strict Rules:\n- NEVER say you are an AI, bot, or automated system\n- NEVER prefix with "Bot:" or any label\n- NEVER wrap reply in JSON, arrays, code blocks, or brackets\n- NEVER use [ ] or { } characters\n- PLAIN TEXT ONLY\n- If you don't know something, say "Let me check with the team and get back to you" or connect them with a human`
+
+        // ─── 9b. Send read receipt + typing indicator ─────────────
+        // Moved here (after all validation) so we only show "seen" when
+        // the bot is actually going to reply. Previously at step 2b,
+        // it would mark_seen even if the bot returned early.
+        if (conversation.platformAccountId) {
+            const pa = await prisma.channelPlatform.findUnique({
+                where: { id: conversation.platformAccountId },
+                select: { accessToken: true },
+            })
+            if (pa?.accessToken) {
+                await sendSenderAction(pa.accessToken, conversation.externalUserId, 'mark_seen').catch(() => { })
+                await sendSenderAction(pa.accessToken, conversation.externalUserId, 'typing_on').catch(() => { })
+            }
+        }
 
         // ─── 10. Call AI ──────────────────────────────────────────
         let contextSection = ''

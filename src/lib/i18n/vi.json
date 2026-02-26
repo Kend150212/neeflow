@@ -544,7 +544,148 @@
       }
     },
     "blueskyConnectTitle": "Kết nối tài khoản Bluesky",
-    "blueskyConnectHint": "Dùng App Password từ bsky.app → Cài đặt → App Passwords"
+    "blueskyConnectHint": "Dùng App Password từ bsky.app → Cài đặt → App Passwords",
+    "timezone": "Múi giờ",
+    "timezoneGroups": {
+      "northAmerica": "Bắc Mỹ",
+      "europe": "Châu Âu",
+      "asia": "Châu Á",
+      "oceania": "Châu Đại Dương",
+      "southAmerica": "Nam Mỹ",
+      "other": "Khác"
+    },
+    "businessInfo": {
+      "title": "Thông tin doanh nghiệp",
+      "desc": "Thông tin liên hệ & liên kết mạng xã hội — AI sẽ sử dụng tự nhiên trong bài viết",
+      "fillBefore": "Điền thông tin này TRƯỚC KHI tạo nội dung.",
+      "aiUsesInfo": "AI sử dụng thông tin này để viết Mô tả, tạo nội dung SEO, bài đăng theo thương hiệu và phân tích giọng nói thương hiệu. Bạn cung cấp càng chi tiết, AI sẽ càng chính xác và cá nhân hóa hơn.",
+      "targetAudience": "Đối tượng mục tiêu",
+      "contentTypes": "Loại nội dung",
+      "coreBrandValues": "Giá trị cốt lõi thương hiệu",
+      "communicationStyle": "Phong cách giao tiếp",
+      "phone": "Điện thoại",
+      "website": "Website",
+      "address": "Địa chỉ",
+      "socialMediaLinks": "Liên kết mạng xã hội",
+      "customLinks": "Liên kết tùy chỉnh",
+      "add": "Thêm"
+    },
+    "approval": {
+      "title": "Chế độ phê duyệt",
+      "desc": "Kiểm soát bài viết có cần được phê duyệt trước khi đăng không",
+      "none": "Không",
+      "noneDesc": "Bài viết đăng trực tiếp, không cần phê duyệt",
+      "optional": "Tùy chọn",
+      "optionalDesc": "Người dùng chọn cho từng bài viết có cần phê duyệt không",
+      "required": "Bắt buộc",
+      "requiredDesc": "Tất cả bài viết phải được phê duyệt trước khi đăng"
+    },
+    "aiConfig": {
+      "title": "Cấu hình AI",
+      "channelTitle": "Cấu hình AI kênh",
+      "channelDesc": "Cấu hình nhà cung cấp AI và mô hình sử dụng cho tạo nội dung, mô tả SEO và phân tích thương hiệu cho kênh này.",
+      "textProvider": "Nhà cung cấp AI văn bản",
+      "textProviderDesc": "Chọn nhà cung cấp AI và mô hình để tạo văn bản (nội dung, mô tả, phân tích giọng nói thương hiệu).",
+      "noKeysWarning": "Bạn chưa thiết lập API key AI nào.",
+      "goToKeys": "Đi đến AI API Keys để thêm khóa của bạn",
+      "providersConfigured": "Bạn đã cấu hình {count} nhà cung cấp AI",
+      "manageKeys": "Quản lý khóa →",
+      "providerHint": "Chỉ hiển thị nhà cung cấp mà bạn đã cấu hình API key",
+      "imageProvider": "Nhà cung cấp hình ảnh",
+      "imageProviderLabel": "Nhà cung cấp AI hình ảnh",
+      "imageProviderDesc": "Chọn nhà cung cấp AI để tạo hình ảnh. Nhà cung cấp có mô hình hình ảnh: Runware, OpenAI (DALL-E), Gemini (Imagen).",
+      "imageProviderAuto": "Tự động phát hiện (dùng bất kỳ có sẵn)",
+      "imageProviderHint": "Chỉ hiển thị nhà cung cấp có khả năng tạo hình ảnh",
+      "imageModel": "Mô hình hình ảnh",
+      "imageModelHint": "VD: FLUX.1 Dev, DALL-E 3, Imagen 3",
+      "defaultModel": "Mô hình mặc định",
+      "channelManagedDesc": "Cài đặt AI kênh được quản lý bởi admin. Bạn có thể thiết lập API key AI riêng để tạo nội dung.",
+      "manageYourKeys": "Quản lý API Keys AI của bạn",
+      "connectPlatform": "Kết nối nền tảng"
+    },
+    "xConnect": {
+      "title": "Kết nối tài khoản X (Twitter)",
+      "needDevApp": "Bạn cần một",
+      "devApp": "Ứng dụng Twitter Developer",
+      "withPermissions": "với",
+      "readAndWrite": "Đọc và Ghi",
+      "userAuth": "Xác thực người dùng",
+      "step1": "Truy cập",
+      "step2": "Tạo ứng dụng → Trong Cài đặt ứng dụng → bật",
+      "step2OAuth": "OAuth",
+      "step3": "Đặt Callback URL là URL ứng dụng của bạn (ví dụ:",
+      "step4": "Truy cập",
+      "step4Keys": "Keys and tokens",
+      "apiKey": "API Key",
+      "apiKeySecret": "API Key Secret",
+      "accessToken": "Access Token",
+      "accessTokenSecret": "Access Token Secret",
+      "accessTokenHint": "nhấn Generate nếu chưa hiển thị"
+    },
+    "zaloConnect": {
+      "title": "Kết nối Zalo OA",
+      "id": "ID:"
+    },
+    "easyConnect": {
+      "title": "Liên kết EasyConnect",
+      "desc": "Chia sẻ liên kết bảo mật với khách hàng — họ kết nối tài khoản mạng xã hội trực tiếp mà không cần chia sẻ mật khẩu.",
+      "newLink": "Liên kết EasyConnect mới",
+      "newLinkBtn": "Liên kết mới",
+      "loading": "Đang tải liên kết...",
+      "noLinks": "Chưa có liên kết EasyConnect nào.",
+      "noLinksDesc": "Tạo liên kết để chia sẻ với khách hàng.",
+      "save": "Lưu",
+      "titlePlaceholder": "Tiêu đề liên kết (VD: \"Cho khách hàng Nike\")",
+      "passwordPlaceholder": "Mật khẩu (tùy chọn)",
+      "createBtn": "Tạo liên kết",
+      "creatingBtn": "Đang tạo..."
+    },
+    "customers": {
+      "title": "Khách hàng",
+      "desc": "Mời khách hàng xem xét và phê duyệt bài viết trong kênh này",
+      "inviteLinkSent": "Đã gửi liên kết mời. Sao chép để chia sẻ thủ công:",
+      "activeCustomers": "Khách hàng đang hoạt động",
+      "noCustomers": "Chưa có khách hàng nào. Gửi lời mời đầu tiên ở trên.",
+      "pendingInvites": "Lời mời đang chờ",
+      "pending": "Đang chờ",
+      "namePlaceholder": "Tên (tùy chọn)",
+      "emailPlaceholder": "Địa chỉ email *",
+      "sending": "Đang gửi...",
+      "sendInvite": "Gửi lời mời",
+      "copyClose": "Sao chép & Đóng"
+    },
+    "memberRoles": {
+      "owner": "Chủ sở hữu",
+      "manager": "Quản lý",
+      "staff": "Nhân viên",
+      "customer": "Khách hàng"
+    },
+    "platformActions": {
+      "showAll": "Hiện tất cả",
+      "hideDisabled": "Ẩn đã tắt",
+      "enableAll": "Bật tất cả",
+      "disableAll": "Tắt tất cả",
+      "searchAccounts": "Tìm kiếm tài khoản...",
+      "connectionIssue": "Phát hiện lỗi kết nối",
+      "connectionIssueDesc": "Các tài khoản sau đã mất quyền kết nối. Bot có thể không gửi được tin nhắn. Vui lòng kết nối lại:"
+    },
+    "xConnectBtn": {
+      "connecting": "Đang xác minh & kết nối...",
+      "connect": "Kết nối tài khoản X",
+      "howToGet": "Cách lấy API credentials:",
+      "freeTier": "Gói miễn phí = 1.500 tweet/tháng. Gói Basic ($100/tháng) = 3M tweet/tháng"
+    },
+    "blueskyBtn": {
+      "connecting": "Đang kết nối...",
+      "connect": "Kết nối"
+    },
+    "memberPerms": {
+      "resetToDefaults": "Đặt lại theo mặc định vai trò",
+      "resetSuccess": "Đã đặt lại quyền theo mặc định vai trò",
+      "resetFailed": "Không thể đặt lại quyền"
+    },
+    "saving": "Đang lưu...",
+    "autoSaved": "Tự động"
   },
   "queue": {
     "title": "Hàng đợi nội dung",
@@ -992,6 +1133,49 @@
       "comments": "Áp dụng cho bình luận",
       "commentsDesc": "Bot trả lời comment"
     },
+    "learning": {
+      "weeklySchedule": "Lịch hoạt động hàng tuần",
+      "botOff": "Bot tắt",
+      "loadReport": "Tải báo cáo hiện có",
+      "conversationsAnalyzed": "Cuộc hội thoại đã phân tích",
+      "agentMessages": "Tin nhắn của Agent",
+      "qaPairsLearned": "Cặp Q&A đã học",
+      "formality": "Trang trọng:",
+      "emoji": "Biểu tượng:",
+      "avgLength": "Độ dài TB:",
+      "style": "Phong cách:",
+      "languages": "Ngôn ngữ:",
+      "savedTrainingData": "Dữ liệu huấn luyện đã lưu",
+      "clearChat": "Xóa chat",
+      "commentReplyDelay": "Độ trễ phản hồi bình luận"
+    },
+    "toasts": {
+      "saved": "Đã lưu cài đặt bot!",
+      "saveFailed": "Không thể lưu cài đặt bot",
+      "networkError": "Lỗi mạng",
+      "trainingAddFailed": "Không thể thêm dữ liệu huấn luyện",
+      "trainingDeleted": "Đã xóa mục huấn luyện",
+      "trainingDeleteFailed": "Không thể xóa",
+      "updateFailed": "Không thể cập nhật"
+    },
+    "trainingTabs": {
+      "text": "Văn bản",
+      "url": "URL",
+      "googleSheet": "Google Sheet",
+      "images": "Hình ảnh",
+      "video": "Video",
+      "qaPairs": "Cặp Q&A"
+    },
+    "days": {
+      "monday": "Thứ Hai",
+      "tuesday": "Thứ Ba",
+      "wednesday": "Thứ Tư",
+      "thursday": "Thứ Năm",
+      "friday": "Thứ Sáu",
+      "saturday": "Thứ Bảy",
+      "sunday": "Chủ Nhật"
+    },
+    "botNamePlaceholder": "Trợ lý AI",
     "mediaBrowser": {
       "title": "Chọn từ Thư viện",
       "empty": "Không tìm thấy hình ảnh. Hãy upload hình trước!",

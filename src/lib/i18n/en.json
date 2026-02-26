@@ -544,7 +544,148 @@
       }
     },
     "blueskyConnectTitle": "Connect Bluesky Account",
-    "blueskyConnectHint": "Use an App Password from bsky.app → Settings → App Passwords"
+    "blueskyConnectHint": "Use an App Password from bsky.app → Settings → App Passwords",
+    "timezone": "Timezone",
+    "timezoneGroups": {
+      "northAmerica": "North America",
+      "europe": "Europe",
+      "asia": "Asia",
+      "oceania": "Oceania",
+      "southAmerica": "South America",
+      "other": "Other"
+    },
+    "businessInfo": {
+      "title": "Business Info",
+      "desc": "Contact details & social links — AI will use these naturally in generated posts",
+      "fillBefore": "Fill these in BEFORE generating content.",
+      "aiUsesInfo": "AI uses this information to write the Description, generate SEO content, create brand-specific posts, and analyze your brand voice. The more detail you provide, the more accurate and personalized AI output will be.",
+      "targetAudience": "Target Audience",
+      "contentTypes": "Content Types",
+      "coreBrandValues": "Core Brand Values",
+      "communicationStyle": "Communication Style",
+      "phone": "Phone",
+      "website": "Website",
+      "address": "Address",
+      "socialMediaLinks": "Social Media Links",
+      "customLinks": "Custom Links",
+      "add": "Add"
+    },
+    "approval": {
+      "title": "Approval Mode",
+      "desc": "Control whether posts need to be approved before publishing",
+      "none": "None",
+      "noneDesc": "Posts publish directly, no approval needed",
+      "optional": "Optional",
+      "optionalDesc": "Users choose per post whether to request approval",
+      "required": "Required",
+      "requiredDesc": "All posts must be approved before publishing"
+    },
+    "aiConfig": {
+      "title": "AI Configuration",
+      "channelTitle": "Channel AI Configuration",
+      "channelDesc": "Configure which AI provider and model to use for content generation, SEO descriptions, and brand analysis for this channel.",
+      "textProvider": "Text AI Provider",
+      "textProviderDesc": "Choose which AI provider and model to use for text generation (content, descriptions, brand voice analysis).",
+      "noKeysWarning": "You haven't set up any AI API keys yet.",
+      "goToKeys": "Go to AI API Keys to add your keys",
+      "providersConfigured": "You have {count} AI provider(s) configured",
+      "manageKeys": "Manage keys →",
+      "providerHint": "Only shows providers you've configured API keys for",
+      "imageProvider": "Image Provider",
+      "imageProviderLabel": "Image AI Provider",
+      "imageProviderDesc": "Choose which AI provider to use for image generation. Providers with image models: Runware, OpenAI (DALL-E), Gemini (Imagen).",
+      "imageProviderAuto": "Auto-detect (use any available)",
+      "imageProviderHint": "Only shows image-capable providers",
+      "imageModel": "Image Model",
+      "imageModelHint": "e.g. FLUX.1 Dev, DALL-E 3, Imagen 3",
+      "defaultModel": "Default model",
+      "channelManagedDesc": "Channel AI settings are managed by the admin. You can set up your own AI API keys to use for content generation.",
+      "manageYourKeys": "Manage your AI API Keys",
+      "connectPlatform": "Connect a platform"
+    },
+    "xConnect": {
+      "title": "Connect X (Twitter) Account",
+      "needDevApp": "You need a",
+      "devApp": "Twitter Developer App",
+      "withPermissions": "with",
+      "readAndWrite": "Read and Write",
+      "userAuth": "User Authentication",
+      "step1": "Go to",
+      "step2": "Create an App → In App Settings → enable",
+      "step2OAuth": "OAuth",
+      "step3": "Set Callback URL to your app URL (e.g.",
+      "step4": "Go to",
+      "step4Keys": "Keys and tokens",
+      "apiKey": "API Key",
+      "apiKeySecret": "API Key Secret",
+      "accessToken": "Access Token",
+      "accessTokenSecret": "Access Token Secret",
+      "accessTokenHint": "click Generate if not shown"
+    },
+    "zaloConnect": {
+      "title": "Connect Zalo OA",
+      "id": "ID:"
+    },
+    "easyConnect": {
+      "title": "EasyConnect Links",
+      "desc": "Share a secure link with clients — they connect their social accounts directly without sharing passwords.",
+      "newLink": "New EasyConnect Link",
+      "newLinkBtn": "New Link",
+      "loading": "Loading links...",
+      "noLinks": "No EasyConnect links yet.",
+      "noLinksDesc": "Create a link to share with your clients.",
+      "save": "Save",
+      "titlePlaceholder": "Link title (e.g. \"For client Nike\")",
+      "passwordPlaceholder": "Password (optional)",
+      "createBtn": "Create Link",
+      "creatingBtn": "Creating..."
+    },
+    "customers": {
+      "title": "Customers",
+      "desc": "Invite clients to review and approve posts in this channel",
+      "inviteLinkSent": "Invite link sent. Copy to share manually:",
+      "activeCustomers": "Active Customers",
+      "noCustomers": "No customers yet. Send your first invite above.",
+      "pendingInvites": "Pending Invites",
+      "pending": "Pending",
+      "namePlaceholder": "Name (optional)",
+      "emailPlaceholder": "Email address *",
+      "sending": "Sending...",
+      "sendInvite": "Send Invite",
+      "copyClose": "Copy & Close"
+    },
+    "memberRoles": {
+      "owner": "Owner",
+      "manager": "Manager",
+      "staff": "Staff",
+      "customer": "Customer"
+    },
+    "platformActions": {
+      "showAll": "Show All",
+      "hideDisabled": "Hide Disabled",
+      "enableAll": "Enable All",
+      "disableAll": "Disable All",
+      "searchAccounts": "Search accounts...",
+      "connectionIssue": "Connection Issue Detected",
+      "connectionIssueDesc": "The following accounts have lost their connection permissions. Bot replies may not be delivered. Please reconnect them:"
+    },
+    "xConnectBtn": {
+      "connecting": "Verifying & Connecting...",
+      "connect": "Connect X Account",
+      "howToGet": "How to get API credentials:",
+      "freeTier": "Free tier = 1,500 tweets/month. Basic plan ($100/month) = 3M tweets/month"
+    },
+    "blueskyBtn": {
+      "connecting": "Connecting...",
+      "connect": "Connect"
+    },
+    "memberPerms": {
+      "resetToDefaults": "Reset to role defaults",
+      "resetSuccess": "Permissions reset to role defaults",
+      "resetFailed": "Failed to reset permissions"
+    },
+    "saving": "Saving...",
+    "autoSaved": "Auto"
   },
   "queue": {
     "title": "Content Queue",
@@ -992,6 +1133,49 @@
       "comments": "Apply to Comments",
       "commentsDesc": "Bot responds to comments"
     },
+    "learning": {
+      "weeklySchedule": "Weekly Schedule",
+      "botOff": "Bot off",
+      "loadReport": "Load Existing Report",
+      "conversationsAnalyzed": "Conversations Analyzed",
+      "agentMessages": "Agent Messages",
+      "qaPairsLearned": "Q&A Pairs Learned",
+      "formality": "Formality:",
+      "emoji": "Emoji:",
+      "avgLength": "Avg length:",
+      "style": "Style:",
+      "languages": "Languages:",
+      "savedTrainingData": "Saved Training Data",
+      "clearChat": "Clear chat",
+      "commentReplyDelay": "Comment Reply Delay"
+    },
+    "toasts": {
+      "saved": "Bot settings saved!",
+      "saveFailed": "Failed to save bot settings",
+      "networkError": "Network error",
+      "trainingAddFailed": "Failed to add training data",
+      "trainingDeleted": "Training entry deleted",
+      "trainingDeleteFailed": "Failed to delete",
+      "updateFailed": "Failed to update"
+    },
+    "trainingTabs": {
+      "text": "Text",
+      "url": "URL",
+      "googleSheet": "Google Sheet",
+      "images": "Images",
+      "video": "Video",
+      "qaPairs": "Q&A Pairs"
+    },
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "botNamePlaceholder": "AI Assistant",
     "mediaBrowser": {
       "title": "Select from Media Library",
       "empty": "No images found in Media Library. Upload some first!",
