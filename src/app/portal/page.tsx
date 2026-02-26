@@ -984,7 +984,7 @@ function UploadTab({
 
     const handleUpload = async () => {
         const targetChannel = selectedChannel !== 'all' ? selectedChannel : channels[0]?.id
-        if (!targetChannel) return
+        if (!targetChannel) { alert('Vui lòng chọn channel'); return }
         if (files.length === 0) return
 
         setUploading(true)
@@ -993,6 +993,7 @@ function UploadTab({
         setUploadProgress({ ...progress })
 
         const uploadedItems: string[] = []
+        let errorMessages: string[] = []
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i]
@@ -1014,13 +1015,20 @@ function UploadTab({
                 })
                 const initData = await initRes.json()
 
+                if (!initRes.ok) {
+                    throw new Error(initData.error || `Init upload failed (${initRes.status})`)
+                }
+
                 if (initData.uploadUri) {
                     // Step 2: Upload file to presigned URL (R2) or resumable URI (GDrive)
-                    await fetch(initData.uploadUri, {
+                    const uploadRes = await fetch(initData.uploadUri, {
                         method: 'PUT',
                         body: file,
                         headers: { 'Content-Type': file.type },
                     })
+                    if (!uploadRes.ok) {
+                        throw new Error(`File upload failed (${uploadRes.status})`)
+                    }
                 }
 
                 // Step 3: Complete upload — pass the correct fields based on storage type
@@ -1036,7 +1044,6 @@ function UploadTab({
                     completeBody.r2Key = initData.r2Key
                     completeBody.publicUrl = initData.publicUrl
                 } else if (initData.storage === 'gdrive') {
-                    // For GDrive, the upload creates the file — extract driveFileId from response
                     completeBody.driveFileId = initData.driveFileId
                     completeBody.channelFolderId = initData.channelFolderId
                 }
@@ -1048,11 +1055,20 @@ function UploadTab({
                 })
                 const completeData = await completeRes.json()
 
+                if (!completeRes.ok) {
+                    throw new Error(completeData.error || `Complete upload failed (${completeRes.status})`)
+                }
+
                 if (completeData.id) {
                     uploadedItems.push(completeData.id)
+                } else {
+                    console.warn('[Upload] complete-upload did not return id:', completeData)
                 }
                 progress[key] = 'done'
-            } catch {
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : 'Upload failed'
+                console.error(`[Upload] Error for ${file.name}:`, msg)
+                errorMessages.push(`${file.name}: ${msg}`)
                 progress[key] = 'error'
             }
             setUploadProgress({ ...progress })
@@ -1061,7 +1077,7 @@ function UploadTab({
         // Create pipeline jobs for all successfully uploaded items
         if (uploadedItems.length > 0) {
             try {
-                await fetch('/api/portal/upload', {
+                const pipeRes = await fetch('/api/portal/upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1069,7 +1085,19 @@ function UploadTab({
                         mediaItemIds: uploadedItems,
                     }),
                 })
-            } catch (e) { console.error('Failed to create pipeline jobs', e) }
+                const pipeData = await pipeRes.json()
+                if (!pipeRes.ok) {
+                    console.error('[Pipeline] Create jobs failed:', pipeData)
+                    alert(`Lỗi tạo pipeline jobs: ${pipeData.error || 'Unknown error'}`)
+                } else {
+                    alert(`✅ Đã upload ${uploadedItems.length} file và tạo ${pipeData.jobs?.length || 0} AI jobs`)
+                }
+            } catch (e) {
+                console.error('[Pipeline] Failed to create pipeline jobs:', e)
+                alert('Lỗi tạo pipeline jobs')
+            }
+        } else if (errorMessages.length > 0) {
+            alert(`Upload thất bại:\n${errorMessages.join('\n')}`)
         }
 
         // Refresh jobs list
