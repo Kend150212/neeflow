@@ -9,7 +9,7 @@ import {
     Image as ImageIcon, Video, HelpCircle, FileText,
     Link as LinkIcon, FileSpreadsheet, ExternalLink,
     Upload, FolderOpen, X, Check, Sparkles,
-    MessageCircle, Zap, Send, BarChart3,
+    MessageCircle, Zap, Send, BarChart3, ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -124,6 +124,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
     // Per-page bot toggle
     const [pageAccounts, setPageAccounts] = useState<{ id: string; accountName: string; platform: string; botEnabled: boolean }[]>([])
+    const [pagesExpanded, setPagesExpanded] = useState(false)
 
     // ─── Upload helper ────────────────────────────────────
     const uploadFiles = async (files: FileList | File[], targetFolderId?: string): Promise<string[]> => {
@@ -422,65 +423,83 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 </Card>
             )}
 
-            {/* Per-page bot toggles */}
+            {/* Per-page bot toggles — collapsible */}
             {config.isEnabled && pageAccounts.length > 0 && (
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center gap-2">
-                            <Target className="h-4 w-4 text-blue-500" />
-                            {t('chatbot.perPageBotTitle') || 'Bot per Page'}
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                            {t('chatbot.perPageBotDesc') || 'Enable or disable the bot for each connected page'}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        {pageAccounts.map(page => (
-                            <div key={page.id} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/40">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    {page.platform === 'facebook' ? (
-                                        <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#1877F2" /><path d="M16.5 12.05h-2.7V18h-2.93v-5.95H9.5v-2.5h1.37V7.88c0-1.97.84-3.13 3.17-3.13h1.95v2.5h-1.22c-.91 0-.97.34-.97.97v1.33h2.22l-.52 2.5z" fill="#fff" /></svg>
-                                    ) : page.platform === 'instagram' ? (
-                                        <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><defs><linearGradient id={`ig-${page.id}`} x1="0" y1="24" x2="24" y2="0"><stop offset="0%" stopColor="#FED373" /><stop offset="25%" stopColor="#F15245" /><stop offset="50%" stopColor="#D92E7F" /><stop offset="75%" stopColor="#9B36B7" /><stop offset="100%" stopColor="#515ECF" /></linearGradient></defs><circle cx="12" cy="12" r="12" fill={`url(#ig-${page.id})`} /><rect x="5" y="5" width="14" height="14" rx="4" stroke="#fff" strokeWidth="1.5" fill="none" /><circle cx="12" cy="12" r="3" stroke="#fff" strokeWidth="1.5" fill="none" /><circle cx="16.5" cy="7.5" r="1" fill="#fff" /></svg>
-                                    ) : page.platform === 'tiktok' ? (
-                                        <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#000" /><path d="M16.5 7.5a3.5 3.5 0 01-2.5-1V13a4 4 0 11-4-4v2a2 2 0 102 2V5h2a3.5 3.5 0 002.5 2.5z" fill="#fff" /></svg>
-                                    ) : page.platform === 'youtube' ? (
-                                        <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#FF0000" /><path d="M10 15.5v-7l6 3.5-6 3.5z" fill="#fff" /></svg>
-                                    ) : page.platform === 'x' || page.platform === 'twitter' ? (
-                                        <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#000" /><path d="M13.8 10.5L18 6h-1.3l-3.6 3.9L10 6H6l4.4 6.4L6 17h1.3l3.8-4.1L14.3 17H18l-4.2-6.5zm-1.3 1.5l-.5-.6L8 7h1.5l3 4.2.5.6L17 16h-1.5l-3-4z" fill="#fff" /></svg>
-                                    ) : page.platform === 'linkedin' ? (
-                                        <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#0A66C2" /><path d="M8.5 10v6h-2v-6h2zm-1-3.2a1.15 1.15 0 110 2.3 1.15 1.15 0 010-2.3zM10 10h1.9v.8a2.1 2.1 0 011.9-1c2 0 2.4 1.3 2.4 3.1V16h-2v-2.8c0-.7 0-1.6-1-1.6s-1.1.7-1.1 1.5V16H10v-6z" fill="#fff" /></svg>
-                                    ) : page.platform === 'pinterest' ? (
-                                        <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#E60023" /><path d="M12 5a7 7 0 00-2.6 13.5c0-.6.1-1.5.3-2.2l.8-3.3s-.2-.4-.2-1c0-1 .6-1.7 1.3-1.7.6 0 .9.5.9 1 0 .6-.4 1.5-.6 2.4-.2.7.3 1.3 1 1.3 1.3 0 2.3-1.4 2.3-3.3 0-1.7-1.2-3-3-3-2 0-3.3 1.5-3.3 3.2 0 .6.2 1.3.5 1.6.1 0 .1.1.1.2l-.2.7c0 .1-.1.2-.3.1-1-.5-1.6-1.9-1.6-3 0-2.5 1.8-4.8 5.2-4.8 2.7 0 4.8 1.9 4.8 4.5 0 2.7-1.7 4.9-4.1 4.9-.8 0-1.5-.4-1.8-.9l-.5 1.9c-.2.7-.7 1.5-1 2A7 7 0 0012 5z" fill="#fff" /></svg>
-                                    ) : (
-                                        <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#666" /><path d="M12 7a2 2 0 00-2 2v2H8v3h2v6h3v-6h2l.5-3H13V9.5a.5.5 0 01.5-.5H15V7h-3z" fill="#fff" /></svg>
-                                    )}
-                                    <span className="text-sm truncate">{page.accountName}</span>
-                                </div>
-                                <Switch
-                                    checked={page.botEnabled}
-                                    onCheckedChange={async (v) => {
-                                        setPageAccounts(prev => prev.map(p =>
-                                            p.id === page.id ? { ...p, botEnabled: v } : p
-                                        ))
-                                        try {
-                                            await fetch(`/api/admin/channels/${channelId}/platforms/${page.id}`, {
-                                                method: 'PATCH',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ botEnabled: v }),
-                                            })
-                                            toast.success(v ? `Bot enabled for ${page.accountName}` : `Bot disabled for ${page.accountName}`)
-                                        } catch {
-                                            toast.error(t('chatbot.toasts.updateFailed'))
-                                            setPageAccounts(prev => prev.map(p =>
-                                                p.id === page.id ? { ...p, botEnabled: !v } : p
-                                            ))
-                                        }
-                                    }}
-                                />
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                    <Target className="h-4 w-4 text-blue-500" />
+                                    {t('chatbot.perPageBotTitle') || 'Bot per Page'}
+                                    <span className="text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                                        {pageAccounts.filter(p => p.botEnabled).length}/{pageAccounts.length}
+                                    </span>
+                                </CardTitle>
+                                <CardDescription className="text-xs">
+                                    {t('chatbot.perPageBotDesc') || 'Enable or disable the bot for each connected page'}
+                                </CardDescription>
                             </div>
-                        ))}
-                    </CardContent>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setPagesExpanded(prev => !prev)}
+                                className="gap-1.5 text-xs h-7 cursor-pointer"
+                            >
+                                {pagesExpanded ? (t('chatbot.collapse') || 'Thu gọn') : (t('chatbot.viewAll') || 'Xem tất cả')}
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${pagesExpanded ? 'rotate-180' : ''}`} />
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    {pagesExpanded && (
+                        <CardContent className="space-y-2 pt-0">
+                            {pageAccounts.map(page => (
+                                <div key={page.id} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/40">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        {page.platform === 'facebook' ? (
+                                            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#1877F2" /><path d="M16.5 12.05h-2.7V18h-2.93v-5.95H9.5v-2.5h1.37V7.88c0-1.97.84-3.13 3.17-3.13h1.95v2.5h-1.22c-.91 0-.97.34-.97.97v1.33h2.22l-.52 2.5z" fill="#fff" /></svg>
+                                        ) : page.platform === 'instagram' ? (
+                                            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><defs><linearGradient id={`ig-${page.id}`} x1="0" y1="24" x2="24" y2="0"><stop offset="0%" stopColor="#FED373" /><stop offset="25%" stopColor="#F15245" /><stop offset="50%" stopColor="#D92E7F" /><stop offset="75%" stopColor="#9B36B7" /><stop offset="100%" stopColor="#515ECF" /></linearGradient></defs><circle cx="12" cy="12" r="12" fill={`url(#ig-${page.id})`} /><rect x="5" y="5" width="14" height="14" rx="4" stroke="#fff" strokeWidth="1.5" fill="none" /><circle cx="12" cy="12" r="3" stroke="#fff" strokeWidth="1.5" fill="none" /><circle cx="16.5" cy="7.5" r="1" fill="#fff" /></svg>
+                                        ) : page.platform === 'tiktok' ? (
+                                            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#000" /><path d="M16.5 7.5a3.5 3.5 0 01-2.5-1V13a4 4 0 11-4-4v2a2 2 0 102 2V5h2a3.5 3.5 0 002.5 2.5z" fill="#fff" /></svg>
+                                        ) : page.platform === 'youtube' ? (
+                                            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#FF0000" /><path d="M10 15.5v-7l6 3.5-6 3.5z" fill="#fff" /></svg>
+                                        ) : page.platform === 'x' || page.platform === 'twitter' ? (
+                                            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#000" /><path d="M13.8 10.5L18 6h-1.3l-3.6 3.9L10 6H6l4.4 6.4L6 17h1.3l3.8-4.1L14.3 17H18l-4.2-6.5zm-1.3 1.5l-.5-.6L8 7h1.5l3 4.2.5.6L17 16h-1.5l-3-4z" fill="#fff" /></svg>
+                                        ) : page.platform === 'linkedin' ? (
+                                            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#0A66C2" /><path d="M8.5 10v6h-2v-6h2zm-1-3.2a1.15 1.15 0 110 2.3 1.15 1.15 0 010-2.3zM10 10h1.9v.8a2.1 2.1 0 011.9-1c2 0 2.4 1.3 2.4 3.1V16h-2v-2.8c0-.7 0-1.6-1-1.6s-1.1.7-1.1 1.5V16H10v-6z" fill="#fff" /></svg>
+                                        ) : page.platform === 'pinterest' ? (
+                                            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#E60023" /><path d="M12 5a7 7 0 00-2.6 13.5c0-.6.1-1.5.3-2.2l.8-3.3s-.2-.4-.2-1c0-1 .6-1.7 1.3-1.7.6 0 .9.5.9 1 0 .6-.4 1.5-.6 2.4-.2.7.3 1.3 1 1.3 1.3 0 2.3-1.4 2.3-3.3 0-1.7-1.2-3-3-3-2 0-3.3 1.5-3.3 3.2 0 .6.2 1.3.5 1.6.1 0 .1.1.1.2l-.2.7c0 .1-.1.2-.3.1-1-.5-1.6-1.9-1.6-3 0-2.5 1.8-4.8 5.2-4.8 2.7 0 4.8 1.9 4.8 4.5 0 2.7-1.7 4.9-4.1 4.9-.8 0-1.5-.4-1.8-.9l-.5 1.9c-.2.7-.7 1.5-1 2A7 7 0 0012 5z" fill="#fff" /></svg>
+                                        ) : (
+                                            <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#666" /><path d="M12 7a2 2 0 00-2 2v2H8v3h2v6h3v-6h2l.5-3H13V9.5a.5.5 0 01.5-.5H15V7h-3z" fill="#fff" /></svg>
+                                        )}
+                                        <span className="text-sm truncate">{page.accountName}</span>
+                                    </div>
+                                    <Switch
+                                        checked={page.botEnabled}
+                                        onCheckedChange={async (v) => {
+                                            setPageAccounts(prev => prev.map(p =>
+                                                p.id === page.id ? { ...p, botEnabled: v } : p
+                                            ))
+                                            try {
+                                                await fetch(`/api/admin/channels/${channelId}/platforms/${page.id}`, {
+                                                    method: 'PATCH',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ botEnabled: v }),
+                                                })
+                                                toast.success(v ? `Bot enabled for ${page.accountName}` : `Bot disabled for ${page.accountName}`)
+                                            } catch {
+                                                toast.error(t('chatbot.toasts.updateFailed'))
+                                                setPageAccounts(prev => prev.map(p =>
+                                                    p.id === page.id ? { ...p, botEnabled: !v } : p
+                                                ))
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </CardContent>
+                    )}
                 </Card>
             )}
 
