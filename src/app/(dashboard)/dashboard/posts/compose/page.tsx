@@ -676,6 +676,7 @@ export default function ComposePage() {
     const [overrideImageModel, setOverrideImageModel] = useState('')
     const [availableImageModels, setAvailableImageModels] = useState<{ id: string; name: string; type?: string }[]>([])
     const [loadingImageModels, setLoadingImageModels] = useState(false)
+    const [imageProviders, setImageProviders] = useState<{ provider: string; name: string; isActive: boolean; defaultModel?: string }[]>([])
     const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'>('1:1')
     const [stockQuery, setStockQuery] = useState('')
     const [stockPhotos, setStockPhotos] = useState<{ id: number; src: { original: string; medium: string; small: string }; photographer: string; alt: string }[]>([])
@@ -4045,7 +4046,32 @@ export default function ComposePage() {
             </div >
 
             {/* ── Generate Image Dialog ── */}
-            < Dialog open={showImagePicker} onOpenChange={setShowImagePicker} >
+            < Dialog open={showImagePicker} onOpenChange={(open) => {
+                setShowImagePicker(open)
+                if (open) {
+                    // Fetch user's configured API providers
+                    fetch('/api/user/api-keys').then(r => r.json()).then((keys: { provider: string; name: string; isActive: boolean; defaultModel?: string }[]) => {
+                        if (Array.isArray(keys)) {
+                            // Show all providers that have keys configured
+                            setImageProviders(keys.filter(k => k.isActive))
+                            // Auto-fetch models for current provider
+                            const currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
+                            if (currentProvider && availableImageModels.length === 0) {
+                                setLoadingImageModels(true)
+                                fetch('/api/user/api-keys/models', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ provider: currentProvider }),
+                                }).then(r => r.json()).then(d => {
+                                    setAvailableImageModels(
+                                        (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                                    )
+                                }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                            }
+                        }
+                    }).catch(() => { })
+                }
+            }} >
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -4109,9 +4135,19 @@ export default function ComposePage() {
                                         className="h-7 text-[11px] rounded-md border bg-muted/50 px-2 focus:outline-none focus:ring-1 focus:ring-primary"
                                     >
                                         <option value="">Auto-detect provider</option>
-                                        <option value="runware">Runware</option>
-                                        <option value="openai">OpenAI</option>
-                                        <option value="gemini">Gemini</option>
+                                        {imageProviders.length > 0 ? (
+                                            imageProviders.map(p => (
+                                                <option key={p.provider} value={p.provider}>
+                                                    {p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1)}
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="runware">Runware</option>
+                                                <option value="openai">OpenAI</option>
+                                                <option value="gemini">Gemini</option>
+                                            </>
+                                        )}
                                     </select>
                                     <select
                                         value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
@@ -4123,26 +4159,6 @@ export default function ComposePage() {
                                         {availableImageModels.map(m => (
                                             <option key={m.id} value={m.id}>{m.name}</option>
                                         ))}
-                                        {/* Fallback well-known models if none fetched */}
-                                        {availableImageModels.length === 0 && (overrideImageProvider || selectedChannel?.defaultImageProvider) === 'runware' && (
-                                            <>
-                                                <option value="runware:100@1">FLUX.1 [Dev]</option>
-                                                <option value="runware:101@1">FLUX.1 [Schnell]</option>
-                                            </>
-                                        )}
-                                        {availableImageModels.length === 0 && (overrideImageProvider || selectedChannel?.defaultImageProvider) === 'openai' && (
-                                            <>
-                                                <option value="dall-e-3">DALL·E 3</option>
-                                                <option value="dall-e-2">DALL·E 2</option>
-                                                <option value="gpt-image-1">GPT Image 1</option>
-                                            </>
-                                        )}
-                                        {availableImageModels.length === 0 && (overrideImageProvider || selectedChannel?.defaultImageProvider) === 'gemini' && (
-                                            <>
-                                                <option value="imagen-3.0-generate-002">Imagen 3</option>
-                                                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
-                                            </>
-                                        )}
                                     </select>
                                     {loadingImageModels && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                                 </div>
