@@ -2559,239 +2559,10 @@ export default function ComposePage() {
                                 )}
                             </div>
 
-                            {/* AI Fill All Platforms — shown when content exists and platforms are selected */}
-                            {content.trim() && activePlatforms.some(p => selectedPlatformIds.has(p.id) && ['facebook', 'pinterest', 'youtube'].includes(p.platform)) && (
-                                <button
-                                    type="button"
-                                    className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-amber-600 hover:text-amber-500 bg-amber-500/10 hover:bg-amber-500/15 rounded-md py-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-                                    disabled={generatingMeta}
-                                    onClick={() => handleGenerateMetadata()}
-                                >
-                                    {generatingMeta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                                    AI Fill All Platforms
-                                </button>
-                            )}
-
-                            {/* Generate Image Button */}
-                            <button
-                                type="button"
-                                className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-purple-600 hover:text-purple-500 bg-purple-500/10 hover:bg-purple-500/15 rounded-md py-1.5 transition-colors cursor-pointer"
-                                onClick={() => {
-                                    setShowImagePicker(true)
-                                    setAiGeneratedPreview(null)
-                                    // Auto-fill prompt from content if available
-                                    if (content.trim()) {
-                                        setUseContentAsPrompt(true)
-                                        setAiImagePrompt(content.substring(0, 500))
-                                    } else if (aiTopic.trim() && !aiImagePrompt) {
-                                        setUseContentAsPrompt(false)
-                                        setAiImagePrompt(aiTopic)
-                                    } else {
-                                        setUseContentAsPrompt(false)
-                                    }
-                                }}
-                            >
-                                <Sparkles className="h-3.5 w-3.5" />
-                                Generate Image
-                            </button>
                         </CardContent>
                     </Card >
 
-                    {/* Content Editor */}
-                    < Card >
-                        <CardHeader className="py-1.5 px-2.5">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-xs">Content</CardTitle>
-                                <span className={`text-[10px] ${charCount > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
-                                    {charCount > 0 ? `${charCount}` : ''}
-                                </span>
-                            </div>
-                            {/* Content Toolbar */}
-                            <div className="flex items-center gap-0 pt-0.5 border-b pb-1 -mx-0.5 flex-wrap">
-                                <button
-                                    type="button"
-                                    title="UPPERCASE"
-                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                                    onClick={() => {
-                                        const ta = textareaRef.current
-                                        if (!ta) return
-                                        const start = ta.selectionStart
-                                        const end = ta.selectionEnd
-                                        if (start === end) return // nothing selected
-                                        const selected = content.substring(start, end)
-                                        const isUpper = selected === selected.toUpperCase()
-                                        const transformed = isUpper ? selected.toLowerCase() : selected.toUpperCase()
-                                        const newContent = content.substring(0, start) + transformed + content.substring(end)
-                                        setContent(newContent)
-                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(start, start + transformed.length) }, 0)
-                                    }}
-                                >
-                                    <Bold className="h-4 w-4" />
-                                </button>
-                                <div className="w-px h-5 bg-border mx-1" />
-                                <button
-                                    type="button"
-                                    title="Add Hashtag"
-                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                                    onClick={() => {
-                                        const ta = textareaRef.current
-                                        if (!ta) return
-                                        const pos = ta.selectionStart
-                                        const before = content.substring(0, pos)
-                                        const after = content.substring(pos)
-                                        const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
-                                        const newContent = before + prefix + '#' + after
-                                        setContent(newContent)
-                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + 1, pos + prefix.length + 1) }, 0)
-                                    }}
-                                >
-                                    <Hash className="h-4 w-4" />
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Mention"
-                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                                    onClick={() => {
-                                        const ta = textareaRef.current
-                                        if (!ta) return
-                                        const pos = ta.selectionStart
-                                        const before = content.substring(0, pos)
-                                        const after = content.substring(pos)
-                                        const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
-                                        const newContent = before + prefix + '@' + after
-                                        setContent(newContent)
-                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + 1, pos + prefix.length + 1) }, 0)
-                                    }}
-                                >
-                                    <AtSign className="h-4 w-4" />
-                                </button>
-                                {/* Link button with popover input */}
-                                <div className="relative">
-                                    <button
-                                        type="button"
-                                        title="Add Link"
-                                        className={`h-7 w-7 rounded flex items-center justify-center transition-colors cursor-pointer ${showLinkInput ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-                                        onClick={() => {
-                                            setShowLinkInput(!showLinkInput)
-                                            setLinkInputValue('')
-                                        }}
-                                    >
-                                        <Link2 className="h-4 w-4" />
-                                    </button>
-                                    {showLinkInput && (
-                                        <>
-                                            <div className="fixed inset-0 z-40" onClick={() => setShowLinkInput(false)} />
-                                            <div className="absolute top-9 left-0 z-50 bg-popover border rounded-xl shadow-xl p-3 w-[280px]">
-                                                <p className="text-[10px] text-muted-foreground font-medium mb-1.5">Paste or type a URL</p>
-                                                <div className="flex gap-1.5">
-                                                    <Input
-                                                        value={linkInputValue}
-                                                        onChange={(e) => setLinkInputValue(e.target.value)}
-                                                        placeholder="https://example.com"
-                                                        className="text-xs h-8"
-                                                        autoFocus
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter' && linkInputValue.trim()) {
-                                                                e.preventDefault()
-                                                                const ta = textareaRef.current
-                                                                const url = linkInputValue.trim().startsWith('http') ? linkInputValue.trim() : `https://${linkInputValue.trim()}`
-                                                                if (ta) {
-                                                                    const pos = ta.selectionStart
-                                                                    const before = content.substring(0, pos)
-                                                                    const after = content.substring(pos)
-                                                                    const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
-                                                                    setContent(before + prefix + url + after)
-                                                                    setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + url.length, pos + prefix.length + url.length) }, 0)
-                                                                } else {
-                                                                    setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + url)
-                                                                }
-                                                                setShowLinkInput(false)
-                                                                setLinkInputValue('')
-                                                            } else if (e.key === 'Escape') {
-                                                                setShowLinkInput(false)
-                                                            }
-                                                        }}
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        className="h-8 px-2.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50"
-                                                        disabled={!linkInputValue.trim()}
-                                                        onClick={() => {
-                                                            const ta = textareaRef.current
-                                                            const url = linkInputValue.trim().startsWith('http') ? linkInputValue.trim() : `https://${linkInputValue.trim()}`
-                                                            if (ta) {
-                                                                const pos = ta.selectionStart
-                                                                const before = content.substring(0, pos)
-                                                                const after = content.substring(pos)
-                                                                const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
-                                                                setContent(before + prefix + url + after)
-                                                                setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + url.length, pos + prefix.length + url.length) }, 0)
-                                                            } else {
-                                                                setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + url)
-                                                            }
-                                                            setShowLinkInput(false)
-                                                            setLinkInputValue('')
-                                                        }}
-                                                    >
-                                                        Insert
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                                <div className="w-px h-5 bg-border mx-1" />
-                                {/* Emoji Picker */}
-                                <div className="relative">
-                                    <button
-                                        type="button"
-                                        title="Emoji"
-                                        className={`h-7 w-7 rounded flex items-center justify-center transition-colors cursor-pointer ${showEmojiPicker ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-                                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                    >
-                                        <Smile className="h-4 w-4" />
-                                    </button>
-                                    {showEmojiPicker && (
-                                        <>
-                                            <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
-                                            <div className="absolute top-9 left-0 z-50 bg-popover border rounded-xl shadow-xl p-2 w-[260px]">
-                                                <div className="grid grid-cols-8 gap-1">
-                                                    {['😀', '😂', '🤣', '😍', '🥰', '😎', '🤩', '🥳', '😤', '🔥', '💯', '❤️', '👏', '🙌', '💪', '✨', '🎉', '🎊', '👍', '👎', '🤔', '😱', '😢', '🤝', '💡', '📌', '🚀', '📢', '💰', '🛒', '🎯', '📈', '⭐', '🏆', '💎', '🌟', '❗', '✅', '📣', '🔔', '🎁', '💝', '🌈', '☀️', '🌙', '💫', '🍀', '🦋'].map(emoji => (
-                                                        <button
-                                                            key={emoji}
-                                                            type="button"
-                                                            className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted transition-colors cursor-pointer text-base"
-                                                            onClick={() => {
-                                                                const ta = textareaRef.current
-                                                                if (!ta) { setContent(prev => prev + emoji); setShowEmojiPicker(false); return }
-                                                                const pos = ta.selectionStart
-                                                                const newContent = content.substring(0, pos) + emoji + content.substring(pos)
-                                                                setContent(newContent)
-                                                                setShowEmojiPicker(false)
-                                                                setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + emoji.length, pos + emoji.length) }, 0)
-                                                            }}
-                                                        >
-                                                            {emoji}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <textarea
-                                ref={textareaRef}
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="Write your post content here..."
-                                className="w-full min-h-[120px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                                rows={5}
-                            />
-                        </CardContent>
-                    </Card >
+
 
                     {/* Per-Platform Content Customization */}
                     {selectedPlatformIds.size > 0 && (
@@ -2925,6 +2696,27 @@ export default function ComposePage() {
                                     <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-violet-500/10 border-violet-500/30 hover:bg-violet-500/20 text-violet-400" onClick={() => openCanvaDesign()} disabled={canvaLoading}>
                                         {canvaLoading ? <Loader2 className="h-3 w-3 mr-0.5 animate-spin" /> : <Palette className="h-3 w-3 mr-0.5" />}
                                         Canva
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 text-[10px] px-2 cursor-pointer bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20 text-purple-400"
+                                        onClick={() => {
+                                            setShowImagePicker(true)
+                                            setAiGeneratedPreview(null)
+                                            if (content.trim()) {
+                                                setUseContentAsPrompt(true)
+                                                setAiImagePrompt(content.substring(0, 500))
+                                            } else if (aiTopic.trim() && !aiImagePrompt) {
+                                                setUseContentAsPrompt(false)
+                                                setAiImagePrompt(aiTopic)
+                                            } else {
+                                                setUseContentAsPrompt(false)
+                                            }
+                                        }}
+                                    >
+                                        <Sparkles className="h-3 w-3 mr-0.5" />
+                                        AI Image
                                     </Button>
                                 </div>
                                 <input
@@ -4278,7 +4070,7 @@ export default function ComposePage() {
             </div >
 
             {/* ── Generate Image Dialog ── */}
-            <Dialog open={showImagePicker} onOpenChange={setShowImagePicker}>
+            < Dialog open={showImagePicker} onOpenChange={setShowImagePicker} >
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -4397,8 +4189,8 @@ export default function ComposePage() {
                                                 type="button"
                                                 onClick={() => setImageAspectRatio(ratio.value)}
                                                 className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-md border text-[10px] font-medium transition-all cursor-pointer ${imageAspectRatio === ratio.value
-                                                        ? 'border-primary bg-primary/10 text-primary'
-                                                        : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+                                                    ? 'border-primary bg-primary/10 text-primary'
+                                                    : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
                                                     }`}
                                             >
                                                 {ratio.icon}
@@ -4573,10 +4365,10 @@ export default function ComposePage() {
                         </Button>
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* ── Thumbnail Style Selector Modal ── */}
-            <Dialog open={styleModalOpen} onOpenChange={setStyleModalOpen}>
+            < Dialog open={styleModalOpen} onOpenChange={setStyleModalOpen} >
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -4661,10 +4453,10 @@ export default function ComposePage() {
                         </div>
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* Delete Post Confirmation */}
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            < AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Post?</AlertDialogTitle>
@@ -4675,7 +4467,7 @@ export default function ComposePage() {
                         <AlertDialogAction onClick={handleDeletePost} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer">Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
-            </AlertDialog>
-        </div>
+            </AlertDialog >
+        </div >
     )
 }
