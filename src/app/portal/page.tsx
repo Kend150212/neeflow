@@ -216,7 +216,11 @@ export default function PortalPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, comment: comments[postId] || '' }),
         })
-        if (res.ok) setDone((d) => ({ ...d, [postId]: action }))
+        if (res.ok) {
+            setDone((d) => ({ ...d, [postId]: action }))
+            // Auto-refresh data so columns update immediately
+            loadData()
+        }
         setSubmitting((s) => ({ ...s, [postId]: false }))
     }
 
@@ -528,8 +532,9 @@ function ReviewTab({
     const [editText, setEditText] = useState('')
     const [saving, setSaving] = useState(false)
 
-    // Kanban columns
-    const pendingPosts = posts.filter(p => p.status === 'PENDING_APPROVAL' || p.status === 'CLIENT_REVIEW')
+    // Kanban columns — CLIENT_REVIEW is the client's "Pending Review"
+    // PENDING_APPROVAL is admin-only (not shown on portal)
+    const pendingPosts = posts.filter(p => p.status === 'CLIENT_REVIEW')
     const scheduledPosts = posts.filter(p => p.status === 'SCHEDULED')
     const publishedPosts = posts.filter(p => p.status === 'PUBLISHED')
 

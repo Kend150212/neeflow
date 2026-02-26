@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const posts = await prisma.post.findMany({
         where: {
             channelId: { in: channelIds },
-            status: { in: ['PENDING_APPROVAL', 'CLIENT_REVIEW', 'SCHEDULED', 'PUBLISHED'] },
+            status: { in: ['CLIENT_REVIEW', 'SCHEDULED', 'PUBLISHED'] },
         },
         include: {
             channel: { select: { id: true, displayName: true } },

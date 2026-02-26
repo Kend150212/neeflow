@@ -25,6 +25,12 @@ export async function POST(
     })
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
+    // Only allow client action on posts in CLIENT_REVIEW status
+    // (admin must approve first: PENDING_APPROVAL → CLIENT_REVIEW)
+    if (post.status !== 'CLIENT_REVIEW') {
+        return NextResponse.json({ error: 'Post must be in CLIENT_REVIEW status' }, { status: 400 })
+    }
+
     const membership = await prisma.channelMember.findUnique({
         where: { userId_channelId: { userId: session.user.id, channelId: post.channelId } },
     })
