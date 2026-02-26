@@ -718,7 +718,13 @@
     "thisWeek": "📅 This Week",
     "nextWeek": "📅 Next Week",
     "later": "📅 Later",
-    "noContent": "No content"
+    "noContent": "No content",
+    "searchPlaceholder": "Search posts...",
+    "filterToday": "Today",
+    "filterWeek": "This Week",
+    "filterMonth": "This Month",
+    "filterAll": "All",
+    "loadFailed": "Failed to load queue"
   },
   "approvals": {
     "title": "Approval Queue",
@@ -738,7 +744,12 @@
     "approved": "Post approved ✅",
     "rejected": "Post rejected ❌",
     "actionFailed": "Action failed",
-    "loadFailed": "Failed to load pending posts"
+    "loadFailed": "Failed to load pending posts",
+    "searchPlaceholder": "Search posts...",
+    "filterToday": "Today",
+    "filterWeek": "This Week",
+    "filterMonth": "This Month",
+    "filterAll": "All"
   },
   "compose": {
     "title": "Compose Post",

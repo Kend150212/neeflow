@@ -718,7 +718,13 @@
     "thisWeek": "📅 Tuần này",
     "nextWeek": "📅 Tuần tới",
     "later": "📅 Sau đó",
-    "noContent": "Không có nội dung"
+    "noContent": "Không có nội dung",
+    "searchPlaceholder": "Tìm kiếm bài viết...",
+    "filterToday": "Hôm nay",
+    "filterWeek": "Tuần này",
+    "filterMonth": "Tháng này",
+    "filterAll": "Tất cả",
+    "loadFailed": "Không thể tải hàng đợi"
   },
   "approvals": {
     "title": "Hàng đợi duyệt",
@@ -738,7 +744,12 @@
     "approved": "Đã duyệt bài ✅",
     "rejected": "Đã từ chối bài ❌",
     "actionFailed": "Hành động thất bại",
-    "loadFailed": "Không thể tải bài chờ duyệt"
+    "loadFailed": "Không thể tải bài chờ duyệt",
+    "searchPlaceholder": "Tìm kiếm bài viết...",
+    "filterToday": "Hôm nay",
+    "filterWeek": "Tuần này",
+    "filterMonth": "Tháng này",
+    "filterAll": "Tất cả"
   },
   "compose": {
     "title": "Soạn bài viết",
