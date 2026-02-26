@@ -135,7 +135,7 @@ export default function PostsPage() {
     const [posts, setPosts] = useState<Post[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
-    const [filterChannel, setFilterChannel] = useState<string>('all')
+    const [filterChannel, setFilterChannel] = useState<string>('__init__')
     const [filterStatus, setFilterStatus] = useState<string>('all')
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
@@ -149,6 +149,9 @@ export default function PostsPage() {
         setFilterChannel(activeChannelId ?? 'all')
         setPage(1)
     }, [activeChannelId])
+
+    // Don't fetch until workspace has resolved
+    const filterReady = filterChannel !== '__init__'
 
     // Bulk selection
     const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -188,7 +191,7 @@ export default function PostsPage() {
         finally { setLoading(false) }
     }, [page, filterChannel, filterStatus, search])
 
-    useEffect(() => { fetchPosts() }, [fetchPosts])
+    useEffect(() => { if (filterReady) fetchPosts() }, [fetchPosts, filterReady])
     useEffect(() => { setSelected(new Set()) }, [page, filterChannel, filterStatus])
 
     const toggleSelect = (id: string) => {
