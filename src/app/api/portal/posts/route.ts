@@ -3,17 +3,15 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/portal/posts
-// Returns posts for ALL channels the customer belongs to
-// Includes CLIENT_REVIEW, PENDING_APPROVAL, SCHEDULED, and PUBLISHED posts
+// Returns posts for ALL channels the user belongs to
+// Works for CUSTOMER, ADMIN, OWNER, etc. — anyone with channel membership
 export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (session.user.role !== 'CUSTOMER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    // Get customer's channels — no approval-mode filter!
-    // The customer should see posts in ALL channels they belong to.
+    // Get ALL channels the user is a member of (any role)
     const memberships = await prisma.channelMember.findMany({
-        where: { userId: session.user.id, role: 'CUSTOMER' },
+        where: { userId: session.user.id },
         select: { channelId: true },
     })
     const channelIds = memberships.map((m) => m.channelId)

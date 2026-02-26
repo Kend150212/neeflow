@@ -15,7 +15,7 @@ export async function GET() {
     })
 
     const memberships = await prisma.channelMember.findMany({
-        where: { userId: session.user.id, role: 'CUSTOMER' },
+        where: { userId: session.user.id },
         include: {
             channel: {
                 select: { id: true, displayName: true, name: true, isActive: true },
