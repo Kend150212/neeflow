@@ -299,6 +299,10 @@ async function checkImageQuotaForPlatformKey(userId: string): Promise<QuotaCheck
     }
 }
 
+// Text-specific: exclude image-only providers that don't support chat/completions
+const TEXT_CAPABLE_PROVIDERS = ['gemini', 'openai', 'openrouter', 'synthetic']
+const IMAGE_ONLY_PROVIDERS = ['runware']
+
 async function getPlatformAIKey(preferredProvider?: string | null): Promise<{
     id: string
     apiKey: string
@@ -308,15 +312,22 @@ async function getPlatformAIKey(preferredProvider?: string | null): Promise<{
 } | null> {
     let integration = null
 
-    if (preferredProvider) {
+    // 1. Try preferred provider (only if it's text-capable)
+    if (preferredProvider && !IMAGE_ONLY_PROVIDERS.includes(preferredProvider)) {
         integration = await prisma.apiIntegration.findFirst({
             where: { provider: preferredProvider, category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
         })
     }
 
+    // 2. Fallback: any text-capable provider
     if (!integration) {
         integration = await prisma.apiIntegration.findFirst({
-            where: { category: 'AI', status: 'ACTIVE', apiKeyEncrypted: { not: null } },
+            where: {
+                provider: { in: TEXT_CAPABLE_PROVIDERS },
+                category: 'AI',
+                status: 'ACTIVE',
+                apiKeyEncrypted: { not: null },
+            },
             orderBy: { provider: 'asc' },
         })
     }
