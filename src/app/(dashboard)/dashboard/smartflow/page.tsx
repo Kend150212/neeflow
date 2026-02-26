@@ -188,12 +188,33 @@ export default function SmartFlowPage() {
     const [stats, setStats] = useState<Record<string, number>>({})
     const [actionLoading, setActionLoading] = useState<string | null>(null)
     const [detectedMode, setDetectedMode] = useState<string>('smartflow')
+    const [datePreset, setDatePreset] = useState<'today' | 'week' | 'month' | 'all'>('week')
+
+    function getDateRange(preset: typeof datePreset) {
+        const now = new Date()
+        if (preset === 'all') return { from: undefined, to: undefined }
+        if (preset === 'today') {
+            const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            return { from: d.toISOString(), to: now.toISOString() }
+        }
+        if (preset === 'week') {
+            const d = new Date(now)
+            d.setDate(d.getDate() - d.getDay())
+            d.setHours(0, 0, 0, 0)
+            return { from: d.toISOString(), to: now.toISOString() }
+        }
+        const d = new Date(now.getFullYear(), now.getMonth(), 1)
+        return { from: d.toISOString(), to: now.toISOString() }
+    }
 
     const fetchJobs = useCallback(async () => {
         try {
+            const range = getDateRange(datePreset)
             const params = new URLSearchParams()
             params.set('page', '1')
             params.set('limit', '100')
+            if (range.from) params.set('from', range.from)
+            if (range.to) params.set('to', range.to)
             const res = await fetch(`/api/admin/content-pipeline?${params}`)
             if (res.ok) {
                 const data = await res.json()
@@ -214,7 +235,8 @@ export default function SmartFlowPage() {
         } finally {
             setLoading(false)
         }
-    }, [])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [datePreset])
 
     useEffect(() => { fetchJobs() }, [fetchJobs])
     useEffect(() => {
@@ -299,6 +321,25 @@ export default function SmartFlowPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-white/[0.04] rounded-xl p-1">
+                            {([
+                                { key: 'today' as const, label: 'Today' },
+                                { key: 'week' as const, label: 'This Week' },
+                                { key: 'month' as const, label: 'This Month' },
+                                { key: 'all' as const, label: 'All' },
+                            ]).map(p => (
+                                <button
+                                    key={p.key}
+                                    onClick={() => setDatePreset(p.key)}
+                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${datePreset === p.key
+                                            ? 'bg-indigo-500/20 text-indigo-400 shadow-sm'
+                                            : 'text-white/40 hover:text-white/60'
+                                        }`}
+                                >
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
                         <span className="text-[10px] px-2 py-1 rounded-full bg-white/[0.04] text-white/30 border border-white/[0.06]">
                             {detectedMode.toUpperCase()}
                         </span>

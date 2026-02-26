@@ -9,12 +9,24 @@ export async function GET(req: NextRequest) {
 
     const status = req.nextUrl.searchParams.get('status')
     const channelId = req.nextUrl.searchParams.get('channelId')
+    const from = req.nextUrl.searchParams.get('from')
+    const to = req.nextUrl.searchParams.get('to')
     const page = parseInt(req.nextUrl.searchParams.get('page') || '1')
     const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20')
 
     const where: Record<string, unknown> = {}
     if (status) where.status = status
     if (channelId) where.channelId = channelId
+    if (from || to) {
+        const dateFilter: Record<string, unknown> = {}
+        if (from) dateFilter.gte = new Date(from)
+        if (to) {
+            const toDate = new Date(to)
+            toDate.setHours(23, 59, 59, 999)
+            dateFilter.lte = toDate
+        }
+        where.createdAt = dateFilter
+    }
 
     const [jobs, total] = await Promise.all([
         prisma.contentJob.findMany({
