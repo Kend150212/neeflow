@@ -568,7 +568,18 @@
       "address": "Address",
       "socialMediaLinks": "Social Media Links",
       "customLinks": "Custom Links",
-      "add": "Add"
+      "add": "Add",
+      "brandProfile": "Brand Profile",
+      "recommended": "RECOMMENDED",
+      "targetAudienceHint": "Who are your ideal customers/followers? Include age, interests, problems they face.",
+      "targetAudiencePlaceholder": "Example: Millennials & Gen Z (ages 22-35), tech-savvy professionals interested in productivity and career growth. They struggle with work-life balance.",
+      "contentTypesHint": "What kinds of content does your brand create? List all types.",
+      "contentTypesPlaceholder": "Example: Educational carousels, product demos, customer success stories, industry news, behind-the-scenes, Q&A sessions, tutorials",
+      "coreBrandValuesHint": "What does your brand stand for? List 3-5 core values.",
+      "coreBrandValuesPlaceholder": "Example: Innovation — We embrace new ideas. Reliability — We deliver on promises. Community — We build genuine connections.",
+      "communicationStyleHint": "How does your brand speak? Describe the tone and feel.",
+      "communicationStylePlaceholder": "Example: Friendly and conversational, like talking to a knowledgeable friend. Short paragraphs, occasional humor, no corporate jargon.",
+      "customLinkLabelPlaceholder": "Label (e.g. Book Now)"
     },
     "approval": {
       "title": "Approval Mode",
@@ -601,7 +612,14 @@
       "defaultModel": "Default model",
       "channelManagedDesc": "Channel AI settings are managed by the admin. You can set up your own AI API keys to use for content generation.",
       "manageYourKeys": "Manage your AI API Keys",
-      "connectPlatform": "Connect a platform"
+      "connectPlatform": "Connect a platform",
+      "aiConfiguredStatus": "✓ AI configured — {count} provider(s) active",
+      "aiNotConfigured": "⚠ AI not configured — set up your AI provider to use content generation, SEO, image creation, and brand analysis",
+      "goToAiSetup": "Go to the AI Setup tab to configure your AI provider and model",
+      "manage": "Manage",
+      "setUp": "Set Up",
+      "selectModel": "Select a model...",
+      "selectProviderFirst": "Select provider first"
     },
     "xConnect": {
       "title": "Connect X (Twitter) Account",

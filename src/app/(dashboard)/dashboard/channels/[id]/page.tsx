@@ -1380,8 +1380,8 @@ export default function ChannelDetailPage({
                                 <div>
                                     <h4 className="text-sm font-semibold flex items-center gap-2">
                                         <Target className="h-4 w-4 text-amber-500" />
-                                        Brand Profile
-                                        <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">RECOMMENDED</span>
+                                        {t('channels.businessInfo.brandProfile')}
+                                        <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">{t('channels.businessInfo.recommended')}</span>
                                     </h4>
                                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                                         ⚡ <strong>{t('channels.businessInfo.fillBefore')}</strong> {t('channels.businessInfo.aiUsesInfo')}
@@ -1394,10 +1394,10 @@ export default function ChannelDetailPage({
                                             <Target className="h-3 w-3" /> {t('channels.businessInfo.targetAudience')}
                                         </Label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                            Who are your ideal customers/followers? Include age, interests, problems they face.
+                                            {t('channels.businessInfo.targetAudienceHint')}
                                         </p>
                                         <Textarea
-                                            placeholder={"Example: Millennials & Gen Z (ages 22-35), tech-savvy professionals interested in productivity and career growth. They struggle with work-life balance."}
+                                            placeholder={t('channels.businessInfo.targetAudiencePlaceholder')}
                                             value={brandTargetAudience}
                                             onChange={(e) => setBrandTargetAudience(e.target.value)}
                                             className="text-xs min-h-[60px]"
@@ -1410,10 +1410,10 @@ export default function ChannelDetailPage({
                                             <FileText className="h-3 w-3" /> {t('channels.businessInfo.contentTypes')}
                                         </Label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                            What kinds of content does your brand create? List all types.
+                                            {t('channels.businessInfo.contentTypesHint')}
                                         </p>
                                         <Textarea
-                                            placeholder={"Example: Educational carousels, product demos, customer success stories, industry news, behind-the-scenes, Q&A sessions, tutorials"}
+                                            placeholder={t('channels.businessInfo.contentTypesPlaceholder')}
                                             value={brandContentTypes}
                                             onChange={(e) => setBrandContentTypes(e.target.value)}
                                             className="text-xs min-h-[60px]"
@@ -1426,10 +1426,10 @@ export default function ChannelDetailPage({
                                             <Lightbulb className="h-3 w-3" /> {t('channels.businessInfo.coreBrandValues')}
                                         </Label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                            What does your brand stand for? List 3-5 core values.
+                                            {t('channels.businessInfo.coreBrandValuesHint')}
                                         </p>
                                         <Textarea
-                                            placeholder={"Example: Innovation — We embrace new ideas. Reliability — We deliver on promises. Community — We build genuine connections."}
+                                            placeholder={t('channels.businessInfo.coreBrandValuesPlaceholder')}
                                             value={brandValues}
                                             onChange={(e) => setBrandValues(e.target.value)}
                                             className="text-xs min-h-[60px]"
@@ -1442,10 +1442,10 @@ export default function ChannelDetailPage({
                                             <Megaphone className="h-3 w-3" /> {t('channels.businessInfo.communicationStyle')}
                                         </Label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                            How does your brand speak? Describe the tone and feel.
+                                            {t('channels.businessInfo.communicationStyleHint')}
                                         </p>
                                         <Textarea
-                                            placeholder={"Example: Friendly and conversational, like talking to a knowledgeable friend. Short paragraphs, occasional humor, no corporate jargon."}
+                                            placeholder={t('channels.businessInfo.communicationStylePlaceholder')}
                                             value={brandCommStyle}
                                             onChange={(e) => setBrandCommStyle(e.target.value)}
                                             className="text-xs min-h-[60px]"
@@ -1519,13 +1519,13 @@ export default function ChannelDetailPage({
                                     <div>
                                         <p className={`text-xs font-medium ${userConfiguredProviders.length > 0 ? 'text-emerald-500' : 'text-orange-400'}`}>
                                             {userConfiguredProviders.length > 0
-                                                ? `✓ AI configured — ${userConfiguredProviders.length} provider${userConfiguredProviders.length > 1 ? 's' : ''} active`
-                                                : '⚠ AI not configured — set up your AI provider to use content generation, SEO, image creation, and brand analysis'
+                                                ? t('channels.aiConfig.aiConfiguredStatus').replace('{count}', String(userConfiguredProviders.length))
+                                                : t('channels.aiConfig.aiNotConfigured')
                                             }
                                         </p>
                                         {userConfiguredProviders.length === 0 && (
                                             <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                Go to the AI Setup tab to configure your AI provider and model
+                                                {t('channels.aiConfig.goToAiSetup')}
                                             </p>
                                         )}
                                     </div>
@@ -1537,7 +1537,7 @@ export default function ChannelDetailPage({
                                     className="gap-1.5 text-xs h-7 shrink-0"
                                 >
                                     <Bot className="h-3 w-3" />
-                                    {userConfiguredProviders.length > 0 ? 'Manage' : 'Set Up'}
+                                    {userConfiguredProviders.length > 0 ? t('channels.aiConfig.manage') : t('channels.aiConfig.setUp')}
                                 </Button>
                             </div>
 
@@ -1600,10 +1600,10 @@ export default function ChannelDetailPage({
                         <CardHeader>
                             <CardTitle className="text-sm flex items-center gap-2">
                                 <Globe2 className="h-4 w-4" />
-                                Business Info
+                                {t('channels.businessInfo.title')}
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                Contact details & social links — AI will use these naturally in generated posts
+                                {t('channels.businessInfo.desc')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -1715,7 +1715,7 @@ export default function ChannelDetailPage({
                                 )}
                                 <div className="flex gap-2">
                                     <Input
-                                        placeholder="Label (e.g. Book Now)"
+                                        placeholder={t('channels.businessInfo.customLinkLabelPlaceholder')}
                                         value={newCustomLabel}
                                         onChange={(e) => setNewCustomLabel(e.target.value)}
                                         className="h-7 text-xs flex-1"
@@ -1767,10 +1767,10 @@ export default function ChannelDetailPage({
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Bot className="h-5 w-5" />
-                                Channel AI Configuration
+                                {t('channels.aiConfig.channelTitle')}
                             </CardTitle>
                             <CardDescription>
-                                Configure which AI provider and model to use for content generation, SEO descriptions, and brand analysis for this channel.
+                                {t('channels.aiConfig.channelDesc')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
@@ -1779,21 +1779,21 @@ export default function ChannelDetailPage({
                                     {/* ── Text AI Provider ─── */}
                                     <div className="space-y-4">
                                         <Label className="text-sm font-semibold flex items-center gap-2">
-                                            🧠 Text AI Provider
+                                            🧠 {t('channels.aiConfig.textProvider')}
                                         </Label>
                                         <p className="text-xs text-muted-foreground -mt-2">
-                                            Choose which AI provider and model to use for text generation (content, descriptions, brand voice analysis).
+                                            {t('channels.aiConfig.textProviderDesc')}
                                         </p>
 
                                         {/* User Key Status */}
                                         {userConfiguredProviders.length === 0 ? (
                                             <div className="rounded-lg border border-dashed border-orange-500/30 bg-orange-500/5 p-3">
-                                                <p className="text-xs text-orange-400 font-medium">⚠ You haven&apos;t set up any AI API keys yet.</p>
-                                                <a href="/dashboard/api-keys" className="text-xs text-primary hover:underline font-medium mt-1 inline-block">→ Go to AI API Keys to add your keys</a>
+                                                <p className="text-xs text-orange-400 font-medium">⚠ {t('channels.aiConfig.noKeysWarning')}</p>
+                                                <a href="/dashboard/api-keys" className="text-xs text-primary hover:underline font-medium mt-1 inline-block">→ {t('channels.aiConfig.goToKeys')}</a>
                                             </div>
                                         ) : (
                                             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 flex items-center justify-between">
-                                                <p className="text-xs text-emerald-500">✓ You have {userConfiguredProviders.length} AI provider{userConfiguredProviders.length > 1 ? 's' : ''} configured</p>
+                                                <p className="text-xs text-emerald-500">✓ {t('channels.aiConfig.providersConfigured').replace('{count}', String(userConfiguredProviders.length))}</p>
                                                 <a href="/dashboard/api-keys" className="text-[11px] text-primary hover:underline">{t('channels.aiConfig.manageKeys')}</a>
                                             </div>
                                         )}
@@ -1826,7 +1826,7 @@ export default function ChannelDetailPage({
                                                 </Label>
                                                 <Select value={aiModel || '__default__'} onValueChange={(v) => setAiModel(v === '__default__' ? '' : v)} disabled={loadingModels || !aiProvider}>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder={aiProvider ? 'Select a model...' : 'Select provider first'} />
+                                                        <SelectValue placeholder={aiProvider ? t('channels.aiConfig.selectModel') : t('channels.aiConfig.selectProviderFirst')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="__default__">{t('channels.ai.useGlobal')}</SelectItem>
@@ -1847,10 +1847,10 @@ export default function ChannelDetailPage({
                                     {/* ── Image AI Provider ─── */}
                                     <div className="space-y-4">
                                         <Label className="text-sm font-semibold flex items-center gap-2">
-                                            🖼️ Image AI Provider
+                                            🖼️ {t('channels.aiConfig.imageProviderLabel')}
                                         </Label>
                                         <p className="text-xs text-muted-foreground -mt-2">
-                                            Choose which AI provider to use for image generation. Providers with image models: Runware, OpenAI (DALL-E), Gemini (Imagen).
+                                            {t('channels.aiConfig.imageProviderDesc')}
                                         </p>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
@@ -1860,7 +1860,7 @@ export default function ChannelDetailPage({
                                                         <SelectValue placeholder="Auto-detect" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="__default__">Auto-detect (use any available)</SelectItem>
+                                                        <SelectItem value="__default__">{t('channels.aiConfig.imageProviderAuto')}</SelectItem>
                                                         {availableProviders
                                                             .filter(p => userConfiguredProviders.includes(p.provider) && ['runware', 'openai', 'gemini'].includes(p.provider))
                                                             .map((p) => (
@@ -1870,16 +1870,16 @@ export default function ChannelDetailPage({
                                                             ))}
                                                     </SelectContent>
                                                 </Select>
-                                                <p className="text-xs text-muted-foreground">Only shows image-capable providers</p>
+                                                <p className="text-xs text-muted-foreground">{t('channels.aiConfig.imageProviderHint')}</p>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="flex items-center gap-2">
-                                                    Image Model
+                                                    {t('channels.aiConfig.imageModel')}
                                                     {loadingImageModels && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                                                 </Label>
                                                 <Select value={imageModel || '__default__'} onValueChange={(v) => setImageModel(v === '__default__' ? '' : v)} disabled={loadingImageModels || !imageProvider}>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder={imageProvider ? 'Select a model...' : 'Select provider first'} />
+                                                        <SelectValue placeholder={imageProvider ? t('channels.aiConfig.selectModel') : t('channels.aiConfig.selectProviderFirst')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="__default__">{t('channels.aiConfig.defaultModel')}</SelectItem>
@@ -1890,7 +1890,7 @@ export default function ChannelDetailPage({
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                <p className="text-xs text-muted-foreground">e.g. FLUX.1 Dev, DALL-E 3, Imagen 3</p>
+                                                <p className="text-xs text-muted-foreground">{t('channels.aiConfig.imageModelHint')}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1899,10 +1899,10 @@ export default function ChannelDetailPage({
                                 <div className="rounded-lg border border-dashed p-4 bg-muted/30 space-y-2">
                                     <p className="text-sm font-medium text-muted-foreground">{t('channels.aiConfig.title')}</p>
                                     <p className="text-xs text-muted-foreground">
-                                        Channel AI settings are managed by the admin. You can set up your own AI API keys to use for content generation.
+                                        {t('channels.aiConfig.channelManagedDesc')}
                                     </p>
                                     <a href="/dashboard/api-keys" className="text-xs text-primary hover:underline font-medium inline-block">
-                                        → Manage your AI API Keys
+                                        → {t('channels.aiConfig.manageYourKeys')}
                                     </a>
                                 </div>
                             )}

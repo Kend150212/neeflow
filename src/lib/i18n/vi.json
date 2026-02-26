@@ -568,7 +568,18 @@
       "address": "Địa chỉ",
       "socialMediaLinks": "Liên kết mạng xã hội",
       "customLinks": "Liên kết tùy chỉnh",
-      "add": "Thêm"
+      "add": "Thêm",
+      "brandProfile": "Hồ sơ thương hiệu",
+      "recommended": "KHUYẾN NGHỊ",
+      "targetAudienceHint": "Khách hàng/người theo dõi lý tưởng của bạn là ai? Bao gồm độ tuổi, sở thích, vấn đề họ gặp phải.",
+      "targetAudiencePlaceholder": "Ví dụ: Millennials & Gen Z (22-35 tuổi), chuyên viên am hiểu công nghệ quan tâm đến năng suất và phát triển sự nghiệp.",
+      "contentTypesHint": "Thương hiệu của bạn tạo những loại nội dung gì? Liệt kê tất cả.",
+      "contentTypesPlaceholder": "Ví dụ: Carousel giáo dục, demo sản phẩm, câu chuyện khách hàng, tin tức ngành, hậu trường, Q&A, hướng dẫn",
+      "coreBrandValuesHint": "Thương hiệu của bạn đại diện cho điều gì? Liệt kê 3-5 giá trị cốt lõi.",
+      "coreBrandValuesPlaceholder": "Ví dụ: Đổi mới — Chúng tôi đón nhận ý tưởng mới. Đáng tin cậy — Chúng tôi giữ lời hứa. Cộng đồng — Chúng tôi xây dựng kết nối chân thật.",
+      "communicationStyleHint": "Thương hiệu của bạn giao tiếp như thế nào? Mô tả giọng điệu và phong cách.",
+      "communicationStylePlaceholder": "Ví dụ: Thân thiện và đối thoại, như nói chuyện với một người bạn hiểu biết. Đoạn văn ngắn, đôi khi hài hước, không dùng ngôn ngữ doanh nghiệp.",
+      "customLinkLabelPlaceholder": "Nhãn (VD: Đặt ngay)"
     },
     "approval": {
       "title": "Chế độ phê duyệt",
@@ -601,7 +612,14 @@
       "defaultModel": "Mô hình mặc định",
       "channelManagedDesc": "Cài đặt AI kênh được quản lý bởi admin. Bạn có thể thiết lập API key AI riêng để tạo nội dung.",
       "manageYourKeys": "Quản lý API Keys AI của bạn",
-      "connectPlatform": "Kết nối nền tảng"
+      "connectPlatform": "Kết nối nền tảng",
+      "aiConfiguredStatus": "✓ AI đã cấu hình — {count} nhà cung cấp đang hoạt động",
+      "aiNotConfigured": "⚠ AI chưa được cấu hình — thiết lập nhà cung cấp AI để sử dụng tạo nội dung, SEO, tạo hình ảnh và phân tích thương hiệu",
+      "goToAiSetup": "Vào tab Cấu hình AI để thiết lập nhà cung cấp AI và mô hình",
+      "manage": "Quản lý",
+      "setUp": "Thiết lập",
+      "selectModel": "Chọn mô hình...",
+      "selectProviderFirst": "Chọn nhà cung cấp trước"
     },
     "xConnect": {
       "title": "Kết nối tài khoản X (Twitter)",
