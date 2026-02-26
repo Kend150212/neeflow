@@ -1040,14 +1040,7 @@ function UploadTab({
                 })
                 const completeData = await completeRes.json()
 
-                uploadedItems.push({
-                    url: completeData.url || initData.url,
-                    thumbnailUrl: completeData.thumbnailUrl,
-                    type: file.type.startsWith('video/') ? 'video' : 'image',
-                    originalName: file.name,
-                    fileSize: file.size,
-                    mimeType: file.type,
-                })
+                uploadedItems.push(completeData.id)
                 progress[key] = 'done'
             } catch {
                 progress[key] = 'error'
@@ -1063,7 +1056,7 @@ function UploadTab({
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         channelId: targetChannel,
-                        mediaItems: uploadedItems,
+                        mediaItemIds: uploadedItems,
                     }),
                 })
             } catch (e) { console.error('Failed to create pipeline jobs', e) }
