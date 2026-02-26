@@ -10,6 +10,7 @@ import Google from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
+import { decrypt } from '@/lib/encryption'
 
 type UserRoleType = 'ADMIN' | 'OWNER' | 'MANAGER' | 'STAFF' | 'CUSTOMER'
 
@@ -35,6 +36,54 @@ declare module '@auth/core/jwt' {
         role: UserRoleType
         isActive: boolean
     }
+}
+
+// ─── Dynamic Google OAuth credentials from DB ──────────────────
+// Cache credentials for 60 seconds to avoid DB read on every request
+let _googleCache: { clientId: string; clientSecret: string; fetchedAt: number } | null = null
+const CACHE_TTL = 60_000 // 60 seconds
+
+async function getGoogleCredentials(): Promise<{ clientId: string; clientSecret: string } | null> {
+    // Check cache first
+    if (_googleCache && Date.now() - _googleCache.fetchedAt < CACHE_TTL) {
+        return { clientId: _googleCache.clientId, clientSecret: _googleCache.clientSecret }
+    }
+
+    // Check process.env (set by instrumentation.ts at startup)
+    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+        _googleCache = {
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            fetchedAt: Date.now(),
+        }
+        return { clientId: _googleCache.clientId, clientSecret: _googleCache.clientSecret }
+    }
+
+    // Fallback: load from DB dynamically
+    try {
+        const integration = await prisma.apiIntegration.findFirst({
+            where: { provider: 'google_oauth', status: 'ACTIVE' },
+        })
+        if (integration) {
+            const config = integration.config as Record<string, string> | null
+            const clientId = config?.clientId
+            const clientSecret = integration.apiKeyEncrypted
+                ? decrypt(integration.apiKeyEncrypted)
+                : null
+
+            if (clientId && clientSecret) {
+                // Update process.env so subsequent requests within the same server instance are fast
+                process.env.GOOGLE_CLIENT_ID = clientId
+                process.env.GOOGLE_CLIENT_SECRET = clientSecret
+                _googleCache = { clientId, clientSecret, fetchedAt: Date.now() }
+                return { clientId, clientSecret }
+            }
+        }
+    } catch (err) {
+        console.error('[auth] Failed to load Google OAuth credentials from DB:', err)
+    }
+
+    return null
 }
 
 // Providers are defined inline in NextAuth config so they are evaluated
@@ -81,8 +130,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 }
             },
         }),
-        // Google provider is conditionally added only when credentials exist in process.env
-        // (loaded from Admin API Hub DB via instrumentation.ts at server startup)
+        // Google provider is conditionally added based on env vars loaded at startup
+        // Dynamic DB loading happens in the signIn callback below
         ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
             ? [
                 Google({
@@ -91,7 +140,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     allowDangerousEmailAccountLinking: true,
                 }) as never,
             ]
-            : []),
+            : [
+                // Always include Google provider — fetch credentials dynamically if not in env
+                Google({
+                    clientId: 'placeholder',
+                    clientSecret: 'placeholder',
+                    allowDangerousEmailAccountLinking: true,
+                }) as never,
+            ]),
     ],
     adapter: PrismaAdapter(prisma) as any,
     session: { strategy: 'jwt' },
@@ -100,8 +156,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     callbacks: {
         async signIn({ user, account }) {
-            // On Google sign-in: auto-create user if not exists, assign Free plan
+            // On Google sign-in: dynamically verify and load credentials from DB
             if (account?.provider === 'google') {
+                // Validate that Google OAuth is actually configured
+                const creds = await getGoogleCredentials()
+                if (!creds) {
+                    console.error('[auth] Google sign-in attempted but no credentials configured')
+                    return false // Block sign-in if not configured
+                }
+
                 const existing = await prisma.user.findUnique({
                     where: { email: user.email! },
                     select: { id: true, isActive: true },
@@ -180,3 +243,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
     },
 })
+

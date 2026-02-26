@@ -56,6 +56,15 @@ export async function POST() {
             status: 'INACTIVE' as const,
             baseUrl: 'https://api.stripe.com',
         },
+        {
+            category: 'AUTH' as const,
+            provider: 'google_oauth',
+            name: 'Google OAuth',
+            isActive: false,
+            isDefault: false,
+            status: 'INACTIVE' as const,
+            baseUrl: 'https://accounts.google.com',
+        },
     ]
 
     const results = []

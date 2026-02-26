@@ -646,7 +646,12 @@ export default function IntegrationsPage() {
     }, [])
 
     useEffect(() => {
-        fetchIntegrations()
+        // Auto-seed missing integrations (e.g. google_oauth, canva) then fetch
+        const init = async () => {
+            try { await fetch('/api/admin/integrations/seed', { method: 'POST' }) } catch { /* */ }
+            fetchIntegrations()
+        }
+        init()
     }, [fetchIntegrations])
 
     const handleSave = async (integration: Integration) => {
