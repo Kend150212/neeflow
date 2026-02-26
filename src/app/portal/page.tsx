@@ -1002,19 +1002,46 @@ function UploadTab({
             setUploadProgress({ ...progress })
 
             try {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('channelId', targetChannel)
-
-                const res = await fetch('/api/portal/upload/file', {
+                // Step 1: Get presigned URL from server
+                const initRes = await fetch('/api/admin/media/init-upload', {
                     method: 'POST',
-                    body: formData,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channelId: targetChannel,
+                        fileName: file.name,
+                        mimeType: file.type,
+                        fileSize: file.size,
+                    }),
                 })
-                const data = await res.json()
+                const initData = await initRes.json()
+                if (!initRes.ok) throw new Error(initData.error || 'Init upload failed')
 
-                if (!res.ok) {
-                    throw new Error(data.error || `Upload failed (${res.status})`)
+                // Step 2: Upload directly to R2
+                if (initData.uploadUri) {
+                    const uploadRes = await fetch(initData.uploadUri, {
+                        method: 'PUT',
+                        body: file,
+                        headers: { 'Content-Type': file.type },
+                    })
+                    if (!uploadRes.ok) throw new Error(`R2 upload failed (${uploadRes.status})`)
                 }
+
+                // Step 3: Create MediaItem + ContentJob on server
+                const completeRes = await fetch('/api/portal/upload/file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channelId: targetChannel,
+                        storage: initData.storage || 'r2',
+                        r2Key: initData.r2Key,
+                        publicUrl: initData.publicUrl,
+                        fileName: file.name,
+                        mimeType: file.type,
+                        fileSize: file.size,
+                    }),
+                })
+                const completeData = await completeRes.json()
+                if (!completeRes.ok) throw new Error(completeData.error || 'Create job failed')
 
                 successCount++
                 progress[key] = 'done'

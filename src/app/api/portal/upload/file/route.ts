@@ -5,11 +5,15 @@ import { uploadToR2, generateR2Key, isR2Configured } from '@/lib/r2'
 
 /**
  * POST /api/portal/upload/file
- * Server-side file upload proxy for portal.
- * Accepts FormData with file + channelId, uploads to R2,
- * creates MediaItem, and creates ContentJob.
- *
- * This avoids CORS issues with direct browser → R2 presigned URL uploads.
+ * 
+ * Accepts two modes:
+ * 1. JSON body with R2 info (direct upload flow — browser uploaded directly to R2)
+ *    { channelId, storage, r2Key, publicUrl, fileName, mimeType, fileSize }
+ * 
+ * 2. FormData with file (server proxy fallback — browser → server → R2)
+ *    FormData { file, channelId }
+ * 
+ * Both modes create MediaItem + ContentJob.
  */
 export async function POST(req: NextRequest) {
     const session = await auth()
@@ -18,15 +22,51 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const formData = await req.formData()
-        const file = formData.get('file') as File | null
-        const channelId = formData.get('channelId') as string | null
+        const contentType = req.headers.get('content-type') || ''
+        let channelId: string
+        let publicUrl: string
+        let r2Key: string
+        let fileName: string
+        let mimeType: string
+        let fileSize: number
 
-        if (!file || !channelId) {
-            return NextResponse.json({ error: 'file and channelId required' }, { status: 400 })
+        if (contentType.includes('application/json')) {
+            // ─── Mode 1: Direct R2 upload (JSON body) ─────────────────
+            const body = await req.json()
+            channelId = body.channelId
+            r2Key = body.r2Key
+            publicUrl = body.publicUrl
+            fileName = body.fileName
+            mimeType = body.mimeType
+            fileSize = body.fileSize || 0
+
+            if (!channelId || !r2Key || !publicUrl) {
+                return NextResponse.json({ error: 'channelId, r2Key, publicUrl required' }, { status: 400 })
+            }
+        } else {
+            // ─── Mode 2: Server proxy upload (FormData) ────────────────
+            const formData = await req.formData()
+            const file = formData.get('file') as File | null
+            channelId = formData.get('channelId') as string
+
+            if (!file || !channelId) {
+                return NextResponse.json({ error: 'file and channelId required' }, { status: 400 })
+            }
+
+            const useR2 = await isR2Configured()
+            if (!useR2) {
+                return NextResponse.json({ error: 'Storage (R2) not configured' }, { status: 500 })
+            }
+
+            const buffer = await file.arrayBuffer()
+            r2Key = generateR2Key(channelId, file.name)
+            publicUrl = await uploadToR2(buffer, r2Key, file.type)
+            fileName = file.name
+            mimeType = file.type
+            fileSize = file.size
         }
 
-        // Verify user has access to this channel
+        // ─── Common: verify access & create records ──────────────────
         const membership = await prisma.channelMember.findFirst({
             where: { channelId, user: { email: session.user.email } },
         })
@@ -34,7 +74,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Access denied' }, { status: 403 })
         }
 
-        // Check pipeline is enabled
         const channel = await prisma.channel.findUnique({
             where: { id: channelId },
             select: { pipelineEnabled: true },
@@ -46,17 +85,6 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        // Check R2 is configured
-        const useR2 = await isR2Configured()
-        if (!useR2) {
-            return NextResponse.json({ error: 'Storage (R2) not configured' }, { status: 500 })
-        }
-
-        // Upload file to R2
-        const buffer = await file.arrayBuffer()
-        const r2Key = generateR2Key(channelId, file.name)
-        const publicUrl = await uploadToR2(buffer, r2Key, file.type)
-
         // Auto-create pipeline folder
         let folder = await prisma.mediaFolder.findFirst({
             where: { channelId, name: '📸 Client Uploads', parentId: null },
@@ -67,9 +95,9 @@ export async function POST(req: NextRequest) {
             })
         }
 
-        const fileType = file.type.startsWith('video/') ? 'video' : 'image'
+        const fileType = mimeType.startsWith('video/') ? 'video' : 'image'
 
-        // Create MediaItem + ContentJob in transaction
+        // Create MediaItem + ContentJob
         const result = await prisma.$transaction(async (tx) => {
             const mediaItem = await tx.mediaItem.create({
                 data: {
@@ -80,9 +108,9 @@ export async function POST(req: NextRequest) {
                     storageFileId: r2Key,
                     type: fileType,
                     source: 'upload',
-                    originalName: file.name,
-                    fileSize: file.size,
-                    mimeType: file.type,
+                    originalName: fileName,
+                    fileSize: fileSize || 0,
+                    mimeType,
                     aiMetadata: { storage: 'r2', r2Key },
                 },
             })
