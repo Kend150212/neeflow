@@ -215,53 +215,70 @@ async function callAIWithVision(
     userPrompt: string,
     imageUrl: string,
 ): Promise<string> {
+    // Download the image and convert to base64
+    let imageBase64 = ''
+    let imageMimeType = 'image/jpeg'
+    try {
+        const imgRes = await fetch(imageUrl)
+        if (imgRes.ok) {
+            const buffer = await imgRes.arrayBuffer()
+            imageBase64 = Buffer.from(buffer).toString('base64')
+            imageMimeType = imgRes.headers.get('content-type') || 'image/jpeg'
+        }
+    } catch (e) {
+        console.warn('[Pipeline] Could not download image for vision:', e)
+    }
+
     if (provider === 'gemini') {
-        // Gemini Vision API
         const visionModel = model.includes('flash') ? model : 'gemini-2.0-flash'
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${visionModel}:generateContent?key=${apiKey}`
+
+        // Build parts: text + image (base64 inlineData)
+        const parts: Array<Record<string, unknown>> = [
+            { text: userPrompt },
+        ]
+        if (imageBase64) {
+            parts.push({
+                inlineData: {
+                    mimeType: imageMimeType,
+                    data: imageBase64,
+                },
+            })
+        } else {
+            // Fallback: just mention URL in text
+            parts[0] = { text: `${userPrompt}\n\nImage URL: ${imageUrl}` }
+        }
 
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 systemInstruction: { parts: [{ text: systemPrompt }] },
-                contents: [{
-                    parts: [
-                        { text: userPrompt },
-                        { inlineData: undefined }, // fallback: use file URL
-                        { fileData: { mimeType: 'image/jpeg', fileUri: imageUrl } },
-                    ].filter(p => p.inlineData !== undefined || p.fileData !== undefined || p.text !== undefined),
-                }],
+                contents: [{ parts }],
                 generationConfig: { temperature: 0.7 },
             }),
         })
 
         if (!res.ok) {
-            // Fallback: try text-only
-            const fallbackRes = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    systemInstruction: { parts: [{ text: systemPrompt }] },
-                    contents: [{ parts: [{ text: `${userPrompt}\n\nImage URL: ${imageUrl}` }] }],
-                    generationConfig: { temperature: 0.7 },
-                }),
-            })
-            if (!fallbackRes.ok) throw new Error(`Gemini Vision failed: ${res.statusText}`)
-            const data = await fallbackRes.json()
-            return data.candidates[0].content.parts[0].text
+            const errBody = await res.text().catch(() => '')
+            throw new Error(`Gemini Vision failed (${res.status}): ${errBody.slice(0, 200)}`)
         }
 
         const data = await res.json()
         return data.candidates[0].content.parts[0].text
     }
 
-    // OpenAI-compatible vision
+    // OpenAI-compatible vision (OpenAI, OpenRouter)
     const baseUrls: Record<string, string> = {
         openai: 'https://api.openai.com/v1',
         openrouter: 'https://openrouter.ai/api/v1',
     }
     const baseUrl = baseUrls[provider] || 'https://api.openai.com/v1'
+
+    // Prefer base64 data URL for reliability, fallback to HTTP URL
+    const imageContent = imageBase64
+        ? { type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } }
+        : { type: 'image_url', image_url: { url: imageUrl } }
 
     const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -277,7 +294,7 @@ async function callAIWithVision(
                     role: 'user',
                     content: [
                         { type: 'text', text: userPrompt },
-                        { type: 'image_url', image_url: { url: imageUrl } },
+                        imageContent,
                     ],
                 },
             ],
@@ -285,7 +302,10 @@ async function callAIWithVision(
         }),
     })
 
-    if (!res.ok) throw new Error(`Vision API error: ${res.statusText}`)
+    if (!res.ok) {
+        const errBody = await res.text().catch(() => '')
+        throw new Error(`Vision API error (${res.status}): ${errBody.slice(0, 200)}`)
+    }
     const data = await res.json()
     return data.choices[0].message.content
 }
