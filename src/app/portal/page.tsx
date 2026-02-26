@@ -124,7 +124,7 @@ export default function PortalPage() {
     const [calLoading, setCalLoading] = useState(false)
 
     // UI
-    const [activeTab, setActiveTab] = useState<'review' | 'calendar'>('review')
+    const [activeTab, setActiveTab] = useState<'review' | 'calendar' | 'upload'>('review')
     const [selectedChannel, setSelectedChannel] = useState<string>('all')
     const [comments, setComments] = useState<Record<string, string>>({})
     const [submitting, setSubmitting] = useState<Record<string, boolean>>({})
@@ -382,6 +382,18 @@ export default function PortalPage() {
                         </svg>
                         Calendar
                     </button>
+                    <button
+                        onClick={() => { setActiveTab('upload'); setSidebarOpen(false) }}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all ${activeTab === 'upload'
+                            ? `${c.activeBg} ${c.activeText} font-medium`
+                            : `${c.textMuted} ${c.hoverBg}`
+                            }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                        Upload Media
+                    </button>
                 </nav>
 
                 {/* Profile */}
@@ -460,7 +472,7 @@ export default function PortalPage() {
                             theme={theme}
                         />
                     </div>
-                ) : (
+                ) : activeTab === 'calendar' ? (
                     <div className="flex-1 flex flex-col px-3 sm:px-4 lg:px-6 py-4 lg:py-6 overflow-hidden">
                         <FullCalendar
                             calView={calView}
@@ -475,6 +487,14 @@ export default function PortalPage() {
                             handleToday={handleToday}
                             handleDayClick={handleDayClick}
                             togglePlatform={togglePlatform}
+                            theme={theme}
+                        />
+                    </div>
+                ) : (
+                    <div className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+                        <UploadTab
+                            channels={channels}
+                            selectedChannel={selectedChannel}
                             theme={theme}
                         />
                     </div>
@@ -896,5 +916,365 @@ function CalWeekView({ currentDate, postsByDate, theme }: {
                 })}
             </div>
         </div>
+    )
+}
+
+// ─────────────────────────────────────────────────────────
+// Upload Tab
+// ─────────────────────────────────────────────────────────
+function UploadTab({
+    channels, selectedChannel, theme,
+}: {
+    channels: Channel[]
+    selectedChannel: string
+    theme: Theme
+}) {
+    const c = t(theme)
+    const [files, setFiles] = useState<File[]>([])
+    const [uploading, setUploading] = useState(false)
+    const [uploadProgress, setUploadProgress] = useState<Record<string, 'pending' | 'uploading' | 'done' | 'error'>>({})
+    const [jobs, setJobs] = useState<Array<{
+        id: string; status: string; createdAt: string
+        mediaItem: { url: string; thumbnailUrl: string | null; type: string; originalName: string | null }
+        channel: { id: string; displayName: string }
+        post: { id: string; status: string; scheduledAt: string | null; content: string | null } | null
+    }>>([])
+    const [jobsLoading, setJobsLoading] = useState(true)
+    const [dragOver, setDragOver] = useState(false)
+
+    // Load recent jobs
+    useEffect(() => {
+        const loadJobs = async () => {
+            try {
+                const params = selectedChannel !== 'all' ? `?channelId=${selectedChannel}` : ''
+                const res = await fetch(`/api/portal/upload/status${params}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setJobs(data.jobs || [])
+                }
+            } catch (e) { console.error(e) }
+            finally { setJobsLoading(false) }
+        }
+        loadJobs()
+        const interval = setInterval(loadJobs, 10000) // auto-refresh every 10s
+        return () => clearInterval(interval)
+    }, [selectedChannel])
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        setDragOver(false)
+        const dropped = Array.from(e.dataTransfer.files).filter(
+            f => f.type.startsWith('image/') || f.type.startsWith('video/')
+        )
+        setFiles(prev => [...prev, ...dropped])
+    }
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const selected = Array.from(e.target.files).filter(
+                f => f.type.startsWith('image/') || f.type.startsWith('video/')
+            )
+            setFiles(prev => [...prev, ...selected])
+        }
+    }
+
+    const removeFile = (idx: number) => {
+        setFiles(prev => prev.filter((_, i) => i !== idx))
+    }
+
+    const handleUpload = async () => {
+        const targetChannel = selectedChannel !== 'all' ? selectedChannel : channels[0]?.id
+        if (!targetChannel) return
+        if (files.length === 0) return
+
+        setUploading(true)
+        const progress: Record<string, 'pending' | 'uploading' | 'done' | 'error'> = {}
+        files.forEach((f, i) => { progress[`${f.name}-${i}`] = 'pending' })
+        setUploadProgress({ ...progress })
+
+        const uploadedItems: Array<{
+            url: string; thumbnailUrl?: string; type: string; originalName?: string
+            fileSize?: number; mimeType?: string
+        }> = []
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i]
+            const key = `${file.name}-${i}`
+            progress[key] = 'uploading'
+            setUploadProgress({ ...progress })
+
+            try {
+                // Use existing init-upload → complete-upload flow
+                const initRes = await fetch('/api/admin/media/init-upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channelId: targetChannel,
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size,
+                    }),
+                })
+                const initData = await initRes.json()
+
+                if (initData.uploadUrl) {
+                    // Upload to presigned URL
+                    await fetch(initData.uploadUrl, {
+                        method: 'PUT',
+                        body: file,
+                        headers: { 'Content-Type': file.type },
+                    })
+                }
+
+                // Complete upload
+                const completeRes = await fetch('/api/admin/media/complete-upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channelId: targetChannel,
+                        uploadId: initData.uploadId,
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size,
+                    }),
+                })
+                const completeData = await completeRes.json()
+
+                uploadedItems.push({
+                    url: completeData.url || initData.url,
+                    thumbnailUrl: completeData.thumbnailUrl,
+                    type: file.type.startsWith('video/') ? 'video' : 'image',
+                    originalName: file.name,
+                    fileSize: file.size,
+                    mimeType: file.type,
+                })
+                progress[key] = 'done'
+            } catch {
+                progress[key] = 'error'
+            }
+            setUploadProgress({ ...progress })
+        }
+
+        // Create pipeline jobs for all successfully uploaded items
+        if (uploadedItems.length > 0) {
+            try {
+                await fetch('/api/portal/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channelId: targetChannel,
+                        mediaItems: uploadedItems,
+                    }),
+                })
+            } catch (e) { console.error('Failed to create pipeline jobs', e) }
+        }
+
+        // Refresh jobs list
+        setTimeout(async () => {
+            const params = selectedChannel !== 'all' ? `?channelId=${selectedChannel}` : ''
+            const res = await fetch(`/api/portal/upload/status${params}`)
+            if (res.ok) {
+                const data = await res.json()
+                setJobs(data.jobs || [])
+            }
+        }, 1000)
+
+        setFiles([])
+        setUploading(false)
+        setUploadProgress({})
+    }
+
+    const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+        QUEUED: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: '⏳ Queued' },
+        PROCESSING: { bg: 'bg-amber-500/20', text: 'text-amber-400', label: '🔄 Processing' },
+        COMPLETED: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: '✅ Done' },
+        FAILED: { bg: 'bg-red-500/20', text: 'text-red-400', label: '❌ Failed' },
+    }
+
+    return (
+        <>
+            <div className="mb-6">
+                <h1 className="text-xl font-bold tracking-tight">Upload Media</h1>
+                <p className={`${c.textMuted} text-sm mt-1`}>
+                    Upload ảnh/video để AI tự động viết caption và lên lịch đăng
+                </p>
+            </div>
+
+            {/* Select channel if "all" */}
+            {selectedChannel === 'all' && channels.length > 1 && (
+                <div className={`${c.card} border ${c.cardBorder} rounded-2xl p-4 mb-4`}>
+                    <p className={`text-sm ${c.textSoft} mb-2`}>Chọn channel để upload:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {channels.map(ch => (
+                            <button
+                                key={ch.id}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${c.activeBg} ${c.activeText} border-indigo-500/30`}
+                            >
+                                {ch.displayName}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Drop zone */}
+            <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className={`${c.card} border-2 border-dashed ${dragOver ? 'border-indigo-500 bg-indigo-500/5' : c.cardBorder} rounded-2xl p-8 text-center transition-all cursor-pointer`}
+                onClick={() => document.getElementById('file-input')?.click()}
+            >
+                <input
+                    id="file-input"
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                />
+                <div className={`w-14 h-14 mx-auto mb-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'} flex items-center justify-center`}>
+                    <svg className={`w-7 h-7 ${dragOver ? 'text-indigo-400' : c.textMicro}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                </div>
+                <h3 className={`text-sm font-semibold mb-1 ${dragOver ? 'text-indigo-400' : c.textSoft}`}>
+                    {dragOver ? 'Thả file vào đây' : 'Kéo thả ảnh/video vào đây'}
+                </h3>
+                <p className={`${c.textMuted} text-xs`}>hoặc click để chọn file</p>
+            </div>
+
+            {/* File list */}
+            {files.length > 0 && (
+                <div className={`${c.card} border ${c.cardBorder} rounded-2xl mt-4 overflow-hidden`}>
+                    <div className="px-4 py-3 flex items-center justify-between">
+                        <p className={`text-sm font-medium`}>{files.length} file đã chọn</p>
+                        <button
+                            onClick={handleUpload}
+                            disabled={uploading}
+                            className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-medium rounded-lg transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/20 flex items-center gap-1.5"
+                        >
+                            {uploading ? (
+                                <>
+                                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Đang upload...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                    </svg>
+                                    Upload & Xử lý AI
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    <div className="divide-y divide-white/[0.04]">
+                        {files.map((file, i) => {
+                            const key = `${file.name}-${i}`
+                            const status = uploadProgress[key]
+                            return (
+                                <div key={key} className="px-4 py-2.5 flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-black/30 overflow-hidden shrink-0 flex items-center justify-center">
+                                        {file.type.startsWith('image/') ? (
+                                            <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <svg className="w-4 h-4 text-white/30" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-xs truncate ${c.textSoft}`}>{file.name}</p>
+                                        <p className={`text-[10px] ${c.textMicro}`}>{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                                    </div>
+                                    {status === 'uploading' && (
+                                        <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                    )}
+                                    {status === 'done' && (
+                                        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                        </svg>
+                                    )}
+                                    {status === 'error' && (
+                                        <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    )}
+                                    {!status && (
+                                        <button onClick={() => removeFile(i)} className={`${c.textMuted} hover:text-red-400 transition-colors`}>
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Recent uploads / jobs */}
+            <div className="mt-6">
+                <h2 className={`text-sm font-semibold mb-3 ${c.textSoft}`}>Upload gần đây</h2>
+                {jobsLoading ? (
+                    <div className="flex justify-center py-8">
+                        <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                ) : jobs.length === 0 ? (
+                    <div className={`text-center py-12 ${c.card} border ${c.cardBorder} rounded-2xl`}>
+                        <p className={c.textMuted + ' text-sm'}>Chưa có upload nào</p>
+                    </div>
+                ) : (
+                    <div className={`${c.card} border ${c.cardBorder} rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.04]' : 'divide-gray-100'}`}>
+                        {jobs.map(job => {
+                            const badge = STATUS_BADGE[job.status] || STATUS_BADGE.QUEUED
+                            return (
+                                <div key={job.id} className="px-4 py-3 flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-lg bg-black/30 overflow-hidden shrink-0">
+                                        {job.mediaItem.type === 'video' ? (
+                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/30">
+                                                <svg className="w-4 h-4 text-white/40" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                            </div>
+                                        ) : (
+                                            <img
+                                                src={job.mediaItem.thumbnailUrl || job.mediaItem.url}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className={`text-xs font-medium truncate`}>
+                                                {job.mediaItem.originalName || 'Media'}
+                                            </span>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${badge.bg} ${badge.text}`}>
+                                                {badge.label}
+                                            </span>
+                                        </div>
+                                        <p className={`text-[11px] ${c.textMuted} truncate`}>
+                                            {job.channel.displayName}
+                                            {job.post?.scheduledAt && (
+                                                <> · 📅 {new Date(job.post.scheduledAt).toLocaleDateString('vi-VN', {
+                                                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                                                })}</>
+                                            )}
+                                        </p>
+                                        {job.post?.content && (
+                                            <p className={`text-[11px] ${c.textSubtle} truncate mt-0.5`}>
+                                                {job.post.content.slice(0, 100)}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <span className={`text-[10px] ${c.textMicro} shrink-0`}>
+                                        {new Date(job.createdAt).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
+                                    </span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </div>
+        </>
     )
 }

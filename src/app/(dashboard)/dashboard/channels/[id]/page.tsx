@@ -51,6 +51,7 @@ import {
     Pencil,
 } from 'lucide-react'
 import ChatBotTab from './ChatBotTab'
+import AutoContentTab from './AutoContentTab'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1256,6 +1257,10 @@ export default function ChannelDetailPage({
                     <TabsTrigger value="chatbot" className="gap-1.5 text-xs">
                         <MessageSquareDot className="h-3.5 w-3.5" />
                         <span className="hidden lg:inline">Chat Bot</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="auto-content" className="gap-1.5 text-xs">
+                        <Zap className="h-3.5 w-3.5" />
+                        <span className="hidden lg:inline">Auto Content</span>
                     </TabsTrigger>
                     <TabsTrigger value="platforms" className="gap-1.5 text-xs">
                         <Globe className="h-3.5 w-3.5" />
@@ -3467,6 +3472,11 @@ export default function ChannelDetailPage({
                 {/* ─── Chat Bot Tab ───────────────────── */}
                 <TabsContent value="chatbot" className="space-y-4">
                     <ChatBotTab channelId={id} />
+                </TabsContent>
+
+                {/* ─── Auto Content Pipeline Tab ──────── */}
+                <TabsContent value="auto-content" className="space-y-4">
+                    <AutoContentTab channelId={id} />
                 </TabsContent>
 
             </Tabs>

@@ -55,6 +55,7 @@
     "queue": "Queue",
     "approvals": "Approvals",
     "media": "Media",
+    "contentPipeline": "Content Pipeline",
     "inbox": "Inbox",
     "email": "Email",
     "reports": "Reports",

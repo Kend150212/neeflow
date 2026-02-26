@@ -264,6 +264,12 @@ model Channel {
   webhookCustom   Json? @map("webhook_custom") @default("{}")
   webhookEvents   Json? @map("webhook_events") @default("[]")
 
+  // Auto Content Pipeline
+  pipelineEnabled      Boolean  @default(false) @map("pipeline_enabled")
+  pipelineFrequency    String   @default("1_per_day") @map("pipeline_frequency")
+  pipelineApprovalMode String   @default("admin") @map("pipeline_approval_mode")
+  pipelinePostingTimes Json?    @map("pipeline_posting_times") @default("[\"19:00\"]")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -282,6 +288,7 @@ model Channel {
   socialComments       SocialComment[]
   botConfig            BotConfig?
   easyConnectLinks     EasyConnectLink[]
+  contentJobs          ContentJob[]
 
   @@map("channels")
 }
@@ -427,6 +434,7 @@ model Post {
   approvals       PostApproval[]
   platformStatuses PostPlatformStatus[]
   socialComments   SocialComment[]
+  contentJobs      ContentJob[]
 
   @@index([channelId, status])
   @@index([scheduledAt])
@@ -560,6 +568,7 @@ model MediaItem {
   channel Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)
   folder  MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   posts   PostMedia[]
+  contentJobs ContentJob[]
 
   @@index([channelId, type])
   @@index([folderId])
@@ -978,3 +987,35 @@ model BotConfig {
   @@map("bot_configs")
 }
 
+
+// ==========================================
+// AUTO CONTENT PIPELINE
+// ==========================================
+
+enum ContentJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model ContentJob {
+  id            String           @id @default(cuid())
+  channelId     String           @map("channel_id")
+  mediaItemId   String           @map("media_item_id")
+  status        ContentJobStatus @default(QUEUED)
+  aiCaption     String?          @map("ai_caption") @db.Text
+  aiAnalysis    Json?            @map("ai_analysis")
+  postId        String?          @map("post_id")
+  errorMessage  String?          @map("error_message")
+  uploadedBy    String?          @map("uploaded_by")
+  processedAt   DateTime?        @map("processed_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  channel   Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  mediaItem MediaItem @relation(fields: [mediaItemId], references: [id])
+  post      Post?     @relation(fields: [postId], references: [id])
+
+  @@index([channelId, status])
+  @@map("content_jobs")
+}
