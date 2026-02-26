@@ -55,7 +55,7 @@
     "queue": "Queue",
     "approvals": "Approvals",
     "media": "Media",
-    "contentPipeline": "Content Pipeline",
+    "smartflow": "SmartFlow™",
     "inbox": "Inbox",
     "email": "Email",
     "reports": "Reports",
@@ -1329,6 +1329,96 @@
       "aiSuggestionReady": "✨ AI suggestion ready",
       "aiSuggestFailed": "AI suggest failed",
       "newMessage": "📬 New message"
+    }
+  },
+  "smartflow": {
+    "title": "SmartFlow™",
+    "subtitle": "Upload media → AI writes caption → Schedule & publish",
+    "enable": "Enable SmartFlow",
+    "configSaved": "Configuration saved",
+    "configFailed": "Failed to save",
+    "stats": {
+      "queued": "Queued",
+      "processing": "Processing",
+      "completed": "Completed today",
+      "failed": "Failed"
+    },
+    "frequency": {
+      "label": "Posting Frequency",
+      "1_per_day": "1 post / day",
+      "2_per_day": "2 posts / day",
+      "3_per_week": "3 posts / week",
+      "5_per_week": "5 posts / week",
+      "1_per_week": "1 post / week"
+    },
+    "postingTimes": {
+      "label": "Preferred Posting Times",
+      "hint": "AI will prioritize scheduling at these times",
+      "addTime": "Add time"
+    },
+    "approval": {
+      "label": "Approval Mode",
+      "auto": {
+        "label": "Auto Publish",
+        "desc": "AI processes → publish immediately"
+      },
+      "admin": {
+        "label": "Admin Review",
+        "desc": "AI processes → admin approves → publish"
+      },
+      "client": {
+        "label": "Client Review",
+        "desc": "AI processes → client approves on Portal → publish"
+      },
+      "smartflow": {
+        "label": "SmartFlow™",
+        "desc": "AI creates → Admin reviews → Client approves → Auto publish"
+      }
+    },
+    "uploadLink": {
+      "label": "Client Upload Link",
+      "hint": "Send this link to clients so they can upload media directly",
+      "copy": "Copy",
+      "copied": "Copied!"
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "step1": "Client uploads photos/videos via Portal or Telegram",
+      "step2": "AI analyzes each image and writes caption automatically",
+      "step3": "Post is created and scheduled per configuration",
+      "step4_auto": "Post publishes automatically on schedule",
+      "step4_admin": "Admin reviews before publishing",
+      "step4_client": "Client reviews on Portal before publishing",
+      "step4_smartflow": "Admin reviews → Client approves → Auto publish",
+      "step5": "Notification sent via Telegram after processing"
+    },
+    "queue": {
+      "title": "SmartFlow™ Queue",
+      "subtitle": "Manage AI content pipeline",
+      "empty": "No content jobs yet",
+      "retryAllFailed": "Retry all failed",
+      "refresh": "Refresh",
+      "all": "All",
+      "page": "Page {page} / {total}",
+      "platforms": "Platforms",
+      "editPost": "Edit",
+      "approve": "Approve",
+      "reject": "Reject",
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "retried": "Retried successfully",
+      "cancelled": "Cancelled",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "actionFailed": "Action failed",
+      "statusQueued": "Queued",
+      "statusProcessing": "Processing",
+      "statusCompleted": "Completed",
+      "statusFailed": "Failed",
+      "statusPendingApproval": "Pending Approval",
+      "statusClientReview": "Client Review",
+      "statusScheduled": "Scheduled",
+      "portalCopied": "Portal link copied"
     }
   }
 }

@@ -202,9 +202,37 @@ export async function POST() {
 
                 // ─── Step 4: Determine post status based on approval mode ──
                 let postStatus: 'SCHEDULED' | 'PENDING_APPROVAL' = 'SCHEDULED'
-                if (channel.pipelineApprovalMode === 'admin' || channel.pipelineApprovalMode === 'client') {
+                if (channel.pipelineApprovalMode === 'admin' || channel.pipelineApprovalMode === 'client' || channel.pipelineApprovalMode === 'smartflow') {
                     postStatus = 'PENDING_APPROVAL'
                 }
+
+                // ─── Step 4b: Detect media dimensions for platform matching ──
+                let mediaDimensions: { width: number; height: number; aspectRatio: string } | null = null
+                try {
+                    if (mediaItem.type === 'image' || mediaItem.type === 'photo') {
+                        const headRes = await fetch(mediaItem.url, { method: 'GET', headers: { Range: 'bytes=0-65535' } })
+                        if (headRes.ok) {
+                            const buf = Buffer.from(await headRes.arrayBuffer())
+                            const dims = parseImageDimensions(buf)
+                            if (dims) {
+                                const ratio = dims.width / dims.height
+                                let aspectRatio = 'other'
+                                if (ratio >= 0.95 && ratio <= 1.05) aspectRatio = '1:1'
+                                else if (ratio >= 0.75 && ratio <= 0.85) aspectRatio = '4:5'
+                                else if (ratio >= 0.55 && ratio <= 0.58) aspectRatio = '9:16'
+                                else if (ratio >= 1.7 && ratio <= 1.8) aspectRatio = '16:9'
+                                else if (ratio > 1.05) aspectRatio = 'landscape'
+                                else aspectRatio = 'portrait'
+                                mediaDimensions = { width: dims.width, height: dims.height, aspectRatio }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[Pipeline] Could not detect media dimensions:', e)
+                }
+
+                // Auto-recommend platforms based on aspect ratio
+                const recommendedPlatforms = getRecommendedPlatforms(mediaDimensions?.aspectRatio || 'other')
 
                 // ─── Step 5: Get channel owner as author ─────────────
                 const authorMember = await prisma.channelMember.findFirst({
@@ -219,6 +247,11 @@ export async function POST() {
                     select: { platform: true, accountId: true },
                 })
 
+                // Filter platforms by recommendation (if dimensions detected)
+                const filteredPlatforms = mediaDimensions
+                    ? platforms.filter(p => recommendedPlatforms.includes(p.platform.toLowerCase()))
+                    : platforms
+
                 // ─── Step 7: Create post ─────────────────────────────
                 const post = await prisma.post.create({
                     data: {
@@ -227,14 +260,19 @@ export async function POST() {
                         content: aiCaption,
                         status: postStatus,
                         scheduledAt,
+                        metadata: mediaDimensions ? {
+                            mediaDimensions,
+                            recommendedPlatforms,
+                            allConnectedPlatforms: platforms.map(p => p.platform),
+                        } : undefined,
                         media: {
                             create: {
                                 mediaItemId: mediaItem.id,
                                 sortOrder: 0,
                             },
                         },
-                        platformStatuses: platforms.length > 0 ? {
-                            create: platforms.map(p => ({
+                        platformStatuses: filteredPlatforms.length > 0 ? {
+                            create: filteredPlatforms.map(p => ({
                                 platform: p.platform,
                                 accountId: p.accountId,
                                 status: 'pending',
@@ -521,4 +559,57 @@ async function findNextAvailableSlot(
     fallback.setDate(fallback.getDate() + 1)
     fallback.setHours(19, 0, 0, 0)
     return fallback
+}
+
+// ─── Helper: Parse image dimensions from buffer header ────────────
+function parseImageDimensions(buf: Buffer): { width: number; height: number } | null {
+    try {
+        // PNG: width at offset 16, height at offset 20 (big-endian uint32)
+        if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) {
+            const width = buf.readUInt32BE(16)
+            const height = buf.readUInt32BE(20)
+            return { width, height }
+        }
+        // JPEG: scan for SOF markers
+        if (buf[0] === 0xFF && buf[1] === 0xD8) {
+            let offset = 2
+            while (offset < buf.length - 10) {
+                if (buf[offset] !== 0xFF) { offset++; continue }
+                const marker = buf[offset + 1]
+                // SOF0, SOF1, SOF2
+                if (marker >= 0xC0 && marker <= 0xC2) {
+                    const height = buf.readUInt16BE(offset + 5)
+                    const width = buf.readUInt16BE(offset + 7)
+                    return { width, height }
+                }
+                const segLen = buf.readUInt16BE(offset + 2)
+                offset += 2 + segLen
+            }
+        }
+        // WebP
+        if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+            if (buf.toString('ascii', 12, 16) === 'VP8 ') {
+                const width = buf.readUInt16LE(26) & 0x3FFF
+                const height = buf.readUInt16LE(28) & 0x3FFF
+                return { width, height }
+            }
+        }
+    } catch {
+        // Ignore parse errors
+    }
+    return null
+}
+
+// ─── Helper: Recommend platforms based on aspect ratio ────────────
+function getRecommendedPlatforms(aspectRatio: string): string[] {
+    const map: Record<string, string[]> = {
+        '1:1': ['facebook', 'instagram', 'twitter', 'threads', 'linkedin'],
+        '4:5': ['facebook', 'instagram', 'twitter', 'threads', 'linkedin'],
+        '9:16': ['facebook', 'instagram', 'tiktok', 'youtube', 'twitter', 'threads'],
+        '16:9': ['facebook', 'youtube', 'twitter', 'linkedin', 'threads'],
+        'portrait': ['facebook', 'instagram', 'twitter', 'threads', 'tiktok'],
+        'landscape': ['facebook', 'youtube', 'twitter', 'linkedin', 'threads'],
+        'other': ['facebook', 'instagram', 'twitter', 'threads', 'youtube', 'tiktok', 'linkedin'],
+    }
+    return map[aspectRatio] || map['other']
 }

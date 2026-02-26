@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
                     select: { id: true, displayName: true },
                 },
                 post: {
-                    select: { id: true, status: true, scheduledAt: true, content: true },
+                    select: {
+                        id: true, status: true, scheduledAt: true, content: true,
+                        metadata: true,
+                        platformStatuses: { select: { platform: true, status: true } },
+                    },
                 },
             },
             orderBy: { createdAt: 'desc' },
@@ -62,10 +66,11 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { action, jobId, jobIds } = body as {
-        action: 'retry' | 'cancel' | 'retry_all_failed'
+    const { action, jobId, jobIds, postId } = body as {
+        action: 'retry' | 'cancel' | 'retry_all_failed' | 'approve' | 'reject' | 'client_approve'
         jobId?: string
         jobIds?: string[]
+        postId?: string
     }
 
     if (action === 'retry' && jobId) {
@@ -90,6 +95,48 @@ export async function POST(req: NextRequest) {
             data: { status: 'QUEUED', errorMessage: null, processedAt: null },
         })
         return NextResponse.json({ success: true, count: result.count })
+    }
+
+    // ─── SmartFlow: Approve post (admin stage) ──────────────
+    if (action === 'approve' && postId) {
+        const post = await prisma.post.findUnique({
+            where: { id: postId },
+            include: { channel: { select: { pipelineApprovalMode: true } } },
+        })
+        if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+
+        if (post.channel.pipelineApprovalMode === 'smartflow') {
+            // SmartFlow: admin approve → CLIENT_REVIEW (client still needs to approve)
+            await prisma.post.update({
+                where: { id: postId },
+                data: { status: 'CLIENT_REVIEW' },
+            })
+        } else {
+            // admin/client mode: approve → SCHEDULED
+            await prisma.post.update({
+                where: { id: postId },
+                data: { status: 'SCHEDULED' },
+            })
+        }
+        return NextResponse.json({ success: true })
+    }
+
+    // ─── SmartFlow: Client approve (2nd stage) ──────────────
+    if (action === 'client_approve' && postId) {
+        await prisma.post.update({
+            where: { id: postId },
+            data: { status: 'SCHEDULED' },
+        })
+        return NextResponse.json({ success: true })
+    }
+
+    // ─── Reject post ────────────────────────────────────────
+    if (action === 'reject' && postId) {
+        await prisma.post.update({
+            where: { id: postId },
+            data: { status: 'REJECTED' },
+        })
+        return NextResponse.json({ success: true })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })

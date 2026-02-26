@@ -402,6 +402,7 @@ model HashtagGroup {
 enum PostStatus {
   DRAFT
   PENDING_APPROVAL
+  CLIENT_REVIEW
   APPROVED
   REJECTED
   SCHEDULED
@@ -424,6 +425,7 @@ model Post {
   repeatIntervalDays Int?       @map("repeat_interval_days")
   bulkGroupId        String?    @map("bulk_group_id")
   contentHash        String?    @map("content_hash") // duplicate detection
+  metadata           Json?      @map("metadata") @default("{}")
   createdAt          DateTime   @default(now()) @map("created_at")
   updatedAt          DateTime   @updatedAt @map("updated_at")
 

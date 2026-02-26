@@ -55,7 +55,7 @@
     "queue": "Hàng đợi",
     "approvals": "Phê duyệt",
     "media": "Phương tiện",
-    "contentPipeline": "Content Pipeline",
+    "smartflow": "SmartFlow™",
     "inbox": "Hộp thư",
     "email": "Email",
     "reports": "Báo cáo",
@@ -1329,6 +1329,96 @@
       "aiSuggestionReady": "✨ AI đã gợi ý xong",
       "aiSuggestFailed": "Gợi ý AI thất bại",
       "newMessage": "📬 Tin nhắn mới"
+    }
+  },
+  "smartflow": {
+    "title": "SmartFlow™",
+    "subtitle": "Upload ảnh/video → AI viết caption → Lên lịch & đăng",
+    "enable": "Bật SmartFlow",
+    "configSaved": "Đã lưu cấu hình",
+    "configFailed": "Lưu thất bại",
+    "stats": {
+      "queued": "Đang chờ",
+      "processing": "Đang xử lý",
+      "completed": "Hoàn thành hôm nay",
+      "failed": "Lỗi"
+    },
+    "frequency": {
+      "label": "Tần suất đăng bài",
+      "1_per_day": "1 bài / ngày",
+      "2_per_day": "2 bài / ngày",
+      "3_per_week": "3 bài / tuần",
+      "5_per_week": "5 bài / tuần",
+      "1_per_week": "1 bài / tuần"
+    },
+    "postingTimes": {
+      "label": "Giờ đăng ưu tiên",
+      "hint": "AI sẽ ưu tiên lên lịch vào các khung giờ này",
+      "addTime": "Thêm giờ"
+    },
+    "approval": {
+      "label": "Chế độ duyệt bài",
+      "auto": {
+        "label": "Tự động đăng",
+        "desc": "AI xử lý xong → đăng luôn"
+      },
+      "admin": {
+        "label": "Admin duyệt",
+        "desc": "AI xử lý → admin duyệt → đăng"
+      },
+      "client": {
+        "label": "Client duyệt",
+        "desc": "AI xử lý → client duyệt trên Portal → đăng"
+      },
+      "smartflow": {
+        "label": "SmartFlow™",
+        "desc": "AI tạo → Admin duyệt → Client phê duyệt → Tự động đăng"
+      }
+    },
+    "uploadLink": {
+      "label": "Link upload cho client",
+      "hint": "Gửi link này cho client để họ upload ảnh/video trực tiếp",
+      "copy": "Copy",
+      "copied": "Đã copy!"
+    },
+    "howItWorks": {
+      "title": "Cách hoạt động",
+      "step1": "Client upload ảnh/video qua Portal hoặc Telegram",
+      "step2": "AI phân tích từng ảnh và viết caption tự động",
+      "step3": "Bài post được tạo và lên lịch theo cấu hình",
+      "step4_auto": "Bài đăng tự động theo lịch",
+      "step4_admin": "Admin duyệt trước khi đăng",
+      "step4_client": "Client duyệt trên Portal trước khi đăng",
+      "step4_smartflow": "Admin duyệt → Client phê duyệt → Tự động đăng",
+      "step5": "Thông báo gửi về Telegram sau khi xử lý xong"
+    },
+    "queue": {
+      "title": "Hàng đợi SmartFlow™",
+      "subtitle": "Quản lý AI content pipeline",
+      "empty": "Chưa có content job nào",
+      "retryAllFailed": "Retry tất cả lỗi",
+      "refresh": "Làm mới",
+      "all": "Tất cả",
+      "page": "Trang {page} / {total}",
+      "platforms": "Nền tảng",
+      "editPost": "Sửa",
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "retry": "Thử lại",
+      "cancel": "Huỷ",
+      "retried": "Đã thử lại",
+      "cancelled": "Đã huỷ",
+      "approved": "Đã duyệt",
+      "rejected": "Đã từ chối",
+      "actionFailed": "Thao tác thất bại",
+      "statusQueued": "Đang chờ",
+      "statusProcessing": "Đang xử lý",
+      "statusCompleted": "Hoàn thành",
+      "statusFailed": "Lỗi",
+      "statusPendingApproval": "Chờ duyệt",
+      "statusClientReview": "Client đang xem",
+      "statusScheduled": "Đã lên lịch",
+      "portalCopied": "Đã copy link Portal"
     }
   }
 }
