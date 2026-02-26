@@ -5,13 +5,13 @@ import { useBranding } from '@/lib/use-branding'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import Image from 'next/image' // used for branding logos (not R2 media)
 import { PlatformIcon } from '@/components/platform-icons'
 
 // ─── Types ───────────────────────────────────────────────
 interface MediaItem { url: string; thumbnailUrl: string | null; type: string; id?: string }
 interface PostMedia { mediaItem: MediaItem }
-interface Approval { action: string }
+interface Approval { action: string; comment?: string | null; createdAt?: string; user?: { name: string | null; email: string } }
 interface PlatformStatus { id?: string; platform: string; accountId?: string; status?: string }
 interface Post {
     id: string; content: string | null; scheduledAt: string | null; createdAt: string
@@ -642,48 +642,49 @@ function ReviewTab({
                                 </div>
                             ) : col.posts.map(post => (
                                 <div key={post.id} className={`${c.card} border ${c.cardBorder} rounded-xl overflow-hidden ${c.cardHover} transition-all group`}>
-                                    {/* Header */}
-                                    <div className="px-3 pt-3 pb-1.5 flex items-start justify-between">
-                                        <div>
+                                    {/* Header — compact row with thumbnail */}
+                                    <div className="p-3 flex items-center gap-2.5">
+                                        <div className="w-10 h-10 rounded-lg bg-black/50 overflow-hidden shrink-0">
+                                            {post.media.length > 0 ? (
+                                                post.media[0].mediaItem.type === 'video' ? (
+                                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/30">
+                                                        <svg className="w-4 h-4 text-white/30" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                                    </div>
+                                                ) : (
+                                                    <img
+                                                        src={post.media[0].mediaItem.thumbnailUrl || post.media[0].mediaItem.url}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                                    />
+                                                )
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <svg className="w-4 h-4 text-white/10" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                                <span className={`${c.activeText} font-medium text-[11px]`}>{post.channel.displayName}</span>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                                                <span className={`${c.activeText} font-medium text-[11px] truncate`}>{post.channel.displayName}</span>
                                             </div>
-                                            <p className={`${c.textSubtle} text-[10px] mt-0.5 ml-3`}>
-                                                by {post.author?.name || post.author?.email || 'Unknown'}
+                                            <p className={`${c.textSubtle} text-[10px] mt-0.5`}>
+                                                {post.author?.name || post.author?.email?.split('@')[0] || '?'}
                                                 {post.scheduledAt && (
-                                                    <> · <span className="text-amber-400/60">📅 {new Date(post.scheduledAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></>
+                                                    <> · <span className="text-amber-400/60">{new Date(post.scheduledAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></>
                                                 )}
                                             </p>
                                         </div>
-                                        <div className="flex gap-1 items-center">
+                                        <div className="flex gap-1 items-center shrink-0">
                                             {post.platformStatuses.map((ps) => (
                                                 <PlatformIcon key={ps.platform} platform={ps.platform} size="xs" />
                                             ))}
                                         </div>
                                     </div>
 
-                                    {/* Media */}
-                                    {post.media.length > 0 && (
-                                        <div className={`grid gap-0.5 ${post.media.length === 1 ? '' : 'grid-cols-2'}`}>
-                                            {post.media.slice(0, 2).map((m, i) => (
-                                                <div key={i} className="relative aspect-video bg-black/60 overflow-hidden">
-                                                    {m.mediaItem.type === 'video' ? (
-                                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/30">
-                                                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                                                                <svg className="w-3.5 h-3.5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <Image src={m.mediaItem.thumbnailUrl || m.mediaItem.url} alt="" fill className="object-cover" />
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
                                     {/* Content — inline editable */}
-                                    <div className="px-3 py-2">
+                                    <div className="px-3 pb-2">
                                         {editingId === post.id ? (
                                             <div className="space-y-2">
                                                 <textarea
@@ -711,7 +712,7 @@ function ReviewTab({
                                             </div>
                                         ) : (
                                             <p
-                                                className={`${c.textSoft} text-xs leading-relaxed whitespace-pre-wrap line-clamp-4 ${col.showActions ? 'cursor-pointer hover:opacity-70' : ''} transition-opacity`}
+                                                className={`${c.textSoft} text-[11px] leading-relaxed whitespace-pre-wrap line-clamp-3 ${col.showActions ? 'cursor-pointer hover:opacity-70' : ''} transition-opacity`}
                                                 onClick={() => {
                                                     if (!col.showActions) return
                                                     setEditingId(post.id)
@@ -723,6 +724,25 @@ function ReviewTab({
                                             </p>
                                         )}
                                     </div>
+
+                                    {/* Feedback / Comments */}
+                                    {post.approvals && post.approvals.length > 0 && post.approvals.some(a => a.comment) && (
+                                        <div className="px-3 pb-2">
+                                            {post.approvals.filter(a => a.comment).slice(0, 2).map((a, i) => (
+                                                <div key={i} className={`flex items-start gap-2 ${i > 0 ? 'mt-1.5' : ''}`}>
+                                                    <div className={`shrink-0 mt-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${a.action === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {a.action === 'APPROVED' ? '✓' : '✗'}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className={`${c.textSubtle} text-[9px] font-medium`}>
+                                                            {a.user?.name || a.user?.email?.split('@')[0] || 'User'}
+                                                        </p>
+                                                        <p className={`${c.textSoft} text-[10px] leading-snug line-clamp-2`}>{a.comment}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {/* Action buttons — only for pending column */}
                                     {col.showActions && (

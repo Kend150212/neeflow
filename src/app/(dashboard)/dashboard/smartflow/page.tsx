@@ -117,6 +117,7 @@ type ContentJob = {
         content: string | null
         metadata: Record<string, unknown> | null
         platformStatuses: PlatformStatus[]
+        approvals?: { action: string; comment?: string | null; user?: { name: string | null; email: string } }[]
     } | null
 }
 
@@ -458,6 +459,25 @@ function JobCard({
                 <p className="text-[11px] text-white/40 line-clamp-3 mb-2 leading-relaxed">{job.post.content}</p>
             )}
 
+            {/* Client Feedback */}
+            {job.post?.approvals && job.post.approvals.length > 0 && job.post.approvals.some(a => a.comment) && (
+                <div className="mb-2 space-y-1">
+                    {job.post.approvals.filter(a => a.comment).slice(0, 2).map((a, i) => (
+                        <div key={i} className="flex items-start gap-1.5 bg-white/[0.03] rounded-lg px-2 py-1.5">
+                            <div className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px] font-bold ${a.action === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                {a.action === 'APPROVED' ? '✓' : '✗'}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-[9px] text-white/30 font-medium">
+                                    {a.user?.name || a.user?.email?.split('@')[0] || 'Client'}
+                                </p>
+                                <p className="text-[10px] text-white/50 leading-snug line-clamp-2">{a.comment}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Error message */}
             {job.errorMessage && (
                 <p className="text-[10px] text-red-400/80 line-clamp-2 mb-2 flex items-start gap-1">
@@ -483,8 +503,8 @@ function JobCard({
                                 key={ps.id}
                                 onClick={() => onTogglePlatform(ps)}
                                 className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive
-                                        ? `${pCfg.activeColor} bg-white/[0.08] shadow-sm`
-                                        : `${pCfg.color} bg-white/[0.02] opacity-40`
+                                    ? `${pCfg.activeColor} bg-white/[0.08] shadow-sm`
+                                    : `${pCfg.color} bg-white/[0.02] opacity-40`
                                     } hover:scale-110`}
                                 title={`${ps.platform} — ${isActive ? 'Đang đăng' : 'Đã tắt'}${isTikTokImage ? ' (ảnh tĩnh)' : ''}`}
                             >

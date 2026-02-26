@@ -31,6 +31,10 @@ export async function GET(req: NextRequest) {
                         id: true, status: true, scheduledAt: true, content: true,
                         metadata: true,
                         platformStatuses: { select: { id: true, platform: true, accountId: true, status: true } },
+                        approvals: {
+                            include: { user: { select: { name: true, email: true } } },
+                            orderBy: { createdAt: 'desc' as const },
+                        },
                     },
                 },
             },

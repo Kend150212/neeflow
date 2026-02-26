@@ -33,9 +33,8 @@ export async function GET(req: NextRequest) {
                 orderBy: { sortOrder: 'asc' },
             },
             approvals: {
-                where: { userId: session.user.id },
-                orderBy: { createdAt: 'desc' },
-                take: 1,
+                include: { user: { select: { name: true, email: true } } },
+                orderBy: { createdAt: 'desc' as const },
             },
             platformStatuses: { select: { id: true, platform: true, accountId: true, status: true } },
         },
