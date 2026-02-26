@@ -109,12 +109,15 @@ export async function resolveTextAIKey(
         }
     }
 
+    const resolvedModel = requestedModel || getDefaultModel(platformKey.provider, platformKey.config)
+    console.log(`[resolveTextAIKey] Platform key path — provider: ${platformKey.provider}, model: ${resolvedModel}, keyPrefix: ${platformKey.apiKey.slice(0, 8)}..., baseUrl: ${platformKey.baseUrl ?? 'none'}`)
+
     return {
         ok: true,
         data: {
             apiKey: platformKey.apiKey,
             provider: platformKey.provider,
-            model: requestedModel || getDefaultModel(platformKey.provider, platformKey.config),
+            model: resolvedModel,
             usingPlatformKey: true,
             ownerId,
             integrationId: platformKey.id,
