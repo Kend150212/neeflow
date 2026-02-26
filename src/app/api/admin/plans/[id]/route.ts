@@ -45,6 +45,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         maxApiCallsPerMonth,
         hasAutoSchedule, hasWebhooks, hasAdvancedReports,
         hasPrioritySupport, hasWhiteLabel,
+        hasSmartFlow, maxSmartFlowJobsPerMonth,
         isActive, isPublic, sortOrder,
     } = body
 
@@ -170,6 +171,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
             ...(hasAdvancedReports !== undefined && { hasAdvancedReports }),
             ...(hasPrioritySupport !== undefined && { hasPrioritySupport }),
             ...(hasWhiteLabel !== undefined && { hasWhiteLabel }),
+            ...(hasSmartFlow !== undefined && { hasSmartFlow }),
+            ...(maxSmartFlowJobsPerMonth !== undefined && { maxSmartFlowJobsPerMonth }),
             ...(isActive !== undefined && { isActive }),
             ...(isPublic !== undefined && { isPublic }),
             ...(sortOrder !== undefined && { sortOrder }),
