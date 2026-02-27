@@ -240,7 +240,8 @@ export default function BillingPage() {
                                 / {plan.maxPostsPerMonth === -1 ? '∞' : plan.maxPostsPerMonth}
                             </span>
                         </div>
-                        {plan.maxPostsPerMonth !== -1 && <Progress value={postsPercent} className="h-2" />}
+                        {plan.maxPostsPerMonth !== -1 && <Progress value={postsPercent} className={`h-2 ${postsPercent >= 100 ? '[&>div]:bg-red-500' : postsPercent >= 80 ? '[&>div]:bg-orange-500' : ''}`} />}
+                        {plan.maxPostsPerMonth !== -1 && postsPercent >= 100 && <p className="text-xs text-red-500">Đã đạt giới hạn — nâng cấp gói để tạo thêm bài.</p>}
                         {plan.maxPostsPerMonth === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
                     </CardContent>
                 </Card>
@@ -375,9 +376,8 @@ export default function BillingPage() {
                         {[
                             { icon: <Zap className="h-3.5 w-3.5 text-muted-foreground" />, label: t('billing.maxChannels'), value: plan.maxChannels === -1 ? '∞' : plan.maxChannels },
                             { icon: <Bot className="h-3.5 w-3.5 text-muted-foreground" />, label: t('billing.aiPostsMonth'), value: plan.maxPostsPerMonth === -1 ? '∞' : plan.maxPostsPerMonth },
-                            { icon: <Bot className="h-3.5 w-3.5 text-muted-foreground" />, label: 'AI Content/mo', value: plan.maxAiTextPerMonth === -1 ? '∞' : plan.maxAiTextPerMonth },
                             { icon: <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />, label: t('billing.aiImagesMonth'), value: plan.maxAiImagesPerMonth === -1 ? '∞' : plan.maxAiImagesPerMonth === 0 ? t('billing.byokOnly') : plan.maxAiImagesPerMonth },
-                            { icon: <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />, label: t('billing.storage'), value: fmtStorage(plan.maxStorageMB, t('billing.unlimited')) },
+                            { icon: <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />, label: 'Storage', value: fmtStorage(plan.maxStorageMB, t('billing.unlimited')) },
                             { icon: <Code2 className="h-3.5 w-3.5 text-muted-foreground" />, label: 'API Calls/Month', value: plan.maxApiCallsPerMonth === -1 ? '∞' : plan.maxApiCallsPerMonth === 0 ? 'Disabled' : plan.maxApiCallsPerMonth.toLocaleString() },
                             { icon: <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />, label: t('billing.membersPerChannel'), value: plan.maxMembersPerChannel === -1 ? '∞' : plan.maxMembersPerChannel },
                         ].map(({ icon, label, value }) => (
