@@ -112,9 +112,11 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>([])
 
     // Tab navigation
-    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'escalation' | 'hours' | 'scope' | 'forbidden' | 'chattest' | 'learning'>('general')
+    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'hours' | 'scope' | 'forbidden' | 'chattest' | 'learning'>('general')
 
-    const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products' | 'promotions'>('saved')
+
+    const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products' | 'promotions' | 'escalation'>('saved')
+
 
 
     // Product catalog state
@@ -586,8 +588,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                     { key: 'general' as const, icon: MessageSquare, label: t('chatbot.general.title'), color: 'text-blue-500' },
                     { key: 'training' as const, icon: Brain, label: t('chatbot.training.title'), color: 'text-purple-500' },
                     { key: 'behavior' as const, icon: Target, label: t('chatbot.behavior.title'), color: 'text-cyan-500' },
-                    { key: 'escalation' as const, icon: Shield, label: t('chatbot.escalation.title'), color: 'text-red-500' },
                     { key: 'hours' as const, icon: Clock, label: t('chatbot.hours.title'), color: 'text-amber-500' },
+
                     { key: 'scope' as const, icon: Target, label: t('chatbot.scope.title'), color: 'text-teal-500' },
                     { key: 'forbidden' as const, icon: Ban, label: '🚫 Cấm kỵ', color: 'text-red-600' },
                     { key: 'chattest' as const, icon: MessageCircle, label: '💬 Chat Test', color: 'text-pink-500' },
@@ -744,6 +746,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
                             { key: 'products' as const, icon: Package, label: `🛙 ${t('chatbot.trainingTabs.products')}`, color: 'text-emerald-500', count: products.length },
                             { key: 'promotions' as const, icon: Tag, label: '🎉 Khuyến mãi', color: 'text-pink-500', count: promotions.length },
+                            { key: 'escalation' as const, icon: Shield, label: '🔔 Chuyển tiếp', color: 'text-orange-500', count: config.autoEscalateKeywords?.length },
+
 
                         ].map(item => (
                             <button
@@ -1304,8 +1308,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 </div>
             )}
 
-            {/* ─── ESCALATION TAB ─────────────────── */}
-            {botTab === 'escalation' && (
+            {/* ─── ESCALATION SUB-TAB (inside Training) ──────────── */}
+            {botTab === 'training' && trainingSubTab === 'escalation' && (
                 <div className="space-y-4">
                     <div>
                         <Label className="text-xs">{t('chatbot.escalation.keywordsLabel')}</Label>
@@ -1345,7 +1349,6 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                     </div>
 
                     <Separator />
-
                 </div>
             )}
 
@@ -2317,8 +2320,8 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                                             key={prod.id}
                                                                             onClick={() => toggleProductInGroup(idx, prod.id)}
                                                                             className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors text-xs border-b last:border-b-0 ${checked
-                                                                                    ? 'bg-primary/10 text-primary'
-                                                                                    : 'hover:bg-muted/50 text-foreground'
+                                                                                ? 'bg-primary/10 text-primary'
+                                                                                : 'hover:bg-muted/50 text-foreground'
                                                                                 }`}
                                                                         >
                                                                             <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-primary border-primary' : 'border-border'
