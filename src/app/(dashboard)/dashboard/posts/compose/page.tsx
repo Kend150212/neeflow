@@ -684,7 +684,7 @@ export default function ComposePage() {
     const [byokProviders, setByokProviders] = useState<{ provider: string; name: string; source: string }[]>([])
     const [planProviders, setPlanProviders] = useState<{ provider: string; name: string; source: string }[]>([])
     const [planAllowedModels, setPlanAllowedModels] = useState<Record<string, string[]>>({})
-    const [imageQuota, setImageQuota] = useState<{ used: number; limit: number }>({ used: 0, limit: 0 })
+    const [imageQuota, setImageQuota] = useState<{ used: number; limit: number }>({ used: 0, limit: -1 })
     const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'>('1:1')
     const [stockQuery, setStockQuery] = useState('')
     const [stockPhotos, setStockPhotos] = useState<{ id: number; src: { original: string; medium: string; small: string }; photographer: string; alt: string }[]>([])
@@ -3119,33 +3119,51 @@ export default function ComposePage() {
                             </div>
                             {/* ── CTA Action Bar — AI Image & Canva ── */}
                             <div className="flex gap-2 mt-2">
-                                <button
-                                    onClick={() => {
-                                        setShowImagePicker(true)
-                                        setAiGeneratedPreview(null)
-                                        if (content.trim()) {
-                                            setUseContentAsPrompt(true)
-                                            setAiImagePrompt(content.substring(0, 500))
-                                        } else if (aiTopic.trim() && !aiImagePrompt) {
-                                            setUseContentAsPrompt(false)
-                                            setAiImagePrompt(aiTopic)
-                                        } else {
-                                            setUseContentAsPrompt(false)
-                                        }
-                                    }}
-                                    className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-purple-600/20 via-purple-500/15 to-fuchsia-500/20 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                    <div className="relative flex items-center gap-2">
-                                        <div className="flex-shrink-0 h-7 w-7 rounded-md bg-purple-500/20 flex items-center justify-center">
-                                            <Sparkles className="h-3.5 w-3.5 text-purple-400 group-hover:animate-pulse" />
+                                {imageQuota.limit === 0 && byokProviders.length === 0 ? (
+                                    <a
+                                        href="/dashboard/billing"
+                                        className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-amber-600/20 via-orange-500/15 to-yellow-500/20 border border-amber-500/30 hover:border-amber-400/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] no-underline"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-amber-600/10 to-yellow-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                        <div className="relative flex items-center gap-2">
+                                            <div className="flex-shrink-0 h-7 w-7 rounded-md bg-amber-500/20 flex items-center justify-center">
+                                                <Sparkles className="h-3.5 w-3.5 text-amber-400 group-hover:animate-pulse" />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-xs font-semibold text-amber-300 group-hover:text-amber-200 transition-colors">Upgrade to Create Image</div>
+                                                <div className="text-[9px] text-amber-400/60 leading-tight">Unlock AI image generation</div>
+                                            </div>
                                         </div>
-                                        <div className="text-left">
-                                            <div className="text-xs font-semibold text-purple-300 group-hover:text-purple-200 transition-colors">AI Image</div>
-                                            <div className="text-[9px] text-purple-400/60 leading-tight">Generate with AI</div>
+                                    </a>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setShowImagePicker(true)
+                                            setAiGeneratedPreview(null)
+                                            if (content.trim()) {
+                                                setUseContentAsPrompt(true)
+                                                setAiImagePrompt(content.substring(0, 500))
+                                            } else if (aiTopic.trim() && !aiImagePrompt) {
+                                                setUseContentAsPrompt(false)
+                                                setAiImagePrompt(aiTopic)
+                                            } else {
+                                                setUseContentAsPrompt(false)
+                                            }
+                                        }}
+                                        className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-purple-600/20 via-purple-500/15 to-fuchsia-500/20 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                        <div className="relative flex items-center gap-2">
+                                            <div className="flex-shrink-0 h-7 w-7 rounded-md bg-purple-500/20 flex items-center justify-center">
+                                                <Sparkles className="h-3.5 w-3.5 text-purple-400 group-hover:animate-pulse" />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-xs font-semibold text-purple-300 group-hover:text-purple-200 transition-colors">AI Image</div>
+                                                <div className="text-[9px] text-purple-400/60 leading-tight">Generate with AI</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </button>
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => openCanvaDesign()}
                                     disabled={canvaLoading}
@@ -4558,7 +4576,7 @@ export default function ComposePage() {
                                                             ))}
                                                         </>
                                                     )}
-                                                    {planProviders.length > 0 && (
+                                                    {planProviders.length > 0 && imageQuota.limit !== 0 && (
                                                         <>
                                                             <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
                                                             {planProviders.map(p => (
@@ -4570,6 +4588,13 @@ export default function ComposePage() {
                                                                 </SelectItem>
                                                             ))}
                                                         </>
+                                                    )}
+                                                    {planProviders.length > 0 && imageQuota.limit === 0 && (
+                                                        <div className="px-2 py-1.5 text-[10px] text-amber-400">
+                                                            <a href="/dashboard/billing" className="flex items-center gap-1 hover:underline">
+                                                                <Sparkles className="h-3 w-3" /> Upgrade plan to unlock AI images
+                                                            </a>
+                                                        </div>
                                                     )}
                                                 </SelectContent>
                                             </Select>
