@@ -60,7 +60,12 @@ export async function POST(req: NextRequest) {
         )
     }
     const { apiKey, provider: resolvedProvider, usingPlatformKey, ownerId } = keyResult.data
-    const imageModel = requestedModel || keyResult.data.model || channel.defaultImageModel || null
+    // Build model fallback chain, but validate for Gemini — only models with 'image'/'imagen' in ID
+    let imageModel = requestedModel || keyResult.data.model || channel.defaultImageModel || null
+    if (resolvedProvider === 'gemini' && imageModel && !imageModel.includes('image') && !imageModel.includes('imagen')) {
+        // Stored model is not an image model — ignore it (use provider default)
+        imageModel = null
+    }
 
     // ─── Generate image via provider ──────────────────
     let imageUrl: string
