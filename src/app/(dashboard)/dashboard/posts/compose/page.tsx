@@ -4473,29 +4473,7 @@ export default function ComposePage() {
                         </DialogTitle>
                     </DialogHeader>
 
-                    {/* Tabs */}
-                    <div className="flex gap-1 bg-muted rounded-lg p-1">
-                        <button
-                            onClick={() => setImagePickerTab('ai')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${imagePickerTab === 'ai'
-                                ? 'bg-background shadow-sm text-foreground'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <Sparkles className="h-3.5 w-3.5" />
-                            AI Generate
-                        </button>
-                        <button
-                            onClick={() => setImagePickerTab('article')}
-                            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${imagePickerTab === 'article'
-                                ? 'bg-background shadow-sm text-foreground'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            <Newspaper className="h-3.5 w-3.5" />
-                            From Article
-                        </button>
-                    </div>
+
 
                     {/* Tab Content */}
                     <div className="mt-4 min-h-[300px]">
@@ -4550,12 +4528,9 @@ export default function ComposePage() {
                                                 <SelectTrigger className="h-7 text-[11px] w-auto min-w-[160px] gap-1.5">
                                                     <SelectValue>
                                                         {rawProvider ? (
-                                                            <span className="flex items-center gap-1.5">
-                                                                <ProviderLogo provider={rawProvider} className="h-3.5 w-3.5" />
-                                                                {byokProviders.find(p => p.provider === rawProvider)?.name ||
-                                                                    planProviders.find(p => p.provider === rawProvider)?.name ||
-                                                                    rawProvider}
-                                                            </span>
+                                                            byokProviders.find(p => p.provider === rawProvider)?.name ||
+                                                            planProviders.find(p => p.provider === rawProvider)?.name ||
+                                                            rawProvider
                                                         ) : 'Auto-detect provider'}
                                                     </SelectValue>
                                                 </SelectTrigger>
@@ -4568,10 +4543,7 @@ export default function ComposePage() {
                                                             <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys (unlimited)</div>
                                                             {byokProviders.map(p => (
                                                                 <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-[11px]">
-                                                                    <span className="flex items-center gap-1.5">
-                                                                        <ProviderLogo provider={p.provider} className="h-3.5 w-3.5" />
-                                                                        {p.name}
-                                                                    </span>
+                                                                    {p.name}
                                                                 </SelectItem>
                                                             ))}
                                                         </>
@@ -4581,10 +4553,7 @@ export default function ComposePage() {
                                                             <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
                                                             {planProviders.map(p => (
                                                                 <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-[11px]">
-                                                                    <span className="flex items-center gap-1.5">
-                                                                        <ProviderLogo provider={p.provider} className="h-3.5 w-3.5" />
-                                                                        {p.name}
-                                                                    </span>
+                                                                    {p.name}
                                                                 </SelectItem>
                                                             ))}
                                                         </>
