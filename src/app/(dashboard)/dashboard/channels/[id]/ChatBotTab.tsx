@@ -11,8 +11,9 @@ import {
     Upload, FolderOpen, X, Check, Sparkles,
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
     Search, Package, Edit, Download, Copy,
-    RotateCcw, Paperclip,
+    RotateCcw, Paperclip, Tag,
 } from 'lucide-react'
+
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -111,7 +112,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
     // Tab navigation
     const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'escalation' | 'hours' | 'scope' | 'chattest' | 'learning'>('general')
-    const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products'>('saved')
+    const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products' | 'promotions'>('saved')
+
 
     // Product catalog state
     type Product = { id: string; productId?: string | null; name: string; category?: string | null; price?: number | null; salePrice?: number | null; description?: string | null; features: string[]; images: string[]; tags: string[]; inStock: boolean; syncSource?: string | null }
@@ -125,6 +127,17 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const csvInputRef = useRef<HTMLInputElement>(null)
     // Inline cell editing: { rowId, field, value }
     const [inlineEdit, setInlineEdit] = useState<{ rowId: string; field: string; value: string } | null>(null)
+
+    // Promotions / Holiday Pricing state
+    type PriceGroup = { groupName: string; direction: 'increase' | 'decrease'; adjustType: 'fixed' | 'percent'; adjustment: number; productIds: string[] }
+    type Promotion = { id: string; name: string; description?: string | null; startAt: string; endAt: string; isActive: boolean; priceGroups: PriceGroup[] }
+    const [promotions, setPromotions] = useState<Promotion[]>([])
+    const [promotionsLoading, setPromotionsLoading] = useState(false)
+    const [showPromoForm, setShowPromoForm] = useState(false)
+    const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
+    const emptyPromo = { name: '', description: '', startAt: '', endAt: '', isActive: true, priceGroups: [] as PriceGroup[] }
+    const [newPromo, setNewPromo] = useState(emptyPromo)
+
 
     // Chat test state
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; content: string; imageUrls?: string[]; attachments?: string[] }[]>([])
@@ -724,6 +737,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             { key: 'video' as const, icon: Video, label: t('chatbot.trainingTabs.video'), color: 'text-red-500' },
                             { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
                             { key: 'products' as const, icon: Package, label: `🛙 ${t('chatbot.trainingTabs.products')}`, color: 'text-emerald-500', count: products.length },
+                            { key: 'promotions' as const, icon: Tag, label: '🎉 Khuyến mãi', color: 'text-pink-500', count: promotions.length },
+
                         ].map(item => (
                             <button
                                 key={item.key}
@@ -1965,7 +1980,298 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                 </div>
             )}
 
+            {/* ─── PROMOTIONS TAB ──────────────────── */}
+            {botTab === 'training' && trainingSubTab === 'promotions' && (() => {
+                // Fetch promotions on first open
+                if (promotions.length === 0 && !promotionsLoading) {
+                    setPromotionsLoading(true)
+                    fetch(`/api/admin/channels/${channelId}/promotions`)
+                        .then(r => r.json())
+                        .then((data: Promotion[]) => { setPromotions(data || []) })
+                        .catch(() => { })
+                        .finally(() => setPromotionsLoading(false))
+                }
+
+                const savePromo = async () => {
+                    const payload = {
+                        name: newPromo.name,
+                        description: newPromo.description || null,
+                        startAt: newPromo.startAt,
+                        endAt: newPromo.endAt,
+                        isActive: newPromo.isActive,
+                        priceGroups: newPromo.priceGroups,
+                    }
+                    if (editingPromo) {
+                        const res = await fetch(`/api/admin/channels/${channelId}/promotions/${editingPromo.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                        const updated: Promotion = await res.json()
+                        setPromotions(prev => prev.map(p => p.id === updated.id ? updated : p))
+                        toast.success('Đã cập nhật chương trình!')
+                    } else {
+                        const res = await fetch(`/api/admin/channels/${channelId}/promotions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                        const created: Promotion = await res.json()
+                        setPromotions(prev => [created, ...prev])
+                        toast.success('Đã tạo chương trình khuyến mãi!')
+                    }
+                    setShowPromoForm(false)
+                    setEditingPromo(null)
+                    setNewPromo(emptyPromo)
+                }
+
+                const deletePromo = async (id: string) => {
+                    await fetch(`/api/admin/channels/${channelId}/promotions/${id}`, { method: 'DELETE' })
+                    setPromotions(prev => prev.filter(p => p.id !== id))
+                    toast.success('Đã xóa chương trình!')
+                }
+
+                const openEdit = (p: Promotion) => {
+                    setEditingPromo(p)
+                    setNewPromo({
+                        name: p.name,
+                        description: p.description || '',
+                        startAt: new Date(p.startAt).toISOString().slice(0, 16),
+                        endAt: new Date(p.endAt).toISOString().slice(0, 16),
+                        isActive: p.isActive,
+                        priceGroups: p.priceGroups,
+                    })
+                    setShowPromoForm(true)
+                }
+
+                const addGroup = () => {
+                    setNewPromo(prev => ({
+                        ...prev,
+                        priceGroups: [...prev.priceGroups, { groupName: '', direction: 'increase', adjustType: 'fixed', adjustment: 0, productIds: [] }]
+                    }))
+                }
+
+                const updateGroup = <K extends keyof PriceGroup>(idx: number, field: K, val: PriceGroup[K]) => {
+                    setNewPromo(prev => {
+                        const groups = [...prev.priceGroups]
+                        groups[idx] = { ...groups[idx], [field]: val }
+                        return { ...prev, priceGroups: groups }
+                    })
+                }
+
+                const removeGroup = (idx: number) => {
+                    setNewPromo(prev => ({ ...prev, priceGroups: prev.priceGroups.filter((_, i) => i !== idx) }))
+                }
+
+                const toggleProductInGroup = (idx: number, productId: string) => {
+                    setNewPromo(prev => {
+                        const groups = [...prev.priceGroups]
+                        const ids = groups[idx].productIds
+                        groups[idx] = { ...groups[idx], productIds: ids.includes(productId) ? ids.filter(i => i !== productId) : [...ids, productId] }
+                        return { ...prev, priceGroups: groups }
+                    })
+                }
+
+                const now = new Date()
+                const getStatus = (p: Promotion) => {
+                    if (!p.isActive) return { label: 'Tắt', cls: 'bg-muted text-muted-foreground' }
+                    const s = new Date(p.startAt), e = new Date(p.endAt)
+                    if (now < s) return { label: 'Sắp diễn ra', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' }
+                    if (now > e) return { label: 'Đã kết thúc', cls: 'bg-muted text-muted-foreground' }
+                    return { label: '🔥 Đang hoạt động', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' }
+                }
+
+                return (
+                    <div className="flex flex-col gap-4">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-sm font-semibold">Chương trình Khuyến mãi / Giá Lễ</h3>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">Bot sẽ tự động áp dụng giá khuyến mãi và thông báo cho khách khi đang trong khung giờ.</p>
+                            </div>
+                            <Button size="sm" onClick={() => { setEditingPromo(null); setNewPromo(emptyPromo); setShowPromoForm(true) }}>
+                                + Thêm chương trình
+                            </Button>
+                        </div>
+
+                        {/* Form Dialog */}
+                        {showPromoForm && (
+                            <div className="border rounded-xl p-4 bg-muted/30 flex flex-col gap-4">
+                                <h4 className="text-sm font-semibold">{editingPromo ? 'Chỉnh sửa chương trình' : 'Tạo chương trình mới'}</h4>
+
+                                {/* Basic info */}
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div>
+                                        <label className="text-[11px] text-muted-foreground">Tên chương trình *</label>
+                                        <Input className="h-8 text-xs mt-1" placeholder="Lễ 8/3, Valentine 14/2..." value={newPromo.name} onChange={e => setNewPromo(p => ({ ...p, name: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] text-muted-foreground">Mô tả (bot sẽ dùng để giới thiệu với khách)</label>
+                                        <textarea
+                                            className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-xs min-h-[60px] outline-none focus:ring-1 focus:ring-ring"
+                                            placeholder="Ví dụ: Nhân dịp Quốc tế Phụ nữ 8/3, shop ưu đãi đặc biệt..."
+                                            value={newPromo.description}
+                                            onChange={e => setNewPromo(p => ({ ...p, description: e.target.value }))}
+                                        />
+                                    </div>
+                                    {/* Date/time pickers */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-[11px] text-muted-foreground">Bắt đầu *</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="w-full mt-1 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
+                                                value={newPromo.startAt}
+                                                onChange={e => setNewPromo(p => ({ ...p, startAt: e.target.value }))}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-muted-foreground">Kết thúc *</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="w-full mt-1 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
+                                                value={newPromo.endAt}
+                                                onChange={e => setNewPromo(p => ({ ...p, endAt: e.target.value }))}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" id="promoActive" checked={newPromo.isActive} onChange={e => setNewPromo(p => ({ ...p, isActive: e.target.checked }))} />
+                                        <label htmlFor="promoActive" className="text-xs">Kích hoạt chương trình</label>
+                                    </div>
+                                </div>
+
+                                {/* Price Groups */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-[11px] text-muted-foreground font-medium">Nhóm điều chỉnh giá</label>
+                                        <button onClick={addGroup} className="text-[11px] text-primary hover:underline">+ Thêm nhóm</button>
+                                    </div>
+                                    {newPromo.priceGroups.length === 0 && (
+                                        <p className="text-[11px] text-muted-foreground italic">Chưa có nhóm nào. Nhấn "+ Thêm nhóm" để tạo nhóm điều chỉnh giá.</p>
+                                    )}
+                                    {newPromo.priceGroups.map((g, idx) => (
+                                        <div key={idx} className="border rounded-lg p-3 mb-2 flex flex-col gap-2 bg-background">
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    className="h-7 text-xs flex-1"
+                                                    placeholder="Tên nhóm (VD: Combo 2h, Combo 3h)"
+                                                    value={g.groupName}
+                                                    onChange={e => updateGroup(idx, 'groupName', e.target.value)}
+                                                />
+                                                <button onClick={() => removeGroup(idx)} className="text-red-400 hover:text-red-600 text-xs px-1">✕</button>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <label className="text-[10px] text-muted-foreground">Hướng</label>
+                                                    <select
+                                                        className="w-full mt-0.5 rounded border border-input bg-background px-2 py-1 text-xs outline-none"
+                                                        value={g.direction}
+                                                        onChange={e => updateGroup(idx, 'direction', e.target.value as 'increase' | 'decrease')}
+                                                    >
+                                                        <option value="increase">↑ Tăng</option>
+                                                        <option value="decrease">↓ Giảm</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] text-muted-foreground">Loại</label>
+                                                    <select
+                                                        className="w-full mt-0.5 rounded border border-input bg-background px-2 py-1 text-xs outline-none"
+                                                        value={g.adjustType}
+                                                        onChange={e => updateGroup(idx, 'adjustType', e.target.value as 'fixed' | 'percent')}
+                                                    >
+                                                        <option value="fixed">Cố định (VND)</option>
+                                                        <option value="percent">Phần trăm (%)</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] text-muted-foreground">Mức {g.adjustType === 'fixed' ? '(VND)' : '(%)'}</label>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        className="w-full mt-0.5 rounded border border-input bg-background px-2 py-1 text-xs outline-none"
+                                                        value={g.adjustment || ''}
+                                                        placeholder={g.adjustType === 'fixed' ? '20000' : '10'}
+                                                        onChange={e => updateGroup(idx, 'adjustment', parseFloat(e.target.value) || 0)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {/* Product multi-select */}
+                                            <div>
+                                                <label className="text-[10px] text-muted-foreground">Sản phẩm áp dụng ({g.productIds.length} đã chọn)</label>
+                                                {products.length === 0 ? (
+                                                    <p className="text-[10px] text-muted-foreground italic mt-1">Chưa có sản phẩm nào trong catalog.</p>
+                                                ) : (
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {products.map(prod => (
+                                                            <button
+                                                                key={prod.id}
+                                                                onClick={() => toggleProductInGroup(idx, prod.id)}
+                                                                className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${g.productIds.includes(prod.id)
+                                                                    ? 'bg-primary text-primary-foreground border-primary'
+                                                                    : 'border-border text-muted-foreground hover:border-primary/50'
+                                                                    }`}
+                                                            >
+                                                                {prod.name}{prod.price ? ` (${prod.price.toLocaleString('vi-VN')}đ)` : ''}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="flex justify-end gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => { setShowPromoForm(false); setEditingPromo(null); setNewPromo(emptyPromo) }}>Hủy</Button>
+                                    <Button size="sm" disabled={!newPromo.name.trim() || !newPromo.startAt || !newPromo.endAt} onClick={savePromo}>
+                                        {editingPromo ? 'Lưu thay đổi' : 'Tạo chương trình'}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Promotion list */}
+                        {promotionsLoading && <p className="text-xs text-muted-foreground text-center py-4">Đang tải...</p>}
+                        {!promotionsLoading && promotions.length === 0 && !showPromoForm && (
+                            <div className="text-center py-10 text-muted-foreground">
+                                <Tag className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                                <p className="text-sm">Chưa có chương trình khuyến mãi nào</p>
+                                <p className="text-xs mt-1">Tạo chương trình để bot tự động báo giá lễ cho khách.</p>
+                            </div>
+                        )}
+                        <div className="flex flex-col gap-3">
+                            {promotions.map(p => {
+                                const status = getStatus(p)
+                                const start = new Date(p.startAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+                                const end = new Date(p.endAt).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+                                return (
+                                    <div key={p.id} className="border rounded-xl p-3 flex flex-col gap-2 bg-background hover:border-primary/30 transition-colors">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-semibold truncate">{p.name}</span>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${status.cls}`}>{status.label}</span>
+                                                </div>
+                                                <p className="text-[11px] text-muted-foreground">⏰ {start} → {end}</p>
+                                                {p.description && <p className="text-xs text-muted-foreground line-clamp-2">{p.description}</p>}
+                                                {(p.priceGroups || []).length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {p.priceGroups.map((g, i) => (
+                                                            <span key={i} className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                                                                {g.groupName}: {g.direction === 'increase' ? '↑' : '↓'} {g.adjustType === 'fixed' ? g.adjustment.toLocaleString('vi-VN') + 'đ' : g.adjustment + '%'} ({g.productIds.length} SP)
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <button onClick={() => openEdit(p)} className="text-xs px-2 py-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">Sửa</button>
+                                                <button onClick={() => deletePromo(p.id)} className="text-xs px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-red-400 hover:text-red-600">Xóa</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )
+            })()}
+
             {/* ─── CHAT TEST TAB ───────────────────── */}
+
             {botTab === 'chattest' && (
                 <div className="space-y-4">
                     {/* Hidden image file input for chat */}

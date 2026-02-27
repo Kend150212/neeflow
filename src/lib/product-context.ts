@@ -94,3 +94,98 @@ export function extractImageMarkers(text: string): { cleanText: string; imageUrl
     }).trim()
     return { cleanText, imageUrls }
 }
+
+// ─── Promotion context ─────────────────────────────────────────────────
+// priceGroup type stored in Promotion.priceGroups JSON
+interface PriceGroup {
+    groupName: string
+    direction: 'increase' | 'decrease'
+    adjustType: 'fixed' | 'percent'
+    adjustment: number          // positive number
+    productIds: string[]        // ProductCatalog.id values
+}
+
+/**
+ * Build active-promotion context for bot system prompt.
+ * Queries promotions where isActive=true AND now is within [startAt, endAt].
+ * Returns empty string if no active promotions.
+ */
+export async function buildPromotionContext(channelId: string): Promise<string> {
+    const now = new Date()
+
+    const activePromos = await prisma.promotion.findMany({
+        where: {
+            channelId,
+            isActive: true,
+            startAt: { lte: now },
+            endAt: { gte: now },
+        },
+        orderBy: { startAt: 'asc' },
+    })
+
+    if (activePromos.length === 0) return ''
+
+    // Also load the products so we can show their names
+    const allProductIds = activePromos.flatMap(p => {
+        const groups = (p.priceGroups as unknown as PriceGroup[]) || []
+        return groups.flatMap(g => g.productIds || [])
+    })
+
+    let productMap: Record<string, { name: string; price: number | null }> = {}
+    if (allProductIds.length > 0) {
+        const products = await prisma.productCatalog.findMany({
+            where: { channelId, id: { in: [...new Set(allProductIds)] } },
+            select: { id: true, name: true, price: true },
+        })
+        productMap = Object.fromEntries(products.map(p => [p.id, { name: p.name, price: p.price }]))
+    }
+
+    const lines: string[] = ['--- ACTIVE PROMOTIONS / GIÁ LỄ ---']
+    lines.push('🎉 Hiện đang có chương trình khuyến mãi! Hãy CHỦ ĐỘNG thông báo cho khách khi nói về giá.')
+    lines.push('QUAN TRỌNG: Dùng giá sau khi đã áp dụng khuyến mãi khi báo giá cho khách.\n')
+
+    for (const promo of activePromos) {
+        const start = promo.startAt.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+        const end = promo.endAt.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+        lines.push(`📌 ${promo.name}`)
+        lines.push(`   Thời gian: ${start} → ${end}`)
+        if (promo.description) lines.push(`   Mô tả: ${promo.description}`)
+
+        const groups = (promo.priceGroups as unknown as PriceGroup[]) || []
+
+        for (const g of groups) {
+            const dir = g.direction === 'increase' ? 'tăng' : 'giảm'
+            const amount = g.adjustType === 'fixed'
+                ? `${formatPrice(g.adjustment)}`
+                : `${g.adjustment}%`
+            const productNames = (g.productIds || [])
+                .map(id => productMap[id]?.name || id)
+                .join(', ')
+
+            // Compute example adjusted prices if we have product prices
+            const priceExamples: string[] = []
+            for (const id of (g.productIds || [])) {
+                const prod = productMap[id]
+                if (prod?.price) {
+                    let adjusted = prod.price
+                    if (g.adjustType === 'fixed') {
+                        adjusted = g.direction === 'increase' ? prod.price + g.adjustment : prod.price - g.adjustment
+                    } else {
+                        const delta = Math.round(prod.price * g.adjustment / 100)
+                        adjusted = g.direction === 'increase' ? prod.price + delta : prod.price - delta
+                    }
+                    priceExamples.push(`${prod.name}: ${formatPrice(prod.price)} → ${formatPrice(adjusted)}`)
+                }
+            }
+
+            lines.push(`   • Nhóm "${g.groupName}": ${dir} ${amount} — áp dụng cho: ${productNames}`)
+            if (priceExamples.length > 0) {
+                lines.push(`     Giá sau KM: ${priceExamples.join(', ')}`)
+            }
+        }
+        lines.push('')
+    }
+
+    lines.push('--- END ACTIVE PROMOTIONS ---')
+    return lines.join('\n')
+}

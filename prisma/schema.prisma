@@ -291,6 +291,8 @@ model Channel {
   easyConnectLinks     EasyConnectLink[]
   contentJobs          ContentJob[]
   productCatalog       ProductCatalog[]
+  promotions           Promotion[]
+
 
   @@map("channels")
 }
@@ -400,8 +402,37 @@ model ProductCatalog {
   @@map("product_catalog")
 }
 
+// ─── Promotions / Holiday Pricing ─────────────────────────────
+// Allows scheduling price changes for specific date/time windows.
+// priceGroups JSON: [{groupName, direction, adjustType, adjustment, productIds}]
+//   direction: "increase" | "decrease"
+//   adjustType: "fixed" (VND) | "percent" (%)
+//   adjustment: positive number (e.g. 20000 or 20)
+//   productIds: string[] — matching ProductCatalog.id
+model Promotion {
+  id          String    @id @default(cuid())
+  channelId   String    @map("channel_id")
+  name        String                          // "Lễ 8/3", "Valentine 14/2"
+  description String?   @db.Text             // mô tả bot sẽ đọc khi giới thiệu
+  startAt     DateTime  @map("start_at")     // bắt đầu khuyến mãi
+  endAt       DateTime  @map("end_at")       // kết thúc khuyến mãi
+  isActive    Boolean   @default(true) @map("is_active")
+  priceGroups Json      @default("[]") @map("price_groups")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  channel     Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@index([channelId, startAt, endAt])
+  @@map("promotions")
+}
+
+
 model ContentTemplate {
   id              String  @id @default(cuid())
+
   channelId       String? @map("channel_id")
   platform        String? // null = all platforms
   name            String

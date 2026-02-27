@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { callAI, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 import { OAUTH_PLATFORMS, CREDENTIAL_PLATFORMS } from '@/lib/platform-registry'
+import { buildPromotionContext } from '@/lib/product-context'
 
 // ─── Dedup cache: prevent duplicate Messenger sends ─────────
 // Key: "recipientId" → timestamp of last bot send
@@ -381,7 +382,14 @@ export async function botAutoReply(
             systemPrompt += `\n--- END CONSULTATION VIDEOS ---`
         }
 
+        // Inject active promotions / holiday pricing
+        const promotionContext = await buildPromotionContext(channel.id)
+        if (promotionContext) {
+            systemPrompt += `\n\n${promotionContext}`
+        }
+
         if (forbiddenTopics.length > 0) {
+
             systemPrompt += `\n\n## FORBIDDEN TOPICS — DO NOT discuss these. If asked, say you need to forward to a human agent:\n${forbiddenTopics.join(', ')}`
         }
 

@@ -3,7 +3,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { callAI, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
-import { buildProductContext, extractImageMarkers } from '@/lib/product-context'
+import { buildProductContext, extractImageMarkers, buildPromotionContext } from '@/lib/product-context'
+
 
 /**
  * POST /api/admin/channels/[id]/bot-config/test-chat
@@ -161,6 +162,12 @@ export async function POST(
         // Inject product catalog context if products found
         if (productContext.contextText) {
             systemPrompt += `\n\n${productContext.contextText}`
+        }
+
+        // Inject active promotions / holiday pricing
+        const promotionContext = await buildPromotionContext(channelId)
+        if (promotionContext) {
+            systemPrompt += `\n\n${promotionContext}`
         }
 
         // Build conversation history
