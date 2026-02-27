@@ -2565,19 +2565,222 @@ export default function ComposePage() {
 
 
 
-                    {/* Platform Content */}
+                    {/* Content Editor */}
+                    < Card >
+                        <CardHeader className="py-1.5 px-2.5">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-xs">Content</CardTitle>
+                                <span className={`text-[10px] ${charCount > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                                    {charCount > 0 ? `${charCount}` : ''}
+                                </span>
+                            </div>
+                            {/* Content Toolbar */}
+                            <div className="flex items-center gap-0 pt-0.5 border-b pb-1 -mx-0.5 flex-wrap">
+                                {/* Bold */}
+                                <button
+                                    type="button"
+                                    title="Bold text"
+                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        const ta = textareaRef.current
+                                        if (!ta) return
+                                        const start = ta.selectionStart
+                                        const end = ta.selectionEnd
+                                        const selected = content.substring(start, end)
+                                        const newContent = content.substring(0, start) + `**${selected || 'bold'}**` + content.substring(end)
+                                        setContent(newContent)
+                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, start + 2 + (selected || 'bold').length) }, 0)
+                                    }}
+                                >
+                                    <Bold className="h-4 w-4" />
+                                </button>
+                                {/* Hashtag */}
+                                <button
+                                    type="button"
+                                    title="Insert hashtag"
+                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        const ta = textareaRef.current
+                                        if (ta) {
+                                            const pos = ta.selectionStart
+                                            const before = content.substring(0, pos)
+                                            const after = content.substring(pos)
+                                            const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
+                                            setContent(before + prefix + '#' + after)
+                                            setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + 1, pos + prefix.length + 1) }, 0)
+                                        } else {
+                                            setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + '#')
+                                        }
+                                    }}
+                                >
+                                    <Hash className="h-4 w-4" />
+                                </button>
+                                {/* @Mention */}
+                                <button
+                                    type="button"
+                                    title="Insert mention"
+                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        const ta = textareaRef.current
+                                        if (ta) {
+                                            const pos = ta.selectionStart
+                                            const before = content.substring(0, pos)
+                                            const after = content.substring(pos)
+                                            const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
+                                            setContent(before + prefix + '@' + after)
+                                            setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + 1, pos + prefix.length + 1) }, 0)
+                                        } else {
+                                            setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + '@')
+                                        }
+                                    }}
+                                >
+                                    <AtSign className="h-4 w-4" />
+                                </button>
+                                {/* Link */}
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        title="Insert link"
+                                        className={`h-7 w-7 rounded flex items-center justify-center transition-colors cursor-pointer ${showLinkInput ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                                        onClick={() => {
+                                            setShowLinkInput(!showLinkInput)
+                                            setLinkInputValue('')
+                                        }}
+                                    >
+                                        <Link2 className="h-4 w-4" />
+                                    </button>
+                                    {showLinkInput && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowLinkInput(false)} />
+                                            <div className="absolute top-9 left-0 z-50 bg-popover border rounded-xl shadow-xl p-3 w-[280px]">
+                                                <p className="text-[10px] text-muted-foreground font-medium mb-1.5">Paste or type a URL</p>
+                                                <div className="flex gap-1.5">
+                                                    <Input
+                                                        value={linkInputValue}
+                                                        onChange={(e) => setLinkInputValue(e.target.value)}
+                                                        placeholder="https://example.com"
+                                                        className="text-xs h-8"
+                                                        autoFocus
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && linkInputValue.trim()) {
+                                                                e.preventDefault()
+                                                                const ta = textareaRef.current
+                                                                const url = linkInputValue.trim().startsWith('http') ? linkInputValue.trim() : `https://${linkInputValue.trim()}`
+                                                                if (ta) {
+                                                                    const pos = ta.selectionStart
+                                                                    const before = content.substring(0, pos)
+                                                                    const after = content.substring(pos)
+                                                                    const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
+                                                                    setContent(before + prefix + url + after)
+                                                                    setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + url.length, pos + prefix.length + url.length) }, 0)
+                                                                } else {
+                                                                    setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + url)
+                                                                }
+                                                                setShowLinkInput(false)
+                                                                setLinkInputValue('')
+                                                            } else if (e.key === 'Escape') {
+                                                                setShowLinkInput(false)
+                                                            }
+                                                        }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="h-8 px-2.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50"
+                                                        disabled={!linkInputValue.trim()}
+                                                        onClick={() => {
+                                                            const ta = textareaRef.current
+                                                            const url = linkInputValue.trim().startsWith('http') ? linkInputValue.trim() : `https://${linkInputValue.trim()}`
+                                                            if (ta) {
+                                                                const pos = ta.selectionStart
+                                                                const before = content.substring(0, pos)
+                                                                const after = content.substring(pos)
+                                                                const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
+                                                                setContent(before + prefix + url + after)
+                                                                setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + url.length, pos + prefix.length + url.length) }, 0)
+                                                            } else {
+                                                                setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + url)
+                                                            }
+                                                            setShowLinkInput(false)
+                                                            setLinkInputValue('')
+                                                        }}
+                                                    >
+                                                        Insert
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                                <div className="w-px h-5 bg-border mx-1" />
+                                {/* Emoji Picker */}
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        title="Emoji"
+                                        className={`h-7 w-7 rounded flex items-center justify-center transition-colors cursor-pointer ${showEmojiPicker ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                    >
+                                        <Smile className="h-4 w-4" />
+                                    </button>
+                                    {showEmojiPicker && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
+                                            <div className="absolute top-9 left-0 z-50 bg-popover border rounded-xl shadow-xl p-2 w-[260px]">
+                                                <div className="grid grid-cols-8 gap-1">
+                                                    {['😀', '😂', '🤣', '😍', '🥰', '😎', '🤩', '🥳', '😤', '🔥', '💯', '❤️', '👏', '🙌', '💪', '✨', '🎉', '🎊', '👍', '👎', '🤔', '😱', '😢', '🤝', '💡', '📌', '🚀', '📢', '💰', '🛒', '🎯', '📈', '⭐', '🏆', '💎', '🌟', '❗', '✅', '📣', '🔔', '🎁', '💝', '🌈', '☀️', '🌙', '💫', '🍀', '🦋'].map(emoji => (
+                                                        <button
+                                                            key={emoji}
+                                                            type="button"
+                                                            className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted transition-colors cursor-pointer text-base"
+                                                            onClick={() => {
+                                                                const ta = textareaRef.current
+                                                                if (!ta) { setContent(prev => prev + emoji); setShowEmojiPicker(false); return }
+                                                                const pos = ta.selectionStart
+                                                                const newContent = content.substring(0, pos) + emoji + content.substring(pos)
+                                                                setContent(newContent)
+                                                                setShowEmojiPicker(false)
+                                                                setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + emoji.length, pos + emoji.length) }, 0)
+                                                            }}
+                                                        >
+                                                            {emoji}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <textarea
+                                ref={textareaRef}
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                placeholder="Write your post content here..."
+                                className="w-full min-h-[120px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                                rows={5}
+                            />
+                        </CardContent>
+                    </Card >
+
+                    {/* Per-Platform Content Customization */}
                     {selectedPlatformIds.size > 0 && (
                         <Card>
                             <CardHeader className="py-1.5 px-2.5">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-xs flex items-center gap-1.5">
-                                        Content
+                                        <Sparkles className="h-3.5 w-3.5" /> Platform Content
                                     </CardTitle>
-                                    {activeContentTab && (
-                                        <span className={`text-[10px] ${(contentPerPlatform[activeContentTab] || '').length > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
-                                            {(contentPerPlatform[activeContentTab] || '').length > 0 ? (contentPerPlatform[activeContentTab] || '').length : ''}
-                                        </span>
-                                    )}
+                                    <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-medium hover:from-violet-700 hover:to-indigo-700 transition-all disabled:opacity-50 cursor-pointer"
+                                        disabled={customizingContent || !content.trim()}
+                                        onClick={handleCustomizeContent}
+                                    >
+                                        {customizingContent ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                        {customizingContent ? 'Customizing...' : 'AI Customize'}
+                                    </button>
                                 </div>
                                 {/* Platform tabs */}
                                 {(() => {
@@ -2594,6 +2797,13 @@ export default function ComposePage() {
                                         facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok',
                                         x: 'X', linkedin: 'LinkedIn', pinterest: 'Pinterest', youtube: 'YouTube',
                                     }
+                                    if (Object.keys(contentPerPlatform).length === 0) {
+                                        return (
+                                            <p className="text-[10px] text-muted-foreground mt-1">
+                                                Click &quot;AI Customize&quot; to generate optimized content for each platform, or all platforms will use the master content above.
+                                            </p>
+                                        )
+                                    }
                                     return (
                                         <div className="flex flex-wrap gap-1 mt-1.5">
                                             {uniquePlatforms.map((platform) => (
@@ -2602,42 +2812,56 @@ export default function ComposePage() {
                                                     type="button"
                                                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${activeContentTab === platform
                                                         ? 'bg-primary text-primary-foreground shadow-sm'
-                                                        : (contentPerPlatform[platform] || '').length > 0
+                                                        : contentPerPlatform[platform]
                                                             ? 'bg-muted text-foreground hover:bg-muted/80'
                                                             : 'bg-muted/50 text-muted-foreground hover:bg-muted/80'
                                                         }`}
-                                                    onClick={() => {
-                                                        if (activeContentTab === platform) {
-                                                            setActiveContentTab(null)
-                                                        } else {
-                                                            setActiveContentTab(platform)
-                                                            if (!contentPerPlatform[platform]) {
-                                                                setContentPerPlatform(prev => ({ ...prev, [platform]: '' }))
-                                                            }
-                                                        }
-                                                    }}
+                                                    onClick={() => setActiveContentTab(activeContentTab === platform ? null : platform)}
                                                 >
                                                     <span>{platformIcons[platform] || '📱'}</span>
                                                     {platformLabels[platform] || platform}
-                                                    {(contentPerPlatform[platform] || '').length > 0 && <Check className="h-2.5 w-2.5" />}
+                                                    {contentPerPlatform[platform] && <Check className="h-2.5 w-2.5" />}
                                                 </button>
                                             ))}
                                         </div>
                                     )
                                 })()}
                             </CardHeader>
-                            {activeContentTab && (
+                            {activeContentTab && contentPerPlatform[activeContentTab] && (
                                 <CardContent>
-                                    <textarea
-                                        value={contentPerPlatform[activeContentTab] || ''}
-                                        onChange={(e) => setContentPerPlatform({
-                                            ...contentPerPlatform,
-                                            [activeContentTab]: e.target.value,
-                                        })}
-                                        placeholder={`Write your ${activeContentTab.charAt(0).toUpperCase() + activeContentTab.slice(1)} post content here...`}
-                                        className="w-full min-h-[150px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                                        rows={8}
-                                    />
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-muted-foreground font-medium">
+                                                {activeContentTab.charAt(0).toUpperCase() + activeContentTab.slice(1)} version
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {contentPerPlatform[activeContentTab]?.length || 0}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    className="text-[10px] text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                                                    onClick={() => {
+                                                        const updated = { ...contentPerPlatform }
+                                                        delete updated[activeContentTab!]
+                                                        setContentPerPlatform(updated)
+                                                        if (Object.keys(updated).length === 0) setActiveContentTab(null)
+                                                    }}
+                                                >
+                                                    ↺ Reset to Master
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <textarea
+                                            value={contentPerPlatform[activeContentTab] || ''}
+                                            onChange={(e) => setContentPerPlatform({
+                                                ...contentPerPlatform,
+                                                [activeContentTab]: e.target.value,
+                                            })}
+                                            className="w-full min-h-[100px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                                            rows={4}
+                                        />
+                                    </div>
                                 </CardContent>
                             )}
                         </Card>
