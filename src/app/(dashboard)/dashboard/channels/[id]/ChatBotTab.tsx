@@ -1519,31 +1519,80 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                         <FileText className="h-4 w-4 text-blue-500" />
                                     </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-blue-400 mb-2">Hướng dẫn sử dụng Product Catalog</p>
+                                <div className="flex-1 min-w-0 space-y-3">
+                                    <p className="text-sm font-medium text-blue-400">Hướng dẫn sử dụng Product Catalog</p>
+
+                                    {/* Steps */}
                                     <div className="grid grid-cols-1 gap-1 text-[11px] text-muted-foreground">
-                                        <p>1️⃣ <strong>Thêm thủ công</strong> — Nhấn <span className="font-mono bg-muted px-1 rounded">+ Add Product</span> để nhập từng sản phẩm</p>
-                                        <p>2️⃣ <strong>Import hàng loạt</strong> — Tải file mẫu CSV bên dưới → điền sản phẩm → nhấn <span className="font-mono bg-muted px-1 rounded">Import CSV</span></p>
-                                        <p>3️⃣ <strong>Bot tự động tìm kiếm</strong> — Khi khách hỏi, bot sẽ tìm sản phẩm phù hợp và trả lời (không tốn AI tokens)</p>
-                                        <p className="text-[10px] text-muted-foreground/60 mt-1">CSV columns: id, name, category, price, sale_price, description, features (pipe |), images (pipe |), tags (pipe |), in_stock</p>
+                                        <p>1️⃣ <strong>Thêm thủ công</strong> — Nhấn <span className="font-mono bg-muted px-1 rounded">+ Add Product</span> → điền thông tin → lưu</p>
+                                        <p>2️⃣ <strong>Import hàng loạt</strong> — Tải file mẫu CSV bên dưới → điền → nhấn <span className="font-mono bg-muted px-1 rounded">Import CSV</span></p>
+                                        <p>3️⃣ <strong>Bot tự tìm kiếm</strong> — Khách hỏi → bot tìm sản phẩm phù hợp → trả lời tự động (không tốn AI tokens)</p>
                                     </div>
-                                    <button
-                                        className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
-                                        onClick={() => {
-                                            const sampleCsv = `id,name,category,price,sale_price,description,features,images,tags,in_stock
+
+                                    {/* Service/Booking tip */}
+                                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-2.5 text-[11px]">
+                                        <p className="font-medium text-amber-400 mb-1.5">💡 Tạo dịch vụ / Booking (phòng, gói combo, add-on...)</p>
+                                        <p className="text-muted-foreground mb-1">Mỗi <strong>phòng / dịch vụ</strong> = 1 sản phẩm. Liệt kê tất cả gói giá &amp; add-ons vào <strong>Tính năng</strong>:</p>
+                                        <div className="font-mono text-[10px] bg-background/60 rounded p-2 whitespace-pre-wrap text-muted-foreground leading-relaxed">{`Tên:      Phòng 101 - Karaoke VIP
+Danh mục: Dịch vụ
+Giá gốc:  200000   ← gói rẻ nhất
+
+Tính năng:
+Combo 2h: 200,000đ
+Combo 3h: 280,000đ
+Combo 5h: 400,000đ
+Cú đêm (22h–6h): 500,000đ
+── Add-ons ──
+Thêm 1 giờ: +50,000đ
+Combo đồ ăn A: +80,000đ
+Combo đồ uống: +60,000đ`}</div>
+                                        <p className="text-[10px] text-muted-foreground/70 mt-1.5">Bot sẽ tự trả lời khi khách hỏi "phòng 101 giá bao nhiêu", "thêm giờ hết bao nhiêu"...</p>
+                                    </div>
+
+                                    {/* CSV format note */}
+                                    <p className="text-[10px] text-muted-foreground/60">
+                                        CSV columns: id, name, category, price, sale_price, description, <strong>features</strong> (ngăn nhau bằng <code>|</code>), images (ngăn bằng <code>|</code>), tags (ngăn bằng <code>|</code>), in_stock
+                                    </p>
+
+                                    {/* Download buttons */}
+                                    <div className="flex gap-3 flex-wrap">
+                                        <button
+                                            className="inline-flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
+                                            onClick={() => {
+                                                const sampleCsv = `id,name,category,price,sale_price,description,features,images,tags,in_stock
 SP001,Kem Dưỡng Ẩm Vitamin C,Skincare,350000,280000,Dưỡng ẩm 24h giúp da sáng khỏe,Không paraben|SPF30|Da hỗn hợp,https://example.com/img1.jpg|https://example.com/img2.jpg,kem|dưỡng|vitamin c,true
-SP002,Serum Collagen Gold,Anti-aging,450000,,Tăng sinh collagen và giảm nếp nhăn,Collagen cao cấp|Không hương liệu,https://example.com/serum.jpg,serum|collagen|gold,true
+SP002,Serum Collagen Gold,Skincare,450000,,Tăng sinh collagen giảm nếp nhăn,Collagen cao cấp|Không hương liệu,https://example.com/serum.jpg,serum|collagen,true
+DV001,Phòng 101 - Karaoke VIP,Dịch vụ,200000,,Phòng VIP sức chứa 10 người màn hình 4K,"Combo 2h: 200,000đ|Combo 3h: 280,000đ|Combo 5h: 400,000đ|Cú đêm (22h-6h): 500,000đ|── Add-ons ──|Thêm 1 giờ: +50,000đ|Combo đồ ăn A: +80,000đ|Combo đồ uống: +60,000đ",https://example.com/room101.jpg,phong-101|karaoke|vip|booking|combo,true
+DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức chứa 6 người,"Combo 2h: 150,000đ|Combo 3h: 210,000đ|Cú đêm: 380,000đ|── Add-ons ──|Thêm 1 giờ: +40,000đ",https://example.com/room102.jpg,phong-102|karaoke|booking,true
 `
-                                            const blob = new Blob([sampleCsv], { type: 'text/csv;charset=utf-8;' })
-                                            const url = URL.createObjectURL(blob)
-                                            const a = document.createElement('a')
-                                            a.href = url; a.download = 'sample_products.csv'; a.click()
-                                            URL.revokeObjectURL(url)
-                                        }}
-                                    >
-                                        <Download className="h-3.5 w-3.5" />
-                                        Tải file mẫu CSV (sample_products.csv)
-                                    </button>
+                                                const blob = new Blob([sampleCsv], { type: 'text/csv;charset=utf-8;' })
+                                                const url = URL.createObjectURL(blob)
+                                                const a = document.createElement('a')
+                                                a.href = url; a.download = 'sample_products.csv'; a.click()
+                                                URL.revokeObjectURL(url)
+                                            }}
+                                        >
+                                            <Download className="h-3.5 w-3.5" />
+                                            Tải file mẫu CSV
+                                        </button>
+                                        <button
+                                            className="inline-flex items-center gap-1.5 text-[11px] text-amber-400 hover:text-amber-300 transition-colors"
+                                            onClick={() => {
+                                                const serviceCsv = `id,name,category,price,sale_price,description,features,images,tags,in_stock
+DV001,Phòng 101 - Karaoke VIP,Dịch vụ,200000,,Phòng VIP sức chứa 10 người màn hình 4K,"Combo 2h: 200,000đ|Combo 3h: 280,000đ|Combo 5h: 400,000đ|Cú đêm (22h-6h): 500,000đ|── Add-ons ──|Thêm 1 giờ: +50,000đ|Combo đồ ăn A: +80,000đ|Combo đồ uống: +60,000đ",https://example.com/room101.jpg,phong-101|karaoke|vip|booking|combo,true
+DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức chứa 6 người,"Combo 2h: 150,000đ|Combo 3h: 210,000đ|Cú đêm: 380,000đ|── Add-ons ──|Thêm 1 giờ: +40,000đ",https://example.com/room102.jpg,phong-102|karaoke|booking,true
+`
+                                                const blob = new Blob([serviceCsv], { type: 'text/csv;charset=utf-8;' })
+                                                const url = URL.createObjectURL(blob)
+                                                const a = document.createElement('a')
+                                                a.href = url; a.download = 'sample_services.csv'; a.click()
+                                                URL.revokeObjectURL(url)
+                                            }}
+                                        >
+                                            <Download className="h-3.5 w-3.5" />
+                                            Tải mẫu Dịch vụ / Booking
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
