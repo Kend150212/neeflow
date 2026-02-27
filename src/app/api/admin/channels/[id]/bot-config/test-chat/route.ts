@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { callAI, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { buildProductContext, extractImageMarkers } from '@/lib/product-context'
 
 /**
  * POST /api/admin/channels/[id]/bot-config/test-chat
@@ -62,6 +63,9 @@ export async function POST(
             select: { title: true, content: true },
             take: 20,
         })
+
+        // Search product catalog (pure code, no AI tokens)
+        const productContext = await buildProductContext(channelId, message)
 
         // Build system prompt (same as bot-auto-reply)
         const vibeTone = (channel.vibeTone as Record<string, string>) || {}
@@ -145,7 +149,12 @@ export async function POST(
         const langLabel = channel.language === 'vi' ? 'Vietnamese' : channel.language === 'en' ? 'English' : channel.language || 'auto-detect'
         systemPrompt += `\n\n## Communication Style:\n- You are a REAL person on the team, not a bot. Chat naturally.\n- Keep messages SHORT (1-3 sentences max).\n- Use casual, warm language. Emoji sparingly 😊\n- ONE clear, direct response per message.`
         systemPrompt += `\n\n## Language:\n- Default: ${langLabel}\n- Reply in the SAME language as the customer.`
-        systemPrompt += `\n\n## Rules:\n- NEVER say you are an AI, bot, or automated system\n- PLAIN TEXT ONLY, no JSON, no brackets\n- If you don't know something, say you'll check with the team`
+        systemPrompt += `\n\n## Rules:\n- NEVER say you are an AI, bot, or automated system\n- PLAIN TEXT ONLY — no JSON, no markdown, no brackets EXCEPT [IMAGE:url]\n- Use [IMAGE:https://...] at the end to show product images (1-2 max)\n- If you don't know something, say you'll check with the team`
+
+        // Inject product catalog context if products found
+        if (productContext.contextText) {
+            systemPrompt += `\n\n${productContext.contextText}`
+        }
 
         // Build conversation history
         let conversationContext = ''
@@ -174,7 +183,8 @@ export async function POST(
             } catch { /* use as-is */ }
         }
 
-        return NextResponse.json({ reply: reply.trim() })
+        const { cleanText, imageUrls } = extractImageMarkers(reply)
+        return NextResponse.json({ reply: cleanText, imageUrls })
     } catch (err: any) {
         console.error('[Test Chat] Error:', err)
         return NextResponse.json({ error: err.message || 'AI call failed' }, { status: 500 })

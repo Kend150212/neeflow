@@ -10,6 +10,7 @@ import {
     Link as LinkIcon, FileSpreadsheet, ExternalLink,
     Upload, FolderOpen, X, Check, Sparkles,
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
+    Search, Package, Edit,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -109,10 +110,21 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
     // Tab navigation
     const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'escalation' | 'hours' | 'scope' | 'chattest' | 'learning'>('general')
-    const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa'>('saved')
+    const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products'>('saved')
+
+    // Product catalog state
+    type Product = { id: string; productId?: string | null; name: string; category?: string | null; price?: number | null; salePrice?: number | null; description?: string | null; features: string[]; images: string[]; tags: string[]; inStock: boolean; syncSource?: string | null }
+    const [products, setProducts] = useState<Product[]>([])
+    const [productsLoading, setProductsLoading] = useState(false)
+    const [showProductForm, setShowProductForm] = useState(false)
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+    const [csvImporting, setCsvImporting] = useState(false)
+    const [productSearch, setProductSearch] = useState('')
+    const [newProduct, setNewProduct] = useState({ productId: '', name: '', category: '', price: '', salePrice: '', description: '', features: '', images: '', tags: '', inStock: true })
+    const csvInputRef = useRef<HTMLInputElement>(null)
 
     // Chat test state
-    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; content: string }[]>([])
+    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; content: string; imageUrls?: string[] }[]>([])
     const [chatInput, setChatInput] = useState('')
     const [chatLoading, setChatLoading] = useState(false)
     const chatEndRef = useRef<HTMLDivElement>(null)
@@ -663,6 +675,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             { key: 'images' as const, icon: ImageIcon, label: t('chatbot.trainingTabs.images'), color: 'text-orange-500' },
                             { key: 'video' as const, icon: Video, label: t('chatbot.trainingTabs.video'), color: 'text-red-500' },
                             { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
+                            { key: 'products' as const, icon: FileSpreadsheet, label: '🛍️ Products', color: 'text-emerald-500', count: products.length },
                         ].map(item => (
                             <button
                                 key={item.key}
@@ -1465,6 +1478,234 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 </div>
             )}
 
+            {/* ─── PRODUCTS TAB ─────────────────────── */}
+            {botTab === 'training' && trainingSubTab === 'products' && (
+                <div className="space-y-4">
+                    {/* Hidden CSV input */}
+                    <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setCsvImporting(true)
+                        const form = new FormData()
+                        form.append('file', file)
+                        try {
+                            const res = await fetch(`/api/admin/channels/${channelId}/products/import`, { method: 'POST', body: form })
+                            const data = await res.json()
+                            toast.success(`Imported ${data.imported} new, updated ${data.updated}${data.errors?.length ? `, ${data.errors.length} errors` : ''}`)
+                            // Refresh list
+                            const r2 = await fetch(`/api/admin/channels/${channelId}/products`)
+                            setProducts(await r2.json())
+                        } catch { toast.error('Import failed') }
+                        setCsvImporting(false)
+                        e.target.value = ''
+                    }} />
+
+                    {/* Header actions */}
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                            <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <Input
+                                placeholder="Search products..."
+                                value={productSearch}
+                                onChange={e => setProductSearch(e.target.value)}
+                                className="h-8 text-xs"
+                            />
+                        </div>
+                        <div className="flex gap-1.5">
+                            <Button size="sm" variant="outline" disabled={csvImporting}
+                                onClick={() => csvInputRef.current?.click()}>
+                                {csvImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+                                Import CSV
+                            </Button>
+                            <Button size="sm" onClick={() => { setEditingProduct(null); setNewProduct({ productId: '', name: '', category: '', price: '', salePrice: '', description: '', features: '', images: '', tags: '', inStock: true }); setShowProductForm(true) }}>
+                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Product
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Load products on first visit */}
+                    {products.length === 0 && !productsLoading && (
+                        <div className="text-center py-8" ref={el => {
+                            if (el && !productsLoading) {
+                                setProductsLoading(true)
+                                fetch(`/api/admin/channels/${channelId}/products`)
+                                    .then(r => r.json()).then(data => { setProducts(data); setProductsLoading(false) })
+                                    .catch(() => setProductsLoading(false))
+                            }
+                        }}>
+                            <Package className="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-40" />
+                            <p className="text-sm text-muted-foreground">No products yet. Add manually or import via CSV.</p>
+                            <p className="text-[11px] text-muted-foreground mt-1">CSV format: id,name,category,price,sale_price,description,features,images,tags,in_stock</p>
+                        </div>
+                    )}
+
+                    {productsLoading && <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
+
+                    {/* Product list */}
+                    {products.length > 0 && (
+                        <div className="space-y-2">
+                            {products
+                                .filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.productId?.toLowerCase().includes(productSearch.toLowerCase()) || p.category?.toLowerCase().includes(productSearch.toLowerCase()))
+                                .map(p => (
+                                    <Card key={p.id} className="p-3">
+                                        <div className="flex items-start gap-3">
+                                            {/* Thumbnail */}
+                                            {p.images?.[0] ? (
+                                                <img src={p.images[0]} alt={p.name} className="h-14 w-14 rounded-md object-cover flex-shrink-0 border" />
+                                            ) : (
+                                                <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center flex-shrink-0 border">
+                                                    <Package className="h-5 w-5 text-muted-foreground" />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    {p.productId && <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{p.productId}</span>}
+                                                    <span className="text-sm font-medium truncate">{p.name}</span>
+                                                    {!p.inStock && <Badge variant="destructive" className="text-[10px] py-0">Out of Stock</Badge>}
+                                                    {p.syncSource && p.syncSource !== 'manual' && <Badge variant="outline" className="text-[10px] py-0">{p.syncSource}</Badge>}
+                                                </div>
+                                                <div className="flex items-center gap-3 mt-0.5">
+                                                    {p.category && <span className="text-[11px] text-muted-foreground">{p.category}</span>}
+                                                    {p.price && (
+                                                        <span className="text-[11px] font-medium text-emerald-600">
+                                                            {p.salePrice && p.salePrice < p.price ? (
+                                                                <><s className="text-muted-foreground font-normal">{p.price.toLocaleString('vi-VN')}đ</s> → {p.salePrice.toLocaleString('vi-VN')}đ</>
+                                                            ) : `${p.price.toLocaleString('vi-VN')}đ`}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {p.features?.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {p.features.slice(0, 3).map((f, i) => <Badge key={i} variant="secondary" className="text-[9px] py-0">{f}</Badge>)}
+                                                        {p.features.length > 3 && <span className="text-[9px] text-muted-foreground">+{p.features.length - 3}</span>}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-1 flex-shrink-0">
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                                                    onClick={() => {
+                                                        setEditingProduct(p)
+                                                        setNewProduct({
+                                                            productId: p.productId || '', name: p.name, category: p.category || '',
+                                                            price: p.price?.toString() || '', salePrice: p.salePrice?.toString() || '',
+                                                            description: p.description || '', features: p.features.join('\n'),
+                                                            images: p.images.join('\n'), tags: p.tags.join(', '), inStock: p.inStock
+                                                        })
+                                                        setShowProductForm(true)
+                                                    }}>
+                                                    <Edit className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                                    onClick={async () => {
+                                                        if (!confirm('Delete this product?')) return
+                                                        await fetch(`/api/admin/channels/${channelId}/products/${p.id}`, { method: 'DELETE' })
+                                                        setProducts(prev => prev.filter(x => x.id !== p.id))
+                                                        toast.success('Product deleted')
+                                                    }}>
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                ))}
+                        </div>
+                    )}
+
+                    {/* Add / Edit Product Form Dialog */}
+                    {showProductForm && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowProductForm(false)}>
+                            <div className="bg-background rounded-xl shadow-2xl w-[560px] max-h-[80vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+                                <h4 className="font-semibold text-sm mb-4">{editingProduct ? 'Edit Product' : 'Add New Product'}</h4>
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[11px] text-muted-foreground">Product ID (optional)</label>
+                                            <Input className="h-8 text-xs mt-1" placeholder="SP001" value={newProduct.productId} onChange={e => setNewProduct(p => ({ ...p, productId: e.target.value }))} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-muted-foreground">Category</label>
+                                            <Input className="h-8 text-xs mt-1" placeholder="Skincare" value={newProduct.category} onChange={e => setNewProduct(p => ({ ...p, category: e.target.value }))} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] text-muted-foreground">Product Name *</label>
+                                        <Input className="h-8 text-xs mt-1" placeholder="Kem Dưỡng Ẩm Vitamin C" value={newProduct.name} onChange={e => setNewProduct(p => ({ ...p, name: e.target.value }))} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[11px] text-muted-foreground">Price (₫)</label>
+                                            <Input className="h-8 text-xs mt-1" type="number" placeholder="350000" value={newProduct.price} onChange={e => setNewProduct(p => ({ ...p, price: e.target.value }))} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] text-muted-foreground">Sale Price (₫)</label>
+                                            <Input className="h-8 text-xs mt-1" type="number" placeholder="280000" value={newProduct.salePrice} onChange={e => setNewProduct(p => ({ ...p, salePrice: e.target.value }))} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] text-muted-foreground">Description</label>
+                                        <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-20" placeholder="Mô tả sản phẩm..." value={newProduct.description} onChange={e => setNewProduct(p => ({ ...p, description: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] text-muted-foreground">Features (one per line)</label>
+                                        <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-16" placeholder="Không paraben&#10;SPF30&#10;Da hỗn hợp" value={newProduct.features} onChange={e => setNewProduct(p => ({ ...p, features: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] text-muted-foreground">Image URLs (one per line)</label>
+                                        <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-16" placeholder="https://cdn.example.com/image1.jpg&#10;https://cdn.example.com/image2.jpg" value={newProduct.images} onChange={e => setNewProduct(p => ({ ...p, images: e.target.value }))} />
+                                        {newProduct.images && (
+                                            <div className="flex gap-1.5 mt-1.5">
+                                                {newProduct.images.split('\n').filter(u => u.trim().startsWith('http')).slice(0, 4).map((url, i) => (
+                                                    <img key={i} src={url.trim()} alt="" className="h-12 w-12 rounded object-cover border" onError={e => (e.currentTarget.style.display = 'none')} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="text-[11px] text-muted-foreground">Search Tags (comma-separated)</label>
+                                        <Input className="h-8 text-xs mt-1" placeholder="kem, dưỡng, vitamin c, spf" value={newProduct.tags} onChange={e => setNewProduct(p => ({ ...p, tags: e.target.value }))} />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" id="inStock" checked={newProduct.inStock} onChange={e => setNewProduct(p => ({ ...p, inStock: e.target.checked }))} />
+                                        <label htmlFor="inStock" className="text-xs">In Stock</label>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-2 mt-4">
+                                    <Button variant="outline" size="sm" onClick={() => setShowProductForm(false)}>Cancel</Button>
+                                    <Button size="sm" disabled={!newProduct.name.trim()} onClick={async () => {
+                                        const payload = {
+                                            productId: newProduct.productId || null,
+                                            name: newProduct.name,
+                                            category: newProduct.category || null,
+                                            price: newProduct.price ? parseFloat(newProduct.price) : null,
+                                            salePrice: newProduct.salePrice ? parseFloat(newProduct.salePrice) : null,
+                                            description: newProduct.description || null,
+                                            features: newProduct.features.split('\n').map(s => s.trim()).filter(Boolean),
+                                            images: newProduct.images.split('\n').map(s => s.trim()).filter(Boolean),
+                                            tags: newProduct.tags.split(',').map(s => s.trim()).filter(Boolean),
+                                            inStock: newProduct.inStock,
+                                        }
+                                        if (editingProduct) {
+                                            const res = await fetch(`/api/admin/channels/${channelId}/products/${editingProduct.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                                            const updated = await res.json()
+                                            setProducts(prev => prev.map(x => x.id === updated.id ? updated : x))
+                                            toast.success('Product updated')
+                                        } else {
+                                            const res = await fetch(`/api/admin/channels/${channelId}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                                            const created = await res.json()
+                                            setProducts(prev => [created, ...prev])
+                                            toast.success('Product added')
+                                        }
+                                        setShowProductForm(false)
+                                    }}>
+                                        {editingProduct ? 'Save Changes' : 'Add Product'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* ─── CHAT TEST TAB ───────────────────── */}
             {botTab === 'chattest' && (
                 <div className="space-y-4">
@@ -1495,6 +1736,15 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                             : 'bg-muted rounded-bl-md'
                                             }`}>
                                             {msg.content}
+                                            {msg.imageUrls && msg.imageUrls.length > 0 && (
+                                                <div className="flex gap-1.5 mt-2 flex-wrap">
+                                                    {msg.imageUrls.map((url, j) => (
+                                                        <a key={j} href={url} target="_blank" rel="noopener noreferrer">
+                                                            <img src={url} alt="Product" className="h-24 w-24 rounded-lg object-cover border border-white/20 hover:opacity-90 transition-opacity" onError={e => (e.currentTarget.style.display = 'none')} />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -1564,7 +1814,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                         })
                                             .then(r => r.json())
                                             .then(data => {
-                                                setChatMessages(prev => [...prev, { role: 'bot', content: data.reply || data.error || 'No response' }])
+                                                setChatMessages(prev => [...prev, { role: 'bot', content: data.reply || data.error || 'No response', imageUrls: data.imageUrls || [] }])
                                                 setChatLoading(false)
                                                 setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
                                             })

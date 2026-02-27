@@ -290,6 +290,7 @@ model Channel {
   botConfig            BotConfig?
   easyConnectLinks     EasyConnectLink[]
   contentJobs          ContentJob[]
+  productCatalog       ProductCatalog[]
 
   @@map("channels")
 }
@@ -367,6 +368,36 @@ model KnowledgeBase {
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@map("knowledge_bases")
+}
+
+model ProductCatalog {
+  id          String   @id @default(cuid())
+  channelId   String   @map("channel_id")
+  productId   String?  @map("product_id")   // user-defined ID e.g. "SP001"
+  name        String
+  category    String?
+  price       Float?
+  salePrice   Float?   @map("sale_price")
+  description String?  @db.Text
+  features    String[] // e.g. ["Không paraben", "SPF30"]
+  images      String[] // array of image URLs
+  tags        String[] // search keywords
+  inStock     Boolean  @default(true) @map("in_stock")
+
+  // Sync metadata — for future Google Sheets / WordPress / Shopify integration
+  syncSource  String?  @default("manual") @map("sync_source") // manual | csv | google_sheet | wordpress | shopify
+  externalId  String?  @map("external_id")   // ID from external system (for upsert dedup)
+  sheetUrl    String?  @map("sheet_url")      // Google Sheet URL if synced from there
+  syncedAt    DateTime? @map("synced_at")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@index([channelId, inStock])
+  @@map("product_catalog")
 }
 
 model ContentTemplate {
