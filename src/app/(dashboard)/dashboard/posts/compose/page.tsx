@@ -851,6 +851,72 @@ export default function ComposePage() {
     // Keep ref in sync for async callbacks (Canva export etc.)
     useEffect(() => { selectedChannelRef.current = selectedChannel }, [selectedChannel])
 
+    // ── Fetch image providers when Generate Image dialog opens ──
+    useEffect(() => {
+        if (!showImagePicker) return
+        const IMAGE_PROVIDERS = ['runware', 'openai', 'gemini']
+
+        // Primary: use /api/user/image-providers (returns byok + plan + quota)
+        fetch('/api/user/image-providers')
+            .then(r => r.ok ? r.json() : Promise.reject('endpoint failed'))
+            .then((data: { byok: { provider: string; name: string; source: string }[]; plan: { provider: string; name: string; source: string }[]; quota: { used: number; limit: number } }) => {
+                setByokProviders(data.byok || [])
+                setPlanProviders(data.plan || [])
+                setImageQuota(data.quota || { used: 0, limit: 0 })
+                return [...(data.byok || []), ...(data.plan || [])]
+            })
+            .catch(() => {
+                // Fallback: use same APIs as channel setup page
+                return Promise.all([
+                    fetch('/api/user/api-keys').then(r => r.json()).catch(() => []),
+                    fetch('/api/user/ai-providers').then(r => r.json()).catch(() => []),
+                ]).then(([keys, platforms]) => {
+                    const userKeys = Array.isArray(keys) ? keys : []
+                    const byok = userKeys
+                        .filter((k: { provider: string }) => IMAGE_PROVIDERS.includes(k.provider))
+                        .map((k: { provider: string; name: string }) => ({
+                            provider: k.provider,
+                            name: k.name || k.provider.charAt(0).toUpperCase() + k.provider.slice(1),
+                            source: 'byok' as const,
+                        }))
+                    setByokProviders(byok)
+
+                    const platformList = Array.isArray(platforms) ? platforms : []
+                    const planList = platformList
+                        .filter((p: { provider: string; status: string }) => IMAGE_PROVIDERS.includes(p.provider) && p.status === 'ACTIVE')
+                        .map((p: { provider: string; name: string }) => ({
+                            provider: p.provider,
+                            name: p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1),
+                            source: 'plan' as const,
+                        }))
+                    setPlanProviders(planList)
+                    return [...byok, ...planList]
+                })
+            })
+            .then((allProviders) => {
+                // Auto-select first available provider
+                let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
+                if (!currentProvider && allProviders.length > 0) {
+                    currentProvider = allProviders[0].provider
+                    setOverrideImageProvider(currentProvider)
+                }
+                // Fetch models for selected provider
+                if (currentProvider) {
+                    setLoadingImageModels(true)
+                    fetch('/api/user/api-keys/models', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider: currentProvider }),
+                    }).then(r => r.json()).then(d => {
+                        setAvailableImageModels(
+                            (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                        )
+                    }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                }
+            })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showImagePicker])
+
     // ── Auto-fetch Pinterest boards when Pinterest is selected ──
     useEffect(() => {
         const hasPinterest = activePlatforms.some(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
@@ -4275,68 +4341,6 @@ export default function ComposePage() {
             {/* ── Generate Image Dialog ── */}
             < Dialog open={showImagePicker} onOpenChange={(open) => {
                 setShowImagePicker(open)
-                if (open) {
-                    const IMAGE_PROVIDERS = ['runware', 'openai', 'gemini']
-
-                    // Primary: use /api/user/image-providers (returns byok + plan + quota)
-                    fetch('/api/user/image-providers')
-                        .then(r => r.ok ? r.json() : Promise.reject('endpoint failed'))
-                        .then((data: { byok: any[]; plan: any[]; quota: { used: number; limit: number } }) => {
-                            setByokProviders(data.byok || [])
-                            setPlanProviders(data.plan || [])
-                            setImageQuota(data.quota || { used: 0, limit: 0 })
-                            return [...(data.byok || []), ...(data.plan || [])]
-                        })
-                        .catch(() => {
-                            // Fallback: use same APIs as channel setup page
-                            return Promise.all([
-                                fetch('/api/user/api-keys').then(r => r.json()).catch(() => []),
-                                fetch('/api/user/ai-providers').then(r => r.json()).catch(() => []),
-                            ]).then(([keys, platforms]) => {
-                                const userKeys = Array.isArray(keys) ? keys : []
-                                const byok = userKeys
-                                    .filter((k: { provider: string }) => IMAGE_PROVIDERS.includes(k.provider))
-                                    .map((k: { provider: string; name: string }) => ({
-                                        provider: k.provider,
-                                        name: k.name || k.provider.charAt(0).toUpperCase() + k.provider.slice(1),
-                                        source: 'byok' as const,
-                                    }))
-                                setByokProviders(byok)
-
-                                const platformList = Array.isArray(platforms) ? platforms : []
-                                const planList = platformList
-                                    .filter((p: { provider: string; status: string }) => IMAGE_PROVIDERS.includes(p.provider) && p.status === 'ACTIVE')
-                                    .map((p: { provider: string; name: string }) => ({
-                                        provider: p.provider,
-                                        name: p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1),
-                                        source: 'plan' as const,
-                                    }))
-                                setPlanProviders(planList)
-                                return [...byok, ...planList]
-                            })
-                        })
-                        .then((allProviders: any[]) => {
-                            // Auto-select first available provider
-                            let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
-                            if (!currentProvider && allProviders.length > 0) {
-                                currentProvider = allProviders[0].provider
-                                setOverrideImageProvider(currentProvider)
-                            }
-                            // Fetch models for selected provider
-                            if (currentProvider) {
-                                setLoadingImageModels(true)
-                                fetch('/api/user/api-keys/models', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ provider: currentProvider }),
-                                }).then(r => r.json()).then(d => {
-                                    setAvailableImageModels(
-                                        (d.models || []).filter((m: { type?: string }) => m.type === 'image')
-                                    )
-                                }).catch(() => { }).finally(() => setLoadingImageModels(false))
-                            }
-                        })
-                }
             }} >
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
