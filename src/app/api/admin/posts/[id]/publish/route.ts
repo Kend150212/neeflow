@@ -1148,6 +1148,34 @@ async function publishToLinkedIn(
 
 // ─── TikTok publisher ───────────────────────────────────────────────
 
+/** Map TikTok API error codes to human-readable messages */
+function tiktokErrorMessage(code: string, rawMessage: string): string {
+    const map: Record<string, string> = {
+        'unaudited_client_can_only_post_to_private_accounts':
+            'TikTok yêu cầu tài khoản Business hoặc Creator để đăng bài công khai. Vui lòng chuyển tài khoản TikTok của bạn sang Business/Creator (TikTok App → Cài đặt → Quản lý tài khoản → Chuyển sang Business), sau đó ngắt kết nối và kết nối lại TikTok.'
+            + ' (Nếu tài khoản đã là Business, hãy chờ 24–48h sau khi TikTok approve app hoặc liên hệ TikTok support.)',
+        'access_token_invalid':
+            'TikTok: Token đã hết hạn hoặc không hợp lệ. Vui lòng ngắt kết nối và kết nối lại tài khoản TikTok.',
+        'access_token_expired':
+            'TikTok: Token đã hết hạn. Vui lòng ngắt kết nối và kết nối lại tài khoản TikTok.',
+        'scope_permission_missed':
+            'TikTok: Tài khoản thiếu quyền đăng video. Vui lòng ngắt kết nối và kết nối lại để cấp lại quyền.',
+        'spam_risk_too_many_posts':
+            'TikTok: Bạn đã đăng quá nhiều video hôm nay. Vui lòng thử lại vào ngày mai.',
+        'spam_risk_user_banned_from_posting':
+            'TikTok: Tài khoản này bị hạn chế đăng bài. Vui lòng kiểm tra trong TikTok app.',
+        'reached_active_user_cap':
+            'TikTok: Đã đạt giới hạn người dùng active của app. Liên hệ TikTok Developer Support.',
+        'video_pull_failed':
+            'TikTok: Không thể tải video từ URL. Kiểm tra URL video có public không.',
+        'photo_sensitive_content':
+            'TikTok: Ảnh vi phạm chính sách nội dung TikTok.',
+        'invalid_param':
+            'TikTok: Tham số không hợp lệ. Kiểm tra lại nội dung và cài đặt bài đăng.',
+    }
+    return map[code] || rawMessage || `TikTok lỗi: ${code}`
+}
+
 async function publishToTikTok(
     accessToken: string,
     content: string,
@@ -1246,51 +1274,8 @@ async function publishToTikTok(
             const initData = await initRes.json()
             console.log('[TikTok] Init response:', JSON.stringify(initData))
 
-            // Unaudited apps (Sandbox) can only post to private accounts — auto-retry with SELF_ONLY
-            if (initData.error?.code === 'unaudited_client_can_only_post_to_private_accounts') {
-                console.warn('[TikTok] App not yet audited — retrying with SELF_ONLY privacy')
-                initBody.post_info = {
-                    ...(initBody.post_info as Record<string, unknown>),
-                    privacy_level: 'SELF_ONLY',
-                }
-                const retryRes = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json; charset=UTF-8',
-                    },
-                    body: JSON.stringify(initBody),
-                })
-                const retryData = await retryRes.json()
-                console.log('[TikTok] Retry (SELF_ONLY) response:', JSON.stringify(retryData))
-                if (retryData.error?.code && retryData.error.code !== 'ok') {
-                    throw new Error(retryData.error.message || `TikTok init failed: ${retryData.error.code}`)
-                }
-                const retryPublishId: string = retryData.data?.publish_id
-                const retryUploadUrl: string = retryData.data?.upload_url
-                if (!retryPublishId || !retryUploadUrl) throw new Error('TikTok: missing publish_id or upload_url (retry)')
-                // Upload with new upload_url
-                const retryUploadRes = await fetch(retryUploadUrl, {
-                    method: 'PUT',
-                    // @ts-expect-error Node.js ReadStream is valid as fetch body
-                    body: fs.createReadStream(tmpPath),
-                    headers: {
-                        'Content-Type': 'video/mp4',
-                        'Content-Length': String(videoSize),
-                        'Content-Range': `bytes 0-${videoSize - 1}/${videoSize}`,
-                    },
-                    duplex: 'half',
-                })
-                if (!retryUploadRes.ok) {
-                    const errText = await retryUploadRes.text()
-                    throw new Error(`TikTok video upload (retry) failed: ${retryUploadRes.status} ${errText}`)
-                }
-                console.log('[TikTok] Video uploaded (SELF_ONLY), publish_id:', retryPublishId)
-                return { externalId: retryPublishId }
-            }
-
             if (initData.error?.code && initData.error.code !== 'ok') {
-                throw new Error(initData.error.message || `TikTok init failed: ${initData.error.code}`)
+                throw new Error(tiktokErrorMessage(initData.error.code, initData.error.message))
             }
 
             const publishId: string = initData.data?.publish_id
@@ -1357,7 +1342,7 @@ async function publishToTikTok(
         console.log('[TikTok] Photo init response:', JSON.stringify(photoData))
 
         if (photoData.error?.code && photoData.error.code !== 'ok') {
-            throw new Error(photoData.error.message || `TikTok photo init failed: ${photoData.error.code}`)
+            throw new Error(tiktokErrorMessage(photoData.error.code, photoData.error.message))
         }
 
         const publishId: string = photoData.data?.publish_id

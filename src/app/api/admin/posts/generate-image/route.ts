@@ -182,6 +182,11 @@ export async function POST(req: NextRequest) {
                 },
             })
 
+            // Increment quota usage ONLY on success and ONLY for platform key
+            if (usingPlatformKey && ownerId) {
+                await incrementImageUsage(ownerId).catch(() => { })
+            }
+
             return NextResponse.json({ mediaItem, provider: resolvedProvider, model: usedModel })
         }
 

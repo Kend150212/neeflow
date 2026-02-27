@@ -16,7 +16,7 @@
       "ai": "Configure AI integration",
       "aiDesc": "Add your OpenAI or Gemini API key to enable AI content generation",
       "gdrive": "Connect Google Drive",
-      "gdriveDesc": "Connect Google Drive to store and manage your media files",
+      "gdriveDesc": "Connect Google Drive to easily import your photos and videos into the media library",
       "channel": "Create your first channel",
       "channelDesc": "Create a channel to start managing your social media accounts",
       "platform": "Connect a social platform",
@@ -867,7 +867,7 @@
     "newName": "New name...",
     "selectChannel": "Select channel",
     "gdriveRequired": "Google Drive not configured",
-    "gdriveRequiredDesc": "You need to connect Google Drive before you can upload and manage media files.",
+    "gdriveRequiredDesc": "Connect Google Drive to import your photos and videos directly into the media library.",
     "gdriveSetupBtn": "Set up Google Drive"
   },
   "apiKeys": {
@@ -911,7 +911,7 @@
     "disconnecting": "Disconnecting...",
     "connecting": "Connecting...",
     "gdriveNotConfigured": "Google Drive is not configured by admin yet",
-    "gdriveDesc": "Store media files in your own Google Drive",
+    "gdriveDesc": "Connect your Google Drive to easily import photos and videos into your media library",
     "gdriveConnected": "Google Drive connected!",
     "gdriveDisconnected": "Google Drive disconnected",
     "gdriveFailed": "Failed to connect Google Drive",

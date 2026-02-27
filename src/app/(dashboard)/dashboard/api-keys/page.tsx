@@ -750,6 +750,8 @@ export default function UserApiKeysPage() {
                 </Badge>
             </div>
 
+
+
             {/* ─── Google Drive (Import) Section ─── */}
             <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -817,7 +819,7 @@ export default function UserApiKeysPage() {
                                     </Button>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    Connect Google Drive to import files from your Drive. All new uploads are stored on Cloudflare R2.
+                                    Import images and videos from your Google Drive directly into your R2 media library.
                                 </p>
                             </div>
                         ) : (

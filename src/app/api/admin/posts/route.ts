@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { logActivity } from '@/lib/log-activity'
 import type { Prisma } from '@prisma/client'
 import { sendPendingApprovalWebhooks } from '@/lib/webhook-notify'
+import { incrementPostUsage, checkPostLimit } from '@/lib/billing/check-limits'
 
 // GET /api/admin/posts — list posts with filters
 export async function GET(req: NextRequest) {
@@ -109,6 +110,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Channel not found' }, { status: 404 })
     }
 
+    // ─── Post quota enforcement (non-admin only) ──────────────────────────────
+    if (!isAdmin) {
+        const limitError = await checkPostLimit(session.user.id)
+        if (limitError) {
+            return NextResponse.json(
+                { error: limitError.message, errorType: 'LIMIT_REACHED', feature: 'posts', limit: limitError.limit, current: limitError.current },
+                { status: 402 }
+            )
+        }
+    }
+
     // Generate content hash for duplicate detection
     const contentHash = content
         ? Buffer.from(content).toString('base64').slice(0, 32)
@@ -211,6 +223,9 @@ export async function POST(req: NextRequest) {
 
     // Audit log
     logActivity(session.user.id, 'post_created', { postId: post.id, channel: post.channel?.name }, channelId)
+
+    // Increment monthly post usage counter (fire-and-forget, don't block response)
+    incrementPostUsage(session.user.id).catch(() => { })
 
     return NextResponse.json(post, { status: 201 })
 }

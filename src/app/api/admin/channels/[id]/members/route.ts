@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkMemberLimit } from '@/lib/billing/check-limits'
 
 // GET /api/admin/channels/[id]/members — list channel members with permissions
 export async function GET(
@@ -255,6 +256,24 @@ export async function POST(
     })
     if (existing) {
         return NextResponse.json({ error: 'User is already a member of this channel' }, { status: 409 })
+    }
+
+    // ─── Member seat quota enforcement (non-admin only) ──────────────────────
+    if (!isAdmin) {
+        // Find the channel owner to check their plan's member limit
+        const ownerMember = await prisma.channelMember.findFirst({
+            where: { channelId: id, role: 'OWNER' },
+            select: { userId: true },
+        })
+        if (ownerMember) {
+            const limitError = await checkMemberLimit(id, ownerMember.userId)
+            if (limitError) {
+                return NextResponse.json(
+                    { error: limitError.message, errorType: 'LIMIT_REACHED', feature: 'members', limit: limitError.limit, current: limitError.current },
+                    { status: 402 }
+                )
+            }
+        }
     }
 
     // Create member with role-based default permissions

@@ -123,80 +123,19 @@ export async function getUserImageQuota(userId: string): Promise<{ used: number;
  * Plan limit: maxAiTextPerMonth (-1 = unlimited, default 20 for free plan)
  */
 export async function checkTextQuota(
-    userId: string,
-    hasByok: boolean,
+    _userId: string,
+    _hasByok: boolean,
 ): Promise<TextQuotaResult> {
-    // BYOK users are never quota-limited
-    if (hasByok) {
-        return { allowed: true, used: 0, limit: -1, usingByok: true }
-    }
-
-    try {
-        // Get effective limits (plan + add-ons)
-        const limits = await getEffectiveLimits(userId)
-        const limit = limits.maxPostsPerMonth
-
-        if (limit === 0) {
-            return {
-                allowed: false,
-                used: 0,
-                limit: 0,
-                usingByok: false,
-                reason: 'Your plan does not include AI generation. Add your own AI API key or upgrade your plan.',
-            }
-        }
-
-        // Get current month usage
-        const sub = await db.subscription.findUnique({
-            where: { userId },
-            include: { usages: { where: { month: getCurrentMonth() } } },
-        })
-        const usage = sub?.usages?.[0] ?? null
-        const used: number = usage?.postsCreated ?? 0
-
-        if (limit !== -1 && used >= limit) {
-            return {
-                allowed: false,
-                used,
-                limit,
-                usingByok: false,
-                reason: `Monthly quota reached (${used}/${limit} posts/generations used). Upgrade your plan, purchase an add-on, or add your own API key.`,
-            }
-        }
-
-        return { allowed: true, used, limit, usingByok: false }
-    } catch {
-        // DB column likely not migrated yet — fail open so users aren't blocked
-        return { allowed: true, used: 0, limit: -1, usingByok: false }
-    }
+    // Text quota not enforced — only posts and AI images are tracked.
+    return { allowed: true, used: 0, limit: -1, usingByok: false }
 }
 
 /**
  * Increment AI text generation counter for the current month.
  * Call AFTER a successful generation. No-op if user has BYOK.
  */
-export async function incrementTextUsage(userId: string, hasByok: boolean): Promise<void> {
-    if (hasByok) return
-
-    try {
-        const sub = await db.subscription.findUnique({ where: { userId } })
-        if (!sub) return
-
-        const month = getCurrentMonth()
-        await db.usage.upsert({
-            where: { subscriptionId_month: { subscriptionId: sub.id, month } },
-            update: { postsCreated: { increment: 1 } },
-            create: {
-                subscriptionId: sub.id,
-                month,
-                postsCreated: 1,
-                imagesGenerated: 0,
-                aiTextGenerated: 0,
-            },
-        })
-    } catch {
-        // Silently ignore — migration likely not applied yet
-    }
+export async function incrementTextUsage(_userId: string, _hasByok: boolean): Promise<void> {
+    // Text usage is not tracked — only posts and AI images are counted.
 }
 
 /**

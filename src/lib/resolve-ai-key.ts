@@ -220,47 +220,9 @@ interface QuotaCheckResult {
     reason?: string
 }
 
-async function checkTextQuotaForPlatformKey(userId: string): Promise<QuotaCheckResult> {
-    try {
-        const limits = await getEffectiveLimits(userId)
-        const limit = limits.maxPostsPerMonth
-
-        // 0 = no quota, BYOK only
-        if (limit === 0) {
-            return {
-                allowed: false,
-                used: 0,
-                limit: 0,
-                reason: 'Your plan does not include AI content generation. Add your own AI API key or upgrade your plan.',
-            }
-        }
-
-        // Get current month usage
-        const sub = await db.subscription.findUnique({
-            where: { userId },
-            include: { usages: { where: { month: getCurrentMonth() } } },
-        })
-        const used: number = sub?.usages?.[0]?.postsCreated ?? 0
-
-        // -1 = unlimited
-        if (limit === -1) {
-            return { allowed: true, used, limit: -1 }
-        }
-
-        if (used >= limit) {
-            return {
-                allowed: false,
-                used,
-                limit,
-                reason: `Monthly AI content quota reached (${used}/${limit}). Add your own API key or upgrade your plan.`,
-            }
-        }
-
-        return { allowed: true, used, limit }
-    } catch {
-        // DB not migrated — fail open
-        return { allowed: true, used: 0, limit: -1 }
-    }
+async function checkTextQuotaForPlatformKey(_userId: string): Promise<QuotaCheckResult> {
+    // Text quota is not enforced — only post and image quotas are tracked.
+    return { allowed: true, used: 0, limit: -1 }
 }
 
 async function checkImageQuotaForPlatformKey(userId: string): Promise<QuotaCheckResult> {
