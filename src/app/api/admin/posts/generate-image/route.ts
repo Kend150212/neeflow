@@ -352,7 +352,7 @@ async function generateWithGemini(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: prompt }],
+                    parts: [{ text: `Generate an image based on this concept: ${prompt}` }],
                 }],
                 generationConfig: {
                     responseModalities: ['Text', 'Image'],

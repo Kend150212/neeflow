@@ -129,9 +129,15 @@ async function fetchGeminiModels(apiKey: string): Promise<ModelInfo[]> {
     const models: ModelInfo[] = (data.models || [])
         .map((m: { name: string; displayName?: string; description?: string; supportedGenerationMethods?: string[] }) => {
             const id = m.name.replace('models/', '')
+            const displayLower = (m.displayName || '').toLowerCase()
+            const descLower = (m.description || '').toLowerCase()
             let type: ModelInfo['type'] = 'text'
 
-            if (id.includes('imagen') || id.includes('image')) type = 'image'
+            // Check model ID, display name, and description for image capability
+            const isImageModel = id.includes('imagen') || id.includes('image')
+                || displayLower.includes('nano banana') || displayLower.includes('image generat')
+                || descLower.includes('image generat') || descLower.includes('imagen')
+            if (isImageModel) type = 'image'
             else if (id.includes('veo') || id.includes('video')) type = 'video'
             else if (id.includes('embedding')) type = 'embedding'
 
