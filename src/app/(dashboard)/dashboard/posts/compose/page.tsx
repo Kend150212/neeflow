@@ -2964,42 +2964,17 @@ export default function ComposePage() {
                                     {uploading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                                 </CardTitle>
                                 <div className="flex items-center gap-1">
-                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer" onClick={openLibrary} disabled={!selectedChannel}>
+                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 text-blue-400" onClick={openLibrary} disabled={!selectedChannel}>
                                         <FolderOpen className="h-3 w-3 mr-0.5" />
                                         Library
                                     </Button>
-                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer" onClick={openGooglePicker} disabled={loadingDrivePicker}>
+                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400" onClick={openGooglePicker} disabled={loadingDrivePicker}>
                                         {loadingDrivePicker ? <Loader2 className="h-3 w-3 mr-0.5 animate-spin" /> : <HardDrive className="h-3 w-3 mr-0.5" />}
                                         Drive
                                     </Button>
-                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer" onClick={() => fileInputRef.current?.click()} disabled={uploading || !selectedChannel}>
+                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-400" onClick={() => fileInputRef.current?.click()} disabled={uploading || !selectedChannel}>
                                         <Upload className="h-3 w-3 mr-0.5" />
                                         Upload
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-violet-500/10 border-violet-500/30 hover:bg-violet-500/20 text-violet-400" onClick={() => openCanvaDesign()} disabled={canvaLoading}>
-                                        {canvaLoading ? <Loader2 className="h-3 w-3 mr-0.5 animate-spin" /> : <Palette className="h-3 w-3 mr-0.5" />}
-                                        Canva
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-6 text-[10px] px-2 cursor-pointer bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20 text-purple-400"
-                                        onClick={() => {
-                                            setShowImagePicker(true)
-                                            setAiGeneratedPreview(null)
-                                            if (content.trim()) {
-                                                setUseContentAsPrompt(true)
-                                                setAiImagePrompt(content.substring(0, 500))
-                                            } else if (aiTopic.trim() && !aiImagePrompt) {
-                                                setUseContentAsPrompt(false)
-                                                setAiImagePrompt(aiTopic)
-                                            } else {
-                                                setUseContentAsPrompt(false)
-                                            }
-                                        }}
-                                    >
-                                        <Sparkles className="h-3 w-3 mr-0.5" />
-                                        AI Image
                                     </Button>
                                 </div>
                                 <input
