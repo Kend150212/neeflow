@@ -688,7 +688,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             { key: 'images' as const, icon: ImageIcon, label: t('chatbot.trainingTabs.images'), color: 'text-orange-500' },
                             { key: 'video' as const, icon: Video, label: t('chatbot.trainingTabs.video'), color: 'text-red-500' },
                             { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
-                            { key: 'products' as const, icon: Package, label: '🛍️ Products', color: 'text-emerald-500', count: products.length },
+                            { key: 'products' as const, icon: Package, label: `🛙 ${t('chatbot.trainingTabs.products')}`, color: 'text-emerald-500', count: products.length },
                         ].map(item => (
                             <button
                                 key={item.key}
@@ -1504,10 +1504,10 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         try {
                             const res = await fetch(`/api/admin/channels/${channelId}/products/import`, { method: 'POST', body: form })
                             const data = await res.json()
-                            toast.success(`✅ Import xong: ${data.imported} mới, ${data.updated} cập nhật${data.errors?.length ? `, ${data.errors.length} lỗi` : ''}`)
+                            toast.success(`✅ ${t('chatbot.products.importSuccess').replace('{imported}', data.imported).replace('{updated}', data.updated)}${data.errors?.length ? `, ${data.errors.length} lỗi` : ''}`)
                             const r2 = await fetch(`/api/admin/channels/${channelId}/products`)
                             setProducts(Array.isArray(await r2.json()) ? await r2.json() : [])
-                        } catch { toast.error('Import thất bại') }
+                        } catch { toast.error(t('chatbot.products.importFailed')) }
                         setCsvImporting(false)
                         e.target.value = ''
                     }} />
@@ -1522,19 +1522,19 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     </div>
                                 </div>
                                 <div className="flex-1 min-w-0 space-y-3">
-                                    <p className="text-sm font-medium text-blue-400">Hướng dẫn sử dụng Product Catalog</p>
+                                    <p className="text-sm font-medium text-blue-400">{t('chatbot.products.guideTitle')}</p>
 
                                     {/* Steps */}
                                     <div className="grid grid-cols-1 gap-1 text-[11px] text-muted-foreground">
-                                        <p>1️⃣ <strong>Thêm thủ công</strong> — Nhấn <span className="font-mono bg-muted px-1 rounded">+ Add Product</span> → điền thông tin → lưu</p>
-                                        <p>2️⃣ <strong>Import hàng loạt</strong> — Tải file mẫu CSV bên dưới → điền → nhấn <span className="font-mono bg-muted px-1 rounded">Import CSV</span></p>
-                                        <p>3️⃣ <strong>Bot tự tìm kiếm</strong> — Khách hỏi → bot tìm sản phẩm phù hợp → trả lời tự động (không tốn AI tokens)</p>
+                                        <p>1️⃣ <strong>{t('chatbot.products.step1').replace(' — Nhấn', '').replace(' — Click', '').replace('Add manually', '').replace('Thêm thủ công', '')}</strong>{t('chatbot.products.step1').includes('—') ? ' — ' : ''}{t('chatbot.products.step1').split('—')[0].trim() !== t('chatbot.products.step1') ? t('chatbot.products.step1').split('—').slice(1).join('—') : ''} <span className="font-mono bg-muted px-1 rounded">{t('chatbot.products.step1Btn')}</span> {t('chatbot.products.step1End')}</p>
+                                        <p>2️⃣ {t('chatbot.products.step2')} <span className="font-mono bg-muted px-1 rounded">{t('chatbot.products.step2Btn')}</span></p>
+                                        <p>3️⃣ {t('chatbot.products.step3')}</p>
                                     </div>
 
                                     {/* Service/Booking tip */}
                                     <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-2.5 text-[11px]">
-                                        <p className="font-medium text-amber-400 mb-1.5">💡 Tạo dịch vụ / Booking (phòng, gói combo, add-on...)</p>
-                                        <p className="text-muted-foreground mb-1">Mỗi <strong>phòng / dịch vụ</strong> = 1 sản phẩm. Liệt kê tất cả gói giá &amp; add-ons vào <strong>Tính năng</strong>:</p>
+                                        <p className="font-medium text-amber-400 mb-1.5">💡 {t('chatbot.products.serviceTitle')}</p>
+                                        <p className="text-muted-foreground mb-1">{t('chatbot.products.serviceDesc')} <strong>{t('chatbot.products.serviceFeatureField')}</strong>:</p>
                                         <div className="font-mono text-[10px] bg-background/60 rounded p-2 whitespace-pre-wrap text-muted-foreground leading-relaxed">{`Tên:      Phòng 101 - Karaoke VIP
 Danh mục: Dịch vụ
 Giá gốc:  200000   ← gói rẻ nhất
@@ -1548,12 +1548,12 @@ Cú đêm (22h–6h): 500,000đ
 Thêm 1 giờ: +50,000đ
 Combo đồ ăn A: +80,000đ
 Combo đồ uống: +60,000đ`}</div>
-                                        <p className="text-[10px] text-muted-foreground/70 mt-1.5">Bot sẽ tự trả lời khi khách hỏi "phòng 101 giá bao nhiêu", "thêm giờ hết bao nhiêu"...</p>
+                                        <p className="text-[10px] text-muted-foreground/70 mt-1.5">{t('chatbot.products.serviceBotHint')}</p>
                                     </div>
 
                                     {/* CSV format note */}
                                     <p className="text-[10px] text-muted-foreground/60">
-                                        CSV columns: id, name, category, price, sale_price, description, <strong>features</strong> (ngăn nhau bằng <code>|</code>), images (ngăn bằng <code>|</code>), tags (ngăn bằng <code>|</code>), in_stock
+                                        {t('chatbot.products.csvNote')} <strong>features</strong> {t('chatbot.products.csvPipe')} <code>|</code>), images ({t('chatbot.products.csvPipe')} <code>|</code>), tags ({t('chatbot.products.csvPipe')} <code>|</code>), in_stock
                                     </p>
 
                                     {/* Download buttons */}
@@ -1575,7 +1575,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                             }}
                                         >
                                             <Download className="h-3.5 w-3.5" />
-                                            Tải file mẫu CSV
+                                            {t('chatbot.products.downloadSample')}
                                         </button>
                                         <button
                                             className="inline-flex items-center gap-1.5 text-[11px] text-amber-400 hover:text-amber-300 transition-colors"
@@ -1592,7 +1592,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                             }}
                                         >
                                             <Download className="h-3.5 w-3.5" />
-                                            Tải mẫu Dịch vụ / Booking
+                                            {t('chatbot.products.downloadService')}
                                         </button>
                                     </div>
                                 </div>
@@ -1605,7 +1605,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                         <div className="relative flex-1">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input
-                                placeholder="Tìm sản phẩm..."
+                                placeholder={t('chatbot.products.searchPlaceholder')}
                                 value={productSearch}
                                 onChange={e => setProductSearch(e.target.value)}
                                 className="h-8 text-xs pl-8"
@@ -1613,14 +1613,14 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                         </div>
                         <Button size="sm" variant="outline" disabled={csvImporting} onClick={() => csvInputRef.current?.click()}>
                             {csvImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-                            Import CSV
+                            {t('chatbot.products.importCsv')}
                         </Button>
                         <Button size="sm" onClick={() => {
                             setEditingProduct(null)
                             setNewProduct({ productId: '', name: '', category: '', price: '', salePrice: '', description: '', features: '', images: '', tags: '', inStock: true })
                             setShowProductForm(true)
                         }}>
-                            <Plus className="h-3.5 w-3.5 mr-1" /> Add Product
+                            <Plus className="h-3.5 w-3.5 mr-1" /> {t('chatbot.products.addProduct')}
                         </Button>
                     </div>
 
@@ -1628,12 +1628,12 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                     {productsLoading ? (
                         <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
                             <Loader2 className="h-5 w-5 animate-spin" />
-                            <span className="text-sm">Loading sản phẩm...</span>
+                            <span className="text-sm">{t('chatbot.products.loading')}</span>
                         </div>
                     ) : products.length === 0 ? (
                         <div className="flex flex-col items-center py-10 gap-2 text-muted-foreground">
                             <Package className="h-10 w-10 opacity-30" />
-                            <p className="text-sm">Chưa có sản phẩm nào. Hãy thêm mới hoặc import file CSV.</p>
+                            <p className="text-sm">{t('chatbot.products.empty')}</p>
                         </div>
                     ) : (
                         <div className="rounded-lg border overflow-hidden">
@@ -1641,13 +1641,13 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 <table className="w-full text-xs border-collapse">
                                     <thead>
                                         <tr className="bg-muted/70 border-b">
-                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground w-[72px] border-r border-border/40">Ảnh</th>
-                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground border-r border-border/40">Tên sản phẩm</th>
-                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground w-28 border-r border-border/40">Danh mục</th>
-                                            <th className="py-2 px-2 text-right font-medium text-muted-foreground w-28 border-r border-border/40">Giá (₫)</th>
-                                            <th className="py-2 px-2 text-right font-medium text-muted-foreground w-28 border-r border-border/40">Giá KM (₫)</th>
-                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground border-r border-border/40">Tags</th>
-                                            <th className="py-2 px-2 text-center font-medium text-muted-foreground w-16 border-r border-border/40">Tồn</th>
+                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground w-[72px] border-r border-border/40">{t('chatbot.products.colImage')}</th>
+                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground border-r border-border/40">{t('chatbot.products.colName')}</th>
+                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground w-28 border-r border-border/40">{t('chatbot.products.colCategory')}</th>
+                                            <th className="py-2 px-2 text-right font-medium text-muted-foreground w-28 border-r border-border/40">{t('chatbot.products.colPrice')}</th>
+                                            <th className="py-2 px-2 text-right font-medium text-muted-foreground w-28 border-r border-border/40">{t('chatbot.products.colSalePrice')}</th>
+                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground border-r border-border/40">{t('chatbot.products.colTags')}</th>
+                                            <th className="py-2 px-2 text-center font-medium text-muted-foreground w-16 border-r border-border/40">{t('chatbot.products.colStock')}</th>
                                             <th className="py-2 px-2 text-center font-medium text-muted-foreground w-20">…</th>
                                         </tr>
                                     </thead>
@@ -1693,7 +1693,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                         />
                                                     ) : (
                                                         <div
-                                                            title="Click để sửa"
+                                                            title={t('chatbot.products.clickToEdit')}
                                                             onClick={() => startEdit(field, value)}
                                                             className={`cursor-text min-h-[20px] px-0.5 rounded hover:bg-primary/10 transition-colors ${numeric ? 'text-right' : ''} ${className}`}
                                                         >
@@ -1783,8 +1783,8 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                                 }}
                                                             >
                                                                 {p.inStock
-                                                                    ? <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-muted">Còn</Badge>
-                                                                    : <Badge variant="destructive" className="text-[10px] cursor-pointer">Hết</Badge>
+                                                                    ? <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-muted">{t('chatbot.products.inStock')}</Badge>
+                                                                    : <Badge variant="destructive" className="text-[10px] cursor-pointer">{t('chatbot.products.outOfStock')}</Badge>
                                                                 }
                                                             </button>
                                                         </td>
@@ -1792,7 +1792,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                         <td className="py-1.5 px-2">
                                                             <div className="flex gap-0.5 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 {/* Edit (full form) */}
-                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Chỉnh sửa đầy đủ"
+                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title={t('chatbot.products.editFull')}
                                                                     onClick={() => {
                                                                         setEditingProduct(p)
                                                                         setNewProduct({ productId: p.productId || '', name: p.name, category: p.category || '', price: p.price?.toString() || '', salePrice: p.salePrice?.toString() || '', description: p.description || '', features: p.features.join('\n'), images: p.images.join('\n'), tags: p.tags.join(', '), inStock: p.inStock })
@@ -1801,23 +1801,23 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                                     <Edit className="h-3 w-3" />
                                                                 </Button>
                                                                 {/* Duplicate */}
-                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Nhân đôi"
+                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title={t('chatbot.products.duplicate')}
                                                                     onClick={async () => {
                                                                         const payload = { ...p, id: undefined, productId: p.productId ? `${p.productId}-copy` : null, name: `${p.name} (copy)` }
                                                                         const res = await fetch(`/api/admin/channels/${channelId}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                                                                         const created = await res.json()
                                                                         setProducts(prev => { const idx = prev.findIndex(x => x.id === p.id); const next = [...prev]; next.splice(idx + 1, 0, created); return next })
-                                                                        toast.success('Đã nhân đôi sản phẩm')
+                                                                        toast.success(t('chatbot.products.duplicated'))
                                                                     }}>
                                                                     <Copy className="h-3 w-3" />
                                                                 </Button>
                                                                 {/* Delete */}
-                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" title="Xóa"
+                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" title={t('chatbot.products.delete')}
                                                                     onClick={async () => {
                                                                         if (!confirm('Xóa sản phẩm này?')) return
                                                                         await fetch(`/api/admin/channels/${channelId}/products/${p.id}`, { method: 'DELETE' })
                                                                         setProducts(prev => prev.filter(x => x.id !== p.id))
-                                                                        toast.success('Xóa sản phẩm thành công')
+                                                                        toast.success(t('chatbot.products.deleted'))
                                                                     }}>
                                                                     <Trash2 className="h-3 w-3" />
                                                                 </Button>
@@ -1830,7 +1830,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 </table>
                             </div>
                             <div className="px-3 py-1.5 bg-muted/30 border-t text-[10px] text-muted-foreground">
-                                {products.length} sản phẩm • Click vào ô để sửa trực tiếp • Hover để xem thêm tùy chọn
+                                {products.length} {t('chatbot.products.footer')}
                             </div>
                         </div>
                     )}
@@ -1839,42 +1839,42 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                     {showProductForm && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowProductForm(false)}>
                             <div className="bg-background rounded-xl shadow-2xl w-[560px] max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
-                                <h4 className="font-semibold text-sm mb-4">{editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h4>
+                                <h4 className="font-semibold text-sm mb-4">{editingProduct ? t('chatbot.products.editTitle') : t('chatbot.products.addTitle')}</h4>
                                 <div className="space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Mã sản phẩm (tùy chọn)</label>
+                                            <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldId')}</label>
                                             <Input className="h-8 text-xs mt-1" placeholder="SP001" value={newProduct.productId} onChange={e => setNewProduct(p => ({ ...p, productId: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Danh mục</label>
+                                            <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldCategory')}</label>
                                             <Input className="h-8 text-xs mt-1" placeholder="Skincare" value={newProduct.category} onChange={e => setNewProduct(p => ({ ...p, category: e.target.value }))} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Tên sản phẩm *</label>
+                                        <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldName')}</label>
                                         <Input className="h-8 text-xs mt-1" placeholder="Kem Dưỡng Ẩm Vitamin C" value={newProduct.name} onChange={e => setNewProduct(p => ({ ...p, name: e.target.value }))} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Giá gốc (₫)</label>
+                                            <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldPrice')}</label>
                                             <Input className="h-8 text-xs mt-1" type="number" placeholder="350000" value={newProduct.price} onChange={e => setNewProduct(p => ({ ...p, price: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Giá khuyến mãi (₫)</label>
+                                            <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldSalePrice')}</label>
                                             <Input className="h-8 text-xs mt-1" type="number" placeholder="280000" value={newProduct.salePrice} onChange={e => setNewProduct(p => ({ ...p, salePrice: e.target.value }))} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Mô tả</label>
+                                        <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldDesc')}</label>
                                         <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-20" placeholder="Mô tả sản phẩm..." value={newProduct.description} onChange={e => setNewProduct(p => ({ ...p, description: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Tính năng (mỗi dòng 1 tính năng)</label>
+                                        <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldFeatures')}</label>
                                         <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-16" placeholder="Không paraben&#10;SPF30&#10;Dành cho da hỗn hợp" value={newProduct.features} onChange={e => setNewProduct(p => ({ ...p, features: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Link ảnh (mỗi dòng 1 URL)</label>
+                                        <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldImages')}</label>
                                         <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-16" placeholder="https://cdn.example.com/image1.jpg&#10;https://cdn.example.com/image2.jpg" value={newProduct.images} onChange={e => setNewProduct(p => ({ ...p, images: e.target.value }))} />
                                         {newProduct.images && (
                                             <div className="flex gap-1.5 mt-1.5 flex-wrap">
@@ -1885,16 +1885,16 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                         )}
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Tags tìm kiếm (cách nhau bằng dấu phẩy)</label>
+                                        <label className="text-[11px] text-muted-foreground">{t('chatbot.products.fieldTags')}</label>
                                         <Input className="h-8 text-xs mt-1" placeholder="kem, dưỡng, vitamin c, spf" value={newProduct.tags} onChange={e => setNewProduct(p => ({ ...p, tags: e.target.value }))} />
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <input type="checkbox" id="inStockCheck" checked={newProduct.inStock} onChange={e => setNewProduct(p => ({ ...p, inStock: e.target.checked }))} />
-                                        <label htmlFor="inStockCheck" className="text-xs">Còn hàng</label>
+                                        <label htmlFor="inStockCheck" className="text-xs">{t('chatbot.products.fieldInStock')}</label>
                                     </div>
                                 </div>
                                 <div className="flex justify-end gap-2 mt-4">
-                                    <Button variant="outline" size="sm" onClick={() => setShowProductForm(false)}>Hủy</Button>
+                                    <Button variant="outline" size="sm" onClick={() => setShowProductForm(false)}>{t('chatbot.products.cancel')}</Button>
                                     <Button size="sm" disabled={!newProduct.name.trim()} onClick={async () => {
                                         const payload = {
                                             productId: newProduct.productId || null,
@@ -1912,16 +1912,16 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                             const res = await fetch(`/api/admin/channels/${channelId}/products/${editingProduct.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                                             const updated = await res.json()
                                             setProducts(prev => prev.map(x => x.id === updated.id ? updated : x))
-                                            toast.success('Cập nhật sản phẩm thành công')
+                                            toast.success(t('chatbot.products.updateSuccess'))
                                         } else {
                                             const res = await fetch(`/api/admin/channels/${channelId}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                                             const created = await res.json()
                                             setProducts(prev => [created, ...prev])
-                                            toast.success('Thêm sản phẩm thành công')
+                                            toast.success(t('chatbot.products.addSuccess'))
                                         }
                                         setShowProductForm(false)
                                     }}>
-                                        {editingProduct ? 'Lưu thay đổi' : 'Thêm sản phẩm'}
+                                        {editingProduct ? t('chatbot.products.saveChanges') : t('chatbot.products.addBtn')}
                                     </Button>
                                 </div>
                             </div>
