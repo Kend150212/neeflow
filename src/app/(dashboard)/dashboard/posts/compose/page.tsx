@@ -1806,8 +1806,15 @@ export default function ComposePage() {
             // Trigger reveal animation
             setAiImageJustCompleted(true)
             setTimeout(() => setAiImageJustCompleted(false), 2000)
-            const keySource = data.usingPlatformKey ? 'Plan' : 'BYOK'
-            toast.success(`Image generated with ${data.model || data.provider} (${keySource})`)
+            const modelLabel = data.model || data.provider || 'AI'
+            if (data.usingPlatformKey) {
+                const quota = data.quota as { used: number; limit: number } | undefined
+                const remaining = quota && quota.limit > 0 ? quota.limit - quota.used : null
+                const remainingStr = remaining !== null ? ` — ${remaining} image${remaining !== 1 ? 's' : ''} remaining this month` : ''
+                toast.success(`Image generated with ${modelLabel} (Plan)${remainingStr}`)
+            } else {
+                toast.success(`Image generated with ${modelLabel} (Your Key)`)
+            }
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Image generation failed')
         } finally {
