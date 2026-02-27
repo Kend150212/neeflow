@@ -291,6 +291,8 @@ export async function botAutoReply(
         }
 
         // ─── Social links from channel General settings ────────────────
+        const bizSocials = (businessInfo.socials as Record<string, string>) || {}
+        const bizCustomLinks = (businessInfo.custom as Array<{ label: string; url: string }>) || []
         const SOCIAL_KEYS: Array<{ key: string; label: string }> = [
             { key: 'facebook', label: 'Facebook' },
             { key: 'instagram', label: 'Instagram' },
@@ -301,12 +303,11 @@ export async function botAutoReply(
             { key: 'threads', label: 'Threads' },
             { key: 'pinterest', label: 'Pinterest' },
         ]
-        const socialEntries = SOCIAL_KEYS.filter(s => businessInfo[s.key]).map(s => `${s.label}: ${businessInfo[s.key]}`)
-        const customLinks = (businessInfo.customLinks as Array<{ label: string; url: string }> || [])
-        if (socialEntries.length > 0 || customLinks.length > 0) {
+        const socialEntries = SOCIAL_KEYS.filter(s => bizSocials[s.key]).map(s => `${s.label}: ${bizSocials[s.key]}`)
+        if (socialEntries.length > 0 || bizCustomLinks.length > 0) {
             systemPrompt += `\n\n## Official social media & links (dùng ĐÚNG những link này — TUYỆT ĐỐI KHÔNG bịa đặt hay đoán handle/tên khác):`
             for (const s of socialEntries) systemPrompt += `\n- ${s}`
-            for (const cl of customLinks) systemPrompt += `\n- ${cl.label}: ${cl.url}`
+            for (const cl of bizCustomLinks) systemPrompt += `\n- ${cl.label}: ${cl.url}`
             systemPrompt += `\nCRITICAL: Nếu khách hỏi "TikTok của shop là gì?", "Facebook của shop?",... thì chỉ cung cấp đúng link ở trên. KHÔNG được tự đặt tên hay đoán handle.`
         }
 
