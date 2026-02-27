@@ -1450,6 +1450,45 @@
       "exhaustedByok": "Đã hết quota tháng. API key của bạn đang được sử dụng cho SmartFlow.",
       "exhaustedNoKey": "Đã hết quota tháng. Thêm API key để tiếp tục sử dụng SmartFlow.",
       "addApiKey": "Thêm API Key"
+    },
+    "tabs": {
+      "pipeline": "Pipeline",
+      "connections": "Kết nối"
+    },
+    "sources": {
+      "title": "Nguồn nội dung",
+      "subtitle": "Kết nối ứng dụng nhắn tin để gửi media vào SmartFlow pipeline",
+      "connected": "Đã kết nối",
+      "disconnected": "Chưa kết nối",
+      "connect": "Kết nối",
+      "disconnect": "Ngắt kết nối",
+      "connecting": "Đang kết nối...",
+      "testConnection": "Kiểm tra kết nối",
+      "testing": "Đang kiểm tra...",
+      "testSuccess": "Kết nối thành công!",
+      "testFailed": "Kết nối thất bại",
+      "saved": "Đã kết nối nguồn!",
+      "saveFailed": "Kết nối thất bại",
+      "disconnected_toast": "Đã ngắt kết nối",
+      "noSources": "Chưa kết nối nguồn nào",
+      "noSourcesDesc": "Kết nối Telegram, Discord hoặc ứng dụng nhắn tin khác để nhận media tự động tạo bài",
+      "howItWorks": "Gửi ảnh/video → AI viết caption → Bài được lên lịch tự động",
+      "telegram": {
+        "desc": "Gửi ảnh & video vào bot Telegram → AI tự động tạo bài viết",
+        "step1": "1. Mở Telegram → tìm @BotFather → gửi /newbot",
+        "step2": "2. Làm theo hướng dẫn để đặt tên bot",
+        "step3": "3. Copy Bot Token nhận được",
+        "step4": "4. Thêm bot vào channel/group làm admin",
+        "step5": "5. Lấy Chat ID bằng cách forward tin nhắn tới @userinfobot"
+      },
+      "discord": {
+        "desc": "Đăng ảnh & video trong kênh Discord → AI tự động tạo bài viết",
+        "step1": "1. Vào discord.com/developers → New Application",
+        "step2": "2. Vào Bot → Create Bot → Copy Token",
+        "step3": "3. Bật MESSAGE CONTENT intent trong Bot settings",
+        "step4": "4. Mời bot vào server với quyền 'Read Messages' + 'Send Messages'",
+        "step5": "5. Bật Developer Mode → chuột phải kênh → Copy Channel ID"
+      }
     }
   },
   "portal": {

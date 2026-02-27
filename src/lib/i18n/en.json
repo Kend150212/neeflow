@@ -1450,6 +1450,45 @@
       "exhaustedByok": "Monthly quota exhausted. Your own API key is now being used for SmartFlow jobs.",
       "exhaustedNoKey": "Monthly quota exhausted. Add your API key to continue using SmartFlow.",
       "addApiKey": "Add API Key"
+    },
+    "tabs": {
+      "pipeline": "Pipeline",
+      "connections": "Connections"
+    },
+    "sources": {
+      "title": "Content Sources",
+      "subtitle": "Connect messaging apps to send media into your SmartFlow pipeline",
+      "connected": "Connected",
+      "disconnected": "Not connected",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "connecting": "Connecting...",
+      "testConnection": "Test Connection",
+      "testing": "Testing...",
+      "testSuccess": "Connection successful!",
+      "testFailed": "Connection failed",
+      "saved": "Source connected!",
+      "saveFailed": "Failed to connect",
+      "disconnected_toast": "Source disconnected",
+      "noSources": "No sources connected",
+      "noSourcesDesc": "Connect Telegram, Discord, or other messaging apps to receive media for automated posting",
+      "howItWorks": "Send photos/videos → AI writes captions → Posts are auto-scheduled",
+      "telegram": {
+        "desc": "Send photos & videos to your Telegram bot → AI creates posts automatically",
+        "step1": "1. Open Telegram → search @BotFather → send /newbot",
+        "step2": "2. Follow the prompts to name your bot",
+        "step3": "3. Copy the Bot Token you receive",
+        "step4": "4. Add the bot to your channel/group as an admin",
+        "step5": "5. Get your Chat ID by forwarding a message to @userinfobot"
+      },
+      "discord": {
+        "desc": "Post images & videos in your Discord channel → AI creates posts automatically",
+        "step1": "1. Go to discord.com/developers → New Application",
+        "step2": "2. Go to Bot section → Create Bot → Copy Token",
+        "step3": "3. Enable MESSAGE CONTENT intent in Bot settings",
+        "step4": "4. Invite bot to server with 'Read Messages' + 'Send Messages' permissions",
+        "step5": "5. Enable Developer Mode → right-click channel → Copy Channel ID"
+      }
     }
   },
   "portal": {

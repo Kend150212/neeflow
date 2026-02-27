@@ -269,6 +269,7 @@ model Channel {
   pipelineFrequency    String   @default("1_per_day") @map("pipeline_frequency")
   pipelineApprovalMode String   @default("admin") @map("pipeline_approval_mode")
   pipelinePostingTimes Json?    @map("pipeline_posting_times") @default("[\"19:00\"]")
+  smartflowSources     Json?    @map("smartflow_sources") @default("{}") // { telegram: { botToken, chatId }, discord: { botToken, channelId } }
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

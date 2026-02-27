@@ -19,6 +19,7 @@ export async function GET(
             pipelineFrequency: true,
             pipelineApprovalMode: true,
             pipelinePostingTimes: true,
+            smartflowSources: true,
         },
     })
 
@@ -68,6 +69,9 @@ export async function PATCH(
     if (Array.isArray(body.pipelinePostingTimes)) {
         updateData.pipelinePostingTimes = body.pipelinePostingTimes
     }
+    if (body.smartflowSources !== undefined) {
+        updateData.smartflowSources = body.smartflowSources
+    }
 
     const channel = await prisma.channel.update({
         where: { id },
@@ -77,6 +81,7 @@ export async function PATCH(
             pipelineFrequency: true,
             pipelineApprovalMode: true,
             pipelinePostingTimes: true,
+            smartflowSources: true,
         },
     })
 
