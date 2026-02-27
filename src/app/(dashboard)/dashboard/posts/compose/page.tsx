@@ -70,6 +70,7 @@ import {
     Lightbulb,
     ExternalLink,
     Building2,
+    ZoomIn,
 } from 'lucide-react'
 import { PlatformIcon } from '@/components/platform-icons'
 import { useTranslation } from '@/lib/i18n'
@@ -674,6 +675,7 @@ export default function ComposePage() {
     const [lastUsedImageModel, setLastUsedImageModel] = useState<string | null>(null)
     const [aiImageBgGenerating, setAiImageBgGenerating] = useState(false)
     const [aiImageJustCompleted, setAiImageJustCompleted] = useState(false)
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
     // Image provider/model override for Generate Image dialog
     const [overrideImageProvider, setOverrideImageProvider] = useState('')
     const [overrideImageModel, setOverrideImageModel] = useState('')
@@ -3049,7 +3051,7 @@ export default function ComposePage() {
                                                     <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white px-1 rounded">{media.originalName}</span>
                                                 </div>
                                             ) : (
-                                                <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover" />
+                                                <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover cursor-pointer" onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)} />
                                             )}
                                             <button
                                                 onClick={() => removeMedia(media.id)}
@@ -3057,6 +3059,16 @@ export default function ComposePage() {
                                             >
                                                 <X className="h-3 w-3" />
                                             </button>
+                                            {/* Zoom button */}
+                                            {!isVideo(media) && (
+                                                <button
+                                                    onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)}
+                                                    title="View full size"
+                                                    className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/80"
+                                                >
+                                                    <ZoomIn className="h-3 w-3" />
+                                                </button>
+                                            )}
                                             {/* Edit in Canva — only for images */}
                                             {!isVideo(media) && (
                                                 <button
@@ -4406,6 +4418,30 @@ export default function ComposePage() {
                     }
                 </div >
             </div >
+
+            {/* ── Image Lightbox ── */}
+            {lightboxUrl && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm cursor-pointer animate-in fade-in duration-200"
+                    onClick={() => setLightboxUrl(null)}
+                    onKeyDown={(e) => e.key === 'Escape' && setLightboxUrl(null)}
+                    tabIndex={0}
+                    role="dialog"
+                >
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setLightboxUrl(null) }}
+                        className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer z-10"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                    <img
+                        src={lightboxUrl}
+                        alt="Full size preview"
+                        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
 
             {/* ── Generate Image Dialog ── */}
             < Dialog open={showImagePicker} onOpenChange={(open) => {
