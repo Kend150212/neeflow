@@ -1678,9 +1678,10 @@ export default function ComposePage() {
         setAiGeneratedPreview(null)
         try {
             const promptToUse = useContentAsPrompt && content.trim() ? content.substring(0, 500) : aiImagePrompt
+            // Dimensions must be multiples of 64 for Runware compatibility
             const aspectDims: Record<string, [number, number]> = {
-                '1:1': [1024, 1024], '16:9': [1280, 720], '9:16': [720, 1280],
-                '4:3': [1024, 768], '3:4': [768, 1024], '4:5': [864, 1080],
+                '1:1': [1024, 1024], '16:9': [1280, 768], '9:16': [768, 1280],
+                '4:3': [1024, 768], '3:4': [768, 1024], '4:5': [832, 1024],
             }
             const [w, h] = aspectDims[imageAspectRatio] || [1024, 1024]
             const body: Record<string, unknown> = { channelId: selectedChannel.id, prompt: promptToUse, width: w, height: h }
@@ -4276,11 +4277,17 @@ export default function ComposePage() {
                     // Fetch user's configured API providers
                     fetch('/api/user/api-keys').then(r => r.json()).then((keys: { provider: string; name: string; isActive: boolean; defaultModel?: string }[]) => {
                         if (Array.isArray(keys)) {
-                            // Show all providers that have keys configured
-                            setImageProviders(keys.filter(k => k.isActive))
-                            // Auto-fetch models for current provider
-                            const currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
-                            if (currentProvider && availableImageModels.length === 0) {
+                            const activeKeys = keys.filter(k => k.isActive)
+                            setImageProviders(activeKeys)
+                            // Determine which provider to use — current selection, channel default, or first available
+                            let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
+                            // If no provider selected yet, auto-select first available
+                            if (!currentProvider && activeKeys.length > 0) {
+                                currentProvider = activeKeys[0].provider
+                                setOverrideImageProvider(currentProvider)
+                            }
+                            // Fetch models for the provider
+                            if (currentProvider) {
                                 setLoadingImageModels(true)
                                 fetch('/api/user/api-keys/models', {
                                     method: 'POST',
@@ -4359,19 +4366,11 @@ export default function ComposePage() {
                                         className="h-7 text-[11px] rounded-md border bg-muted/50 px-2 focus:outline-none focus:ring-1 focus:ring-primary"
                                     >
                                         <option value="">Auto-detect provider</option>
-                                        {imageProviders.length > 0 ? (
-                                            imageProviders.map(p => (
-                                                <option key={p.provider} value={p.provider}>
-                                                    {p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1)}
-                                                </option>
-                                            ))
-                                        ) : (
-                                            <>
-                                                <option value="runware">Runware</option>
-                                                <option value="openai">OpenAI</option>
-                                                <option value="gemini">Gemini</option>
-                                            </>
-                                        )}
+                                        {imageProviders.map(p => (
+                                            <option key={p.provider} value={p.provider}>
+                                                {p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1)}
+                                            </option>
+                                        ))}
                                     </select>
                                     <select
                                         value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
