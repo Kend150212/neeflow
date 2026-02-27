@@ -672,6 +672,8 @@ export default function ComposePage() {
     const [generatingImage, setGeneratingImage] = useState(false)
     const [aiGeneratedPreview, setAiGeneratedPreview] = useState<string | null>(null)
     const [lastUsedImageModel, setLastUsedImageModel] = useState<string | null>(null)
+    const [aiImageBgGenerating, setAiImageBgGenerating] = useState(false)
+    const [aiImageJustCompleted, setAiImageJustCompleted] = useState(false)
     // Image provider/model override for Generate Image dialog
     const [overrideImageProvider, setOverrideImageProvider] = useState('')
     const [overrideImageModel, setOverrideImageModel] = useState('')
@@ -1749,26 +1751,32 @@ export default function ComposePage() {
         finally { setGenerating(false) }
     }
 
-    // AI Image Generation — generates image and auto-attaches to post
+    // AI Image Generation — generates image in background, auto-attaches to post
     const handleAiImageGenerate = async () => {
         if (!selectedChannel || (!aiImagePrompt.trim() && !useContentAsPrompt)) return
         setGeneratingImage(true)
         setAiGeneratedPreview(null)
+
+        // Build request body
+        const promptToUse = useContentAsPrompt && content.trim() ? content.substring(0, 500) : aiImagePrompt
+        const aspectDims: Record<string, [number, number]> = {
+            '1:1': [1024, 1024], '16:9': [1280, 768], '9:16': [768, 1280],
+            '4:3': [1024, 768], '3:4': [768, 1024], '4:5': [832, 1024],
+        }
+        const [w, h] = aspectDims[imageAspectRatio] || [1024, 1024]
+        const body: Record<string, unknown> = { channelId: selectedChannel.id, prompt: promptToUse, width: w, height: h }
+        if (overrideImageProvider) {
+            const parts = overrideImageProvider.split(':')
+            body.provider = parts.length > 1 ? parts.slice(1).join(':') : parts[0]
+        }
+        if (overrideImageModel) body.model = overrideImageModel
+
+        // Close modal immediately and show placeholder in media grid
+        setShowImagePicker(false)
+        setAiImageBgGenerating(true)
+        setGeneratingImage(false)
+
         try {
-            const promptToUse = useContentAsPrompt && content.trim() ? content.substring(0, 500) : aiImagePrompt
-            // Dimensions must be multiples of 64 for Runware compatibility
-            const aspectDims: Record<string, [number, number]> = {
-                '1:1': [1024, 1024], '16:9': [1280, 768], '9:16': [768, 1280],
-                '4:3': [1024, 768], '3:4': [768, 1024], '4:5': [832, 1024],
-            }
-            const [w, h] = aspectDims[imageAspectRatio] || [1024, 1024]
-            const body: Record<string, unknown> = { channelId: selectedChannel.id, prompt: promptToUse, width: w, height: h }
-            if (overrideImageProvider) {
-                // Strip source prefix (byok:/plan:) before sending to API
-                const parts = overrideImageProvider.split(':')
-                body.provider = parts.length > 1 ? parts.slice(1).join(':') : parts[0]
-            }
-            if (overrideImageModel) body.model = overrideImageModel
             const res = await fetch('/api/admin/posts/generate-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1780,11 +1788,14 @@ export default function ComposePage() {
             addFromLibrary(data.mediaItem)
             setAiGeneratedPreview(data.mediaItem.url || data.mediaItem.thumbnailUrl)
             setLastUsedImageModel(data.model || data.provider)
+            // Trigger reveal animation
+            setAiImageJustCompleted(true)
+            setTimeout(() => setAiImageJustCompleted(false), 2000)
             toast.success(`Image generated with ${data.model || data.provider}!`)
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Image generation failed')
         } finally {
-            setGeneratingImage(false)
+            setAiImageBgGenerating(false)
         }
     }
 
@@ -3010,13 +3021,13 @@ export default function ComposePage() {
                             {attachedMedia.length > 0 && (
                                 <div className={`grid gap-2 ${mediaRatio === '9:16' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
                                     }`}>
-                                    {attachedMedia.map((media) => (
+                                    {attachedMedia.map((media, index) => (
                                         <div
                                             key={media.id}
                                             className={`relative group rounded-lg overflow-hidden bg-muted ${mediaRatio === '16:9' ? 'aspect-video'
                                                 : mediaRatio === '9:16' ? 'aspect-[9/16]'
                                                     : 'aspect-square'
-                                                }`}
+                                                } ${aiImageJustCompleted && index === attachedMedia.length - 1 ? 'animate-ai-reveal' : ''}`}
                                         >
                                             {isVideo(media) ? (
                                                 <div className="relative h-full w-full bg-muted">
@@ -3053,6 +3064,35 @@ export default function ComposePage() {
                                             )}
                                         </div>
                                     ))}
+                                </div>
+                            )}
+                            {/* AI Image Generating Placeholder */}
+                            {aiImageBgGenerating && (
+                                <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
+                                    {/* Shimmer effect */}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
+                                    {/* Center content */}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                                        {/* Logo with pulse */}
+                                        <div className="relative">
+                                            <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" style={{ animationDuration: '2s' }} />
+                                            <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
+                                                <img src="/logo.png" alt="" className="h-7 w-7 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
+                                            </div>
+                                        </div>
+                                        {/* Text */}
+                                        <div className="text-center">
+                                            <p className="text-[11px] font-medium text-purple-300 animate-pulse">Creating magic...</p>
+                                            <p className="text-[9px] text-purple-400/50 mt-0.5">AI is generating your image</p>
+                                        </div>
+                                    </div>
+                                    {/* Corner sparkles */}
+                                    <div className="absolute top-2 right-2">
+                                        <Sparkles className="h-3 w-3 text-purple-400/40 animate-pulse" />
+                                    </div>
+                                    <div className="absolute bottom-2 left-2">
+                                        <Sparkles className="h-2.5 w-2.5 text-fuchsia-400/30 animate-pulse" style={{ animationDelay: '0.5s' }} />
+                                    </div>
                                 </div>
                             )}
                             {/* Drop zone — always visible */}
