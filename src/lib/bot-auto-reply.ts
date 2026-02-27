@@ -308,8 +308,9 @@ export async function botAutoReply(
             systemPrompt += `\n\n## Official social media & links (dùng ĐÚNG những link này — TUYỆT ĐỐI KHÔNG bịa đặt hay đoán handle/tên khác):`
             for (const s of socialEntries) systemPrompt += `\n- ${s}`
             for (const cl of bizCustomLinks) systemPrompt += `\n- ${cl.label}: ${cl.url}`
-            systemPrompt += `\nCRITICAL: Nếu khách hỏi "TikTok của shop là gì?", "Facebook của shop?",... thì chỉ cung cấp đúng link ở trên. KHÔNG được tự đặt tên hay đoán handle.`
+            systemPrompt += `\nCRITICAL: Khi khách hỏi về social media (TikTok, Facebook, Instagram...) → luôn trả lời kèm tên NÀ URL đầy đủ (ví dụ: "TikTok của tụi tui là https://tiktok.com/@luxhome.homestay nha!"). KHÔNG chỉ nói tên mà không có link. KHÔNG được tự bịa link hay đoán handle.`
         }
+
 
         if (brandProfile.targetAudience) {
             systemPrompt += `\n\n## Target audience: ${brandProfile.targetAudience}`
