@@ -178,7 +178,6 @@ export async function resolveImageAIKey(
     }
 
     if (byokKey) {
-        const { decrypt } = await import('@/lib/encryption')
         return {
             ok: true,
             data: {
