@@ -344,17 +344,19 @@ async function generateWithGemini(
         const dataUrl = `data:${mime};base64,${prediction.bytesBase64Encoded}`
         return { url: dataUrl, mimeType: mime }
     } else {
-        // Gemini generateContent API — for gemini-2.0-flash-exp, gemini-2.5-flash-image, etc.
+        // Gemini generateContent API — for gemini-2.0-flash-exp, gemini-2.5-flash-image,
+        // gemini-3.1-flash-image (Nano Banana 2), etc.
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: `Generate an image: ${prompt}` }],
+                    parts: [{ text: prompt }],
                 }],
                 generationConfig: {
-                    responseModalities: ['TEXT', 'IMAGE'],
+                    responseModalities: ['IMAGE'],
+                    // Some models may also need maxOutputTokens for image gen
                 },
             }),
         })

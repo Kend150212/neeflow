@@ -4394,21 +4394,39 @@ export default function ComposePage() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                     {/* Provider dropdown with SVG logos */}
                                     {(() => {
-                                        const currentValue = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
-                                        const handleProviderChange = (val: string) => {
-                                            setOverrideImageProvider(val)
+                                        const rawProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
+                                        // Determine the current select value with source prefix
+                                        const currentSelectValue = (() => {
+                                            if (!rawProvider) return '__auto__'
+                                            // Check if this provider exists in BYOK or Plan (prefer BYOK if in both)
+                                            const inByok = byokProviders.some(p => p.provider === rawProvider)
+                                            const inPlan = planProviders.some(p => p.provider === rawProvider)
+                                            // If provider is in BYOK only, or both, default to byok
+                                            if (inByok) return `byok:${rawProvider}`
+                                            if (inPlan) return `plan:${rawProvider}`
+                                            return `byok:${rawProvider}` // fallback
+                                        })()
+                                        const handleProviderChange = (selectVal: string) => {
+                                            if (selectVal === '__auto__') {
+                                                setOverrideImageProvider('')
+                                                return
+                                            }
+                                            // Parse source prefix: "byok:gemini" or "plan:gemini"
+                                            const [source, ...rest] = selectVal.split(':')
+                                            const providerName = rest.join(':') // handle providers with colons
+                                            setOverrideImageProvider(providerName)
                                             setOverrideImageModel('')
                                             setAvailableImageModels([])
-                                            if (val) {
+                                            if (providerName) {
                                                 setLoadingImageModels(true)
                                                 fetch('/api/user/api-keys/models', {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ provider: val }),
+                                                    body: JSON.stringify({ provider: providerName }),
                                                 }).then(r => r.json()).then(d => {
-                                                    // Check if selected provider is plan-based and has allowed models whitelist
-                                                    const isPlan = planProviders.some(p => p.provider === val)
-                                                    const allowed = planAllowedModels[val]
+                                                    // Filter by plan whitelist only when Plan source selected
+                                                    const isPlan = source === 'plan'
+                                                    const allowed = planAllowedModels[providerName]
                                                     let models = (d.models || []).filter((m: { type?: string }) => m.type === 'image')
                                                     if (isPlan && allowed && allowed.length > 0) {
                                                         models = models.filter((m: { id: string }) => allowed.includes(m.id))
@@ -4418,15 +4436,15 @@ export default function ComposePage() {
                                             }
                                         }
                                         return (
-                                            <Select value={currentValue || '__auto__'} onValueChange={(v) => handleProviderChange(v === '__auto__' ? '' : v)}>
+                                            <Select value={currentSelectValue} onValueChange={handleProviderChange}>
                                                 <SelectTrigger className="h-7 text-[11px] w-auto min-w-[160px] gap-1.5">
                                                     <SelectValue>
-                                                        {currentValue ? (
+                                                        {rawProvider ? (
                                                             <span className="flex items-center gap-1.5">
-                                                                <ProviderLogo provider={currentValue} className="h-3.5 w-3.5" />
-                                                                {byokProviders.find(p => p.provider === currentValue)?.name ||
-                                                                    planProviders.find(p => p.provider === currentValue)?.name ||
-                                                                    currentValue}
+                                                                <ProviderLogo provider={rawProvider} className="h-3.5 w-3.5" />
+                                                                {byokProviders.find(p => p.provider === rawProvider)?.name ||
+                                                                    planProviders.find(p => p.provider === rawProvider)?.name ||
+                                                                    rawProvider}
                                                             </span>
                                                         ) : 'Auto-detect provider'}
                                                     </SelectValue>
@@ -4439,7 +4457,7 @@ export default function ComposePage() {
                                                         <>
                                                             <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys (unlimited)</div>
                                                             {byokProviders.map(p => (
-                                                                <SelectItem key={`byok-${p.provider}`} value={p.provider} className="text-[11px]">
+                                                                <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-[11px]">
                                                                     <span className="flex items-center gap-1.5">
                                                                         <ProviderLogo provider={p.provider} className="h-3.5 w-3.5" />
                                                                         {p.name}
@@ -4452,7 +4470,7 @@ export default function ComposePage() {
                                                         <>
                                                             <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
                                                             {planProviders.map(p => (
-                                                                <SelectItem key={`plan-${p.provider}`} value={p.provider} className="text-[11px]">
+                                                                <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-[11px]">
                                                                     <span className="flex items-center gap-1.5">
                                                                         <ProviderLogo provider={p.provider} className="h-3.5 w-3.5" />
                                                                         {p.name}
