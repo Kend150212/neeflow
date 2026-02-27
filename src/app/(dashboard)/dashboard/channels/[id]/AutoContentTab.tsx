@@ -164,8 +164,8 @@ export default function AutoContentTab({ channelId }: { channelId: string }) {
                 <button
                     onClick={() => setActiveSubTab('pipeline')}
                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSubTab === 'pipeline'
-                            ? 'bg-background shadow-sm text-foreground'
-                            : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-background shadow-sm text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
                         }`}
                 >
                     <Zap className="h-4 w-4" />
@@ -174,8 +174,8 @@ export default function AutoContentTab({ channelId }: { channelId: string }) {
                 <button
                     onClick={() => setActiveSubTab('connections')}
                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSubTab === 'connections'
-                            ? 'bg-background shadow-sm text-foreground'
-                            : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-background shadow-sm text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
                         }`}
                 >
                     <Link2 className="h-4 w-4" />
@@ -546,19 +546,28 @@ function SourceCard({ source, t, config, saveConfig, saving }: {
     const st = (key: string) => t(`smartflow.sources.${source.key}.${key}`)
 
     return (
-        <Card className={`transition-all ${isConnected ? source.color.border : ''}`}>
+        <Card className={`transition-all ${isConnected ? `${source.color.border} border` : ''}`}>
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-xl ${source.color.bg} flex items-center justify-center text-xl`}>
-                            {source.icon}
+                        {/* Official SVG Logo */}
+                        <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${source.color.gradient} flex items-center justify-center shadow-lg`}>
+                            <svg
+                                viewBox={source.svgIcon.viewBox}
+                                className="h-6 w-6"
+                                fill={source.svgIcon.fill || 'white'}
+                            >
+                                {source.svgIcon.paths.map((d, i) => (
+                                    <path key={i} d={d} />
+                                ))}
+                            </svg>
                         </div>
                         <div>
                             <CardTitle className="text-base flex items-center gap-2">
                                 {source.label}
                                 {isConnected && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
-                                        ✓ {t('smartflow.sources.connected')}
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold flex items-center gap-1">
+                                        <CheckCircle2 className="h-3 w-3" /> {t('smartflow.sources.connected')}
                                     </span>
                                 )}
                             </CardTitle>
@@ -567,9 +576,13 @@ function SourceCard({ source, t, config, saveConfig, saving }: {
                     </div>
                     <button
                         onClick={() => setShowGuide(!showGuide)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${showGuide
+                                ? `${source.color.bg} ${source.color.border} ${source.color.text}`
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            }`}
                     >
-                        {showGuide ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        {showGuide ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        {t('smartflow.sources.setupGuide')}
                     </button>
                 </div>
             </CardHeader>
@@ -577,13 +590,27 @@ function SourceCard({ source, t, config, saveConfig, saving }: {
             <CardContent className="space-y-4">
                 {/* Setup Guide (collapsible) */}
                 {showGuide && (
-                    <div className={`${source.color.bg} border ${source.color.border} rounded-xl p-4 space-y-2`}>
-                        <h5 className={`text-xs font-semibold ${source.color.text} uppercase tracking-wider`}>Setup Guide</h5>
-                        {source.setupSteps.map((_step, i) => (
-                            <p key={i} className="text-xs text-muted-foreground">
-                                {st(`step${i + 1}`)}
-                            </p>
-                        ))}
+                    <div className={`${source.color.bg} border ${source.color.border} rounded-xl p-4 space-y-3`}>
+                        <div className="flex items-center gap-2">
+                            <svg viewBox={source.svgIcon.viewBox} className="h-4 w-4" fill={source.brandColor}>
+                                {source.svgIcon.paths.map((d, i) => <path key={i} d={d} />)}
+                            </svg>
+                            <h5 className={`text-xs font-bold ${source.color.text} uppercase tracking-wider`}>
+                                {source.label} Setup Guide
+                            </h5>
+                        </div>
+                        <div className="space-y-2">
+                            {Array.from({ length: source.setupStepsCount }, (_, i) => (
+                                <div key={i} className="flex items-start gap-2">
+                                    <span className={`text-[10px] font-bold ${source.color.text} bg-white/5 rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5`}>
+                                        {i + 1}
+                                    </span>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        {st(`step${i + 1}`)}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -594,30 +621,36 @@ function SourceCard({ source, t, config, saveConfig, saving }: {
                             <Label className="text-xs font-medium text-muted-foreground">{field.label}</Label>
                             <div className="relative">
                                 <input
-                                    type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
+                                    type={(field.type === 'password' && !showPasswords[field.key]) ? 'password' : (field.type === 'url' ? 'url' : 'text')}
                                     value={localValues[field.key] || ''}
                                     onChange={e => setLocalValues(prev => ({ ...prev, [field.key]: e.target.value }))}
                                     placeholder={field.placeholder}
-                                    className="w-full bg-muted/50 border rounded-lg px-3 py-2 text-sm pr-10 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 outline-none transition-all"
+                                    className={`w-full bg-muted/50 border rounded-lg px-3 py-2.5 text-sm outline-none transition-all focus:ring-2 focus:ring-offset-0 ${field.type === 'password' ? 'pr-10' : ''
+                                        }`}
+                                    style={{ ['--tw-ring-color' as string]: `${source.brandColor}40` }}
                                 />
                                 {field.type === 'password' && (
                                     <button
+                                        type="button"
                                         onClick={() => togglePassword(field.key)}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
                                     >
                                         {showPasswords[field.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 )}
                             </div>
+                            {field.helpText && (
+                                <p className="text-[11px] text-muted-foreground/70">{field.helpText}</p>
+                            )}
                         </div>
                     ))}
                 </div>
 
                 {/* Test result */}
                 {testResult && (
-                    <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${testResult.valid
-                            ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                            : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                    <div className={`flex items-center gap-2 text-xs px-3 py-2.5 rounded-lg ${testResult.valid
+                        ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                        : 'bg-red-500/10 border border-red-500/20 text-red-400'
                         }`}>
                         {testResult.valid
                             ? <><CheckCircle2 className="h-3.5 w-3.5" /> {t('smartflow.sources.testSuccess')} {testResult.name}</>
@@ -627,7 +660,7 @@ function SourceCard({ source, t, config, saveConfig, saving }: {
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                     <Button
                         variant="outline"
                         size="sm"
@@ -642,7 +675,7 @@ function SourceCard({ source, t, config, saveConfig, saving }: {
                         size="sm"
                         onClick={handleSave}
                         disabled={saving || !localValues[source.fields[0]?.key]}
-                        className="gap-1.5 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white"
+                        className={`gap-1.5 text-white bg-gradient-to-r ${source.color.gradient} hover:opacity-90`}
                     >
                         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                         {saving ? t('smartflow.sources.connecting') : t('smartflow.sources.connect')}

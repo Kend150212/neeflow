@@ -1,8 +1,10 @@
 /**
- * Discord Webhook — receives bot events and ingests media into SmartFlow pipeline.
+ * Discord Webhook — receives events and ingests media into SmartFlow pipeline.
  * 
- * Discord sends interaction/message events when users post in the subscribed channel.
- * This endpoint extracts image/video attachments, uploads to R2, and creates ContentJobs.
+ * This endpoint can be called by Discord bot integrations or external automation
+ * tools (like Zapier, n8n) that forward Discord messages to our webhook URL.
+ * 
+ * It extracts image/video attachments, uploads to R2, and creates ContentJobs.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -25,18 +27,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: true })
         }
 
-        // Get channel ID from the message
-        const channelId = body.channel_id || ''
-        if (!channelId) {
+        // Ignore messages from bots/webhooks to prevent loops
+        if (body.author?.bot || body.webhook_id) {
             return NextResponse.json({ ok: true })
         }
 
-        // Ignore messages from bots to prevent loops
-        if (body.author?.bot) {
-            return NextResponse.json({ ok: true })
-        }
+        // Extract the Discord webhook URL or channel identifier from the request
+        const discordChannelId = body.channel_id || ''
 
-        // Find channel with this Discord channel ID configured
+        // Find channel with Discord configured that matches
         const channels = await prisma.channel.findMany({
             where: { pipelineEnabled: true },
             select: { id: true, smartflowSources: true },
@@ -44,7 +43,10 @@ export async function POST(req: NextRequest) {
 
         const matchingChannel = channels.find(ch => {
             const sources = (ch.smartflowSources || {}) as Record<string, Record<string, string>>
-            return sources.discord?.channelId === channelId
+            const discordConfig = sources.discord
+            if (!discordConfig?.webhookUrl) return false
+            // Match via webhook URL containing the channel or via explicit channel match
+            return discordChannelId && discordConfig.webhookUrl.includes(discordChannelId)
         })
 
         if (!matchingChannel) {
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
 
         const sources = (matchingChannel.smartflowSources || {}) as Record<string, Record<string, string>>
         const discordConfig = sources.discord
-        if (!discordConfig?.botToken) {
+        if (!discordConfig?.webhookUrl) {
             return NextResponse.json({ ok: true })
         }
 
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Reply with confirmation via Discord API
+        // Reply with confirmation via Discord webhook
         if (results.length > 0 && source.buildReplyPayload) {
             const reply = source.buildReplyPayload(
                 discordConfig,
@@ -89,10 +91,7 @@ export async function POST(req: NextRequest) {
             )
             await fetch(reply.url, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bot ${discordConfig.botToken}`,
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(reply.body),
             }).catch(() => { })
         }

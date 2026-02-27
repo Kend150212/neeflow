@@ -1463,6 +1463,7 @@
       "connect": "Connect",
       "disconnect": "Disconnect",
       "connecting": "Connecting...",
+      "setupGuide": "Setup Guide",
       "testConnection": "Test Connection",
       "testing": "Testing...",
       "testSuccess": "Connection successful!",
@@ -1475,19 +1476,20 @@
       "howItWorks": "Send photos/videos → AI writes captions → Posts are auto-scheduled",
       "telegram": {
         "desc": "Send photos & videos to your Telegram bot → AI creates posts automatically",
-        "step1": "1. Open Telegram → search @BotFather → send /newbot",
-        "step2": "2. Follow the prompts to name your bot",
-        "step3": "3. Copy the Bot Token you receive",
-        "step4": "4. Add the bot to your channel/group as an admin",
-        "step5": "5. Get your Chat ID by forwarding a message to @userinfobot"
+        "step1": "Open Telegram app and search for @BotFather — this is the official bot for creating Telegram bots",
+        "step2": "Send the command /newbot to @BotFather and follow the prompts to choose a name and username for your bot",
+        "step3": "Once created, @BotFather will give you a Bot Token (looks like 123456789:ABCdefGHI...). Copy this token carefully",
+        "step4": "Create a Telegram Group or Channel where you want to send media. Add your new bot as an Administrator",
+        "step5": "To find the Chat ID: forward any message from your group to @userinfobot — it will reply with the Chat ID (starts with -100)",
+        "step6": "Paste the Bot Token and Chat ID below, then click 'Test Connection' to verify everything works"
       },
       "discord": {
-        "desc": "Post images & videos in your Discord channel → AI creates posts automatically",
-        "step1": "1. Go to discord.com/developers → New Application",
-        "step2": "2. Go to Bot section → Create Bot → Copy Token",
-        "step3": "3. Enable MESSAGE CONTENT intent in Bot settings",
-        "step4": "4. Invite bot to server with 'Read Messages' + 'Send Messages' permissions",
-        "step5": "5. Enable Developer Mode → right-click channel → Copy Channel ID"
+        "desc": "Send images & videos via Discord Webhook → AI creates posts automatically",
+        "step1": "Open your Discord server and go to the channel where you want to send media",
+        "step2": "Click the ⚙️ gear icon next to the channel name to open Channel Settings",
+        "step3": "Go to Integrations → Webhooks → click 'New Webhook'. Give it a name (e.g. 'SmartFlow')",
+        "step4": "Click 'Copy Webhook URL' — the URL looks like https://discord.com/api/webhooks/123.../abc...",
+        "step5": "Paste the Webhook URL below and click 'Test Connection' to verify it's working"
       }
     }
   },

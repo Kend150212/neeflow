@@ -1463,6 +1463,7 @@
       "connect": "Kết nối",
       "disconnect": "Ngắt kết nối",
       "connecting": "Đang kết nối...",
+      "setupGuide": "Hướng dẫn",
       "testConnection": "Kiểm tra kết nối",
       "testing": "Đang kiểm tra...",
       "testSuccess": "Kết nối thành công!",
@@ -1475,19 +1476,20 @@
       "howItWorks": "Gửi ảnh/video → AI viết caption → Bài được lên lịch tự động",
       "telegram": {
         "desc": "Gửi ảnh & video vào bot Telegram → AI tự động tạo bài viết",
-        "step1": "1. Mở Telegram → tìm @BotFather → gửi /newbot",
-        "step2": "2. Làm theo hướng dẫn để đặt tên bot",
-        "step3": "3. Copy Bot Token nhận được",
-        "step4": "4. Thêm bot vào channel/group làm admin",
-        "step5": "5. Lấy Chat ID bằng cách forward tin nhắn tới @userinfobot"
+        "step1": "Mở ứng dụng Telegram và tìm @BotFather — đây là bot chính thức để tạo bot Telegram",
+        "step2": "Gửi lệnh /newbot cho @BotFather và làm theo hướng dẫn để đặt tên và username cho bot",
+        "step3": "Sau khi tạo xong, @BotFather sẽ gửi Bot Token (dạng 123456789:ABCdefGHI...). Copy token này cẩn thận",
+        "step4": "Tạo Group hoặc Channel Telegram để gửi media. Thêm bot vừa tạo làm Administrator",
+        "step5": "Để lấy Chat ID: forward bất kỳ tin nhắn nào từ group tới @userinfobot — bot sẽ trả về Chat ID (bắt đầu bằng -100)",
+        "step6": "Dán Bot Token và Chat ID vào bên dưới, nhấn 'Kiểm tra kết nối' để xác nhận mọi thứ hoạt động"
       },
       "discord": {
-        "desc": "Đăng ảnh & video trong kênh Discord → AI tự động tạo bài viết",
-        "step1": "1. Vào discord.com/developers → New Application",
-        "step2": "2. Vào Bot → Create Bot → Copy Token",
-        "step3": "3. Bật MESSAGE CONTENT intent trong Bot settings",
-        "step4": "4. Mời bot vào server với quyền 'Read Messages' + 'Send Messages'",
-        "step5": "5. Bật Developer Mode → chuột phải kênh → Copy Channel ID"
+        "desc": "Gửi ảnh & video qua Discord Webhook → AI tự động tạo bài viết",
+        "step1": "Mở Discord server và vào kênh (channel) bạn muốn gửi media",
+        "step2": "Nhấn biểu tượng ⚙️ bên cạnh tên kênh để mở Channel Settings",
+        "step3": "Vào Integrations → Webhooks → nhấn 'New Webhook'. Đặt tên (ví dụ: 'SmartFlow')",
+        "step4": "Nhấn 'Copy Webhook URL' — URL có dạng https://discord.com/api/webhooks/123.../abc...",
+        "step5": "Dán Webhook URL vào bên dưới và nhấn 'Kiểm tra kết nối' để xác nhận"
       }
     }
   },

@@ -14,8 +14,9 @@ export interface SourceField {
     key: string
     label: string
     placeholder: string
-    type: 'text' | 'password'
+    type: 'text' | 'password' | 'url'
     required: boolean
+    helpText?: string
 }
 
 export interface IncomingMedia {
@@ -31,24 +32,30 @@ export interface MessagingSource {
     key: string
     /** Display name */
     label: string
-    /** Icon emoji */
-    icon: string
+    /** SVG path data for the platform logo */
+    svgIcon: {
+        viewBox: string
+        paths: string[]
+        fill?: string
+    }
+    /** Brand color hex */
+    brandColor: string
     /** Tailwind color classes */
-    color: { border: string; bg: string; text: string }
+    color: { border: string; bg: string; text: string; gradient: string }
     /** Config fields required for connection */
     fields: SourceField[]
-    /** Step-by-step setup instructions (i18n keys) */
-    setupSteps: string[]
+    /** Number of setup steps */
+    setupStepsCount: number
     /** Validate config and return display name on success */
     validateConfig(config: Record<string, string>): Promise<{ valid: boolean; name?: string; error?: string }>
     /** Parse incoming webhook and extract media items */
     parseWebhook(body: unknown, config: Record<string, string>): Promise<{
         media: IncomingMedia[]
-        replyPayload?: unknown  // Platform-specific reply to sender
+        replyPayload?: unknown
         senderId?: string
     }>
     /** Build reply payload to confirm receipt */
-    buildReplyPayload?(config: Record<string, string>, message: string): { url: string; body: unknown }
+    buildReplyPayload?(config: Record<string, string>, message: string): { url: string; body: unknown; headers?: Record<string, string> }
     /** Register webhook URL with the platform (e.g. Telegram setWebhook) */
     registerWebhook?(config: Record<string, string>, webhookUrl: string): Promise<boolean>
     /** Unregister webhook when disconnecting */
@@ -62,19 +69,33 @@ const TELEGRAM_API = 'https://api.telegram.org/bot'
 const telegramSource: MessagingSource = {
     key: 'telegram',
     label: 'Telegram',
-    icon: '✈️',
-    color: { border: 'border-sky-500/30', bg: 'bg-sky-500/10', text: 'text-sky-400' },
+    svgIcon: {
+        viewBox: '0 0 24 24',
+        paths: [
+            'M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z',
+        ],
+    },
+    brandColor: '#26A5E4',
+    color: { border: 'border-[#26A5E4]/30', bg: 'bg-[#26A5E4]/10', text: 'text-[#26A5E4]', gradient: 'from-[#26A5E4] to-[#0088cc]' },
     fields: [
-        { key: 'botToken', label: 'Bot Token', placeholder: '123456:ABC-DEF...', type: 'password', required: true },
-        { key: 'chatId', label: 'Chat ID', placeholder: '-1001234567890', type: 'text', required: true },
+        {
+            key: 'botToken',
+            label: 'Bot Token',
+            placeholder: '123456789:ABCdefGHIjklMNOpqrsTUVwxyz',
+            type: 'password',
+            required: true,
+            helpText: 'Get from @BotFather after creating your bot',
+        },
+        {
+            key: 'chatId',
+            label: 'Chat ID',
+            placeholder: '-1001234567890',
+            type: 'text',
+            required: true,
+            helpText: 'Group/Channel ID where bot receives media',
+        },
     ],
-    setupSteps: [
-        'smartflow.sources.telegram.step1', // Open @BotFather on Telegram
-        'smartflow.sources.telegram.step2', // Send /newbot, follow instructions
-        'smartflow.sources.telegram.step3', // Copy the Bot Token
-        'smartflow.sources.telegram.step4', // Add bot to your channel/group as admin
-        'smartflow.sources.telegram.step5', // Get Chat ID (forward a message to @userinfobot)
-    ],
+    setupStepsCount: 6,
 
     async validateConfig(config) {
         const { botToken } = config
@@ -166,38 +187,48 @@ const telegramSource: MessagingSource = {
     },
 }
 
-// ─── Discord Adapter ──────────────────────────────────────
+// ─── Discord Adapter (Webhook URL) ────────────────────────
 
 const discordSource: MessagingSource = {
     key: 'discord',
     label: 'Discord',
-    icon: '🎮',
-    color: { border: 'border-indigo-500/30', bg: 'bg-indigo-500/10', text: 'text-indigo-400' },
+    svgIcon: {
+        viewBox: '0 0 24 24',
+        paths: [
+            'M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z',
+        ],
+    },
+    brandColor: '#5865F2',
+    color: { border: 'border-[#5865F2]/30', bg: 'bg-[#5865F2]/10', text: 'text-[#5865F2]', gradient: 'from-[#5865F2] to-[#4752C4]' },
     fields: [
-        { key: 'botToken', label: 'Bot Token', placeholder: 'MTIz...', type: 'password', required: true },
-        { key: 'channelId', label: 'Channel ID', placeholder: '1234567890', type: 'text', required: true },
+        {
+            key: 'webhookUrl',
+            label: 'Webhook URL',
+            placeholder: 'https://discord.com/api/webhooks/1234567890/abcdefg...',
+            type: 'url',
+            required: true,
+            helpText: 'Create in Channel Settings → Integrations → Webhooks',
+        },
     ],
-    setupSteps: [
-        'smartflow.sources.discord.step1', // Go to discord.com/developers
-        'smartflow.sources.discord.step2', // Create application + bot
-        'smartflow.sources.discord.step3', // Copy Bot Token
-        'smartflow.sources.discord.step4', // Invite bot to server with permissions
-        'smartflow.sources.discord.step5', // Right-click channel → Copy Channel ID
-    ],
+    setupStepsCount: 5,
 
     async validateConfig(config) {
-        const { botToken } = config
-        if (!botToken) return { valid: false, error: 'Bot Token is required' }
+        const { webhookUrl } = config
+        if (!webhookUrl) return { valid: false, error: 'Webhook URL is required' }
+
+        // Validate Discord webhook URL format
+        const webhookRegex = /^https:\/\/discord\.com\/api\/webhooks\/\d+\/.+$/
+        if (!webhookRegex.test(webhookUrl)) {
+            return { valid: false, error: 'Invalid Discord Webhook URL format' }
+        }
 
         try {
-            const res = await fetch('https://discord.com/api/v10/users/@me', {
-                headers: { Authorization: `Bot ${botToken}` },
-            })
+            const res = await fetch(webhookUrl)
             const data = await res.json()
-            if (!res.ok) return { valid: false, error: data.message || 'Invalid bot token' }
-            return { valid: true, name: `${data.username}#${data.discriminator}` }
+            if (!res.ok) return { valid: false, error: data.message || 'Invalid webhook URL' }
+            return { valid: true, name: data.name || 'Discord Webhook' }
         } catch {
-            return { valid: false, error: 'Failed to connect to Discord API' }
+            return { valid: false, error: 'Failed to connect to Discord' }
         }
     },
 
@@ -205,7 +236,7 @@ const discordSource: MessagingSource = {
         const event = body as Record<string, unknown>
         const media: IncomingMedia[] = []
 
-        // Discord Gateway MESSAGE_CREATE event
+        // Discord webhook payload with attachments
         const attachments = event.attachments as Array<Record<string, unknown>> | undefined
         if (attachments) {
             for (const att of attachments) {
@@ -222,6 +253,22 @@ const discordSource: MessagingSource = {
             }
         }
 
+        // Also check embeds for images
+        const embeds = event.embeds as Array<Record<string, unknown>> | undefined
+        if (embeds) {
+            for (const embed of embeds) {
+                const image = embed.image as Record<string, unknown> | undefined
+                if (image?.url) {
+                    media.push({
+                        fileUrl: image.url as string,
+                        fileName: `embed_${Date.now()}.jpg`,
+                        mimeType: 'image/jpeg',
+                        caption: (embed.description as string) || '',
+                    })
+                }
+            }
+        }
+
         const senderId = event.author
             ? String((event.author as Record<string, unknown>).id)
             : undefined
@@ -231,7 +278,7 @@ const discordSource: MessagingSource = {
 
     buildReplyPayload(config, message) {
         return {
-            url: `https://discord.com/api/v10/channels/${config.channelId}/messages`,
+            url: config.webhookUrl,
             body: { content: message },
         }
     },
