@@ -11,9 +11,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Users, AlertTriangle, Package, Clock, Zap } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, AlertTriangle, Package, Clock, Zap, Loader2 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
+import { ProviderLogo } from '@/components/ui/provider-logos'
 
 type Plan = {
     id: string
@@ -39,6 +40,7 @@ type Plan = {
     hasWhiteLabel: boolean
     hasSmartFlow: boolean
     maxSmartFlowJobsPerMonth: number
+    allowedImageModels: { provider: string; models: string[] }[] | null
     isActive: boolean
     isPublic: boolean
     sortOrder: number
@@ -55,6 +57,7 @@ const EMPTY_PLAN: Omit<Plan, 'id' | '_count'> = {
     hasAutoSchedule: false, hasWebhooks: false, hasAdvancedReports: false,
     hasPrioritySupport: false, hasWhiteLabel: false, hasSmartFlow: false,
     maxSmartFlowJobsPerMonth: 0,
+    allowedImageModels: null,
     isActive: true, isPublic: true, sortOrder: 0,
 }
 
@@ -132,6 +135,11 @@ export default function AdminPlansPage() {
     const [trialPlanId, setTrialPlanId] = useState<string | null>(null)
     const [savingTrial, setSavingTrial] = useState(false)
 
+    // AI image model selection state for plan editing
+    const [aiProviders, setAiProviders] = useState<{ provider: string; name: string }[]>([])
+    const [providerImageModels, setProviderImageModels] = useState<Record<string, { id: string; name: string }[]>>({})
+    const [loadingProviderModels, setLoadingProviderModels] = useState<Record<string, boolean>>({})
+
     const fetchPlans = useCallback(async () => {
         setLoading(true)
         const res = await fetch('/api/admin/plans')
@@ -189,6 +197,15 @@ export default function AdminPlansPage() {
         setEditPlan(plan)
         setIsEditing(true)
         setDialogOpen(true)
+        // Fetch active AI providers for model selection
+        fetch('/api/user/ai-providers').then(r => r.json()).then(providers => {
+            const aiList = (Array.isArray(providers) ? providers : [])
+                .filter((p: { provider: string; status: string; category?: string }) =>
+                    ['runware', 'openai', 'gemini'].includes(p.provider) && p.status === 'ACTIVE'
+                )
+                .map((p: { provider: string; name: string }) => ({ provider: p.provider, name: p.name || p.provider }))
+            setAiProviders(aiList)
+        }).catch(() => { })
     }
 
     const handleSave = async () => {
@@ -559,6 +576,106 @@ export default function AdminPlansPage() {
                             <div className="mt-3">
                                 {storageField}
                             </div>
+                        </div>
+
+                        {/* AI Image Models */}
+                        <div className="border-t pt-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">AI IMAGE MODELS (Plan users only)</p>
+                            <p className="text-[11px] text-muted-foreground mb-3">
+                                Select which image models plan users can access. Leave empty = all models available.
+                            </p>
+                            {aiProviders.length === 0 ? (
+                                <p className="text-[11px] text-muted-foreground italic">No active AI providers. Configure them in API Hub first.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {aiProviders.map(ap => {
+                                        const models = providerImageModels[ap.provider] || []
+                                        const isLoading = loadingProviderModels[ap.provider]
+                                        // Get currently selected models for this provider
+                                        const currentAllowed = editPlan.allowedImageModels || []
+                                        const providerEntry = currentAllowed.find(e => e.provider === ap.provider)
+                                        const selectedModels = providerEntry?.models || []
+
+                                        const toggleModel = (modelId: string, checked: boolean) => {
+                                            setEditPlan(prev => {
+                                                const existing = [...(prev.allowedImageModels || [])]
+                                                const idx = existing.findIndex(e => e.provider === ap.provider)
+                                                if (checked) {
+                                                    if (idx >= 0) {
+                                                        existing[idx] = { ...existing[idx], models: [...existing[idx].models, modelId] }
+                                                    } else {
+                                                        existing.push({ provider: ap.provider, models: [modelId] })
+                                                    }
+                                                } else {
+                                                    if (idx >= 0) {
+                                                        const newModels = existing[idx].models.filter(m => m !== modelId)
+                                                        if (newModels.length === 0) {
+                                                            existing.splice(idx, 1)
+                                                        } else {
+                                                            existing[idx] = { ...existing[idx], models: newModels }
+                                                        }
+                                                    }
+                                                }
+                                                return { ...prev, allowedImageModels: existing.length > 0 ? existing : null }
+                                            })
+                                        }
+
+                                        return (
+                                            <div key={ap.provider} className="border rounded-md p-2.5">
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <ProviderLogo provider={ap.provider} className="h-4 w-4" />
+                                                        <span className="text-xs font-medium">{ap.name}</span>
+                                                    </div>
+                                                    {models.length === 0 && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-6 text-[10px] px-2"
+                                                            disabled={isLoading}
+                                                            onClick={() => {
+                                                                setLoadingProviderModels(p => ({ ...p, [ap.provider]: true }))
+                                                                fetch('/api/user/api-keys/models', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ provider: ap.provider }),
+                                                                }).then(r => r.json()).then(d => {
+                                                                    const imgModels = (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                                                                    setProviderImageModels(p => ({ ...p, [ap.provider]: imgModels }))
+                                                                }).catch(() => { }).finally(() => {
+                                                                    setLoadingProviderModels(p => ({ ...p, [ap.provider]: false }))
+                                                                })
+                                                            }}
+                                                        >
+                                                            {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Fetch Models'}
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                {models.length > 0 && (
+                                                    <div className="space-y-0.5 max-h-28 overflow-y-auto">
+                                                        {models.map(m => (
+                                                            <label key={m.id} className="flex items-center gap-2 cursor-pointer py-0.5">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedModels.includes(m.id)}
+                                                                    onChange={(e) => toggleModel(m.id, e.target.checked)}
+                                                                    className="h-3.5 w-3.5 rounded accent-primary"
+                                                                />
+                                                                <span className="text-[11px]">{m.name}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {selectedModels.length > 0 && (
+                                                    <p className="text-[10px] text-emerald-500 mt-1">
+                                                        ✓ {selectedModels.length} model(s) allowed
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         <div className="border-t pt-3">

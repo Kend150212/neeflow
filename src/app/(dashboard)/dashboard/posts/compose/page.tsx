@@ -109,6 +109,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { THUMBNAIL_STYLES, DEFAULT_THUMBNAIL_STYLE_ID } from '@/lib/thumbnail-styles'
 import Image from 'next/image'
+import { ProviderLogo } from '@/components/ui/provider-logos'
 
 import { toast } from 'sonner'
 
@@ -678,6 +679,7 @@ export default function ComposePage() {
     const [loadingImageModels, setLoadingImageModels] = useState(false)
     const [byokProviders, setByokProviders] = useState<{ provider: string; name: string; source: string }[]>([])
     const [planProviders, setPlanProviders] = useState<{ provider: string; name: string; source: string }[]>([])
+    const [planAllowedModels, setPlanAllowedModels] = useState<Record<string, string[]>>({})
     const [imageQuota, setImageQuota] = useState<{ used: number; limit: number }>({ used: 0, limit: 0 })
     const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'>('1:1')
     const [stockQuery, setStockQuery] = useState('')
@@ -859,10 +861,18 @@ export default function ComposePage() {
         // Primary: use /api/user/image-providers (returns byok + plan + quota)
         fetch('/api/user/image-providers')
             .then(r => r.ok ? r.json() : Promise.reject('endpoint failed'))
-            .then((data: { byok: { provider: string; name: string; source: string }[]; plan: { provider: string; name: string; source: string }[]; quota: { used: number; limit: number } }) => {
+            .then((data: { byok: { provider: string; name: string; source: string }[]; plan: { provider: string; name: string; source: string }[]; quota: { used: number; limit: number }; allowedImageModels?: { provider: string; models: string[] }[] }) => {
                 setByokProviders(data.byok || [])
                 setPlanProviders(data.plan || [])
                 setImageQuota(data.quota || { used: 0, limit: 0 })
+                // Build allowed models map from plan-level allowedImageModels
+                const allowedMap: Record<string, string[]> = {}
+                for (const entry of (data.allowedImageModels || [])) {
+                    if (entry.models && entry.models.length > 0) {
+                        allowedMap[entry.provider] = entry.models
+                    }
+                }
+                setPlanAllowedModels(allowedMap)
                 return [...(data.byok || []), ...(data.plan || [])]
             })
             .catch(() => {
@@ -4382,10 +4392,10 @@ export default function ComposePage() {
                             <div className="space-y-4">
                                 {/* Provider / Model selector */}
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <select
-                                        value={overrideImageProvider || selectedChannel?.defaultImageProvider || ''}
-                                        onChange={(e) => {
-                                            const val = e.target.value
+                                    {/* Provider dropdown with SVG logos */}
+                                    {(() => {
+                                        const currentValue = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
+                                        const handleProviderChange = (val: string) => {
                                             setOverrideImageProvider(val)
                                             setOverrideImageModel('')
                                             setAvailableImageModels([])
@@ -4396,34 +4406,66 @@ export default function ComposePage() {
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify({ provider: val }),
                                                 }).then(r => r.json()).then(d => {
-                                                    setAvailableImageModels(
-                                                        (d.models || []).filter((m: { type?: string }) => m.type === 'image')
-                                                    )
+                                                    // Check if selected provider is plan-based and has allowed models whitelist
+                                                    const isPlan = planProviders.some(p => p.provider === val)
+                                                    const allowed = planAllowedModels[val]
+                                                    let models = (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                                                    if (isPlan && allowed && allowed.length > 0) {
+                                                        models = models.filter((m: { id: string }) => allowed.includes(m.id))
+                                                    }
+                                                    setAvailableImageModels(models)
                                                 }).catch(() => { }).finally(() => setLoadingImageModels(false))
                                             }
-                                        }}
-                                        className="h-7 text-[11px] rounded-md border bg-muted/50 px-2 focus:outline-none focus:ring-1 focus:ring-primary"
-                                    >
-                                        <option value="">Auto-detect provider</option>
-                                        {byokProviders.length > 0 && (
-                                            <optgroup label="📌 Your Keys (unlimited)">
-                                                {byokProviders.map(p => (
-                                                    <option key={`byok-${p.provider}`} value={p.provider}>
-                                                        {p.name}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        )}
-                                        {planProviders.length > 0 && (
-                                            <optgroup label={`⚡ Plan (${imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})`}>
-                                                {planProviders.map(p => (
-                                                    <option key={`plan-${p.provider}`} value={p.provider}>
-                                                        {p.name}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        )}
-                                    </select>
+                                        }
+                                        return (
+                                            <Select value={currentValue || '__auto__'} onValueChange={(v) => handleProviderChange(v === '__auto__' ? '' : v)}>
+                                                <SelectTrigger className="h-7 text-[11px] w-auto min-w-[160px] gap-1.5">
+                                                    <SelectValue>
+                                                        {currentValue ? (
+                                                            <span className="flex items-center gap-1.5">
+                                                                <ProviderLogo provider={currentValue} className="h-3.5 w-3.5" />
+                                                                {byokProviders.find(p => p.provider === currentValue)?.name ||
+                                                                    planProviders.find(p => p.provider === currentValue)?.name ||
+                                                                    currentValue}
+                                                            </span>
+                                                        ) : 'Auto-detect provider'}
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__auto__" className="text-[11px]">
+                                                        Auto-detect provider
+                                                    </SelectItem>
+                                                    {byokProviders.length > 0 && (
+                                                        <>
+                                                            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys (unlimited)</div>
+                                                            {byokProviders.map(p => (
+                                                                <SelectItem key={`byok-${p.provider}`} value={p.provider} className="text-[11px]">
+                                                                    <span className="flex items-center gap-1.5">
+                                                                        <ProviderLogo provider={p.provider} className="h-3.5 w-3.5" />
+                                                                        {p.name}
+                                                                    </span>
+                                                                </SelectItem>
+                                                            ))}
+                                                        </>
+                                                    )}
+                                                    {planProviders.length > 0 && (
+                                                        <>
+                                                            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
+                                                            {planProviders.map(p => (
+                                                                <SelectItem key={`plan-${p.provider}`} value={p.provider} className="text-[11px]">
+                                                                    <span className="flex items-center gap-1.5">
+                                                                        <ProviderLogo provider={p.provider} className="h-3.5 w-3.5" />
+                                                                        {p.name}
+                                                                    </span>
+                                                                </SelectItem>
+                                                            ))}
+                                                        </>
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        )
+                                    })()}
+                                    {/* Model dropdown */}
                                     <select
                                         value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
                                         onChange={(e) => setOverrideImageModel(e.target.value)}

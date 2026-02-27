@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
         hasAutoSchedule = false, hasWebhooks = false, hasAdvancedReports = false,
         hasPrioritySupport = false, hasWhiteLabel = false,
         hasSmartFlow = false, maxSmartFlowJobsPerMonth = 0,
+        allowedImageModels = null,
         isActive = true, isPublic = true, sortOrder = 0,
     } = body
 
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest) {
             hasAutoSchedule, hasWebhooks, hasAdvancedReports,
             hasPrioritySupport, hasWhiteLabel,
             hasSmartFlow, maxSmartFlowJobsPerMonth,
+            allowedImageModels,
             isActive, isPublic, sortOrder,
         },
     })

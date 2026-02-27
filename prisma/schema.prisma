@@ -704,6 +704,10 @@ model Plan {
   // -1 = unlimited (platform pays all), 0 = BYOK only, N = platform pays first N then BYOK
   maxSmartFlowJobsPerMonth Int @default(0) @map("max_smart_flow_jobs_per_month")
 
+  // Allowed image models for plan users — JSON array of { provider, models[] }
+  // null/empty = all models allowed. Example: [{"provider":"gemini","models":["imagen-3.0-generate-002"]}]
+  allowedImageModels Json? @map("allowed_image_models")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

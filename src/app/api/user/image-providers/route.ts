@@ -20,10 +20,7 @@ const db = prisma as any
  * GET /api/user/image-providers
  *
  * Returns both BYOK and Plan-included image providers for the current user,
- * along with the user's image generation quota.
- * 
- * Plan providers are ALWAYS shown if they are ACTIVE in the API Hub,
- * regardless of quota. The UI decides whether to allow generation based on quota.
+ * along with the user's image generation quota and per-plan allowed models.
  */
 export async function GET() {
     const session = await auth()
@@ -49,7 +46,7 @@ export async function GET() {
                 source: 'byok' as const,
             }))
 
-        // 2. ALWAYS fetch platform providers that are ACTIVE (regardless of quota)
+        // 2. Fetch platform providers (plan-based, always shown if ACTIVE)
         const platformKeys = await prisma.apiIntegration.findMany({
             where: {
                 provider: { in: IMAGE_CAPABLE_PROVIDERS },
@@ -61,7 +58,7 @@ export async function GET() {
             orderBy: { provider: 'asc' },
         })
 
-        const plan = platformKeys.map(pk => ({
+        const plan = platformKeys.map((pk: { provider: string; name: string }) => ({
             provider: pk.provider,
             name: pk.name || PROVIDER_LABELS[pk.provider] || pk.provider,
             source: 'plan' as const,
@@ -83,9 +80,25 @@ export async function GET() {
             // Subscription/quota tables not ready — fail open
         }
 
-        return NextResponse.json({ byok, plan, quota })
+        // 4. Read allowedImageModels from user's Plan
+        // Format: [{ provider: "gemini", models: ["model-id-1"] }, ...]
+        let allowedImageModels: { provider: string; models: string[] }[] = []
+        try {
+            const sub = await db.subscription.findUnique({
+                where: { userId },
+                include: { plan: { select: { allowedImageModels: true } } },
+            })
+            const planModels = sub?.plan?.allowedImageModels
+            if (Array.isArray(planModels) && planModels.length > 0) {
+                allowedImageModels = planModels as { provider: string; models: string[] }[]
+            }
+        } catch {
+            // Plan doesn't have allowedImageModels yet — fail open (all models)
+        }
+
+        return NextResponse.json({ byok, plan, quota, allowedImageModels })
     } catch (err) {
         console.error('[image-providers] Error:', err)
-        return NextResponse.json({ byok: [], plan: [], quota: { used: 0, limit: 0 } })
+        return NextResponse.json({ byok: [], plan: [], quota: { used: 0, limit: 0 }, allowedImageModels: [] })
     }
 }

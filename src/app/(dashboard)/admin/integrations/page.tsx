@@ -1929,6 +1929,7 @@ function IntegrationCard({
                                 {t('integrations.clickFetchModels')}
                             </p>
                         )}
+
                     </div>
                 )}
 
