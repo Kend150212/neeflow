@@ -3018,7 +3018,7 @@ export default function ComposePage() {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-1.5 px-2.5 pb-2">
-                            {attachedMedia.length > 0 && (
+                            {(attachedMedia.length > 0 || aiImageBgGenerating) && (
                                 <div className={`grid gap-2 ${mediaRatio === '9:16' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
                                     }`}>
                                     {attachedMedia.map((media, index) => (
@@ -3064,35 +3064,24 @@ export default function ComposePage() {
                                             )}
                                         </div>
                                     ))}
-                                </div>
-                            )}
-                            {/* AI Image Generating Placeholder */}
-                            {aiImageBgGenerating && (
-                                <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
-                                    {/* Shimmer effect */}
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
-                                    {/* Center content */}
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                                        {/* Logo with pulse */}
-                                        <div className="relative">
-                                            <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" style={{ animationDuration: '2s' }} />
-                                            <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
-                                                <img src="/logo.png" alt="" className="h-7 w-7 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
+                                    {/* AI Image Generating Placeholder — inside grid as a cell */}
+                                    {aiImageBgGenerating && (
+                                        <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" style={{ animationDuration: '2s' }} />
+                                                    <div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
+                                                        <img src="/logo.png" alt="" className="h-5 w-5 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
+                                                    </div>
+                                                </div>
+                                                <p className="text-[9px] font-medium text-purple-300 animate-pulse">Creating magic...</p>
+                                            </div>
+                                            <div className="absolute top-1.5 right-1.5">
+                                                <Sparkles className="h-2.5 w-2.5 text-purple-400/40 animate-pulse" />
                                             </div>
                                         </div>
-                                        {/* Text */}
-                                        <div className="text-center">
-                                            <p className="text-[11px] font-medium text-purple-300 animate-pulse">Creating magic...</p>
-                                            <p className="text-[9px] text-purple-400/50 mt-0.5">AI is generating your image</p>
-                                        </div>
-                                    </div>
-                                    {/* Corner sparkles */}
-                                    <div className="absolute top-2 right-2">
-                                        <Sparkles className="h-3 w-3 text-purple-400/40 animate-pulse" />
-                                    </div>
-                                    <div className="absolute bottom-2 left-2">
-                                        <Sparkles className="h-2.5 w-2.5 text-fuchsia-400/30 animate-pulse" style={{ animationDelay: '0.5s' }} />
-                                    </div>
+                                    )}
                                 </div>
                             )}
                             {/* Drop zone — always visible */}
