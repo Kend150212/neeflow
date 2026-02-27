@@ -10,7 +10,7 @@ import {
     Link as LinkIcon, FileSpreadsheet, ExternalLink,
     Upload, FolderOpen, X, Check, Sparkles,
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
-    Search, Package, Edit, Download,
+    Search, Package, Edit, Download, Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -122,6 +122,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [productSearch, setProductSearch] = useState('')
     const [newProduct, setNewProduct] = useState({ productId: '', name: '', category: '', price: '', salePrice: '', description: '', features: '', images: '', tags: '', inStock: true })
     const csvInputRef = useRef<HTMLInputElement>(null)
+    // Inline cell editing: { rowId, field, value }
+    const [inlineEdit, setInlineEdit] = useState<{ rowId: string; field: string; value: string } | null>(null)
 
     // Chat test state
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; content: string; imageUrls?: string[] }[]>([])
@@ -675,9 +677,9 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
             {/* ─── TRAINING TAB ─────────────────────── */}
             {botTab === 'training' && (
-                <div className="flex gap-4 min-h-[400px]">
-                    {/* Left Sidebar Menu */}
-                    <div className="w-44 shrink-0 space-y-1">
+                <div className="flex flex-col gap-4">
+                    {/* Horizontal Tab Bar */}
+                    <div className="flex flex-wrap gap-1 border-b pb-2">
                         {[
                             { key: 'saved' as const, icon: Check, label: t('chatbot.learning.savedTrainingData'), color: 'text-green-500', count: knowledgeEntries.length },
                             { key: 'text' as const, icon: FileText, label: t('chatbot.trainingTabs.text'), color: 'text-blue-500' },
@@ -686,27 +688,27 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             { key: 'images' as const, icon: ImageIcon, label: t('chatbot.trainingTabs.images'), color: 'text-orange-500' },
                             { key: 'video' as const, icon: Video, label: t('chatbot.trainingTabs.video'), color: 'text-red-500' },
                             { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
-                            { key: 'products' as const, icon: FileSpreadsheet, label: '🛍️ Products', color: 'text-emerald-500', count: products.length },
+                            { key: 'products' as const, icon: Package, label: '🛍️ Products', color: 'text-emerald-500', count: products.length },
                         ].map(item => (
                             <button
                                 key={item.key}
                                 onClick={() => setTrainingSubTab(item.key)}
-                                className={`w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors text-left
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full transition-all
                                     ${trainingSubTab === item.key
-                                        ? 'bg-primary/10 text-primary font-medium'
-                                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                                        ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                                        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'}`}
                             >
-                                <item.icon className={`h-3.5 w-3.5 ${trainingSubTab === item.key ? item.color : ''}`} />
+                                <item.icon className={`h-3 w-3 ${trainingSubTab === item.key ? 'text-primary-foreground' : item.color}`} />
                                 {item.label}
                                 {'count' in item && (item.count ?? 0) > 0 && (
-                                    <Badge variant="secondary" className="ml-auto text-[9px] h-4 px-1">{item.count}</Badge>
+                                    <span className={`ml-0.5 text-[9px] px-1 rounded-full ${trainingSubTab === item.key ? 'bg-white/20 text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{item.count}</span>
                                 )}
                             </button>
                         ))}
                     </div>
 
-                    {/* Right Content Panel */}
-                    <div className="flex-1 min-w-0 space-y-4">
+                    {/* Full-width Content Panel */}
+                    <div className="w-full space-y-4">
 
                         {/* ── Saved Knowledge Entries ── */}
                         {trainingSubTab === 'saved' && (
@@ -1636,17 +1638,17 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                     ) : (
                         <div className="rounded-lg border overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-xs">
+                                <table className="w-full text-xs border-collapse">
                                     <thead>
-                                        <tr className="bg-muted/60 border-b">
-                                            <th className="py-2 px-3 text-left font-medium text-muted-foreground w-16">Ảnh</th>
-                                            <th className="py-2 px-3 text-left font-medium text-muted-foreground">Tên sản phẩm</th>
-                                            <th className="py-2 px-3 text-left font-medium text-muted-foreground w-24">Danh mục</th>
-                                            <th className="py-2 px-3 text-right font-medium text-muted-foreground w-28">Giá</th>
-                                            <th className="py-2 px-3 text-right font-medium text-muted-foreground w-28">Giá KM</th>
-                                            <th className="py-2 px-3 text-center font-medium text-muted-foreground w-16">Tồn kho</th>
-                                            <th className="py-2 px-3 text-left font-medium text-muted-foreground w-40">Tags</th>
-                                            <th className="py-2 px-3 text-center font-medium text-muted-foreground w-16"></th>
+                                        <tr className="bg-muted/70 border-b">
+                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground w-[72px] border-r border-border/40">Ảnh</th>
+                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground border-r border-border/40">Tên sản phẩm</th>
+                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground w-28 border-r border-border/40">Danh mục</th>
+                                            <th className="py-2 px-2 text-right font-medium text-muted-foreground w-28 border-r border-border/40">Giá (₫)</th>
+                                            <th className="py-2 px-2 text-right font-medium text-muted-foreground w-28 border-r border-border/40">Giá KM (₫)</th>
+                                            <th className="py-2 px-2 text-left font-medium text-muted-foreground border-r border-border/40">Tags</th>
+                                            <th className="py-2 px-2 text-center font-medium text-muted-foreground w-16 border-r border-border/40">Tồn</th>
+                                            <th className="py-2 px-2 text-center font-medium text-muted-foreground w-20">…</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
@@ -1656,106 +1658,179 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                 p.productId?.toLowerCase().includes(productSearch.toLowerCase()) ||
                                                 p.category?.toLowerCase().includes(productSearch.toLowerCase())
                                             )
-                                            .map(p => (
-                                                <tr key={p.id} className="hover:bg-muted/30 transition-colors group">
-                                                    {/* Image thumbnail */}
-                                                    <td className="py-2 px-3">
-                                                        <div className="flex gap-1">
-                                                            {p.images?.length > 0 ? (
-                                                                p.images.slice(0, 2).map((url, i) => (
-                                                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                                                                        <img
-                                                                            src={url}
-                                                                            alt=""
-                                                                            className="h-10 w-10 rounded object-cover border hover:opacity-80 transition-opacity"
-                                                                            onError={e => (e.currentTarget.style.display = 'none')}
-                                                                        />
-                                                                    </a>
-                                                                ))
+                                            .map(p => {
+                                                // Helper: start inline editing a field
+                                                const startEdit = (field: string, current: string) =>
+                                                    setInlineEdit({ rowId: p.id, field, value: current })
+                                                // Helper: commit inline edit to DB
+                                                const commitEdit = async () => {
+                                                    if (!inlineEdit || inlineEdit.rowId !== p.id) return
+                                                    const { field, value } = inlineEdit
+                                                    const patch: Record<string, unknown> = {}
+                                                    if (field === 'name') patch.name = value
+                                                    else if (field === 'category') patch.category = value || null
+                                                    else if (field === 'price') patch.price = value ? parseFloat(value) : null
+                                                    else if (field === 'salePrice') patch.salePrice = value ? parseFloat(value) : null
+                                                    else if (field === 'tags') patch.tags = value.split(',').map(s => s.trim()).filter(Boolean)
+                                                    setInlineEdit(null)
+                                                    const res = await fetch(`/api/admin/channels/${channelId}/products/${p.id}`, {
+                                                        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch)
+                                                    })
+                                                    const updated = await res.json()
+                                                    setProducts(prev => prev.map(x => x.id === updated.id ? updated : x))
+                                                }
+                                                const isEditing = (field: string) => inlineEdit?.rowId === p.id && inlineEdit?.field === field
+                                                const InlineCell = ({ field, value, className = '', numeric = false }: { field: string; value: string; className?: string; numeric?: boolean }) => (
+                                                    isEditing(field) ? (
+                                                        <input
+                                                            autoFocus
+                                                            type={numeric ? 'number' : 'text'}
+                                                            value={inlineEdit!.value}
+                                                            onChange={e => setInlineEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
+                                                            onBlur={commitEdit}
+                                                            onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setInlineEdit(null) }}
+                                                            className={`w-full bg-primary/5 border border-primary rounded px-1.5 py-0.5 outline-none text-xs ${numeric ? 'text-right' : ''} ${className}`}
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            title="Click để sửa"
+                                                            onClick={() => startEdit(field, value)}
+                                                            className={`cursor-text min-h-[20px] px-0.5 rounded hover:bg-primary/10 transition-colors ${numeric ? 'text-right' : ''} ${className}`}
+                                                        >
+                                                            {value || <span className="text-muted-foreground/40 italic">—</span>}
+                                                        </div>
+                                                    )
+                                                )
+                                                return (
+                                                    <tr key={p.id} className="hover:bg-muted/20 transition-colors group">
+                                                        {/* Image thumbnail */}
+                                                        <td className="py-1.5 px-2 border-r border-border/40">
+                                                            <div className="flex gap-0.5">
+                                                                {p.images?.length > 0 ? (
+                                                                    p.images.slice(0, 2).map((url, i) => (
+                                                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                                                            <img src={url} alt="" className="h-9 w-9 rounded object-cover border hover:opacity-80" onError={e => (e.currentTarget.style.display = 'none')} />
+                                                                        </a>
+                                                                    ))
+                                                                ) : (
+                                                                    <div className="h-9 w-9 rounded bg-muted flex items-center justify-center border">
+                                                                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        {/* Name */}
+                                                        <td className="py-1.5 px-2 border-r border-border/40">
+                                                            <InlineCell field="name" value={p.name} className="font-medium" />
+                                                            {p.productId && <div className="text-[10px] font-mono text-muted-foreground">{p.productId}</div>}
+                                                        </td>
+                                                        {/* Category */}
+                                                        <td className="py-1.5 px-2 border-r border-border/40 text-muted-foreground">
+                                                            <InlineCell field="category" value={p.category || ''} />
+                                                        </td>
+                                                        {/* Price */}
+                                                        <td className="py-1.5 px-2 border-r border-border/40">
+                                                            <InlineCell field="price" value={p.price?.toString() || ''} numeric />
+                                                        </td>
+                                                        {/* Sale Price */}
+                                                        <td className="py-1.5 px-2 border-r border-border/40">
+                                                            {isEditing('salePrice') ? (
+                                                                <input autoFocus type="number"
+                                                                    value={inlineEdit!.value}
+                                                                    onChange={e => setInlineEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
+                                                                    onBlur={commitEdit}
+                                                                    onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setInlineEdit(null) }}
+                                                                    className="w-full bg-primary/5 border border-primary rounded px-1.5 py-0.5 outline-none text-xs text-right"
+                                                                />
                                                             ) : (
-                                                                <div className="h-10 w-10 rounded bg-muted flex items-center justify-center border">
-                                                                    <Package className="h-4 w-4 text-muted-foreground" />
+                                                                <div title="Click để sửa" onClick={() => startEdit('salePrice', p.salePrice?.toString() || '')} className="cursor-text text-right px-0.5 rounded hover:bg-primary/10 text-emerald-500 min-h-[20px]">
+                                                                    {p.salePrice ? p.salePrice.toLocaleString('vi-VN') : <span className="text-muted-foreground/40 italic">—</span>}
                                                                 </div>
                                                             )}
-                                                        </div>
-                                                    </td>
-                                                    {/* Name + ID */}
-                                                    <td className="py-2 px-3">
-                                                        <div className="font-medium">{p.name}</div>
-                                                        {p.productId && (
-                                                            <div className="text-[10px] font-mono text-muted-foreground">{p.productId}</div>
-                                                        )}
-                                                        {p.syncSource && p.syncSource !== 'manual' && (
-                                                            <Badge variant="outline" className="text-[9px] py-0 mt-0.5">{p.syncSource}</Badge>
-                                                        )}
-                                                    </td>
-                                                    {/* Category */}
-                                                    <td className="py-2 px-3 text-muted-foreground">{p.category || '—'}</td>
-                                                    {/* Price */}
-                                                    <td className="py-2 px-3 text-right">
-                                                        {p.price ? (
-                                                            <span className="font-medium">{p.price.toLocaleString('vi-VN')}₫</span>
-                                                        ) : '—'}
-                                                    </td>
-                                                    {/* Sale Price */}
-                                                    <td className="py-2 px-3 text-right">
-                                                        {p.salePrice ? (
-                                                            <span className="font-medium text-emerald-500">{p.salePrice.toLocaleString('vi-VN')}₫</span>
-                                                        ) : '—'}
-                                                    </td>
-                                                    {/* Stock */}
-                                                    <td className="py-2 px-3 text-center">
-                                                        {p.inStock ? (
-                                                            <Badge variant="secondary" className="text-[10px]">Còn</Badge>
-                                                        ) : (
-                                                            <Badge variant="destructive" className="text-[10px]">Hết</Badge>
-                                                        )}
-                                                    </td>
-                                                    {/* Tags */}
-                                                    <td className="py-2 px-3">
-                                                        <div className="flex flex-wrap gap-0.5">
-                                                            {p.tags?.slice(0, 3).map((t, i) => (
-                                                                <span key={i} className="bg-muted px-1.5 py-0.5 rounded text-[9px] text-muted-foreground">{t}</span>
-                                                            ))}
-                                                            {(p.tags?.length || 0) > 3 && (
-                                                                <span className="text-[9px] text-muted-foreground">+{p.tags.length - 3}</span>
+                                                        </td>
+                                                        {/* Tags */}
+                                                        <td className="py-1.5 px-2 border-r border-border/40">
+                                                            {isEditing('tags') ? (
+                                                                <input autoFocus type="text"
+                                                                    value={inlineEdit!.value}
+                                                                    onChange={e => setInlineEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
+                                                                    onBlur={commitEdit}
+                                                                    onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setInlineEdit(null) }}
+                                                                    className="w-full bg-primary/5 border border-primary rounded px-1.5 py-0.5 outline-none text-xs"
+                                                                    placeholder="tag1, tag2, ..."
+                                                                />
+                                                            ) : (
+                                                                <div title="Click để sửa tags" onClick={() => startEdit('tags', p.tags.join(', '))} className="cursor-text px-0.5 rounded hover:bg-primary/10 min-h-[20px]">
+                                                                    <div className="flex flex-wrap gap-0.5">
+                                                                        {p.tags?.slice(0, 4).map((tag, i) => (
+                                                                            <span key={i} className="bg-muted px-1 py-0.5 rounded text-[9px] text-muted-foreground">{tag}</span>
+                                                                        ))}
+                                                                        {(p.tags?.length || 0) > 4 && <span className="text-[9px] text-muted-foreground">+{p.tags.length - 4}</span>}
+                                                                    </div>
+                                                                </div>
                                                             )}
-                                                        </div>
-                                                    </td>
-                                                    {/* Actions */}
-                                                    <td className="py-2 px-3">
-                                                        <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0"
-                                                                onClick={() => {
-                                                                    setEditingProduct(p)
-                                                                    setNewProduct({
-                                                                        productId: p.productId || '', name: p.name, category: p.category || '',
-                                                                        price: p.price?.toString() || '', salePrice: p.salePrice?.toString() || '',
-                                                                        description: p.description || '', features: p.features.join('\n'),
-                                                                        images: p.images.join('\n'), tags: p.tags.join(', '), inStock: p.inStock
-                                                                    })
-                                                                    setShowProductForm(true)
-                                                                }}>
-                                                                <Edit className="h-3 w-3" />
-                                                            </Button>
-                                                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                        </td>
+                                                        {/* Stock toggle */}
+                                                        <td className="py-1.5 px-2 border-r border-border/40 text-center">
+                                                            <button
+                                                                title="Click để toggle"
                                                                 onClick={async () => {
-                                                                    if (!confirm('Xóa sản phẩm này?')) return
-                                                                    await fetch(`/api/admin/channels/${channelId}/products/${p.id}`, { method: 'DELETE' })
-                                                                    setProducts(prev => prev.filter(x => x.id !== p.id))
-                                                                    toast.success('Xóa sản phẩm thành công')
-                                                                }}>
-                                                                <Trash2 className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                                                    const res = await fetch(`/api/admin/channels/${channelId}/products/${p.id}`, {
+                                                                        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inStock: !p.inStock })
+                                                                    })
+                                                                    const updated = await res.json()
+                                                                    setProducts(prev => prev.map(x => x.id === updated.id ? updated : x))
+                                                                }}
+                                                            >
+                                                                {p.inStock
+                                                                    ? <Badge variant="secondary" className="text-[10px] cursor-pointer hover:bg-muted">Còn</Badge>
+                                                                    : <Badge variant="destructive" className="text-[10px] cursor-pointer">Hết</Badge>
+                                                                }
+                                                            </button>
+                                                        </td>
+                                                        {/* Actions */}
+                                                        <td className="py-1.5 px-2">
+                                                            <div className="flex gap-0.5 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                {/* Edit (full form) */}
+                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Chỉnh sửa đầy đủ"
+                                                                    onClick={() => {
+                                                                        setEditingProduct(p)
+                                                                        setNewProduct({ productId: p.productId || '', name: p.name, category: p.category || '', price: p.price?.toString() || '', salePrice: p.salePrice?.toString() || '', description: p.description || '', features: p.features.join('\n'), images: p.images.join('\n'), tags: p.tags.join(', '), inStock: p.inStock })
+                                                                        setShowProductForm(true)
+                                                                    }}>
+                                                                    <Edit className="h-3 w-3" />
+                                                                </Button>
+                                                                {/* Duplicate */}
+                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Nhân đôi"
+                                                                    onClick={async () => {
+                                                                        const payload = { ...p, id: undefined, productId: p.productId ? `${p.productId}-copy` : null, name: `${p.name} (copy)` }
+                                                                        const res = await fetch(`/api/admin/channels/${channelId}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                                                                        const created = await res.json()
+                                                                        setProducts(prev => { const idx = prev.findIndex(x => x.id === p.id); const next = [...prev]; next.splice(idx + 1, 0, created); return next })
+                                                                        toast.success('Đã nhân đôi sản phẩm')
+                                                                    }}>
+                                                                    <Copy className="h-3 w-3" />
+                                                                </Button>
+                                                                {/* Delete */}
+                                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" title="Xóa"
+                                                                    onClick={async () => {
+                                                                        if (!confirm('Xóa sản phẩm này?')) return
+                                                                        await fetch(`/api/admin/channels/${channelId}/products/${p.id}`, { method: 'DELETE' })
+                                                                        setProducts(prev => prev.filter(x => x.id !== p.id))
+                                                                        toast.success('Xóa sản phẩm thành công')
+                                                                    }}>
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
                                     </tbody>
                                 </table>
                             </div>
                             <div className="px-3 py-1.5 bg-muted/30 border-t text-[10px] text-muted-foreground">
-                                {products.length} sản phẩm • Hover vào dòng để sửa / xóa
+                                {products.length} sản phẩm • Click vào ô để sửa trực tiếp • Hover để xem thêm tùy chọn
                             </div>
                         </div>
                     )}
