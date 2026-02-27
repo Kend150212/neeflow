@@ -345,7 +345,7 @@ async function generateWithGemini(
         return { url: dataUrl, mimeType: mime }
     } else {
         // Gemini generateContent API — for gemini-2.0-flash-exp, gemini-2.5-flash-image,
-        // gemini-3.1-flash-image (Nano Banana 2), etc.
+        // gemini-3.1-flash-image-preview (Nano Banana 2), etc.
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
         const res = await fetch(url, {
             method: 'POST',
@@ -355,8 +355,7 @@ async function generateWithGemini(
                     parts: [{ text: prompt }],
                 }],
                 generationConfig: {
-                    responseModalities: ['IMAGE'],
-                    // Some models may also need maxOutputTokens for image gen
+                    responseModalities: ['Text', 'Image'],
                 },
             }),
         })
@@ -367,20 +366,32 @@ async function generateWithGemini(
         }
 
         const data = await res.json()
+
+        // Check for prompt feedback (safety blocks, etc.)
+        if (data.promptFeedback?.blockReason) {
+            throw new Error(`Gemini blocked: ${data.promptFeedback.blockReason}`)
+        }
+
         const candidates = data.candidates
         if (!candidates?.[0]?.content?.parts) {
-            throw new Error('Gemini returned no content')
+            const reason = candidates?.[0]?.finishReason || 'unknown'
+            throw new Error(`Gemini returned no content (finishReason: ${reason})`)
         }
 
         // Find the image part in the response
+        let textContent = ''
         for (const part of candidates[0].content.parts) {
             if (part.inlineData) {
                 const mime = part.inlineData.mimeType || 'image/png'
                 const dataUrl = `data:${mime};base64,${part.inlineData.data}`
                 return { url: dataUrl, mimeType: mime }
             }
+            if (part.text) {
+                textContent += part.text
+            }
         }
 
-        throw new Error('Gemini returned no image in response')
+        // No image found — report what was returned
+        throw new Error(`Gemini returned text but no image. Model: ${model}. Response: ${textContent.slice(0, 200)}`)
     }
 }
