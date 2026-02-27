@@ -80,7 +80,15 @@ export async function POST(req: NextRequest) {
                 break
             }
             case 'gemini': {
-                const model = imageModel || 'gemini-2.0-flash-exp'
+                // Default: Nano Banana (gemini-2.5-flash-image) — stable image model
+                const model = imageModel || 'gemini-2.5-flash-image'
+                // Server-side validation: only models with 'image' or 'imagen' in ID support image gen
+                if (!model.includes('image') && !model.includes('imagen')) {
+                    return NextResponse.json(
+                        { error: `Model "${model}" does not support image generation. Please select an image model (e.g. Nano Banana 2, Imagen 3).` },
+                        { status: 400 }
+                    )
+                }
                 const result = await generateWithGemini(apiKey, prompt, model)
                 imageUrl = result.url
                 mimeType = result.mimeType || 'image/png'
