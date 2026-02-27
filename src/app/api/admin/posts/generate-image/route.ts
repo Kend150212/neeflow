@@ -314,15 +314,18 @@ async function generateWithGemini(
     prompt: string,
     model: string,
 ): Promise<{ url: string; mimeType?: string }> {
-    // Imagen models use :predict endpoint, Gemini models use :generateContent
+    // Imagen models use :predict endpoint, Gemini native image models use :generateContent
     const isImagen = model.includes('imagen')
 
     if (isImagen) {
         // Imagen API — uses :predict with instances
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict`
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey,
+            },
             body: JSON.stringify({
                 instances: [{ prompt }],
                 parameters: { sampleCount: 1 },
@@ -344,18 +347,22 @@ async function generateWithGemini(
         const dataUrl = `data:${mime};base64,${prediction.bytesBase64Encoded}`
         return { url: dataUrl, mimeType: mime }
     } else {
-        // Gemini generateContent API — for gemini-2.0-flash-exp, gemini-2.5-flash-image,
-        // gemini-3.1-flash-image-preview (Nano Banana 2), etc.
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+        // Nano Banana / Gemini native image generation
+        // Models: gemini-3.1-flash-image-preview, gemini-3-pro-image-preview, gemini-2.5-flash-image
+        // Docs: https://ai.google.dev/gemini-api/docs/image-generation
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey,
+            },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: `Generate an image based on this concept: ${prompt}` }],
+                    parts: [{ text: prompt }],
                 }],
                 generationConfig: {
-                    responseModalities: ['Text', 'Image'],
+                    responseModalities: ['Image'],
                 },
             }),
         })
@@ -375,23 +382,18 @@ async function generateWithGemini(
         const candidates = data.candidates
         if (!candidates?.[0]?.content?.parts) {
             const reason = candidates?.[0]?.finishReason || 'unknown'
-            throw new Error(`Gemini returned no content (finishReason: ${reason})`)
+            throw new Error(`Gemini returned no content (finishReason: ${reason}). Model: ${model}`)
         }
 
         // Find the image part in the response
-        let textContent = ''
         for (const part of candidates[0].content.parts) {
             if (part.inlineData) {
                 const mime = part.inlineData.mimeType || 'image/png'
                 const dataUrl = `data:${mime};base64,${part.inlineData.data}`
                 return { url: dataUrl, mimeType: mime }
             }
-            if (part.text) {
-                textContent += part.text
-            }
         }
 
-        // No image found — report what was returned
-        throw new Error(`Gemini returned text but no image. Model: ${model}. Response: ${textContent.slice(0, 200)}`)
+        throw new Error(`Gemini returned no image in response. Model: ${model}`)
     }
 }
