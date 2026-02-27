@@ -1769,7 +1769,12 @@ export default function ComposePage() {
         const body: Record<string, unknown> = { channelId: selectedChannel.id, prompt: promptToUse, width: w, height: h }
         if (overrideImageProvider) {
             const parts = overrideImageProvider.split(':')
-            body.provider = parts.length > 1 ? parts.slice(1).join(':') : parts[0]
+            if (parts.length > 1) {
+                body.keySource = parts[0]           // 'byok' or 'plan'
+                body.provider = parts.slice(1).join(':')
+            } else {
+                body.provider = parts[0]
+            }
         }
         if (overrideImageModel) body.model = overrideImageModel
 

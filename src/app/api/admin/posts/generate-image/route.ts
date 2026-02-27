@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { channelId, prompt, width = 1024, height = 1024, provider: requestedProvider, model: requestedModel } = await req.json()
+    const { channelId, prompt, width = 1024, height = 1024, provider: requestedProvider, model: requestedModel, keySource } = await req.json()
 
     if (!channelId || !prompt) {
         return NextResponse.json({ error: 'channelId and prompt are required' }, { status: 400 })
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     // ─── Quota-aware image key resolution ────────────────────
     const preferredProvider = requestedProvider || channel.defaultImageProvider || null
-    const keyResult = await resolveImageAIKey(channelId, preferredProvider, requestedModel)
+    const keyResult = await resolveImageAIKey(channelId, preferredProvider, requestedModel, keySource)
     if (!keyResult.ok) {
         return NextResponse.json(
             { error: keyResult.data.error, errorType: keyResult.data.errorType, used: keyResult.data.used, limit: keyResult.data.limit },

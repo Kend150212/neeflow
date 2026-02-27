@@ -133,6 +133,7 @@ export async function resolveImageAIKey(
     channelId: string,
     preferredProvider?: string | null,
     requestedModel?: string | null,
+    keySource?: string | null,   // 'byok' | 'plan' | undefined — sent by frontend
 ): Promise<ResolveResult> {
     // Find the channel owner for quota purposes
     const ownerMember = await db.channelMember.findFirst({
@@ -150,26 +151,30 @@ export async function resolveImageAIKey(
         }
     }
 
-    // 1. Try BYOK — but ONLY for the exact requested provider.
-    //    If the user picks Gemini, a Runware BYOK must not be used as fallback.
-    //    Without a preferredProvider, fall back to owner's default/first BYOK key.
+    // 1. Try BYOK — but ONLY when:
+    //    a) The user explicitly chose BYOK source, OR no source was specified (legacy path)
+    //    b) AND only for the exact requested provider (no cross-provider fallback)
+    const forcePlan = keySource === 'plan'
+
     let byokKey: { apiKeyEncrypted: string; provider: string; defaultModel: string | null } | null = null
 
-    if (preferredProvider) {
-        // Strict match: only accept BYOK for the chosen provider
-        byokKey = await prisma.userApiKey.findFirst({
-            where: { userId: ownerId, provider: preferredProvider, isActive: true },
-            select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
-        })
-    } else {
-        // No provider preference → use owner's default key (any provider)
-        byokKey = await prisma.userApiKey.findFirst({
-            where: { userId: ownerId, isDefault: true, isActive: true },
-            select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
-        }) ?? await prisma.userApiKey.findFirst({
-            where: { userId: ownerId, isActive: true },
-            select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
-        })
+    if (!forcePlan) {
+        if (preferredProvider) {
+            // Strict match: only accept BYOK for the chosen provider
+            byokKey = await prisma.userApiKey.findFirst({
+                where: { userId: ownerId, provider: preferredProvider, isActive: true },
+                select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
+            })
+        } else {
+            // No provider preference → use owner's default key (any provider)
+            byokKey = await prisma.userApiKey.findFirst({
+                where: { userId: ownerId, isDefault: true, isActive: true },
+                select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
+            }) ?? await prisma.userApiKey.findFirst({
+                where: { userId: ownerId, isActive: true },
+                select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
+            })
+        }
     }
 
     if (byokKey) {
@@ -187,7 +192,7 @@ export async function resolveImageAIKey(
         }
     }
 
-    // 2. No matching BYOK → check image quota before using platform key
+    // 2. No matching BYOK (or forcePlan) → check image quota before using platform key
     const quotaResult = await checkImageQuotaForPlatformKey(ownerId)
 
     if (!quotaResult.allowed) {
