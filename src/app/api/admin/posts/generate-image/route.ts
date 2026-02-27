@@ -182,8 +182,8 @@ export async function POST(req: NextRequest) {
                 },
             })
 
-            // Always increment image usage after successful generation (tracks BYOK + platform key)
-            if (ownerId) {
+            // Increment quota usage ONLY on success and ONLY for platform key (BYOK = unlimited)
+            if (usingPlatformKey && ownerId) {
                 await incrementImageUsage(ownerId).catch(() => { })
             }
 
@@ -245,14 +245,14 @@ export async function POST(req: NextRequest) {
             },
         })
 
-        // Always increment image usage after successful generation (tracks BYOK + platform key)
-        if (ownerId) {
+        // Increment quota usage ONLY on success and ONLY for platform key (BYOK = unlimited)
+        if (usingPlatformKey && ownerId) {
             await incrementImageUsage(ownerId).catch(() => { })
         }
 
         // Return updated quota in response for frontend
         let updatedQuota: { used: number; limit: number } | undefined
-        if (ownerId) {
+        if (usingPlatformKey && ownerId) {
             try {
                 const { getUserImageQuota } = await import('@/lib/ai-quota')
                 updatedQuota = await getUserImageQuota(ownerId)
