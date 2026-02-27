@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
                 break
             }
             case 'gemini': {
-                // Default: Nano Banana (gemini-2.5-flash-image) — stable image model
-                const model = imageModel || 'gemini-2.5-flash-image'
+                // Default: Nano Banana 2 (gemini-3.1-flash-image-preview) — best all-around
+                const model = imageModel || 'gemini-3.1-flash-image-preview'
                 // Server-side validation: only models with 'image' or 'imagen' in ID support image gen
                 if (!model.includes('image') && !model.includes('imagen')) {
                     return NextResponse.json(
