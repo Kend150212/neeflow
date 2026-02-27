@@ -139,6 +139,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
     const emptyPromo = { name: '', description: '', startAt: '', endAt: '', isActive: true, priceGroups: [] as PriceGroup[] }
     const [newPromo, setNewPromo] = useState(emptyPromo)
+    const [promoProductSearch, setPromoProductSearch] = useState('')
+
 
 
     // Chat test state
@@ -2075,6 +2077,15 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                         .catch(() => { })
                         .finally(() => setPromotionsLoading(false))
                 }
+                // Also fetch products if not loaded yet
+                if (products.length === 0 && !productsLoading) {
+                    setProductsLoading(true)
+                    fetch(`/api/admin/channels/${channelId}/products`)
+                        .then(r => r.json())
+                        .then((data: Product[]) => setProducts(data || []))
+                        .catch(() => { })
+                        .finally(() => setProductsLoading(false))
+                }
 
                 const savePromo = async () => {
                     const payload = {
@@ -2256,41 +2267,81 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                         value={g.adjustType}
                                                         onChange={e => updateGroup(idx, 'adjustType', e.target.value as 'fixed' | 'percent')}
                                                     >
-                                                        <option value="fixed">Cố định (VND)</option>
+                                                        <option value="fixed">Cố định ($)</option>
                                                         <option value="percent">Phần trăm (%)</option>
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] text-muted-foreground">Mức {g.adjustType === 'fixed' ? '(VND)' : '(%)'}</label>
+                                                    <label className="text-[10px] text-muted-foreground">Mức {g.adjustType === 'fixed' ? '($)' : '(%)'}</label>
                                                     <input
                                                         type="number"
                                                         min={0}
                                                         className="w-full mt-0.5 rounded border border-input bg-background px-2 py-1 text-xs outline-none"
                                                         value={g.adjustment || ''}
-                                                        placeholder={g.adjustType === 'fixed' ? '20000' : '10'}
+                                                        placeholder={g.adjustType === 'fixed' ? '9.99' : '10'}
                                                         onChange={e => updateGroup(idx, 'adjustment', parseFloat(e.target.value) || 0)}
                                                     />
                                                 </div>
                                             </div>
-                                            {/* Product multi-select */}
-                                            <div>
+                                            {/* Product searchable list */}
+                                            <div className="mt-1">
                                                 <label className="text-[10px] text-muted-foreground">Sản phẩm áp dụng ({g.productIds.length} đã chọn)</label>
-                                                {products.length === 0 ? (
+                                                {productsLoading ? (
+                                                    <p className="text-[10px] text-muted-foreground italic mt-1">Đang tải sản phẩm...</p>
+                                                ) : products.length === 0 ? (
                                                     <p className="text-[10px] text-muted-foreground italic mt-1">Chưa có sản phẩm nào trong catalog.</p>
                                                 ) : (
-                                                    <div className="flex flex-wrap gap-1 mt-1">
-                                                        {products.map(prod => (
-                                                            <button
-                                                                key={prod.id}
-                                                                onClick={() => toggleProductInGroup(idx, prod.id)}
-                                                                className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${g.productIds.includes(prod.id)
-                                                                    ? 'bg-primary text-primary-foreground border-primary'
-                                                                    : 'border-border text-muted-foreground hover:border-primary/50'
-                                                                    }`}
-                                                            >
-                                                                {prod.name}{prod.price ? ` (${prod.price.toLocaleString('vi-VN')}đ)` : ''}
-                                                            </button>
-                                                        ))}
+                                                    <div className="mt-1.5 border rounded-lg overflow-hidden">
+                                                        {/* Search */}
+                                                        <div className="flex items-center gap-1.5 px-2 py-1.5 border-b bg-muted/30">
+                                                            <Search className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                            <input
+                                                                type="text"
+                                                                className="flex-1 text-[11px] bg-transparent outline-none placeholder:text-muted-foreground"
+                                                                placeholder="Tìm sản phẩm..."
+                                                                value={promoProductSearch}
+                                                                onChange={e => setPromoProductSearch(e.target.value)}
+                                                            />
+                                                            {promoProductSearch && (
+                                                                <button onClick={() => setPromoProductSearch('')} className="text-muted-foreground hover:text-foreground text-xs">×</button>
+                                                            )}
+                                                        </div>
+                                                        {/* Product list */}
+                                                        <div className="max-h-40 overflow-y-auto">
+                                                            {products
+                                                                .filter(prod => !promoProductSearch || prod.name.toLowerCase().includes(promoProductSearch.toLowerCase()) || (prod.category || '').toLowerCase().includes(promoProductSearch.toLowerCase()))
+                                                                .map(prod => {
+                                                                    const checked = g.productIds.includes(prod.id)
+                                                                    return (
+                                                                        <button
+                                                                            key={prod.id}
+                                                                            onClick={() => toggleProductInGroup(idx, prod.id)}
+                                                                            className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors text-xs border-b last:border-b-0 ${checked
+                                                                                    ? 'bg-primary/10 text-primary'
+                                                                                    : 'hover:bg-muted/50 text-foreground'
+                                                                                }`}
+                                                                        >
+                                                                            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-primary border-primary' : 'border-border'
+                                                                                }`}>
+                                                                                {checked && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                                                                            </div>
+                                                                            <span className="flex-1 truncate">{prod.name}</span>
+                                                                            {prod.price && <span className="text-[10px] text-muted-foreground shrink-0">${prod.price.toFixed(2)}</span>}
+                                                                        </button>
+                                                                    )
+                                                                })
+                                                            }
+                                                            {products.filter(prod => !promoProductSearch || prod.name.toLowerCase().includes(promoProductSearch.toLowerCase()) || (prod.category || '').toLowerCase().includes(promoProductSearch.toLowerCase())).length === 0 && (
+                                                                <p className="text-[10px] text-muted-foreground italic px-3 py-2">Không tìm thấy sản phẩm.</p>
+                                                            )}
+                                                        </div>
+                                                        {/* Selection summary */}
+                                                        {g.productIds.length > 0 && (
+                                                            <div className="px-3 py-1.5 bg-primary/5 border-t flex items-center justify-between">
+                                                                <span className="text-[10px] text-primary font-medium">✓ Đã chọn {g.productIds.length} sản phẩm</span>
+                                                                <button onClick={() => updateGroup(idx, 'productIds', [])} className="text-[10px] text-muted-foreground hover:text-red-500">Bỏ chọn tất cả</button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
