@@ -144,7 +144,9 @@ export async function resolveImageAIKey(
             data: {
                 apiKey: ownerKey.apiKey,
                 provider,
-                model: requestedModel || ownerKey.model || getDefaultModel(provider, {}),
+                // Don't use getDefaultModel() here — it returns text model defaults.
+                // Image model defaults are handled per-provider in generate-image/route.ts
+                model: requestedModel || ownerKey.model || '',
                 usingPlatformKey: false,
                 ownerId: ownerKey.ownerId,
                 integrationId: null,
@@ -198,7 +200,8 @@ export async function resolveImageAIKey(
         data: {
             apiKey: platformKey.apiKey,
             provider: platformKey.provider,
-            model: requestedModel || getDefaultModel(platformKey.provider, platformKey.config),
+            // Don't use getDefaultModel() — it returns text model defaults
+            model: requestedModel || '',
             usingPlatformKey: true,
             ownerId,
             integrationId: platformKey.id,
