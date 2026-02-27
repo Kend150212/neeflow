@@ -99,16 +99,13 @@ async function fetchGeminiModels(apiKey: string): Promise<ModelInfo[]> {
     if (!res.ok) throw new Error(`Gemini API error: ${res.status}`)
     const data = await res.json()
     return (data.models || [])
-        .map((m: { name: string; displayName?: string; description?: string; supportedGenerationMethods?: string[] }) => {
+        .map((m: { name: string; displayName?: string; description?: string }) => {
             const id = m.name.replace('models/', '')
-            const displayLower = (m.displayName || '').toLowerCase()
-            const descLower = (m.description || '').toLowerCase()
             let type: ModelInfo['type'] = 'text'
-            // Check model ID, display name, and description for image capability
-            const isImageModel = id.includes('imagen') || id.includes('image')
-                || displayLower.includes('nano banana') || displayLower.includes('image generat')
-                || descLower.includes('image generat') || descLower.includes('imagen')
-            if (isImageModel) type = 'image'
+            // Strict ID-based classification — only model IDs containing 'imagen' or 'image' are image models
+            // e.g. gemini-3.1-flash-image-preview, imagen-3.0-generate-002
+            // NOT gemini-3-flash-preview (text model whose description may mention images)
+            if (id.includes('imagen') || id.includes('image')) type = 'image'
             else if (id.includes('veo') || id.includes('video')) type = 'video'
             else if (id.includes('embedding')) type = 'embedding'
             return { id, name: m.displayName || id, type, description: m.description?.slice(0, 100) }
