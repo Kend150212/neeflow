@@ -10,7 +10,7 @@ import {
     Link as LinkIcon, FileSpreadsheet, ExternalLink,
     Upload, FolderOpen, X, Check, Sparkles,
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
-    Search, Package, Edit,
+    Search, Package, Edit, Download,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -310,6 +310,17 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
         }
         fetchConfig()
     }, [channelId])
+
+    // ─── Load product catalog when tab activates ─────────
+    useEffect(() => {
+        if (botTab === 'training' && trainingSubTab === 'products' && products.length === 0 && !productsLoading) {
+            setProductsLoading(true)
+            fetch(`/api/admin/channels/${channelId}/products`)
+                .then(r => r.json())
+                .then(data => { setProducts(Array.isArray(data) ? data : []); setProductsLoading(false) })
+                .catch(() => setProductsLoading(false))
+        }
+    }, [botTab, trainingSubTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Save config ──────────────────────────────────────
     const saveConfig = useCallback(async () => {
@@ -1478,7 +1489,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 </div>
             )}
 
-            {/* ─── PRODUCTS TAB ─────────────────────── */}
+            {/* ─── PRODUCTS TAB ───────────────────── */}
             {botTab === 'training' && trainingSubTab === 'products' && (
                 <div className="space-y-4">
                     {/* Hidden CSV input */}
@@ -1491,186 +1502,275 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         try {
                             const res = await fetch(`/api/admin/channels/${channelId}/products/import`, { method: 'POST', body: form })
                             const data = await res.json()
-                            toast.success(`Imported ${data.imported} new, updated ${data.updated}${data.errors?.length ? `, ${data.errors.length} errors` : ''}`)
-                            // Refresh list
+                            toast.success(`✅ Import xong: ${data.imported} mới, ${data.updated} cập nhật${data.errors?.length ? `, ${data.errors.length} lỗi` : ''}`)
                             const r2 = await fetch(`/api/admin/channels/${channelId}/products`)
-                            setProducts(await r2.json())
-                        } catch { toast.error('Import failed') }
+                            setProducts(Array.isArray(await r2.json()) ? await r2.json() : [])
+                        } catch { toast.error('Import thất bại') }
                         setCsvImporting(false)
                         e.target.value = ''
                     }} />
 
-                    {/* Header actions */}
-                    <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1">
-                            <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    {/* 📖 Usage Guide */}
+                    <Card className="border-blue-500/30 bg-blue-500/5">
+                        <CardContent className="pt-4 pb-3">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 mt-0.5">
+                                    <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                        <FileText className="h-4 w-4 text-blue-500" />
+                                    </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-blue-400 mb-2">Hướng dẫn sử dụng Product Catalog</p>
+                                    <div className="grid grid-cols-1 gap-1 text-[11px] text-muted-foreground">
+                                        <p>1️⃣ <strong>Thêm thủ công</strong> — Nhấn <span className="font-mono bg-muted px-1 rounded">+ Add Product</span> để nhập từng sản phẩm</p>
+                                        <p>2️⃣ <strong>Import hàng loạt</strong> — Tải file mẫu CSV bên dưới → điền sản phẩm → nhấn <span className="font-mono bg-muted px-1 rounded">Import CSV</span></p>
+                                        <p>3️⃣ <strong>Bot tự động tìm kiếm</strong> — Khi khách hỏi, bot sẽ tìm sản phẩm phù hợp và trả lời (không tốn AI tokens)</p>
+                                        <p className="text-[10px] text-muted-foreground/60 mt-1">CSV columns: id, name, category, price, sale_price, description, features (pipe |), images (pipe |), tags (pipe |), in_stock</p>
+                                    </div>
+                                    <button
+                                        className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
+                                        onClick={() => {
+                                            const sampleCsv = `id,name,category,price,sale_price,description,features,images,tags,in_stock
+SP001,Kem Dưỡng Ẩm Vitamin C,Skincare,350000,280000,Dưỡng ẩm 24h giúp da sáng khỏe,Không paraben|SPF30|Da hỗn hợp,https://example.com/img1.jpg|https://example.com/img2.jpg,kem|dưỡng|vitamin c,true
+SP002,Serum Collagen Gold,Anti-aging,450000,,Tăng sinh collagen và giảm nếp nhăn,Collagen cao cấp|Không hương liệu,https://example.com/serum.jpg,serum|collagen|gold,true
+`
+                                            const blob = new Blob([sampleCsv], { type: 'text/csv;charset=utf-8;' })
+                                            const url = URL.createObjectURL(blob)
+                                            const a = document.createElement('a')
+                                            a.href = url; a.download = 'sample_products.csv'; a.click()
+                                            URL.revokeObjectURL(url)
+                                        }}
+                                    >
+                                        <Download className="h-3.5 w-3.5" />
+                                        Tải file mẫu CSV (sample_products.csv)
+                                    </button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Toolbar */}
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input
-                                placeholder="Search products..."
+                                placeholder="Tìm sản phẩm..."
                                 value={productSearch}
                                 onChange={e => setProductSearch(e.target.value)}
-                                className="h-8 text-xs"
+                                className="h-8 text-xs pl-8"
                             />
                         </div>
-                        <div className="flex gap-1.5">
-                            <Button size="sm" variant="outline" disabled={csvImporting}
-                                onClick={() => csvInputRef.current?.click()}>
-                                {csvImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-                                Import CSV
-                            </Button>
-                            <Button size="sm" onClick={() => { setEditingProduct(null); setNewProduct({ productId: '', name: '', category: '', price: '', salePrice: '', description: '', features: '', images: '', tags: '', inStock: true }); setShowProductForm(true) }}>
-                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Product
-                            </Button>
-                        </div>
+                        <Button size="sm" variant="outline" disabled={csvImporting} onClick={() => csvInputRef.current?.click()}>
+                            {csvImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+                            Import CSV
+                        </Button>
+                        <Button size="sm" onClick={() => {
+                            setEditingProduct(null)
+                            setNewProduct({ productId: '', name: '', category: '', price: '', salePrice: '', description: '', features: '', images: '', tags: '', inStock: true })
+                            setShowProductForm(true)
+                        }}>
+                            <Plus className="h-3.5 w-3.5 mr-1" /> Add Product
+                        </Button>
                     </div>
 
-                    {/* Load products on first visit */}
-                    {products.length === 0 && !productsLoading && (
-                        <div className="text-center py-8" ref={el => {
-                            if (el && !productsLoading) {
-                                setProductsLoading(true)
-                                fetch(`/api/admin/channels/${channelId}/products`)
-                                    .then(r => r.json()).then(data => { setProducts(data); setProductsLoading(false) })
-                                    .catch(() => setProductsLoading(false))
-                            }
-                        }}>
-                            <Package className="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-40" />
-                            <p className="text-sm text-muted-foreground">No products yet. Add manually or import via CSV.</p>
-                            <p className="text-[11px] text-muted-foreground mt-1">CSV format: id,name,category,price,sale_price,description,features,images,tags,in_stock</p>
+                    {/* Table */}
+                    {productsLoading ? (
+                        <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span className="text-sm">Loading sản phẩm...</span>
                         </div>
-                    )}
-
-                    {productsLoading && <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
-
-                    {/* Product list */}
-                    {products.length > 0 && (
-                        <div className="space-y-2">
-                            {products
-                                .filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.productId?.toLowerCase().includes(productSearch.toLowerCase()) || p.category?.toLowerCase().includes(productSearch.toLowerCase()))
-                                .map(p => (
-                                    <Card key={p.id} className="p-3">
-                                        <div className="flex items-start gap-3">
-                                            {/* Thumbnail */}
-                                            {p.images?.[0] ? (
-                                                <img src={p.images[0]} alt={p.name} className="h-14 w-14 rounded-md object-cover flex-shrink-0 border" />
-                                            ) : (
-                                                <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center flex-shrink-0 border">
-                                                    <Package className="h-5 w-5 text-muted-foreground" />
-                                                </div>
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    {p.productId && <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{p.productId}</span>}
-                                                    <span className="text-sm font-medium truncate">{p.name}</span>
-                                                    {!p.inStock && <Badge variant="destructive" className="text-[10px] py-0">Out of Stock</Badge>}
-                                                    {p.syncSource && p.syncSource !== 'manual' && <Badge variant="outline" className="text-[10px] py-0">{p.syncSource}</Badge>}
-                                                </div>
-                                                <div className="flex items-center gap-3 mt-0.5">
-                                                    {p.category && <span className="text-[11px] text-muted-foreground">{p.category}</span>}
-                                                    {p.price && (
-                                                        <span className="text-[11px] font-medium text-emerald-600">
-                                                            {p.salePrice && p.salePrice < p.price ? (
-                                                                <><s className="text-muted-foreground font-normal">{p.price.toLocaleString('vi-VN')}đ</s> → {p.salePrice.toLocaleString('vi-VN')}đ</>
-                                                            ) : `${p.price.toLocaleString('vi-VN')}đ`}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {p.features?.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1 mt-1">
-                                                        {p.features.slice(0, 3).map((f, i) => <Badge key={i} variant="secondary" className="text-[9px] py-0">{f}</Badge>)}
-                                                        {p.features.length > 3 && <span className="text-[9px] text-muted-foreground">+{p.features.length - 3}</span>}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex gap-1 flex-shrink-0">
-                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
-                                                    onClick={() => {
-                                                        setEditingProduct(p)
-                                                        setNewProduct({
-                                                            productId: p.productId || '', name: p.name, category: p.category || '',
-                                                            price: p.price?.toString() || '', salePrice: p.salePrice?.toString() || '',
-                                                            description: p.description || '', features: p.features.join('\n'),
-                                                            images: p.images.join('\n'), tags: p.tags.join(', '), inStock: p.inStock
-                                                        })
-                                                        setShowProductForm(true)
-                                                    }}>
-                                                    <Edit className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                                                    onClick={async () => {
-                                                        if (!confirm('Delete this product?')) return
-                                                        await fetch(`/api/admin/channels/${channelId}/products/${p.id}`, { method: 'DELETE' })
-                                                        setProducts(prev => prev.filter(x => x.id !== p.id))
-                                                        toast.success('Product deleted')
-                                                    }}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                ))}
+                    ) : products.length === 0 ? (
+                        <div className="flex flex-col items-center py-10 gap-2 text-muted-foreground">
+                            <Package className="h-10 w-10 opacity-30" />
+                            <p className="text-sm">Chưa có sản phẩm nào. Hãy thêm mới hoặc import file CSV.</p>
+                        </div>
+                    ) : (
+                        <div className="rounded-lg border overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="bg-muted/60 border-b">
+                                            <th className="py-2 px-3 text-left font-medium text-muted-foreground w-16">Ảnh</th>
+                                            <th className="py-2 px-3 text-left font-medium text-muted-foreground">Tên sản phẩm</th>
+                                            <th className="py-2 px-3 text-left font-medium text-muted-foreground w-24">Danh mục</th>
+                                            <th className="py-2 px-3 text-right font-medium text-muted-foreground w-28">Giá</th>
+                                            <th className="py-2 px-3 text-right font-medium text-muted-foreground w-28">Giá KM</th>
+                                            <th className="py-2 px-3 text-center font-medium text-muted-foreground w-16">Tồn kho</th>
+                                            <th className="py-2 px-3 text-left font-medium text-muted-foreground w-40">Tags</th>
+                                            <th className="py-2 px-3 text-center font-medium text-muted-foreground w-16"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {products
+                                            .filter(p => !productSearch ||
+                                                p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                                p.productId?.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                                p.category?.toLowerCase().includes(productSearch.toLowerCase())
+                                            )
+                                            .map(p => (
+                                                <tr key={p.id} className="hover:bg-muted/30 transition-colors group">
+                                                    {/* Image thumbnail */}
+                                                    <td className="py-2 px-3">
+                                                        <div className="flex gap-1">
+                                                            {p.images?.length > 0 ? (
+                                                                p.images.slice(0, 2).map((url, i) => (
+                                                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                                                        <img
+                                                                            src={url}
+                                                                            alt=""
+                                                                            className="h-10 w-10 rounded object-cover border hover:opacity-80 transition-opacity"
+                                                                            onError={e => (e.currentTarget.style.display = 'none')}
+                                                                        />
+                                                                    </a>
+                                                                ))
+                                                            ) : (
+                                                                <div className="h-10 w-10 rounded bg-muted flex items-center justify-center border">
+                                                                    <Package className="h-4 w-4 text-muted-foreground" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    {/* Name + ID */}
+                                                    <td className="py-2 px-3">
+                                                        <div className="font-medium">{p.name}</div>
+                                                        {p.productId && (
+                                                            <div className="text-[10px] font-mono text-muted-foreground">{p.productId}</div>
+                                                        )}
+                                                        {p.syncSource && p.syncSource !== 'manual' && (
+                                                            <Badge variant="outline" className="text-[9px] py-0 mt-0.5">{p.syncSource}</Badge>
+                                                        )}
+                                                    </td>
+                                                    {/* Category */}
+                                                    <td className="py-2 px-3 text-muted-foreground">{p.category || '—'}</td>
+                                                    {/* Price */}
+                                                    <td className="py-2 px-3 text-right">
+                                                        {p.price ? (
+                                                            <span className="font-medium">{p.price.toLocaleString('vi-VN')}₫</span>
+                                                        ) : '—'}
+                                                    </td>
+                                                    {/* Sale Price */}
+                                                    <td className="py-2 px-3 text-right">
+                                                        {p.salePrice ? (
+                                                            <span className="font-medium text-emerald-500">{p.salePrice.toLocaleString('vi-VN')}₫</span>
+                                                        ) : '—'}
+                                                    </td>
+                                                    {/* Stock */}
+                                                    <td className="py-2 px-3 text-center">
+                                                        {p.inStock ? (
+                                                            <Badge variant="secondary" className="text-[10px]">Còn</Badge>
+                                                        ) : (
+                                                            <Badge variant="destructive" className="text-[10px]">Hết</Badge>
+                                                        )}
+                                                    </td>
+                                                    {/* Tags */}
+                                                    <td className="py-2 px-3">
+                                                        <div className="flex flex-wrap gap-0.5">
+                                                            {p.tags?.slice(0, 3).map((t, i) => (
+                                                                <span key={i} className="bg-muted px-1.5 py-0.5 rounded text-[9px] text-muted-foreground">{t}</span>
+                                                            ))}
+                                                            {(p.tags?.length || 0) > 3 && (
+                                                                <span className="text-[9px] text-muted-foreground">+{p.tags.length - 3}</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    {/* Actions */}
+                                                    <td className="py-2 px-3">
+                                                        <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0"
+                                                                onClick={() => {
+                                                                    setEditingProduct(p)
+                                                                    setNewProduct({
+                                                                        productId: p.productId || '', name: p.name, category: p.category || '',
+                                                                        price: p.price?.toString() || '', salePrice: p.salePrice?.toString() || '',
+                                                                        description: p.description || '', features: p.features.join('\n'),
+                                                                        images: p.images.join('\n'), tags: p.tags.join(', '), inStock: p.inStock
+                                                                    })
+                                                                    setShowProductForm(true)
+                                                                }}>
+                                                                <Edit className="h-3 w-3" />
+                                                            </Button>
+                                                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                                onClick={async () => {
+                                                                    if (!confirm('Xóa sản phẩm này?')) return
+                                                                    await fetch(`/api/admin/channels/${channelId}/products/${p.id}`, { method: 'DELETE' })
+                                                                    setProducts(prev => prev.filter(x => x.id !== p.id))
+                                                                    toast.success('Xóa sản phẩm thành công')
+                                                                }}>
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="px-3 py-1.5 bg-muted/30 border-t text-[10px] text-muted-foreground">
+                                {products.length} sản phẩm • Hover vào dòng để sửa / xóa
+                            </div>
                         </div>
                     )}
 
                     {/* Add / Edit Product Form Dialog */}
                     {showProductForm && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowProductForm(false)}>
-                            <div className="bg-background rounded-xl shadow-2xl w-[560px] max-h-[80vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
-                                <h4 className="font-semibold text-sm mb-4">{editingProduct ? 'Edit Product' : 'Add New Product'}</h4>
+                            <div className="bg-background rounded-xl shadow-2xl w-[560px] max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+                                <h4 className="font-semibold text-sm mb-4">{editingProduct ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}</h4>
                                 <div className="space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Product ID (optional)</label>
+                                            <label className="text-[11px] text-muted-foreground">Mã sản phẩm (tùy chọn)</label>
                                             <Input className="h-8 text-xs mt-1" placeholder="SP001" value={newProduct.productId} onChange={e => setNewProduct(p => ({ ...p, productId: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Category</label>
+                                            <label className="text-[11px] text-muted-foreground">Danh mục</label>
                                             <Input className="h-8 text-xs mt-1" placeholder="Skincare" value={newProduct.category} onChange={e => setNewProduct(p => ({ ...p, category: e.target.value }))} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Product Name *</label>
+                                        <label className="text-[11px] text-muted-foreground">Tên sản phẩm *</label>
                                         <Input className="h-8 text-xs mt-1" placeholder="Kem Dưỡng Ẩm Vitamin C" value={newProduct.name} onChange={e => setNewProduct(p => ({ ...p, name: e.target.value }))} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Price (₫)</label>
+                                            <label className="text-[11px] text-muted-foreground">Giá gốc (₫)</label>
                                             <Input className="h-8 text-xs mt-1" type="number" placeholder="350000" value={newProduct.price} onChange={e => setNewProduct(p => ({ ...p, price: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Sale Price (₫)</label>
+                                            <label className="text-[11px] text-muted-foreground">Giá khuyến mãi (₫)</label>
                                             <Input className="h-8 text-xs mt-1" type="number" placeholder="280000" value={newProduct.salePrice} onChange={e => setNewProduct(p => ({ ...p, salePrice: e.target.value }))} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Description</label>
+                                        <label className="text-[11px] text-muted-foreground">Mô tả</label>
                                         <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-20" placeholder="Mô tả sản phẩm..." value={newProduct.description} onChange={e => setNewProduct(p => ({ ...p, description: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Features (one per line)</label>
-                                        <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-16" placeholder="Không paraben&#10;SPF30&#10;Da hỗn hợp" value={newProduct.features} onChange={e => setNewProduct(p => ({ ...p, features: e.target.value }))} />
+                                        <label className="text-[11px] text-muted-foreground">Tính năng (mỗi dòng 1 tính năng)</label>
+                                        <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-16" placeholder="Không paraben&#10;SPF30&#10;Dành cho da hỗn hợp" value={newProduct.features} onChange={e => setNewProduct(p => ({ ...p, features: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Image URLs (one per line)</label>
+                                        <label className="text-[11px] text-muted-foreground">Link ảnh (mỗi dòng 1 URL)</label>
                                         <textarea className="w-full mt-1 text-xs p-2 border rounded-md bg-background resize-none h-16" placeholder="https://cdn.example.com/image1.jpg&#10;https://cdn.example.com/image2.jpg" value={newProduct.images} onChange={e => setNewProduct(p => ({ ...p, images: e.target.value }))} />
                                         {newProduct.images && (
-                                            <div className="flex gap-1.5 mt-1.5">
+                                            <div className="flex gap-1.5 mt-1.5 flex-wrap">
                                                 {newProduct.images.split('\n').filter(u => u.trim().startsWith('http')).slice(0, 4).map((url, i) => (
-                                                    <img key={i} src={url.trim()} alt="" className="h-12 w-12 rounded object-cover border" onError={e => (e.currentTarget.style.display = 'none')} />
+                                                    <img key={i} src={url.trim()} alt="" className="h-14 w-14 rounded object-cover border" onError={e => (e.currentTarget.style.display = 'none')} />
                                                 ))}
                                             </div>
                                         )}
                                     </div>
                                     <div>
-                                        <label className="text-[11px] text-muted-foreground">Search Tags (comma-separated)</label>
+                                        <label className="text-[11px] text-muted-foreground">Tags tìm kiếm (cách nhau bằng dấu phẩy)</label>
                                         <Input className="h-8 text-xs mt-1" placeholder="kem, dưỡng, vitamin c, spf" value={newProduct.tags} onChange={e => setNewProduct(p => ({ ...p, tags: e.target.value }))} />
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <input type="checkbox" id="inStock" checked={newProduct.inStock} onChange={e => setNewProduct(p => ({ ...p, inStock: e.target.checked }))} />
-                                        <label htmlFor="inStock" className="text-xs">In Stock</label>
+                                        <input type="checkbox" id="inStockCheck" checked={newProduct.inStock} onChange={e => setNewProduct(p => ({ ...p, inStock: e.target.checked }))} />
+                                        <label htmlFor="inStockCheck" className="text-xs">Còn hàng</label>
                                     </div>
                                 </div>
                                 <div className="flex justify-end gap-2 mt-4">
-                                    <Button variant="outline" size="sm" onClick={() => setShowProductForm(false)}>Cancel</Button>
+                                    <Button variant="outline" size="sm" onClick={() => setShowProductForm(false)}>Hủy</Button>
                                     <Button size="sm" disabled={!newProduct.name.trim()} onClick={async () => {
                                         const payload = {
                                             productId: newProduct.productId || null,
@@ -1688,16 +1788,16 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                             const res = await fetch(`/api/admin/channels/${channelId}/products/${editingProduct.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                                             const updated = await res.json()
                                             setProducts(prev => prev.map(x => x.id === updated.id ? updated : x))
-                                            toast.success('Product updated')
+                                            toast.success('Cập nhật sản phẩm thành công')
                                         } else {
                                             const res = await fetch(`/api/admin/channels/${channelId}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                                             const created = await res.json()
                                             setProducts(prev => [created, ...prev])
-                                            toast.success('Product added')
+                                            toast.success('Thêm sản phẩm thành công')
                                         }
                                         setShowProductForm(false)
                                     }}>
-                                        {editingProduct ? 'Save Changes' : 'Add Product'}
+                                        {editingProduct ? 'Lưu thay đổi' : 'Thêm sản phẩm'}
                                     </Button>
                                 </div>
                             </div>
