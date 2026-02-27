@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
         )
     }
     const { apiKey, provider: resolvedProvider, usingPlatformKey, ownerId } = keyResult.data
+    console.log(`[generate-image] Provider: ${resolvedProvider}, usingPlatformKey: ${usingPlatformKey}, ownerId: ${ownerId}, apiKey: ${apiKey?.substring(0, 8)}...`)
     // Build model fallback chain, but validate for Gemini — only models with 'image'/'imagen' in ID
     let imageModel = requestedModel || keyResult.data.model || channel.defaultImageModel || null
     if (resolvedProvider === 'gemini' && imageModel && !imageModel.includes('image') && !imageModel.includes('imagen')) {
@@ -230,15 +231,31 @@ export async function POST(req: NextRequest) {
             },
         })
 
-        return NextResponse.json({ mediaItem, provider: resolvedProvider, model: usedModel })
+        // Increment quota usage ONLY on success and ONLY for platform key
+        if (usingPlatformKey && ownerId) {
+            await incrementImageUsage(ownerId).catch(() => { })
+        }
+
+        // Return updated quota in response for frontend
+        let updatedQuota: { used: number; limit: number } | undefined
+        if (usingPlatformKey && ownerId) {
+            try {
+                const { getUserImageQuota } = await import('@/lib/ai-quota')
+                updatedQuota = await getUserImageQuota(ownerId)
+            } catch { /* ignore */ }
+        }
+
+        return NextResponse.json({
+            mediaItem,
+            provider: resolvedProvider,
+            model: usedModel,
+            usingPlatformKey,
+            quota: updatedQuota,
+        })
     } catch (error) {
         const msg = error instanceof Error ? error.message : 'Failed to process image'
         return NextResponse.json({ error: msg }, { status: 500 })
     } finally {
-        // Increment quota usage against the owner's account (only when using platform key)
-        if (usingPlatformKey) {
-            await incrementImageUsage(ownerId!).catch(() => { })
-        }
         // Always clean up temp file
         fs.unlink(tmpPath, () => { })
     }

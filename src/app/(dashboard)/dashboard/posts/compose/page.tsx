@@ -1788,10 +1788,15 @@ export default function ComposePage() {
             addFromLibrary(data.mediaItem)
             setAiGeneratedPreview(data.mediaItem.url || data.mediaItem.thumbnailUrl)
             setLastUsedImageModel(data.model || data.provider)
+            // Update quota from server response
+            if (data.quota) {
+                setImageQuota(data.quota)
+            }
             // Trigger reveal animation
             setAiImageJustCompleted(true)
             setTimeout(() => setAiImageJustCompleted(false), 2000)
-            toast.success(`Image generated with ${data.model || data.provider}!`)
+            const keySource = data.usingPlatformKey ? 'Plan' : 'BYOK'
+            toast.success(`Image generated with ${data.model || data.provider} (${keySource})`)
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Image generation failed')
         } finally {
