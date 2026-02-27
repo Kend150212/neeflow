@@ -135,13 +135,90 @@ export async function resolveImageAIKey(
     requestedModel?: string | null,
     keySource?: string | null,   // 'byok' | 'plan' | undefined — sent by frontend
 ): Promise<ResolveResult> {
-    // Find the channel owner for quota purposes
-    const ownerMember = await db.channelMember.findFirst({
+    // 1. Try BYOK — unless user explicitly chose a Plan provider
+    const skipByok = keySource === 'plan'
+
+    if (!skipByok) {
+        const ownerKey = await getChannelOwnerKey(channelId, preferredProvider)
+
+        if (ownerKey.apiKey) {
+            const provider = ownerKey.provider!
+            // If a specific provider was requested, only use BYOK if it matches exactly
+            // (prevents Runware BYOK being used when user selects Gemini)
+            const providerMatches = !preferredProvider || provider === preferredProvider
+            if (providerMatches) {
+                return {
+                    ok: true,
+                    data: {
+                        apiKey: ownerKey.apiKey,
+                        provider,
+                        model: requestedModel || ownerKey.model || '',
+                        usingPlatformKey: false,
+                        ownerId: ownerKey.ownerId,
+                        integrationId: null,
+                    },
+                }
+            }
+        }
+
+        // If no matching BYOK, still need ownerId from ownerKey for quota check
+        const ownerId = ownerKey.ownerId
+        if (!ownerId) {
+            return {
+                ok: false,
+                status: 403,
+                data: { error: 'Channel has no owner configured.', errorType: 'no_owner' },
+            }
+        }
+
+        const quotaResult = await checkImageQuotaForPlatformKey(ownerId)
+        if (!quotaResult.allowed) {
+            return {
+                ok: false,
+                status: 429,
+                data: {
+                    error: quotaResult.reason!,
+                    errorType: 'quota_exceeded',
+                    used: quotaResult.used,
+                    limit: quotaResult.limit,
+                },
+            }
+        }
+
+        const platformKey = await getPlatformImageKey(preferredProvider)
+        if (!platformKey) {
+            return {
+                ok: false,
+                status: 400,
+                data: {
+                    error: 'No AI image provider configured on the platform. Please add your own API key in Settings → AI API Keys.',
+                    errorType: 'no_platform_key',
+                },
+            }
+        }
+
+        return {
+            ok: true,
+            data: {
+                apiKey: platformKey.apiKey,
+                provider: platformKey.provider,
+                model: requestedModel || '',
+                usingPlatformKey: true,
+                ownerId,
+                integrationId: platformKey.id,
+                baseUrl: platformKey.baseUrl,
+                config: platformKey.config,
+            },
+        }
+    }
+
+    // 2. keySource === 'plan': skip BYOK entirely, go straight to platform key + quota
+    //    Still need ownerId for quota check
+    const ownerMember = await prisma.channelMember.findFirst({
         where: { channelId, role: 'OWNER' },
         select: { userId: true },
     })
-
-    const ownerId: string | null = ownerMember?.userId ?? null
+    const ownerId = ownerMember?.userId ?? null
 
     if (!ownerId) {
         return {
@@ -151,49 +228,7 @@ export async function resolveImageAIKey(
         }
     }
 
-    // 1. Try BYOK — but ONLY when:
-    //    a) The user explicitly chose BYOK source, OR no source was specified (legacy path)
-    //    b) AND only for the exact requested provider (no cross-provider fallback)
-    const forcePlan = keySource === 'plan'
-
-    let byokKey: { apiKeyEncrypted: string; provider: string; defaultModel: string | null } | null = null
-
-    if (!forcePlan) {
-        if (preferredProvider) {
-            // Strict match: only accept BYOK for the chosen provider
-            byokKey = await prisma.userApiKey.findFirst({
-                where: { userId: ownerId, provider: preferredProvider, isActive: true },
-                select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
-            })
-        } else {
-            // No provider preference → use owner's default key (any provider)
-            byokKey = await prisma.userApiKey.findFirst({
-                where: { userId: ownerId, isDefault: true, isActive: true },
-                select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
-            }) ?? await prisma.userApiKey.findFirst({
-                where: { userId: ownerId, isActive: true },
-                select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
-            })
-        }
-    }
-
-    if (byokKey) {
-        return {
-            ok: true,
-            data: {
-                apiKey: decrypt(byokKey.apiKeyEncrypted),
-                provider: byokKey.provider,
-                model: requestedModel || byokKey.defaultModel || '',
-                usingPlatformKey: false,
-                ownerId,
-                integrationId: null,
-            },
-        }
-    }
-
-    // 2. No matching BYOK (or forcePlan) → check image quota before using platform key
     const quotaResult = await checkImageQuotaForPlatformKey(ownerId)
-
     if (!quotaResult.allowed) {
         return {
             ok: false,
@@ -207,7 +242,6 @@ export async function resolveImageAIKey(
         }
     }
 
-    // 3. Within quota → get platform image key
     const platformKey = await getPlatformImageKey(preferredProvider)
     if (!platformKey) {
         return {
