@@ -745,8 +745,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             { key: 'video' as const, icon: Video, label: t('chatbot.trainingTabs.video'), color: 'text-red-500' },
                             { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
                             { key: 'products' as const, icon: Package, label: `🛙 ${t('chatbot.trainingTabs.products')}`, color: 'text-emerald-500', count: products.length },
-                            { key: 'promotions' as const, icon: Tag, label: `🎉 ${t('chatbot.trainingTabs.promotions')}`, color: 'text-pink-500', count: promotions.length },
-                            { key: 'forbidden' as const, icon: Ban, label: `🚫 ${t('chatbot.trainingTabs.forbidden')}`, color: 'text-red-500', count: config.forbiddenTopics?.length },
+                            { key: 'promotions' as const, icon: Tag, label: t('chatbot.trainingTabs.promotions'), color: 'text-pink-500', count: promotions.length },
+                            { key: 'forbidden' as const, icon: Ban, label: t('chatbot.trainingTabs.forbidden'), color: 'text-red-500', count: config.forbiddenTopics?.length },
 
 
 
@@ -1313,7 +1313,18 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
             {/* ─── FORBIDDEN RULES TAB ──────────────────────────── */}
             {botTab === 'training' && trainingSubTab === 'forbidden' && (() => {
-                const QUICK_RULES = (t('chatbot.forbidden.quickRules') as unknown as string[])
+                const QUICK_RULES = [
+                    t('chatbot.forbidden.quickRule0'),
+                    t('chatbot.forbidden.quickRule1'),
+                    t('chatbot.forbidden.quickRule2'),
+                    t('chatbot.forbidden.quickRule3'),
+                    t('chatbot.forbidden.quickRule4'),
+                    t('chatbot.forbidden.quickRule5'),
+                    t('chatbot.forbidden.quickRule6'),
+                    t('chatbot.forbidden.quickRule7'),
+                    t('chatbot.forbidden.quickRule8'),
+                    t('chatbot.forbidden.quickRule9'),
+                ]
 
                 return (
                     <div className="flex flex-col gap-5">

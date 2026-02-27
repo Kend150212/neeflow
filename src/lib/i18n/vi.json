@@ -1155,18 +1155,16 @@
       "quickLabel": "Thêm nhanh quy tắc phổ biến",
       "allAdded": "Đã thêm tất cả gợi ý phổ biến.",
       "saveReminder": "Nhớ nhấn \"Lưu cấu hình\" sau khi thêm/xóa quy tắc.",
-      "quickRules": [
-        "Không tiết lộ giá ưu đãi nội bộ chưa công bố",
-        "Không hứa hẹn thời gian giao hàng khi chưa xác nhận",
-        "Không nhận đặt hàng qua chat (chuyển sang form/web)",
-        "Không xác nhận đơn hàng / hoàn tiền mà không có mã đơn",
-        "Không chia sẻ thông tin cá nhân của nhân viên",
-        "Không nói xấu đối thủ cạnh tranh",
-        "Không thảo luận về chính trị, tôn giáo",
-        "Không cam kết điều khoản nào ngoài chính sách chính thức",
-        "Không giảm giá thêm ngoài khuyến mãi đang áp dụng",
-        "Không tiết lộ quy trình nội bộ hoặc thông tin bảo mật"
-      ]
+      "quickRule0": "Không tiết lộ giá ưu đãi nội bộ chưa công bố",
+      "quickRule1": "Không hứa hẹn thời gian giao hàng khi chưa xác nhận",
+      "quickRule2": "Không nhận đặt hàng qua chat (chuyển sang form/web)",
+      "quickRule3": "Không xác nhận đơn hàng / hoàn tiền mà không có mã đơn",
+      "quickRule4": "Không chia sẻ thông tin cá nhân của nhân viên",
+      "quickRule5": "Không nói xấu đối thủ cạnh tranh",
+      "quickRule6": "Không thảo luận về chính trị, tôn giáo",
+      "quickRule7": "Không cam kết điều khoản nào ngoài chính sách chính thức",
+      "quickRule8": "Không giảm giá thêm ngoài khuyến mãi đang áp dụng",
+      "quickRule9": "Không tiết lộ quy trình nội bộ hoặc thông tin bảo mật"
     },
     "promotions": {
       "title": "Khuyến mãi",

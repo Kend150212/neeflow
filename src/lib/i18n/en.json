@@ -1155,18 +1155,16 @@
       "quickLabel": "Quick-add common rules",
       "allAdded": "All common suggestions already added.",
       "saveReminder": "Remember to click \"Save Bot Settings\" after adding/removing rules to apply changes.",
-      "quickRules": [
-        "Do not reveal internal / unpublished promotional prices",
-        "Do not promise delivery dates without confirming with the warehouse",
-        "Do not accept orders via chat (direct to order form / website)",
-        "Do not confirm orders or refunds without an order ID",
-        "Do not share personal information of staff members",
-        "Do not speak negatively about competitors",
-        "Do not discuss politics or religion",
-        "Do not commit to any terms not in the official policy",
-        "Do not offer additional discounts beyond active promotions",
-        "Do not reveal internal processes or confidential information"
-      ]
+      "quickRule0": "Do not reveal internal / unpublished promotional prices",
+      "quickRule1": "Do not promise delivery dates without confirming with the warehouse",
+      "quickRule2": "Do not accept orders via chat (direct to order form / website)",
+      "quickRule3": "Do not confirm orders or refunds without an order ID",
+      "quickRule4": "Do not share personal information of staff members",
+      "quickRule5": "Do not speak negatively about competitors",
+      "quickRule6": "Do not discuss politics or religion",
+      "quickRule7": "Do not commit to any terms not in the official policy",
+      "quickRule8": "Do not offer additional discounts beyond active promotions",
+      "quickRule9": "Do not reveal internal processes or confidential information"
     },
     "promotions": {
       "title": "Promotions",
