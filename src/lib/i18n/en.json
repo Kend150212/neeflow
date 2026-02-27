@@ -1490,6 +1490,16 @@
         "step3": "Go to Integrations → Webhooks → click 'New Webhook'. Give it a name (e.g. 'SmartFlow')",
         "step4": "Click 'Copy Webhook URL' — the URL looks like https://discord.com/api/webhooks/123.../abc...",
         "step5": "Paste the Webhook URL below and click 'Test Connection' to verify it's working"
+      },
+      "whatsapp": {
+        "desc": "Send photos & videos via WhatsApp → AI creates posts automatically",
+        "step1": "Go to developers.facebook.com → Create a new App → Select 'Business' type",
+        "step2": "In your app, go to Add Products → find WhatsApp → click 'Set Up'",
+        "step3": "Go to API Setup → note your Phone Number ID (a long number like 123456789012345)",
+        "step4": "Create a permanent Access Token: go to Business Settings → System Users → create one with 'whatsapp_business_messaging' permission",
+        "step5": "In WhatsApp → Configuration → set the Webhook URL to: {webhookUrl}",
+        "step6": "Set the Verify Token to any secret string you choose — use the same value in both Meta and NeeFlow",
+        "step7": "Subscribe to 'messages' webhook field, then paste your Access Token, Phone Number ID, and Verify Token below"
       }
     }
   },

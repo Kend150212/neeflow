@@ -28,7 +28,7 @@ export interface IncomingMedia {
 }
 
 export interface MessagingSource {
-    /** Unique key: 'telegram' | 'discord' | 'slack' */
+    /** Unique key: 'telegram' | 'whatsapp' | 'slack' */
     key: string
     /** Display name */
     label: string
@@ -187,99 +187,131 @@ const telegramSource: MessagingSource = {
     },
 }
 
-// ─── Discord Adapter (Webhook URL) ────────────────────────
+// ─── WhatsApp Business API Adapter ─────────────────────────
 
-const discordSource: MessagingSource = {
-    key: 'discord',
-    label: 'Discord',
+const WHATSAPP_GRAPH_API = 'https://graph.facebook.com/v21.0'
+
+const whatsappSource: MessagingSource = {
+    key: 'whatsapp',
+    label: 'WhatsApp',
     svgIcon: {
         viewBox: '0 0 24 24',
         paths: [
-            'M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z',
+            'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z',
         ],
     },
-    brandColor: '#5865F2',
-    color: { border: 'border-[#5865F2]/30', bg: 'bg-[#5865F2]/10', text: 'text-[#5865F2]', gradient: 'from-[#5865F2] to-[#4752C4]' },
+    brandColor: '#25D366',
+    color: { border: 'border-[#25D366]/30', bg: 'bg-[#25D366]/10', text: 'text-[#25D366]', gradient: 'from-[#25D366] to-[#128C7E]' },
     fields: [
         {
-            key: 'webhookUrl',
-            label: 'Webhook URL',
-            placeholder: 'https://discord.com/api/webhooks/1234567890/abcdefg...',
-            type: 'url',
+            key: 'accessToken',
+            label: 'Access Token',
+            placeholder: 'EAABsbCS1iHgBO...',
+            type: 'password',
             required: true,
-            helpText: 'Create in Channel Settings → Integrations → Webhooks',
+            helpText: 'Permanent token from Meta Business Settings → System Users',
+        },
+        {
+            key: 'phoneNumberId',
+            label: 'Phone Number ID',
+            placeholder: '123456789012345',
+            type: 'text',
+            required: true,
+            helpText: 'Found in WhatsApp → API Setup → Phone Number ID',
+        },
+        {
+            key: 'verifyToken',
+            label: 'Verify Token',
+            placeholder: 'my-secret-verify-token',
+            type: 'text',
+            required: true,
+            helpText: 'Any secret string — use this same value when setting up webhook in Meta',
         },
     ],
-    setupStepsCount: 5,
+    setupStepsCount: 7,
 
     async validateConfig(config) {
-        const { webhookUrl } = config
-        if (!webhookUrl) return { valid: false, error: 'Webhook URL is required' }
-
-        // Validate Discord webhook URL format
-        const webhookRegex = /^https:\/\/discord\.com\/api\/webhooks\/\d+\/.+$/
-        if (!webhookRegex.test(webhookUrl)) {
-            return { valid: false, error: 'Invalid Discord Webhook URL format' }
-        }
+        const { accessToken, phoneNumberId } = config
+        if (!accessToken) return { valid: false, error: 'Access Token is required' }
+        if (!phoneNumberId) return { valid: false, error: 'Phone Number ID is required' }
 
         try {
-            const res = await fetch(webhookUrl)
+            const res = await fetch(`${WHATSAPP_GRAPH_API}/${phoneNumberId}`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            })
             const data = await res.json()
-            if (!res.ok) return { valid: false, error: data.message || 'Invalid webhook URL' }
-            return { valid: true, name: data.name || 'Discord Webhook' }
+            if (data.error) return { valid: false, error: data.error.message || 'Invalid credentials' }
+            return { valid: true, name: data.display_phone_number || data.verified_name || 'WhatsApp Business' }
         } catch {
-            return { valid: false, error: 'Failed to connect to Discord' }
+            return { valid: false, error: 'Failed to connect to WhatsApp API' }
         }
     },
 
     async parseWebhook(body: unknown) {
-        const event = body as Record<string, unknown>
+        const payload = body as Record<string, unknown>
         const media: IncomingMedia[] = []
 
-        // Discord webhook payload with attachments
-        const attachments = event.attachments as Array<Record<string, unknown>> | undefined
-        if (attachments) {
-            for (const att of attachments) {
-                const contentType = (att.content_type as string) || ''
-                if (contentType.startsWith('image/') || contentType.startsWith('video/')) {
+        // WhatsApp Cloud API webhook structure
+        const entry = (payload.entry as Array<Record<string, unknown>>)?.[0]
+        const changes = (entry?.changes as Array<Record<string, unknown>>)?.[0]
+        const value = changes?.value as Record<string, unknown> | undefined
+        const messages = (value?.messages as Array<Record<string, unknown>>) || []
+
+        for (const msg of messages) {
+            const msgType = msg.type as string
+
+            // Image message
+            if (msgType === 'image') {
+                const image = msg.image as Record<string, unknown>
+                media.push({
+                    fileUrl: `__whatsapp_media_id__:${image.id}`,
+                    fileName: `whatsapp_photo_${Date.now()}.jpg`,
+                    mimeType: (image.mime_type as string) || 'image/jpeg',
+                    caption: (image.caption as string) || '',
+                })
+            }
+
+            // Video message
+            if (msgType === 'video') {
+                const video = msg.video as Record<string, unknown>
+                media.push({
+                    fileUrl: `__whatsapp_media_id__:${video.id}`,
+                    fileName: `whatsapp_video_${Date.now()}.mp4`,
+                    mimeType: (video.mime_type as string) || 'video/mp4',
+                    caption: (video.caption as string) || '',
+                })
+            }
+
+            // Document (images/videos sent as files)
+            if (msgType === 'document') {
+                const doc = msg.document as Record<string, unknown>
+                const mime = (doc.mime_type as string) || ''
+                if (mime.startsWith('image/') || mime.startsWith('video/')) {
                     media.push({
-                        fileUrl: att.url as string,
-                        fileName: (att.filename as string) || `file_${Date.now()}`,
-                        mimeType: contentType,
-                        fileSize: (att.size as number) || 0,
-                        caption: (event.content as string) || '',
+                        fileUrl: `__whatsapp_media_id__:${doc.id}`,
+                        fileName: (doc.filename as string) || `whatsapp_file_${Date.now()}`,
+                        mimeType: mime,
+                        caption: (doc.caption as string) || '',
                     })
                 }
             }
         }
 
-        // Also check embeds for images
-        const embeds = event.embeds as Array<Record<string, unknown>> | undefined
-        if (embeds) {
-            for (const embed of embeds) {
-                const image = embed.image as Record<string, unknown> | undefined
-                if (image?.url) {
-                    media.push({
-                        fileUrl: image.url as string,
-                        fileName: `embed_${Date.now()}.jpg`,
-                        mimeType: 'image/jpeg',
-                        caption: (embed.description as string) || '',
-                    })
-                }
-            }
-        }
-
-        const senderId = event.author
-            ? String((event.author as Record<string, unknown>).id)
-            : undefined
+        const senderId = messages[0]?.from ? String(messages[0].from) : undefined
 
         return { media, senderId }
     },
 
     buildReplyPayload(config, message) {
         return {
-            url: config.webhookUrl,
-            body: { content: message },
+            url: `${WHATSAPP_GRAPH_API}/${config.phoneNumberId}/messages`,
+            body: {
+                messaging_product: 'whatsapp',
+                to: '', // Will be filled with sender's number
+                type: 'text',
+                text: { body: message },
+            },
+            headers: { Authorization: `Bearer ${config.accessToken}` },
         }
     },
 }
@@ -288,8 +320,8 @@ const discordSource: MessagingSource = {
 
 export const MESSAGING_SOURCES: MessagingSource[] = [
     telegramSource,
-    discordSource,
-    // Future: slackSource, zaloSource, whatsappSource
+    whatsappSource,
+    // Future: slackSource, zaloSource
 ]
 
 /** Get a messaging source by key */
@@ -307,4 +339,14 @@ export async function resolveTelegramFileUrl(botToken: string, fileId: string): 
     const data = await res.json()
     if (!data.ok) throw new Error(`Telegram getFile failed: ${data.description}`)
     return `https://api.telegram.org/file/bot${botToken}/${data.result.file_path}`
+}
+
+/** Get the download URL for a WhatsApp media ID */
+export async function resolveWhatsAppMediaUrl(accessToken: string, mediaId: string): Promise<string> {
+    const res = await fetch(`${WHATSAPP_GRAPH_API}/${mediaId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(`WhatsApp getMedia failed: ${data.error.message}`)
+    return data.url
 }

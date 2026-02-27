@@ -1,7 +1,7 @@
 /**
  * SmartFlow Ingestion Utility — Shared media ingestion for all content sources.
  * 
- * Used by: Portal uploads, Telegram bot, Discord bot, and future sources.
+ * Used by: Portal uploads, Telegram bot, WhatsApp bot, and future sources.
  * Flow: Download file → Upload to R2 → Create MediaItem + ContentJob (QUEUED)
  */
 
@@ -16,10 +16,12 @@ export interface IngestMediaOptions {
     fileBuffer?: Buffer | ArrayBuffer
     fileName: string
     mimeType: string
-    /** Source identifier: 'portal' | 'telegram' | 'discord' | etc. */
+    /** Source identifier: 'portal' | 'telegram' | 'whatsapp' | etc. */
     source: string
     /** Who uploaded: email or bot identifier */
     uploadedBy: string
+    /** Optional auth header for downloading files (e.g. WhatsApp Graph API requires Bearer token) */
+    authHeader?: string
 }
 
 export interface IngestResult {
@@ -33,7 +35,7 @@ export interface IngestResult {
  * Downloads the file, uploads to R2, creates MediaItem + ContentJob.
  */
 export async function ingestMedia(opts: IngestMediaOptions): Promise<IngestResult> {
-    const { channelId, fileUrl, fileBuffer, fileName, mimeType, source, uploadedBy } = opts
+    const { channelId, fileUrl, fileBuffer, fileName, mimeType, source, uploadedBy, authHeader } = opts
 
     // Verify R2 is configured
     const r2Ready = await isR2Configured()
@@ -56,7 +58,11 @@ export async function ingestMedia(opts: IngestMediaOptions): Promise<IngestResul
     if (fileBuffer) {
         buffer = fileBuffer
     } else if (fileUrl) {
-        const response = await fetch(fileUrl)
+        const fetchOpts: RequestInit = {}
+        if (authHeader) {
+            fetchOpts.headers = { Authorization: authHeader }
+        }
+        const response = await fetch(fileUrl, fetchOpts)
         if (!response.ok) throw new Error(`Failed to download file: ${response.status}`)
         buffer = await response.arrayBuffer()
     } else {

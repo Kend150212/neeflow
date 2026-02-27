@@ -1490,6 +1490,16 @@
         "step3": "Vào Integrations → Webhooks → nhấn 'New Webhook'. Đặt tên (ví dụ: 'SmartFlow')",
         "step4": "Nhấn 'Copy Webhook URL' — URL có dạng https://discord.com/api/webhooks/123.../abc...",
         "step5": "Dán Webhook URL vào bên dưới và nhấn 'Kiểm tra kết nối' để xác nhận"
+      },
+      "whatsapp": {
+        "desc": "Gửi ảnh & video qua WhatsApp → AI tự động tạo bài viết",
+        "step1": "Vào developers.facebook.com → Tạo App mới → Chọn loại 'Business'",
+        "step2": "Trong app, vào Add Products → tìm WhatsApp → nhấn 'Set Up'",
+        "step3": "Vào API Setup → ghi lại Phone Number ID (dãy số dài, ví dụ: 123456789012345)",
+        "step4": "Tạo Access Token vĩnh viễn: vào Business Settings → System Users → tạo với quyền 'whatsapp_business_messaging'",
+        "step5": "Trong WhatsApp → Configuration → đặt Webhook URL là: {webhookUrl}",
+        "step6": "Đặt Verify Token là bất kỳ chuỗi bí mật nào — dùng cùng giá trị ở cả Meta và NeeFlow",
+        "step7": "Subscribe webhook field 'messages', sau đó dán Access Token, Phone Number ID và Verify Token bên dưới"
       }
     }
   },
