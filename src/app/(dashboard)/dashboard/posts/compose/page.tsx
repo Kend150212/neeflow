@@ -1763,7 +1763,11 @@ export default function ComposePage() {
             }
             const [w, h] = aspectDims[imageAspectRatio] || [1024, 1024]
             const body: Record<string, unknown> = { channelId: selectedChannel.id, prompt: promptToUse, width: w, height: h }
-            if (overrideImageProvider) body.provider = overrideImageProvider
+            if (overrideImageProvider) {
+                // Strip source prefix (byok:/plan:) before sending to API
+                const parts = overrideImageProvider.split(':')
+                body.provider = parts.length > 1 ? parts.slice(1).join(':') : parts[0]
+            }
             if (overrideImageModel) body.model = overrideImageModel
             const res = await fetch('/api/admin/posts/generate-image', {
                 method: 'POST',
@@ -4394,29 +4398,26 @@ export default function ComposePage() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                     {/* Provider dropdown with SVG logos */}
                                     {(() => {
-                                        const rawProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
-                                        // Determine the current select value with source prefix
-                                        const currentSelectValue = (() => {
-                                            if (!rawProvider) return '__auto__'
-                                            // Check if this provider exists in BYOK or Plan (prefer BYOK if in both)
-                                            const inByok = byokProviders.some(p => p.provider === rawProvider)
-                                            const inPlan = planProviders.some(p => p.provider === rawProvider)
-                                            // If provider is in BYOK only, or both, default to byok
-                                            if (inByok) return `byok:${rawProvider}`
-                                            if (inPlan) return `plan:${rawProvider}`
-                                            return `byok:${rawProvider}` // fallback
+                                        // overrideImageProvider stores prefixed value like 'byok:gemini' or 'plan:gemini'
+                                        const currentSelectValue = overrideImageProvider || '__auto__'
+                                        // Extract bare provider name for display and API calls
+                                        const rawProvider = (() => {
+                                            if (!currentSelectValue || currentSelectValue === '__auto__') return selectedChannel?.defaultImageProvider || ''
+                                            const parts = currentSelectValue.split(':')
+                                            return parts.length > 1 ? parts.slice(1).join(':') : parts[0]
                                         })()
                                         const handleProviderChange = (selectVal: string) => {
                                             if (selectVal === '__auto__') {
                                                 setOverrideImageProvider('')
                                                 return
                                             }
-                                            // Parse source prefix: "byok:gemini" or "plan:gemini"
-                                            const [source, ...rest] = selectVal.split(':')
-                                            const providerName = rest.join(':') // handle providers with colons
-                                            setOverrideImageProvider(providerName)
+                                            // Store full prefixed value: "byok:gemini" or "plan:gemini"
+                                            setOverrideImageProvider(selectVal)
                                             setOverrideImageModel('')
                                             setAvailableImageModels([])
+                                            // Parse source and provider name
+                                            const [source, ...rest] = selectVal.split(':')
+                                            const providerName = rest.join(':')
                                             if (providerName) {
                                                 setLoadingImageModels(true)
                                                 fetch('/api/user/api-keys/models', {
