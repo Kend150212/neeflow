@@ -11,6 +11,7 @@ import {
     Upload, FolderOpen, X, Check, Sparkles,
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
     Search, Package, Edit, Download, Copy,
+    RotateCcw, Paperclip,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -126,10 +127,12 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [inlineEdit, setInlineEdit] = useState<{ rowId: string; field: string; value: string } | null>(null)
 
     // Chat test state
-    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; content: string; imageUrls?: string[] }[]>([])
+    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot'; content: string; imageUrls?: string[]; attachments?: string[] }[]>([])
     const [chatInput, setChatInput] = useState('')
     const [chatLoading, setChatLoading] = useState(false)
+    const [chatAttachments, setChatAttachments] = useState<string[]>([])  // uploaded image URLs to attach
     const chatEndRef = useRef<HTMLDivElement>(null)
+    const chatImageInputRef = useRef<HTMLInputElement>(null)
 
     // Agent learning state
     const [learningData, setLearningData] = useState<any>(null)
@@ -224,6 +227,38 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
             }
         } catch { }
     }, [channelId, config?.imageFolderId])
+
+    // ─── Send chat message (text + optional image attachments) ──────
+    const sendChatMessage = useCallback(async () => {
+        const msg = chatInput.trim()
+        if (!msg && chatAttachments.length === 0) return
+        if (chatLoading) return
+
+        // Build display content: text + image URLs appended so bot sees them
+        const imgPart = chatAttachments.length > 0 ? '\n' + chatAttachments.join('\n') : ''
+        const fullMsg = msg + imgPart
+
+        const userEntry = { role: 'user' as const, content: msg, attachments: chatAttachments.length > 0 ? [...chatAttachments] : undefined }
+        setChatInput('')
+        setChatAttachments([])
+        setChatMessages(prev => [...prev, userEntry])
+        setChatLoading(true)
+        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+
+        try {
+            const res = await fetch(`/api/admin/channels/${channelId}/bot-config/test-chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: fullMsg, history: chatMessages }),
+            })
+            const data = await res.json()
+            setChatMessages(prev => [...prev, { role: 'bot', content: data.reply || data.error || 'No response', imageUrls: data.imageUrls || [] }])
+        } catch {
+            setChatMessages(prev => [...prev, { role: 'bot', content: '❌ Lỗi kết nối' }])
+        }
+        setChatLoading(false)
+        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    }, [chatInput, chatAttachments, chatLoading, chatMessages, channelId])
 
     // ─── Drag & drop handler factory ──────────────────────
     const makeDragHandlers = (zone: string, onDrop: (files: FileList) => void) => ({
@@ -1933,45 +1968,97 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
             {/* ─── CHAT TEST TAB ───────────────────── */}
             {botTab === 'chattest' && (
                 <div className="space-y-4">
+                    {/* Hidden image file input for chat */}
+                    <input
+                        ref={chatImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={async (e) => {
+                            const files = e.target.files
+                            if (!files || files.length === 0) return
+                            setChatLoading(true)
+                            try {
+                                const urls = await uploadFiles(files)
+                                setChatAttachments(prev => [...prev, ...urls])
+                            } catch { toast.error('Không thể upload hình') }
+                            setChatLoading(false)
+                            e.target.value = ''
+                        }}
+                    />
+
                     <Card className="overflow-hidden">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <MessageCircle className="h-4 w-4 text-pink-500" />
-                                Chat Test — Trò chuyện thử với Bot
-                            </CardTitle>
-                            <CardDescription className="text-[11px]">
-                                Nhắn tin test trực tiếp với bot. Bot sẽ dùng đúng personality, knowledge base, và agent learning data.
-                            </CardDescription>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-sm flex items-center gap-2">
+                                        <MessageCircle className="h-4 w-4 text-pink-500" />
+                                        Chat Test — Trò chuyện thử với Bot
+                                    </CardTitle>
+                                    <CardDescription className="text-[11px] mt-0.5">
+                                        Nhắn tin test trực tiếp với bot. Bot dùng đúng personality, knowledge base, và agent learning.
+                                    </CardDescription>
+                                </div>
+                                {chatMessages.length > 0 && (
+                                    <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8 shrink-0"
+                                        onClick={() => { setChatMessages([]); setChatAttachments([]); setChatInput('') }}>
+                                        <RotateCcw className="h-3.5 w-3.5" /> Start Over
+                                    </Button>
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             {/* Chat messages area */}
-                            <div className="h-[400px] overflow-y-auto p-4 space-y-3 bg-muted/20">
+                            <div className="h-[420px] overflow-y-auto p-4 space-y-3 bg-muted/20">
                                 {chatMessages.length === 0 && (
                                     <div className="flex flex-col items-center justify-center h-full text-center">
                                         <Bot className="h-12 w-12 text-muted-foreground/30 mb-3" />
                                         <p className="text-sm text-muted-foreground">Bắt đầu trò chuyện với bot</p>
-                                        <p className="text-[10px] text-muted-foreground/60 mt-1">Gõ tin nhắn bên dưới để test</p>
+                                        <p className="text-[10px] text-muted-foreground/60 mt-1">Gõ tin nhắn hoặc đính kèm hình ảnh để test</p>
                                     </div>
                                 )}
-                                {chatMessages.map((msg, i) => (
-                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
-                                            ? 'bg-primary text-primary-foreground rounded-br-md'
-                                            : 'bg-muted rounded-bl-md'
-                                            }`}>
-                                            {msg.content}
-                                            {msg.imageUrls && msg.imageUrls.length > 0 && (
-                                                <div className="flex gap-1.5 mt-2 flex-wrap">
-                                                    {msg.imageUrls.map((url, j) => (
-                                                        <a key={j} href={url} target="_blank" rel="noopener noreferrer">
-                                                            <img src={url} alt="Product" className="h-24 w-24 rounded-lg object-cover border border-white/20 hover:opacity-90 transition-opacity" onError={e => (e.currentTarget.style.display = 'none')} />
-                                                        </a>
-                                                    ))}
+                                {chatMessages.map((msg, i) => {
+                                    // Auto-parse image URLs from bot text
+                                    const imgExtRe = /https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp|avif)(\?\S*)?/gi
+                                    const botInlineImages = msg.role === 'bot' ? Array.from(msg.content.matchAll(imgExtRe)).map(m => m[0]) : []
+                                    const cleanBotText = msg.role === 'bot' ? msg.content.replace(imgExtRe, '').trim() : msg.content
+                                    const allBotImages = [...(msg.imageUrls || []), ...botInlineImages]
+
+                                    return (
+                                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
+                                                ? 'bg-primary text-primary-foreground rounded-br-md'
+                                                : 'bg-muted rounded-bl-md'
+                                                }`}>
+                                                {/* Text */}
+                                                <div className="whitespace-pre-wrap break-words">
+                                                    {msg.role === 'bot' ? cleanBotText : msg.content}
                                                 </div>
-                                            )}
+                                                {/* User attached images */}
+                                                {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
+                                                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                                                        {msg.attachments.map((url, j) => (
+                                                            <a key={j} href={url} target="_blank" rel="noopener noreferrer">
+                                                                <img src={url} alt="" className="h-20 w-20 rounded-lg object-cover border border-white/20 hover:opacity-90 transition-opacity" onError={e => (e.currentTarget.style.display = 'none')} />
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {/* Bot images: from API imageUrls + inline URLs parsed from text */}
+                                                {msg.role === 'bot' && allBotImages.length > 0 && (
+                                                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                                                        {allBotImages.map((url, j) => (
+                                                            <a key={j} href={url} target="_blank" rel="noopener noreferrer">
+                                                                <img src={url} alt="" className="h-28 w-28 rounded-lg object-cover border hover:opacity-90 transition-opacity shadow-sm" onError={e => (e.currentTarget.style.display = 'none')} />
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                                 {chatLoading && (
                                     <div className="flex justify-start">
                                         <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
@@ -1986,76 +2073,50 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 <div ref={chatEndRef} />
                             </div>
 
+                            {/* Attachment preview strip */}
+                            {chatAttachments.length > 0 && (
+                                <div className="px-3 pt-2 pb-0 flex gap-2 flex-wrap border-t bg-background">
+                                    {chatAttachments.map((url, i) => (
+                                        <div key={i} className="relative group">
+                                            <img src={url} alt="" className="h-16 w-16 rounded-lg object-cover border" onError={e => (e.currentTarget.style.display = 'none')} />
+                                            <button
+                                                className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground rounded-full text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => setChatAttachments(prev => prev.filter((_, j) => j !== i))}
+                                            >✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {/* Input area */}
-                            <div className="border-t p-3 flex gap-2">
+                            <div className="border-t p-3 flex gap-2 items-center">
+                                {/* Attach image button */}
+                                <Button
+                                    size="sm" variant="ghost" className="h-9 w-9 p-0 shrink-0"
+                                    title="Đính kèm hình ảnh"
+                                    disabled={chatLoading}
+                                    onClick={() => chatImageInputRef.current?.click()}
+                                >
+                                    <Paperclip className="h-4 w-4" />
+                                </Button>
                                 <Input
                                     value={chatInput}
                                     onChange={e => setChatInput(e.target.value)}
                                     placeholder="Nhập tin nhắn test..."
                                     className="flex-1"
                                     onKeyDown={e => {
-                                        if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !chatLoading) {
+                                        if (e.key === 'Enter' && !e.shiftKey && !chatLoading) {
                                             e.preventDefault()
-                                            const msg = chatInput.trim()
-                                            setChatInput('')
-                                            const newMessages = [...chatMessages, { role: 'user' as const, content: msg }]
-                                            setChatMessages(newMessages)
-                                            setChatLoading(true)
-                                            setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-                                            fetch(`/api/admin/channels/${channelId}/bot-config/test-chat`, {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ message: msg, history: chatMessages }),
-                                            })
-                                                .then(r => r.json())
-                                                .then(data => {
-                                                    setChatMessages(prev => [...prev, { role: 'bot', content: data.reply || data.error || 'No response' }])
-                                                    setChatLoading(false)
-                                                    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-                                                })
-                                                .catch(() => {
-                                                    setChatMessages(prev => [...prev, { role: 'bot', content: '❌ Lỗi kết nối' }])
-                                                    setChatLoading(false)
-                                                })
+                                            sendChatMessage()
                                         }
                                     }}
                                 />
                                 <Button
                                     size="sm"
-                                    disabled={!chatInput.trim() || chatLoading}
-                                    onClick={() => {
-                                        const msg = chatInput.trim()
-                                        if (!msg) return
-                                        setChatInput('')
-                                        const newMessages = [...chatMessages, { role: 'user' as const, content: msg }]
-                                        setChatMessages(newMessages)
-                                        setChatLoading(true)
-                                        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-                                        fetch(`/api/admin/channels/${channelId}/bot-config/test-chat`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ message: msg, history: chatMessages }),
-                                        })
-                                            .then(r => r.json())
-                                            .then(data => {
-                                                setChatMessages(prev => [...prev, { role: 'bot', content: data.reply || data.error || 'No response', imageUrls: data.imageUrls || [] }])
-                                                setChatLoading(false)
-                                                setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-                                            })
-                                            .catch(() => {
-                                                setChatMessages(prev => [...prev, { role: 'bot', content: '❌ Lỗi kết nối' }])
-                                                setChatLoading(false)
-                                            })
-                                    }}
+                                    disabled={(!chatInput.trim() && chatAttachments.length === 0) || chatLoading}
+                                    onClick={sendChatMessage}
                                 >
                                     <Send className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    size="sm" variant="outline"
-                                    onClick={() => setChatMessages([])}
-                                    title={t('chatbot.learning.clearChat')}
-                                >
-                                    <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         </CardContent>
