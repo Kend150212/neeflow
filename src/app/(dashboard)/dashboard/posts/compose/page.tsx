@@ -4280,13 +4280,26 @@ export default function ComposePage() {
                     const IMAGE_PROVIDERS = ['runware', 'openai', 'gemini']
 
                     // 1. Fetch BYOK keys (same as channel AI setup)
-                    const keysPromise = fetch('/api/user/api-keys').then(r => r.json()).catch(() => [])
-                    // 2. Fetch platform providers (same as channel AI setup)  
-                    const platformPromise = fetch('/api/user/ai-providers').then(r => r.json()).catch(() => [])
+                    const keysPromise = fetch('/api/user/api-keys').then(r => {
+                        console.log('[ImageDialog] api-keys status:', r.status)
+                        return r.json()
+                    }).catch(e => { console.error('[ImageDialog] api-keys error:', e); return [] })
+                    // 2. Fetch platform providers (same as channel AI setup)
+                    const platformPromise = fetch('/api/user/ai-providers').then(r => {
+                        console.log('[ImageDialog] ai-providers status:', r.status)
+                        return r.json()
+                    }).catch(e => { console.error('[ImageDialog] ai-providers error:', e); return [] })
                     // 3. Fetch quota info
-                    const quotaPromise = fetch('/api/user/image-providers').then(r => r.json()).catch(() => ({ quota: { used: 0, limit: 0 } }))
+                    const quotaPromise = fetch('/api/user/image-providers').then(r => {
+                        console.log('[ImageDialog] image-providers status:', r.status)
+                        return r.json()
+                    }).catch(e => { console.error('[ImageDialog] image-providers error:', e); return { quota: { used: 0, limit: 0 } } })
 
                     Promise.all([keysPromise, platformPromise, quotaPromise]).then(([keys, platforms, quotaData]) => {
+                        console.log('[ImageDialog] Raw keys:', JSON.stringify(keys))
+                        console.log('[ImageDialog] Raw platforms:', JSON.stringify(platforms))
+                        console.log('[ImageDialog] Raw quota:', JSON.stringify(quotaData))
+
                         // BYOK: user's own keys that support image generation
                         const userKeys = Array.isArray(keys) ? keys : []
                         const byok = userKeys
@@ -4296,6 +4309,7 @@ export default function ComposePage() {
                                 name: k.name || k.provider.charAt(0).toUpperCase() + k.provider.slice(1),
                                 source: 'byok' as const,
                             }))
+                        console.log('[ImageDialog] Filtered BYOK:', JSON.stringify(byok))
                         setByokProviders(byok)
 
                         // Plan: platform image providers (from admin API Hub)
@@ -4307,6 +4321,7 @@ export default function ComposePage() {
                                 name: p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1),
                                 source: 'plan' as const,
                             }))
+                        console.log('[ImageDialog] Filtered Plan:', JSON.stringify(planList))
                         setPlanProviders(planList)
 
                         // Quota
