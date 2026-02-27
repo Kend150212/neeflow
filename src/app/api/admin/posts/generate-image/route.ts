@@ -319,10 +319,32 @@ async function generateWithOpenAI(
     width: number,
     height: number,
 ): Promise<{ url: string }> {
-    // Map dimensions to OpenAI sizes
+    // gpt-image-1 supports different sizes and does NOT support `response_format`
+    // dall-e-3 supports `response_format: 'url'` and returns a URL directly
+    const isGptImage1 = model === 'gpt-image-1'
+
+    // Map dimensions to supported OpenAI sizes
     let size = '1024x1024'
     if (width > height) size = '1792x1024'
     else if (height > width) size = '1024x1792'
+    // gpt-image-1 uses slightly different size tokens
+    if (isGptImage1) {
+        if (width > height) size = '1536x1024'
+        else if (height > width) size = '1024x1536'
+        else size = '1024x1024'
+    }
+
+    const requestBody: Record<string, unknown> = {
+        model,
+        prompt,
+        n: 1,
+        size,
+    }
+
+    // dall-e-3 supports response_format; gpt-image-1 does NOT (it always returns b64_json)
+    if (!isGptImage1) {
+        requestBody.response_format = 'url'
+    }
 
     const res = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
@@ -330,13 +352,7 @@ async function generateWithOpenAI(
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-            model,
-            prompt,
-            n: 1,
-            size,
-            response_format: 'url',
-        }),
+        body: JSON.stringify(requestBody),
     })
 
     if (!res.ok) {
@@ -345,7 +361,13 @@ async function generateWithOpenAI(
     }
 
     const data = await res.json()
-    return { url: data.data[0].url }
+    const item = data.data[0]
+
+    // gpt-image-1 returns b64_json; dall-e-3 returns url
+    if (item.b64_json) {
+        return { url: `data:image/png;base64,${item.b64_json}` }
+    }
+    return { url: item.url }
 }
 
 async function generateWithGemini(
