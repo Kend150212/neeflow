@@ -4276,25 +4276,50 @@ export default function ComposePage() {
             < Dialog open={showImagePicker} onOpenChange={(open) => {
                 setShowImagePicker(open)
                 if (open) {
-                    // Fetch both BYOK and Plan providers + quota
-                    fetch('/api/user/image-providers').then(r => r.json()).then((data: {
-                        byok: { provider: string; name: string; source: string }[];
-                        plan: { provider: string; name: string; source: string }[];
-                        quota: { used: number; limit: number };
-                    }) => {
-                        setByokProviders(data.byok || [])
-                        setPlanProviders(data.plan || [])
-                        setImageQuota(data.quota || { used: 0, limit: 0 })
+                    // Use same APIs as channel setup page (proven working)
+                    const IMAGE_PROVIDERS = ['runware', 'openai', 'gemini']
 
-                        // Determine which provider to use
-                        const allProviders = [...(data.byok || []), ...(data.plan || [])]
+                    // 1. Fetch BYOK keys (same as channel AI setup)
+                    const keysPromise = fetch('/api/user/api-keys').then(r => r.json()).catch(() => [])
+                    // 2. Fetch platform providers (same as channel AI setup)  
+                    const platformPromise = fetch('/api/user/ai-providers').then(r => r.json()).catch(() => [])
+                    // 3. Fetch quota info
+                    const quotaPromise = fetch('/api/user/image-providers').then(r => r.json()).catch(() => ({ quota: { used: 0, limit: 0 } }))
+
+                    Promise.all([keysPromise, platformPromise, quotaPromise]).then(([keys, platforms, quotaData]) => {
+                        // BYOK: user's own keys that support image generation
+                        const userKeys = Array.isArray(keys) ? keys : []
+                        const byok = userKeys
+                            .filter((k: { provider: string }) => IMAGE_PROVIDERS.includes(k.provider))
+                            .map((k: { provider: string; name: string }) => ({
+                                provider: k.provider,
+                                name: k.name || k.provider.charAt(0).toUpperCase() + k.provider.slice(1),
+                                source: 'byok' as const,
+                            }))
+                        setByokProviders(byok)
+
+                        // Plan: platform image providers (from admin API Hub)
+                        const platformList = Array.isArray(platforms) ? platforms : []
+                        const planList = platformList
+                            .filter((p: { provider: string; status: string }) => IMAGE_PROVIDERS.includes(p.provider) && p.status === 'ACTIVE')
+                            .map((p: { provider: string; name: string }) => ({
+                                provider: p.provider,
+                                name: p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1),
+                                source: 'plan' as const,
+                            }))
+                        setPlanProviders(planList)
+
+                        // Quota
+                        setImageQuota(quotaData?.quota || { used: 0, limit: 0 })
+
+                        // Auto-select first available provider
+                        const allProviders = [...byok, ...planList]
                         let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
-                        // Auto-select first available if none selected
                         if (!currentProvider && allProviders.length > 0) {
                             currentProvider = allProviders[0].provider
                             setOverrideImageProvider(currentProvider)
                         }
-                        // Fetch models for the provider
+                        // Fetch models
                         if (currentProvider) {
                             setLoadingImageModels(true)
                             fetch('/api/user/api-keys/models', {
@@ -4307,7 +4332,7 @@ export default function ComposePage() {
                                 )
                             }).catch(() => { }).finally(() => setLoadingImageModels(false))
                         }
-                    }).catch(() => { })
+                    })
                 }
             }} >
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
