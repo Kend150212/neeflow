@@ -11,8 +11,9 @@ import {
     Upload, FolderOpen, X, Check, Sparkles,
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
     Search, Package, Edit, Download, Copy,
-    RotateCcw, Paperclip, Tag,
+    RotateCcw, Paperclip, Tag, Ban,
 } from 'lucide-react'
+
 
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -111,7 +112,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>([])
 
     // Tab navigation
-    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'escalation' | 'hours' | 'scope' | 'chattest' | 'learning'>('general')
+    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'escalation' | 'hours' | 'scope' | 'forbidden' | 'chattest' | 'learning'>('general')
+
     const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products' | 'promotions'>('saved')
 
 
@@ -585,7 +587,9 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                     { key: 'escalation' as const, icon: Shield, label: t('chatbot.escalation.title'), color: 'text-red-500' },
                     { key: 'hours' as const, icon: Clock, label: t('chatbot.hours.title'), color: 'text-amber-500' },
                     { key: 'scope' as const, icon: Target, label: t('chatbot.scope.title'), color: 'text-teal-500' },
+                    { key: 'forbidden' as const, icon: Ban, label: '🚫 Cấm kỵ', color: 'text-red-600' },
                     { key: 'chattest' as const, icon: MessageCircle, label: '💬 Chat Test', color: 'text-pink-500' },
+
                     { key: 'learning' as const, icon: Zap, label: '🧠 Learning', color: 'text-yellow-500' },
                 ].map(tab => (
                     <button
@@ -1340,46 +1344,126 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
                     <Separator />
 
-                    <div>
-                        <Label className="text-xs">{t('chatbot.escalation.forbiddenLabel')}</Label>
-                        <p className="text-[10px] text-muted-foreground mb-2">
-                            {t('chatbot.escalation.forbiddenDesc')}
-                        </p>
-                        <div className="flex flex-wrap gap-1 mb-2">
-                            {config.forbiddenTopics.map((topic, i) => (
-                                <Badge key={i} variant="outline" className="text-[10px] gap-1 border-red-300">
-                                    {topic}
-                                    <button onClick={() => update('forbiddenTopics', config.forbiddenTopics.filter((_, j) => j !== i))}>×</button>
-                                </Badge>
-                            ))}
-                        </div>
-                        <div className="flex gap-2">
-                            <Input
-                                value={newForbiddenTopic}
-                                onChange={e => setNewForbiddenTopic(e.target.value)}
-                                placeholder={t('chatbot.escalation.forbiddenPlaceholder')}
-                                className="text-sm"
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter' && newForbiddenTopic.trim()) {
-                                        update('forbiddenTopics', [...config.forbiddenTopics, newForbiddenTopic.trim()])
-                                        setNewForbiddenTopic('')
-                                    }
-                                }}
-                            />
-                            <Button size="sm" variant="outline" onClick={() => {
-                                if (newForbiddenTopic.trim()) {
-                                    update('forbiddenTopics', [...config.forbiddenTopics, newForbiddenTopic.trim()])
-                                    setNewForbiddenTopic('')
-                                }
-                            }}>
-                                <Plus className="h-3 w-3" />
-                            </Button>
-                        </div>
-                    </div>
                 </div>
             )}
 
+
+
+            {/* ─── FORBIDDEN RULES TAB ──────────────────────────── */}
+            {botTab === 'forbidden' && (() => {
+                const QUICK_RULES = [
+                    'Không tiết lộ giá ưu đãi nội bộ chưa công bố',
+                    'Không hứa hẹn thời gian giao hàng khi chưa xác nhận với kho',
+                    'Không nhận đặt hàng qua chat (phải chuyển sang form/web)',
+                    'Không xác nhận đơn hàng / hoàn tiền mà không có mã đơn',
+                    'Không đưa ra thông tin cá nhân của nhân viên',
+                    'Không nói xấu đối thủ cạnh tranh',
+                    'Không thảo luận về chính trị, tôn giáo',
+                    'Không cam kết điều khoản nào ngoài chính sách chính thức',
+                    'Không giảm giá thêm ngoài khuyến mãi đang áp dụng',
+                    'Không tiết lộ quy trình nội bộ hoặc thông tin bảo mật',
+                ]
+
+                return (
+                    <div className="flex flex-col gap-5">
+                        {/* Header banner */}
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
+                            <Ban className="h-6 w-6 text-red-500 shrink-0 mt-0.5" />
+                            <div>
+                                <h3 className="text-sm font-bold text-red-700 dark:text-red-400">Những điều CẤM KỴ tuyệt đối</h3>
+                                <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">
+                                    Bot sẽ KHÔNG bao giờ thực hiện các điều này dù khách có yêu cầu theo bất kỳ cách nào — kể cả ép buộc, lừa đảo, hay đóng vai. Được áp dụng ưu tiên cao nhất.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Current rules */}
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                Danh sách quy tắc ({config.forbiddenTopics.length})
+                            </label>
+                            {config.forbiddenTopics.length === 0 && (
+                                <p className="text-xs text-muted-foreground italic text-center py-6 border border-dashed rounded-lg">
+                                    Chưa có quy tắc nào. Thêm quy tắc bên dưới để giới hạn hành vi bot.
+                                </p>
+                            )}
+                            <div className="flex flex-col gap-1.5">
+                                {config.forbiddenTopics.map((rule, i) => (
+                                    <div key={i} className="flex items-start gap-2 p-2.5 rounded-lg border border-red-100 dark:border-red-900/40 bg-red-50/60 dark:bg-red-950/20 hover:border-red-300 dark:hover:border-red-800 transition-colors group">
+                                        <span className="text-red-500 mt-0.5 text-sm shrink-0">🚫</span>
+                                        <span className="text-xs flex-1 leading-relaxed">{rule}</span>
+                                        <button
+                                            onClick={() => update('forbiddenTopics', config.forbiddenTopics.filter((_, j) => j !== i))}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500 shrink-0 text-lg leading-none px-1"
+                                        >×</button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Add new rule */}
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Thêm quy tắc mới</label>
+                            <div className="flex gap-2">
+                                <Input
+                                    value={newForbiddenTopic}
+                                    onChange={e => setNewForbiddenTopic(e.target.value)}
+                                    placeholder="VD: Không tiết lộ nguồn gốc xuất xứ hàng hoá..."
+                                    className="text-xs"
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && newForbiddenTopic.trim()) {
+                                            update('forbiddenTopics', [...config.forbiddenTopics, newForbiddenTopic.trim()])
+                                            setNewForbiddenTopic('')
+                                        }
+                                    }}
+                                />
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={!newForbiddenTopic.trim()}
+                                    onClick={() => {
+                                        if (newForbiddenTopic.trim()) {
+                                            update('forbiddenTopics', [...config.forbiddenTopics, newForbiddenTopic.trim()])
+                                            setNewForbiddenTopic('')
+                                        }
+                                    }}
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Quick add */}
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Thêm nhanh quy tắc phổ biến</label>
+                            <div className="flex flex-wrap gap-1.5">
+                                {QUICK_RULES.filter(r => !config.forbiddenTopics.includes(r)).map(rule => (
+                                    <button
+                                        key={rule}
+                                        onClick={() => update('forbiddenTopics', [...config.forbiddenTopics, rule])}
+                                        className="text-[10px] px-2.5 py-1 rounded-full border border-dashed border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-400 transition-colors text-left"
+                                    >
+                                        + {rule}
+                                    </button>
+                                ))}
+                                {QUICK_RULES.every(r => config.forbiddenTopics.includes(r)) && (
+                                    <p className="text-[10px] text-muted-foreground italic">Đã thêm tất cả gợi ý phổ biến.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Save reminder */}
+                        <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-3">
+                            <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                                💡 <strong>Lưu ý:</strong> Nhớ nhấn <strong>"Lưu cấu hình"</strong> sau khi thêm/xóa quy tắc để áp dụng thay đổi cho bot.
+                            </p>
+                        </div>
+                    </div>
+                )
+            })()}
+
             {/* ─── WORKING HOURS TAB ─────────────── */}
+
             {botTab === 'hours' && (
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
