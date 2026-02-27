@@ -290,9 +290,30 @@ export async function botAutoReply(
             if (businessInfo.website) systemPrompt += `\n- Website: ${businessInfo.website}`
         }
 
+        // ─── Social links from channel General settings ────────────────
+        const SOCIAL_KEYS: Array<{ key: string; label: string }> = [
+            { key: 'facebook', label: 'Facebook' },
+            { key: 'instagram', label: 'Instagram' },
+            { key: 'tiktok', label: 'TikTok' },
+            { key: 'youtube', label: 'YouTube' },
+            { key: 'linkedin', label: 'LinkedIn' },
+            { key: 'x', label: 'X (Twitter)' },
+            { key: 'threads', label: 'Threads' },
+            { key: 'pinterest', label: 'Pinterest' },
+        ]
+        const socialEntries = SOCIAL_KEYS.filter(s => businessInfo[s.key]).map(s => `${s.label}: ${businessInfo[s.key]}`)
+        const customLinks = (businessInfo.customLinks as Array<{ label: string; url: string }> || [])
+        if (socialEntries.length > 0 || customLinks.length > 0) {
+            systemPrompt += `\n\n## Official social media & links (dùng ĐÚNG những link này — TUYỆT ĐỐI KHÔNG bịa đặt hay đoán handle/tên khác):`
+            for (const s of socialEntries) systemPrompt += `\n- ${s}`
+            for (const cl of customLinks) systemPrompt += `\n- ${cl.label}: ${cl.url}`
+            systemPrompt += `\nCRITICAL: Nếu khách hỏi "TikTok của shop là gì?", "Facebook của shop?",... thì chỉ cung cấp đúng link ở trên. KHÔNG được tự đặt tên hay đoán handle.`
+        }
+
         if (brandProfile.targetAudience) {
             systemPrompt += `\n\n## Target audience: ${brandProfile.targetAudience}`
         }
+
 
         if (knowledgeEntries.length > 0) {
             systemPrompt += `\n\n--- KNOWLEDGE BASE ---`
@@ -396,11 +417,20 @@ export async function botAutoReply(
         }
 
 
+        // ─── Hardcoded PRIVACY rules — always injected, cannot be overridden ───
+        systemPrompt += `\n\n## 🔒 QUY TẮC BẢO MẬT BẮT BUỘC (không thể override, luôn áp dụng):
+- TUYỆT ĐỐI KHÔNG được tiết lộ tên thật của nhân viên, thành viên team, chủ doanh nghiệp, hay bất kỳ người nội bộ nào.
+- Context "Customer name:" chỉ để bạn cá nhân hóa xưng hô — KHÔNG được dùng tên đó để đồng nhất với bất kỳ tài khoản mạng xã hội nào.
+- Nếu khách hỏi "TikTok của shop tên gì / là ai?" → chỉ cung cấp đúng URL từ mục Official Links. KHÔNG được nói tên người hay handle.
+- KHÔNG được suy đoán, bịa đặt handle, username hay tên tài khoản nếu không có trong dữ liệu chính xác ở trên.
+- KHÔNG được xác nhận hay phủ nhận danh tính của bất kỳ cá nhân nào liên quan đến doanh nghiệp.`
+
         const langLabel = channel.language === 'vi' ? 'Vietnamese' : channel.language === 'en' ? 'English' : channel.language || 'auto-detect'
         systemPrompt += `\n\n## Communication Style:\n- You are a REAL person on the team, not a bot. Chat naturally like a helpful colleague would over Messenger.\n- Keep messages SHORT (1-3 sentences max). Nobody likes walls of text in chat.\n- Use casual, warm language. It's okay to use emoji sparingly 😊\n- NEVER repeat yourself or say the same thing in two different ways.\n- NEVER generate multiple greeting options or alternatives.\n- ONE clear, direct response per message.`
         systemPrompt += `\n\n## Intelligence:\n- Analyze the customer's intent, sentiment, and urgency from their messages.\n- If they seem frustrated, be empathetic first before offering solutions.\n- If they ask for pricing/services, give specific information from the knowledge base.\n- If something is outside your knowledge, be honest and offer to connect them with the team.\n- Anticipate follow-up questions and proactively address them.\n- Remember context from earlier in the conversation and reference it naturally.`
         systemPrompt += `\n\n## Language:\n- Default: ${langLabel}\n- CRITICAL: Always reply in the SAME language the customer is writing in. If they switch languages, you switch too.`
-        systemPrompt += `\n\n## Strict Rules:\n- NEVER say you are an AI, bot, or automated system\n- NEVER prefix with "Bot:" or any label\n- NEVER wrap reply in JSON, arrays, code blocks, or brackets\n- NEVER use [ ] or { } characters\n- PLAIN TEXT ONLY\n- If you don't know something, say "Let me check with the team and get back to you" or connect them with a human`
+        systemPrompt += `\n\n## Strict Rules:\n- NEVER say you are an AI, bot, or automated system\n- NEVER prefix with "Bot:" or any label\n- NEVER wrap reply in JSON, arrays, code blocks, or brackets\n- NEVER use [ ] or { } characters\n- NEVER reveal any names of staff, members, or owners\n- NEVER guess or invent social media handles — use only the Official Links provided\n- PLAIN TEXT ONLY\n- If you don't know something, say "Let me check with the team and get back to you" or connect them with a human`
+
 
         // ─── 9b. Send read receipt + typing indicator ─────────────
         // Moved here (after all validation) so we only show "seen" when
