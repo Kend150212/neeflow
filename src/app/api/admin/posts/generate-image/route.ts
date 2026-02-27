@@ -95,7 +95,16 @@ export async function POST(req: NextRequest) {
                         { status: 400 }
                     )
                 }
-                const result = await generateWithGemini(apiKey, prompt, model)
+                // Convert width/height to Gemini aspect ratio string
+                const ratio = width / height
+                let geminiAspect = '1:1'
+                if (Math.abs(ratio - 16 / 9) < 0.05) geminiAspect = '16:9'
+                else if (Math.abs(ratio - 9 / 16) < 0.05) geminiAspect = '9:16'
+                else if (Math.abs(ratio - 4 / 3) < 0.05) geminiAspect = '4:3'
+                else if (Math.abs(ratio - 3 / 4) < 0.05) geminiAspect = '3:4'
+                else if (Math.abs(ratio - 4 / 5) < 0.05) geminiAspect = '4:5'
+                else if (Math.abs(ratio - 1) < 0.05) geminiAspect = '1:1'
+                const result = await generateWithGemini(apiKey, prompt, model, geminiAspect)
                 imageUrl = result.url
                 mimeType = result.mimeType || 'image/png'
                 break
@@ -343,6 +352,7 @@ async function generateWithGemini(
     apiKey: string,
     prompt: string,
     model: string,
+    aspectRatio: string = '1:1',
 ): Promise<{ url: string; mimeType?: string }> {
     // Imagen models use :predict endpoint, Gemini native image models use :generateContent
     const isImagen = model.includes('imagen')
@@ -358,7 +368,7 @@ async function generateWithGemini(
             },
             body: JSON.stringify({
                 instances: [{ prompt }],
-                parameters: { sampleCount: 1 },
+                parameters: { sampleCount: 1, aspectRatio },
             }),
         })
 
@@ -393,6 +403,7 @@ async function generateWithGemini(
                 }],
                 generationConfig: {
                     responseModalities: ['Text', 'Image'],
+                    aspectRatio,
                 },
             }),
         })
