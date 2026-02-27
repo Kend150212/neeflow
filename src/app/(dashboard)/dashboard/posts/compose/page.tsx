@@ -676,7 +676,9 @@ export default function ComposePage() {
     const [overrideImageModel, setOverrideImageModel] = useState('')
     const [availableImageModels, setAvailableImageModels] = useState<{ id: string; name: string; type?: string }[]>([])
     const [loadingImageModels, setLoadingImageModels] = useState(false)
-    const [imageProviders, setImageProviders] = useState<{ provider: string; name: string; isActive: boolean; defaultModel?: string }[]>([])
+    const [byokProviders, setByokProviders] = useState<{ provider: string; name: string; source: string }[]>([])
+    const [planProviders, setPlanProviders] = useState<{ provider: string; name: string; source: string }[]>([])
+    const [imageQuota, setImageQuota] = useState<{ used: number; limit: number }>({ used: 0, limit: 0 })
     const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'>('1:1')
     const [stockQuery, setStockQuery] = useState('')
     const [stockPhotos, setStockPhotos] = useState<{ id: number; src: { original: string; medium: string; small: string }; photographer: string; alt: string }[]>([])
@@ -4274,31 +4276,36 @@ export default function ComposePage() {
             < Dialog open={showImagePicker} onOpenChange={(open) => {
                 setShowImagePicker(open)
                 if (open) {
-                    // Fetch user's configured API providers
-                    fetch('/api/user/api-keys').then(r => r.json()).then((keys: { provider: string; name: string; isActive: boolean; defaultModel?: string }[]) => {
-                        if (Array.isArray(keys)) {
-                            const activeKeys = keys.filter(k => k.isActive)
-                            setImageProviders(activeKeys)
-                            // Determine which provider to use — current selection, channel default, or first available
-                            let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
-                            // If no provider selected yet, auto-select first available
-                            if (!currentProvider && activeKeys.length > 0) {
-                                currentProvider = activeKeys[0].provider
-                                setOverrideImageProvider(currentProvider)
-                            }
-                            // Fetch models for the provider
-                            if (currentProvider) {
-                                setLoadingImageModels(true)
-                                fetch('/api/user/api-keys/models', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ provider: currentProvider }),
-                                }).then(r => r.json()).then(d => {
-                                    setAvailableImageModels(
-                                        (d.models || []).filter((m: { type?: string }) => m.type === 'image')
-                                    )
-                                }).catch(() => { }).finally(() => setLoadingImageModels(false))
-                            }
+                    // Fetch both BYOK and Plan providers + quota
+                    fetch('/api/user/image-providers').then(r => r.json()).then((data: {
+                        byok: { provider: string; name: string; source: string }[];
+                        plan: { provider: string; name: string; source: string }[];
+                        quota: { used: number; limit: number };
+                    }) => {
+                        setByokProviders(data.byok || [])
+                        setPlanProviders(data.plan || [])
+                        setImageQuota(data.quota || { used: 0, limit: 0 })
+
+                        // Determine which provider to use
+                        const allProviders = [...(data.byok || []), ...(data.plan || [])]
+                        let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
+                        // Auto-select first available if none selected
+                        if (!currentProvider && allProviders.length > 0) {
+                            currentProvider = allProviders[0].provider
+                            setOverrideImageProvider(currentProvider)
+                        }
+                        // Fetch models for the provider
+                        if (currentProvider) {
+                            setLoadingImageModels(true)
+                            fetch('/api/user/api-keys/models', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ provider: currentProvider }),
+                            }).then(r => r.json()).then(d => {
+                                setAvailableImageModels(
+                                    (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                                )
+                            }).catch(() => { }).finally(() => setLoadingImageModels(false))
                         }
                     }).catch(() => { })
                 }
@@ -4342,7 +4349,7 @@ export default function ComposePage() {
                         {imagePickerTab === 'ai' && (
                             <div className="space-y-4">
                                 {/* Provider / Model selector */}
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <select
                                         value={overrideImageProvider || selectedChannel?.defaultImageProvider || ''}
                                         onChange={(e) => {
@@ -4366,11 +4373,24 @@ export default function ComposePage() {
                                         className="h-7 text-[11px] rounded-md border bg-muted/50 px-2 focus:outline-none focus:ring-1 focus:ring-primary"
                                     >
                                         <option value="">Auto-detect provider</option>
-                                        {imageProviders.map(p => (
-                                            <option key={p.provider} value={p.provider}>
-                                                {p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1)}
-                                            </option>
-                                        ))}
+                                        {byokProviders.length > 0 && (
+                                            <optgroup label="📌 Your Keys (unlimited)">
+                                                {byokProviders.map(p => (
+                                                    <option key={`byok-${p.provider}`} value={p.provider}>
+                                                        {p.name}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        )}
+                                        {planProviders.length > 0 && (
+                                            <optgroup label={`⚡ Plan (${imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})`}>
+                                                {planProviders.map(p => (
+                                                    <option key={`plan-${p.provider}`} value={p.provider}>
+                                                        {p.name}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        )}
                                     </select>
                                     <select
                                         value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
@@ -4384,7 +4404,22 @@ export default function ComposePage() {
                                         ))}
                                     </select>
                                     {loadingImageModels && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                    {/* Quota badge */}
+                                    {imageQuota.limit > 0 && (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${imageQuota.used >= imageQuota.limit ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                            {imageQuota.used}/{imageQuota.limit} used
+                                        </span>
+                                    )}
+                                    {imageQuota.limit === -1 && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-500/20 text-emerald-400">∞ unlimited</span>
+                                    )}
                                 </div>
+                                {/* No providers warning */}
+                                {byokProviders.length === 0 && planProviders.length === 0 && (
+                                    <p className="text-[10px] text-amber-400 bg-amber-500/10 rounded-md px-2 py-1.5">
+                                        ⚠️ No image providers available. Add an API key in <strong>API Hub</strong> or upgrade your plan.
+                                    </p>
+                                )}
 
                                 {/* Aspect Ratio selector */}
                                 <div>
