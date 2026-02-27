@@ -4276,78 +4276,66 @@ export default function ComposePage() {
             < Dialog open={showImagePicker} onOpenChange={(open) => {
                 setShowImagePicker(open)
                 if (open) {
-                    // Use same APIs as channel setup page (proven working)
                     const IMAGE_PROVIDERS = ['runware', 'openai', 'gemini']
 
-                    // 1. Fetch BYOK keys (same as channel AI setup)
-                    const keysPromise = fetch('/api/user/api-keys').then(r => {
-                        console.log('[ImageDialog] api-keys status:', r.status)
-                        return r.json()
-                    }).catch(e => { console.error('[ImageDialog] api-keys error:', e); return [] })
-                    // 2. Fetch platform providers (same as channel AI setup)
-                    const platformPromise = fetch('/api/user/ai-providers').then(r => {
-                        console.log('[ImageDialog] ai-providers status:', r.status)
-                        return r.json()
-                    }).catch(e => { console.error('[ImageDialog] ai-providers error:', e); return [] })
-                    // 3. Fetch quota info
-                    const quotaPromise = fetch('/api/user/image-providers').then(r => {
-                        console.log('[ImageDialog] image-providers status:', r.status)
-                        return r.json()
-                    }).catch(e => { console.error('[ImageDialog] image-providers error:', e); return { quota: { used: 0, limit: 0 } } })
+                    // Primary: use /api/user/image-providers (returns byok + plan + quota)
+                    fetch('/api/user/image-providers')
+                        .then(r => r.ok ? r.json() : Promise.reject('endpoint failed'))
+                        .then((data: { byok: any[]; plan: any[]; quota: { used: number; limit: number } }) => {
+                            setByokProviders(data.byok || [])
+                            setPlanProviders(data.plan || [])
+                            setImageQuota(data.quota || { used: 0, limit: 0 })
+                            return [...(data.byok || []), ...(data.plan || [])]
+                        })
+                        .catch(() => {
+                            // Fallback: use same APIs as channel setup page
+                            return Promise.all([
+                                fetch('/api/user/api-keys').then(r => r.json()).catch(() => []),
+                                fetch('/api/user/ai-providers').then(r => r.json()).catch(() => []),
+                            ]).then(([keys, platforms]) => {
+                                const userKeys = Array.isArray(keys) ? keys : []
+                                const byok = userKeys
+                                    .filter((k: { provider: string }) => IMAGE_PROVIDERS.includes(k.provider))
+                                    .map((k: { provider: string; name: string }) => ({
+                                        provider: k.provider,
+                                        name: k.name || k.provider.charAt(0).toUpperCase() + k.provider.slice(1),
+                                        source: 'byok' as const,
+                                    }))
+                                setByokProviders(byok)
 
-                    Promise.all([keysPromise, platformPromise, quotaPromise]).then(([keys, platforms, quotaData]) => {
-                        console.log('[ImageDialog] Raw keys:', JSON.stringify(keys))
-                        console.log('[ImageDialog] Raw platforms:', JSON.stringify(platforms))
-                        console.log('[ImageDialog] Raw quota:', JSON.stringify(quotaData))
-
-                        // BYOK: user's own keys that support image generation
-                        const userKeys = Array.isArray(keys) ? keys : []
-                        const byok = userKeys
-                            .filter((k: { provider: string }) => IMAGE_PROVIDERS.includes(k.provider))
-                            .map((k: { provider: string; name: string }) => ({
-                                provider: k.provider,
-                                name: k.name || k.provider.charAt(0).toUpperCase() + k.provider.slice(1),
-                                source: 'byok' as const,
-                            }))
-                        console.log('[ImageDialog] Filtered BYOK:', JSON.stringify(byok))
-                        setByokProviders(byok)
-
-                        // Plan: platform image providers (from admin API Hub)
-                        const platformList = Array.isArray(platforms) ? platforms : []
-                        const planList = platformList
-                            .filter((p: { provider: string; status: string }) => IMAGE_PROVIDERS.includes(p.provider) && p.status === 'ACTIVE')
-                            .map((p: { provider: string; name: string }) => ({
-                                provider: p.provider,
-                                name: p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1),
-                                source: 'plan' as const,
-                            }))
-                        console.log('[ImageDialog] Filtered Plan:', JSON.stringify(planList))
-                        setPlanProviders(planList)
-
-                        // Quota
-                        setImageQuota(quotaData?.quota || { used: 0, limit: 0 })
-
-                        // Auto-select first available provider
-                        const allProviders = [...byok, ...planList]
-                        let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
-                        if (!currentProvider && allProviders.length > 0) {
-                            currentProvider = allProviders[0].provider
-                            setOverrideImageProvider(currentProvider)
-                        }
-                        // Fetch models
-                        if (currentProvider) {
-                            setLoadingImageModels(true)
-                            fetch('/api/user/api-keys/models', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ provider: currentProvider }),
-                            }).then(r => r.json()).then(d => {
-                                setAvailableImageModels(
-                                    (d.models || []).filter((m: { type?: string }) => m.type === 'image')
-                                )
-                            }).catch(() => { }).finally(() => setLoadingImageModels(false))
-                        }
-                    })
+                                const platformList = Array.isArray(platforms) ? platforms : []
+                                const planList = platformList
+                                    .filter((p: { provider: string; status: string }) => IMAGE_PROVIDERS.includes(p.provider) && p.status === 'ACTIVE')
+                                    .map((p: { provider: string; name: string }) => ({
+                                        provider: p.provider,
+                                        name: p.name || p.provider.charAt(0).toUpperCase() + p.provider.slice(1),
+                                        source: 'plan' as const,
+                                    }))
+                                setPlanProviders(planList)
+                                return [...byok, ...planList]
+                            })
+                        })
+                        .then((allProviders: any[]) => {
+                            // Auto-select first available provider
+                            let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
+                            if (!currentProvider && allProviders.length > 0) {
+                                currentProvider = allProviders[0].provider
+                                setOverrideImageProvider(currentProvider)
+                            }
+                            // Fetch models for selected provider
+                            if (currentProvider) {
+                                setLoadingImageModels(true)
+                                fetch('/api/user/api-keys/models', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ provider: currentProvider }),
+                                }).then(r => r.json()).then(d => {
+                                    setAvailableImageModels(
+                                        (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                                    )
+                                }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                            }
+                        })
                 }
             }} >
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">

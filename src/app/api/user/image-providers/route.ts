@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getEffectiveLimits } from '@/lib/addon-resolver'
 import { getCurrentMonth } from '@/lib/plans'
 
-// Image-capable providers (same list as resolve-ai-key.ts)
+// Image-capable providers
 const IMAGE_CAPABLE_PROVIDERS = ['runware', 'openai', 'gemini']
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -21,6 +21,9 @@ const db = prisma as any
  *
  * Returns both BYOK and Plan-included image providers for the current user,
  * along with the user's image generation quota.
+ * 
+ * Plan providers are ALWAYS shown if they are ACTIVE in the API Hub,
+ * regardless of quota. The UI decides whether to allow generation based on quota.
  */
 export async function GET() {
     const session = await auth()
@@ -31,14 +34,13 @@ export async function GET() {
     const userId = session.user.id
 
     try {
-        // 1. Fetch user's BYOK keys — same query as /api/user/api-keys but filtered to image-capable
+        // 1. Fetch user's BYOK keys
         const userKeys = await prisma.userApiKey.findMany({
             where: { userId },
             orderBy: { provider: 'asc' },
-            select: { provider: true, name: true, isActive: true },
+            select: { provider: true, name: true },
         })
 
-        // Filter to image-capable providers (don't require isActive — match channel setup behavior)
         const byok = userKeys
             .filter(k => IMAGE_CAPABLE_PROVIDERS.includes(k.provider))
             .map(k => ({
@@ -47,48 +49,38 @@ export async function GET() {
                 source: 'byok' as const,
             }))
 
-        // 2. Check plan quota
-        let quota = { used: 0, limit: 0 }
-        const plan: { provider: string; name: string; source: 'plan' }[] = []
+        // 2. ALWAYS fetch platform providers that are ACTIVE (regardless of quota)
+        const platformKeys = await prisma.apiIntegration.findMany({
+            where: {
+                provider: { in: IMAGE_CAPABLE_PROVIDERS },
+                category: 'AI',
+                status: 'ACTIVE',
+                apiKeyEncrypted: { not: null },
+            },
+            select: { provider: true, name: true },
+            orderBy: { provider: 'asc' },
+        })
 
+        const plan = platformKeys.map(pk => ({
+            provider: pk.provider,
+            name: pk.name || PROVIDER_LABELS[pk.provider] || pk.provider,
+            source: 'plan' as const,
+        }))
+
+        // 3. Check plan quota (informational — UI decides whether to block)
+        let quota = { used: 0, limit: 0 }
         try {
             const limits = await getEffectiveLimits(userId)
             const imageLimit = limits.maxAiImagesPerMonth
 
-            // Get current usage
             const sub = await db.subscription.findUnique({
                 where: { userId },
                 include: { usages: { where: { month: getCurrentMonth() } } },
             })
             const used: number = sub?.usages?.[0]?.imagesGenerated ?? 0
             quota = { used, limit: imageLimit }
-
-            // 3. If plan includes image quota, show platform providers
-            const hasQuota = imageLimit === -1 || (imageLimit > 0 && used < imageLimit)
-
-            if (hasQuota) {
-                // Fetch platform API Hub integrations — same as /api/user/ai-providers but filtered
-                const platformKeys = await prisma.apiIntegration.findMany({
-                    where: {
-                        provider: { in: IMAGE_CAPABLE_PROVIDERS },
-                        category: 'AI',
-                        status: 'ACTIVE',
-                        apiKeyEncrypted: { not: null },
-                    },
-                    select: { provider: true, name: true },
-                    orderBy: { provider: 'asc' },
-                })
-
-                for (const pk of platformKeys) {
-                    plan.push({
-                        provider: pk.provider,
-                        name: pk.name || PROVIDER_LABELS[pk.provider] || pk.provider,
-                        source: 'plan' as const,
-                    })
-                }
-            }
         } catch {
-            // Subscription/quota tables not ready — fail open with no plan providers
+            // Subscription/quota tables not ready — fail open
         }
 
         return NextResponse.json({ byok, plan, quota })
