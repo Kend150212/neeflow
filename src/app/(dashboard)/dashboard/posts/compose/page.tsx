@@ -908,19 +908,23 @@ export default function ComposePage() {
                 })
             })
             .then((allProviders) => {
-                // Auto-select first available provider
-                let currentProvider = overrideImageProvider || selectedChannel?.defaultImageProvider || ''
+                // Auto-select first available provider (use prefixed value so keySource is sent correctly)
+                let currentProvider = overrideImageProvider || ''
                 if (!currentProvider && allProviders.length > 0) {
-                    currentProvider = allProviders[0].provider
+                    const first = allProviders[0]
+                    // Store with source prefix: 'plan:runware' or 'byok:runware'
+                    currentProvider = `${first.source}:${first.provider}`
                     setOverrideImageProvider(currentProvider)
                 }
                 // Fetch models for selected provider
                 if (currentProvider) {
+                    // Strip source prefix ('plan:gemini' → 'gemini') for model API
+                    const providerForModels = currentProvider.includes(':') ? currentProvider.split(':').slice(1).join(':') : currentProvider
                     setLoadingImageModels(true)
                     fetch('/api/user/api-keys/models', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ provider: currentProvider }),
+                        body: JSON.stringify({ provider: providerForModels }),
                     }).then(r => r.json()).then(d => {
                         setAvailableImageModels(
                             (d.models || []).filter((m: { type?: string }) => m.type === 'image')
