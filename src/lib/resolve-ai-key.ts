@@ -134,39 +134,60 @@ export async function resolveImageAIKey(
     preferredProvider?: string | null,
     requestedModel?: string | null,
 ): Promise<ResolveResult> {
-    // 1. Try BYOK — channel owner's key
-    const ownerKey = await getChannelOwnerKey(channelId, preferredProvider)
+    // Find the channel owner for quota purposes
+    const ownerMember = await db.channelMember.findFirst({
+        where: { channelId, role: 'OWNER' },
+        select: { userId: true },
+    })
 
-    if (ownerKey.apiKey) {
-        const provider = ownerKey.provider!
+    const ownerId: string | null = ownerMember?.userId ?? null
+
+    if (!ownerId) {
+        return {
+            ok: false,
+            status: 403,
+            data: { error: 'Channel has no owner configured.', errorType: 'no_owner' },
+        }
+    }
+
+    // 1. Try BYOK — but ONLY for the exact requested provider.
+    //    If the user picks Gemini, a Runware BYOK must not be used as fallback.
+    //    Without a preferredProvider, fall back to owner's default/first BYOK key.
+    let byokKey: { apiKeyEncrypted: string; provider: string; defaultModel: string | null } | null = null
+
+    if (preferredProvider) {
+        // Strict match: only accept BYOK for the chosen provider
+        byokKey = await prisma.userApiKey.findFirst({
+            where: { userId: ownerId, provider: preferredProvider, isActive: true },
+            select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
+        })
+    } else {
+        // No provider preference → use owner's default key (any provider)
+        byokKey = await prisma.userApiKey.findFirst({
+            where: { userId: ownerId, isDefault: true, isActive: true },
+            select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
+        }) ?? await prisma.userApiKey.findFirst({
+            where: { userId: ownerId, isActive: true },
+            select: { apiKeyEncrypted: true, provider: true, defaultModel: true },
+        })
+    }
+
+    if (byokKey) {
+        const { decrypt } = await import('@/lib/encryption')
         return {
             ok: true,
             data: {
-                apiKey: ownerKey.apiKey,
-                provider,
-                // Don't use getDefaultModel() here — it returns text model defaults.
-                // Image model defaults are handled per-provider in generate-image/route.ts
-                model: requestedModel || ownerKey.model || '',
+                apiKey: decrypt(byokKey.apiKeyEncrypted),
+                provider: byokKey.provider,
+                model: requestedModel || byokKey.defaultModel || '',
                 usingPlatformKey: false,
-                ownerId: ownerKey.ownerId,
+                ownerId,
                 integrationId: null,
             },
         }
     }
 
-    // 2. No BYOK → check image quota
-    const ownerId = ownerKey.ownerId
-    if (!ownerId) {
-        return {
-            ok: false,
-            status: 403,
-            data: {
-                error: 'Channel has no owner configured.',
-                errorType: 'no_owner',
-            },
-        }
-    }
-
+    // 2. No matching BYOK → check image quota before using platform key
     const quotaResult = await checkImageQuotaForPlatformKey(ownerId)
 
     if (!quotaResult.allowed) {
@@ -182,7 +203,7 @@ export async function resolveImageAIKey(
         }
     }
 
-    // 3. Within quota → get platform image key (only image-capable providers)
+    // 3. Within quota → get platform image key
     const platformKey = await getPlatformImageKey(preferredProvider)
     if (!platformKey) {
         return {
@@ -200,7 +221,6 @@ export async function resolveImageAIKey(
         data: {
             apiKey: platformKey.apiKey,
             provider: platformKey.provider,
-            // Don't use getDefaultModel() — it returns text model defaults
             model: requestedModel || '',
             usingPlatformKey: true,
             ownerId,
