@@ -11,7 +11,7 @@ import {
     Upload, FolderOpen, X, Check, Sparkles,
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
     Search, Package, Edit, Download, Copy,
-    RotateCcw, Paperclip, Tag, Ban,
+    RotateCcw, Paperclip, Tag, Ban, Eye,
 } from 'lucide-react'
 
 
@@ -119,6 +119,26 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
 
 
+
+    // Context preview dialog
+    const [contextPreview, setContextPreview] = useState<null | {
+        generatedAt: string
+        sections: { label: string; count: number; content: string }[]
+    }>(null)
+    const [loadingContext, setLoadingContext] = useState(false)
+    const fetchContextPreview = useCallback(async () => {
+        setLoadingContext(true)
+        try {
+            const res = await fetch(`/api/admin/channels/${channelId}/bot-context`)
+            if (!res.ok) throw new Error('failed')
+            const data = await res.json()
+            setContextPreview(data)
+        } catch {
+            toast.error('Không thể tải context bot')
+        } finally {
+            setLoadingContext(false)
+        }
+    }, [channelId])
 
     // Product catalog state
     type Product = { id: string; productId?: string | null; name: string; category?: string | null; price?: number | null; salePrice?: number | null; description?: string | null; features: string[]; images: string[]; tags: string[]; inStock: boolean; syncSource?: string | null }
@@ -467,7 +487,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     if (!config) return null
 
     return (
-        <div className="space-y-4">
+        <>
+            <div className="space-y-4">
             {/* ─── Header with Save ─────────────────── */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -489,6 +510,16 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                     <Button onClick={saveConfig} disabled={saving} size="sm">
                         {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
                         {t('chatbot.save')}
+                    </Button>
+                    <Button
+                        onClick={fetchContextPreview}
+                        disabled={loadingContext}
+                        size="sm"
+                        variant="outline"
+                        title="Xem tất cả thông tin bot đang biết ngay lúc này"
+                    >
+                        {loadingContext ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                        Context Bot
                     </Button>
                 </div>
             </div>
@@ -2847,5 +2878,56 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                 </div>
             )}
         </div>
+
+        {/* ─── BOT CONTEXT PREVIEW DIALOG ─── */}
+        {contextPreview && (
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                onClick={() => setContextPreview(null)}
+            >
+                <div
+                    className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+                    onClick={e => e.stopPropagation()}
+                >
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-4 border-b">
+                        <div>
+                            <h2 className="font-bold text-base flex items-center gap-2">
+                                <Eye className="h-4 w-4 text-blue-500" />
+                                Context Bot hiện tại
+                            </h2>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                Generated {new Date(contextPreview.generatedAt).toLocaleString('vi-VN')} — đây là mọi thứ bot đang biết lúc này
+                            </p>
+                        </div>
+                        <button onClick={() => setContextPreview(null)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto p-5 space-y-4 text-sm">
+                        {contextPreview.sections.map((sec, i) => (
+                            <div key={i} className="rounded-xl border bg-muted/40 overflow-hidden">
+                                <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b">
+                                    <span className="font-semibold text-xs uppercase tracking-wide">{sec.label}</span>
+                                    <span className="text-[11px] bg-background border rounded-full px-2 py-0.5 font-mono">{sec.count}</span>
+                                </div>
+                                <pre className="px-4 py-3 text-[11px] leading-relaxed whitespace-pre-wrap font-mono text-muted-foreground overflow-x-auto max-h-48">
+                                    {sec.content}
+                                </pre>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-5 py-3 border-t flex justify-between items-center">
+                        <p className="text-[11px] text-muted-foreground">💡 Bot tự đọc context này mỗi lần trả lời — không cần reload thủ công</p>
+                        <Button size="sm" variant="outline" onClick={() => setContextPreview(null)}>Đóng</Button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     )
 }

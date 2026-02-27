@@ -112,7 +112,9 @@ interface PriceGroup {
  */
 export async function buildPromotionContext(channelId: string): Promise<string> {
     const now = new Date()
+    const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
+    // Active promotions: isActive AND now is within window
     const activePromos = await prisma.promotion.findMany({
         where: {
             channelId,
@@ -123,13 +125,23 @@ export async function buildPromotionContext(channelId: string): Promise<string> 
         orderBy: { startAt: 'asc' },
     })
 
-    if (activePromos.length === 0) return ''
-
-    // Also load the products so we can show their names
-    const allProductIds = activePromos.flatMap(p => {
-        const groups = (p.priceGroups as unknown as PriceGroup[]) || []
-        return groups.flatMap(g => g.productIds || [])
+    // Upcoming promotions: isActive AND starts within the next 7 days
+    const upcomingPromos = await prisma.promotion.findMany({
+        where: {
+            channelId,
+            isActive: true,
+            startAt: { gt: now, lte: in7Days },
+        },
+        orderBy: { startAt: 'asc' },
     })
+
+    if (activePromos.length === 0 && upcomingPromos.length === 0) return ''
+
+    // Load all referenced product names
+    const allProductIds = [
+        ...activePromos.flatMap(p => ((p.priceGroups as unknown as PriceGroup[]) || []).flatMap(g => g.productIds || [])),
+        ...upcomingPromos.flatMap(p => ((p.priceGroups as unknown as PriceGroup[]) || []).flatMap(g => g.productIds || [])),
+    ]
 
     let productMap: Record<string, { name: string; price: number | null }> = {}
     if (allProductIds.length > 0) {
@@ -140,52 +152,65 @@ export async function buildPromotionContext(channelId: string): Promise<string> 
         productMap = Object.fromEntries(products.map(p => [p.id, { name: p.name, price: p.price }]))
     }
 
-    const lines: string[] = ['--- ACTIVE PROMOTIONS / GIÁ LỄ ---']
-    lines.push('🎉 Hiện đang có chương trình khuyến mãi! Hãy CHỦ ĐỘNG thông báo cho khách khi nói về giá.')
-    lines.push('QUAN TRỌNG: Dùng giá sau khi đã áp dụng khuyến mãi khi báo giá cho khách.\n')
+    const lines: string[] = ['--- PROMOTIONS & UPCOMING DEALS ---']
 
-    for (const promo of activePromos) {
-        const start = promo.startAt.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
-        const end = promo.endAt.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
-        lines.push(`📌 ${promo.name}`)
-        lines.push(`   Thời gian: ${start} → ${end}`)
-        if (promo.description) lines.push(`   Mô tả: ${promo.description}`)
-
-        const groups = (promo.priceGroups as unknown as PriceGroup[]) || []
-
-        for (const g of groups) {
-            const dir = g.direction === 'increase' ? 'tăng' : 'giảm'
-            const amount = g.adjustType === 'fixed'
-                ? `${formatPrice(g.adjustment)}`
-                : `${g.adjustment}%`
-            const productNames = (g.productIds || [])
-                .map(id => productMap[id]?.name || id)
-                .join(', ')
-
-            // Compute example adjusted prices if we have product prices
-            const priceExamples: string[] = []
-            for (const id of (g.productIds || [])) {
-                const prod = productMap[id]
-                if (prod?.price) {
-                    let adjusted = prod.price
-                    if (g.adjustType === 'fixed') {
-                        adjusted = g.direction === 'increase' ? prod.price + g.adjustment : prod.price - g.adjustment
-                    } else {
-                        const delta = Math.round(prod.price * g.adjustment / 100)
-                        adjusted = g.direction === 'increase' ? prod.price + delta : prod.price - delta
-                    }
-                    priceExamples.push(`${prod.name}: ${formatPrice(prod.price)} → ${formatPrice(adjusted)}`)
-                }
-            }
-
-            lines.push(`   • Nhóm "${g.groupName}": ${dir} ${amount} — áp dụng cho: ${productNames}`)
-            if (priceExamples.length > 0) {
-                lines.push(`     Giá sau KM: ${priceExamples.join(', ')}`)
-            }
+    if (activePromos.length > 0) {
+        lines.push('🔥 ĐANG HOẠT ĐỘNG — Hãy CHỦ ĐỘNG thông báo cho khách khi nói về giá.')
+        lines.push('QUAN TRỌNG: Dùng giá sau khi áp dụng khuyến mãi khi báo cho khách.\n')
+        for (const promo of activePromos) {
+            appendPromoBlock(lines, promo, productMap, false)
         }
-        lines.push('')
     }
 
-    lines.push('--- END ACTIVE PROMOTIONS ---')
+    if (upcomingPromos.length > 0) {
+        lines.push('\n📅 SẮP DIỄN RA — Thông báo cho khách để họ biết và chuẩn bị.')
+        for (const promo of upcomingPromos) {
+            appendPromoBlock(lines, promo, productMap, true)
+        }
+    }
+
+    lines.push('--- END PROMOTIONS ---')
     return lines.join('\n')
 }
+
+function appendPromoBlock(
+    lines: string[],
+    promo: { name: string; description: string | null; startAt: Date; endAt: Date; priceGroups: unknown },
+    productMap: Record<string, { name: string; price: number | null }>,
+    isUpcoming: boolean
+) {
+    const start = promo.startAt.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+    const end = promo.endAt.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+    lines.push(`${isUpcoming ? '⏳' : '📌'} ${promo.name}`)
+    lines.push(`   Thời gian: ${start} → ${end}`)
+    if (promo.description) lines.push(`   Mô tả: ${promo.description}`)
+
+    const groups = (promo.priceGroups as unknown as PriceGroup[]) || []
+    for (const g of groups) {
+        const dir = g.direction === 'increase' ? 'tăng' : 'giảm'
+        const amount = g.adjustType === 'fixed' ? `${formatPrice(g.adjustment)}` : `${g.adjustment}%`
+        const productNames = (g.productIds || []).map(id => productMap[id]?.name || id).join(', ')
+
+        const priceExamples: string[] = []
+        for (const id of (g.productIds || [])) {
+            const prod = productMap[id]
+            if (prod?.price) {
+                let adjusted = prod.price
+                if (g.adjustType === 'fixed') {
+                    adjusted = g.direction === 'increase' ? prod.price + g.adjustment : prod.price - g.adjustment
+                } else {
+                    const delta = Math.round(prod.price * g.adjustment / 100)
+                    adjusted = g.direction === 'increase' ? prod.price + delta : prod.price - delta
+                }
+                priceExamples.push(`${prod.name}: ${formatPrice(prod.price)} → ${formatPrice(adjusted)}`)
+            }
+        }
+
+        lines.push(`   • Nhóm "${g.groupName}": ${dir} ${amount} — áp dụng cho: ${productNames}`)
+        if (priceExamples.length > 0) {
+            lines.push(`     Giá${isUpcoming ? ' sắp có' : ' sau KM'}: ${priceExamples.join(', ')}`)
+        }
+    }
+    lines.push('')
+}
+

@@ -138,8 +138,9 @@ export async function botAutoReply(
         // ─── 8. Load context ──────────────────────────────────────
         const knowledgeEntries = await prisma.knowledgeBase.findMany({
             where: { channelId: channel.id },
-            select: { title: true, content: true },
-            take: 20,
+            select: { title: true, content: true, updatedAt: true },
+            orderBy: { updatedAt: 'desc' },  // newest first, so recent updates are seen first
+            take: 50,
         })
 
         // Load recent conversation history
