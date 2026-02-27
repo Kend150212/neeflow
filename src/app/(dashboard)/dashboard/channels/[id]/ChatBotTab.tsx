@@ -112,10 +112,11 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>([])
 
     // Tab navigation
-    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'hours' | 'scope' | 'forbidden' | 'chattest' | 'learning'>('general')
+    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'hours' | 'scope' | 'chattest' | 'learning'>('general')
 
 
-    const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products' | 'promotions' | 'escalation'>('saved')
+    const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products' | 'promotions' | 'forbidden'>('saved')
+
 
 
 
@@ -589,10 +590,9 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                     { key: 'training' as const, icon: Brain, label: t('chatbot.training.title'), color: 'text-purple-500' },
                     { key: 'behavior' as const, icon: Target, label: t('chatbot.behavior.title'), color: 'text-cyan-500' },
                     { key: 'hours' as const, icon: Clock, label: t('chatbot.hours.title'), color: 'text-amber-500' },
-
                     { key: 'scope' as const, icon: Target, label: t('chatbot.scope.title'), color: 'text-teal-500' },
-                    { key: 'forbidden' as const, icon: Ban, label: '🚫 Cấm kỵ', color: 'text-red-600' },
                     { key: 'chattest' as const, icon: MessageCircle, label: '💬 Chat Test', color: 'text-pink-500' },
+
 
                     { key: 'learning' as const, icon: Zap, label: '🧠 Learning', color: 'text-yellow-500' },
                 ].map(tab => (
@@ -745,8 +745,9 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             { key: 'video' as const, icon: Video, label: t('chatbot.trainingTabs.video'), color: 'text-red-500' },
                             { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
                             { key: 'products' as const, icon: Package, label: `🛙 ${t('chatbot.trainingTabs.products')}`, color: 'text-emerald-500', count: products.length },
-                            { key: 'promotions' as const, icon: Tag, label: '🎉 Khuyến mãi', color: 'text-pink-500', count: promotions.length },
-                            { key: 'escalation' as const, icon: Shield, label: '🔔 Chuyển tiếp', color: 'text-orange-500', count: config.autoEscalateKeywords?.length },
+                            { key: 'promotions' as const, icon: Tag, label: `🎉 ${t('chatbot.trainingTabs.promotions')}`, color: 'text-pink-500', count: promotions.length },
+                            { key: 'forbidden' as const, icon: Ban, label: `🚫 ${t('chatbot.trainingTabs.forbidden')}`, color: 'text-red-500', count: config.forbiddenTopics?.length },
+
 
 
                         ].map(item => (
@@ -1308,66 +1309,11 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 </div>
             )}
 
-            {/* ─── ESCALATION SUB-TAB (inside Training) ──────────── */}
-            {botTab === 'training' && trainingSubTab === 'escalation' && (
-                <div className="space-y-4">
-                    <div>
-                        <Label className="text-xs">{t('chatbot.escalation.keywordsLabel')}</Label>
-                        <p className="text-[10px] text-muted-foreground mb-2">
-                            {t('chatbot.escalation.keywordsDesc')}
-                        </p>
-                        <div className="flex flex-wrap gap-1 mb-2">
-                            {config.autoEscalateKeywords.map((kw, i) => (
-                                <Badge key={i} variant="destructive" className="text-[10px] gap-1">
-                                    {kw}
-                                    <button onClick={() => update('autoEscalateKeywords', config.autoEscalateKeywords.filter((_, j) => j !== i))}>×</button>
-                                </Badge>
-                            ))}
-                        </div>
-                        <div className="flex gap-2">
-                            <Input
-                                value={newEscalateKeyword}
-                                onChange={e => setNewEscalateKeyword(e.target.value)}
-                                placeholder={t('chatbot.escalation.keywordsPlaceholder')}
-                                className="text-sm"
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter' && newEscalateKeyword.trim()) {
-                                        update('autoEscalateKeywords', [...config.autoEscalateKeywords, newEscalateKeyword.trim()])
-                                        setNewEscalateKeyword('')
-                                    }
-                                }}
-                            />
-                            <Button size="sm" variant="outline" onClick={() => {
-                                if (newEscalateKeyword.trim()) {
-                                    update('autoEscalateKeywords', [...config.autoEscalateKeywords, newEscalateKeyword.trim()])
-                                    setNewEscalateKeyword('')
-                                }
-                            }}>
-                                <Plus className="h-3 w-3" />
-                            </Button>
-                        </div>
-                    </div>
-
-                    <Separator />
-                </div>
-            )}
-
 
 
             {/* ─── FORBIDDEN RULES TAB ──────────────────────────── */}
-            {botTab === 'forbidden' && (() => {
-                const QUICK_RULES = [
-                    'Không tiết lộ giá ưu đãi nội bộ chưa công bố',
-                    'Không hứa hẹn thời gian giao hàng khi chưa xác nhận với kho',
-                    'Không nhận đặt hàng qua chat (phải chuyển sang form/web)',
-                    'Không xác nhận đơn hàng / hoàn tiền mà không có mã đơn',
-                    'Không đưa ra thông tin cá nhân của nhân viên',
-                    'Không nói xấu đối thủ cạnh tranh',
-                    'Không thảo luận về chính trị, tôn giáo',
-                    'Không cam kết điều khoản nào ngoài chính sách chính thức',
-                    'Không giảm giá thêm ngoài khuyến mãi đang áp dụng',
-                    'Không tiết lộ quy trình nội bộ hoặc thông tin bảo mật',
-                ]
+            {botTab === 'training' && trainingSubTab === 'forbidden' && (() => {
+                const QUICK_RULES = (t('chatbot.forbidden.quickRules') as unknown as string[])
 
                 return (
                     <div className="flex flex-col gap-5">
@@ -1375,9 +1321,9 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900">
                             <Ban className="h-6 w-6 text-red-500 shrink-0 mt-0.5" />
                             <div>
-                                <h3 className="text-sm font-bold text-red-700 dark:text-red-400">Những điều CẤM KỴ tuyệt đối</h3>
+                                <h3 className="text-sm font-bold text-red-700 dark:text-red-400">{t('chatbot.forbidden.header')}</h3>
                                 <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">
-                                    Bot sẽ KHÔNG bao giờ thực hiện các điều này dù khách có yêu cầu theo bất kỳ cách nào — kể cả ép buộc, lừa đảo, hay đóng vai. Được áp dụng ưu tiên cao nhất.
+                                    {t('chatbot.forbidden.headerDesc')}
                                 </p>
                             </div>
                         </div>
@@ -1385,11 +1331,11 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         {/* Current rules */}
                         <div className="flex flex-col gap-2">
                             <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                                Danh sách quy tắc ({config.forbiddenTopics.length})
+                                {t('chatbot.forbidden.listLabel')} ({config.forbiddenTopics.length})
                             </label>
                             {config.forbiddenTopics.length === 0 && (
                                 <p className="text-xs text-muted-foreground italic text-center py-6 border border-dashed rounded-lg">
-                                    Chưa có quy tắc nào. Thêm quy tắc bên dưới để giới hạn hành vi bot.
+                                    {t('chatbot.forbidden.empty')}
                                 </p>
                             )}
                             <div className="flex flex-col gap-1.5">
@@ -1408,12 +1354,12 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
                         {/* Add new rule */}
                         <div className="flex flex-col gap-2">
-                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Thêm quy tắc mới</label>
+                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t('chatbot.forbidden.addLabel')}</label>
                             <div className="flex gap-2">
                                 <Input
                                     value={newForbiddenTopic}
                                     onChange={e => setNewForbiddenTopic(e.target.value)}
-                                    placeholder="VD: Không tiết lộ nguồn gốc xuất xứ hàng hoá..."
+                                    placeholder={t('chatbot.forbidden.addPlaceholder')}
                                     className="text-xs"
                                     onKeyDown={e => {
                                         if (e.key === 'Enter' && newForbiddenTopic.trim()) {
@@ -1440,7 +1386,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
                         {/* Quick add */}
                         <div className="flex flex-col gap-2">
-                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Thêm nhanh quy tắc phổ biến</label>
+                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t('chatbot.forbidden.quickLabel')}</label>
                             <div className="flex flex-wrap gap-1.5">
                                 {QUICK_RULES.filter(r => !config.forbiddenTopics.includes(r)).map(rule => (
                                     <button
@@ -1452,7 +1398,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     </button>
                                 ))}
                                 {QUICK_RULES.every(r => config.forbiddenTopics.includes(r)) && (
-                                    <p className="text-[10px] text-muted-foreground italic">Đã thêm tất cả gợi ý phổ biến.</p>
+                                    <p className="text-[10px] text-muted-foreground italic">{t('chatbot.forbidden.allAdded')}</p>
                                 )}
                             </div>
                         </div>
@@ -1460,7 +1406,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         {/* Save reminder */}
                         <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-3">
                             <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                                💡 <strong>Lưu ý:</strong> Nhớ nhấn <strong>"Lưu cấu hình"</strong> sau khi thêm/xóa quy tắc để áp dụng thay đổi cho bot.
+                                💡 {t('chatbot.forbidden.saveReminder')}
                             </p>
                         </div>
                     </div>
