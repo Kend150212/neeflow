@@ -243,7 +243,13 @@ export async function botAutoReply(
 
         let systemPrompt = `You are ${botConfig?.botName || 'AI Assistant'}, an auto-reply customer service bot for "${channel.displayName || channel.name}".`
 
-        // ─── Neeflow Platform Knowledge (auto-injected) ──────────
+        // ─── Real-time date injection ────────────────────────────────
+        const nowDate = new Date()
+        const dateStr = nowDate.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        const timeStr = nowDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+        systemPrompt += `\n\n## Current Date & Time:\nToday is ${dateStr}, ${timeStr} (server time). Use this as the authoritative date — do NOT rely on your training data for what today's date is.`
+
+
         const allSupportedPlatforms = [
             ...OAUTH_PLATFORMS.map(p => `${p.label} (${p.description})`),
             ...CREDENTIAL_PLATFORMS.map(p => `${p.label} (${p.description})`),

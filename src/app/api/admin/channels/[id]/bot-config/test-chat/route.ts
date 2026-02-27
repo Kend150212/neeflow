@@ -76,6 +76,13 @@ export async function POST(
 
         let systemPrompt = `You are ${botConfig?.botName || 'AI Assistant'}, an auto-reply customer service bot for "${channel.displayName || channel.name}".`
 
+        // ─── Real-time date injection ────────────────────────────────
+        const now = new Date()
+        const dateStr = now.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+        systemPrompt += `\n\n## Current Date & Time:\nToday is ${dateStr}, ${timeStr} (server time). Use this as the authoritative date — do NOT rely on your training data for what today's date is.`
+
+
         if (botConfig?.personality) {
             systemPrompt += `\n\n## Your personality and instructions:\n${botConfig.personality}`
         }
