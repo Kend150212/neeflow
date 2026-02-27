@@ -403,7 +403,9 @@ async function generateWithGemini(
                 }],
                 generationConfig: {
                     responseModalities: ['Text', 'Image'],
-                    aspectRatio,
+                    imageConfig: {
+                        aspectRatio,
+                    },
                 },
             }),
         })
