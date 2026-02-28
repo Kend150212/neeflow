@@ -686,7 +686,18 @@
       "disableAll": "Tắt tất cả",
       "searchAccounts": "Tìm kiếm tài khoản...",
       "connectionIssue": "Phát hiện lỗi kết nối",
-      "connectionIssueDesc": "Các tài khoản sau đã mất quyền kết nối. Bot có thể không gửi được tin nhắn. Vui lòng kết nối lại:"
+      "connectionIssueDesc": "Các tài khoản sau đã mất quyền kết nối. Bot có thể không gửi được tin nhắn. Vui lòng kết nối lại:",
+      "fbIgWarningTitle": "⚠️ Quan trọng: Chọn lại TẤT CẢ các page",
+      "fbIgWarningDesc": "Facebook & Instagram dùng chung một phiên đăng nhập. Nếu bạn kết nối lại cùng tài khoản ở đây, các page đã kết nối ở CÁC KÊNH KHÁC mà không được chọn lại sẽ mất kết nối và bot sẽ ngừng hoạt động cho các page đó.",
+      "fbIgWarningAction": "Khi Facebook hỏi \"Bạn muốn dùng trang nào?\", hãy chọn TẤT CẢ các page cần dùng ở mọi kênh.",
+      "fbCrossChannelToast": "⚠️ Cảnh báo: Một số page ở kênh khác có thể đã mất kết nối. Vào kênh đó → tab Nền tảng → Reconnect để khắc phục.",
+      "reconnectBtn": "Kết nối lại",
+      "tiktokTooltipTitle": "Yêu cầu tài khoản Business hoặc Creator",
+      "tiktokTooltipDesc": "Tài khoản phải là Business hoặc Creator. TikTok App → Cài đặt → Quản lý tài khoản → Chuyển sang Business.",
+      "fbTooltipTitle": "⚠️ Kết nối lại? Hãy chọn TẤT CẢ page",
+      "fbTooltipDesc": "Facebook dùng chung 1 phiên đăng nhập cho tất cả kênh. Khi kết nối, hãy chọn TẤT CẢ page bạn dùng ở mọi kênh — nếu không, page không được chọn ở kênh khác sẽ mất kết nối bot.",
+      "igTooltipTitle": "⚠️ Kết nối lại? Hãy chọn TẤT CẢ tài khoản",
+      "igTooltipDesc": "Instagram dùng chung đăng nhập Facebook. Kết nối lại ở đây có thể ngắt kết nối Instagram ở kênh khác. Hãy chọn TẤT CẢ page/tài khoản cần dùng ở mọi kênh."
     },
     "xConnectBtn": {
       "connecting": "Đang xác minh & kết nối...",

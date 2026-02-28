@@ -686,7 +686,18 @@
       "disableAll": "Disable All",
       "searchAccounts": "Search accounts...",
       "connectionIssue": "Connection Issue Detected",
-      "connectionIssueDesc": "The following accounts have lost their connection permissions. Bot replies may not be delivered. Please reconnect them:"
+      "connectionIssueDesc": "The following accounts have lost their connection permissions. Bot replies may not be delivered. Please reconnect them:",
+      "fbIgWarningTitle": "⚠️ Important: Re-select ALL pages",
+      "fbIgWarningDesc": "Facebook & Instagram use a single login session. If you reconnect with the same account here, pages connected in OTHER channels that are NOT re-selected will lose their connection and the bot will stop working for those pages.",
+      "fbIgWarningAction": "When Facebook asks \"Which pages do you want to use?\", make sure to select ALL pages you need across all channels.",
+      "fbCrossChannelToast": "⚠️ Warning: Some pages in other channels may have lost connection. Go to those channels → Platforms → Reconnect to fix.",
+      "reconnectBtn": "Reconnect",
+      "tiktokTooltipTitle": "Requires Business or Creator account",
+      "tiktokTooltipDesc": "Account must be Business or Creator. TikTok App → Settings → Manage account → Switch to Business.",
+      "fbTooltipTitle": "⚠️ Reconnecting? Select ALL pages",
+      "fbTooltipDesc": "Facebook uses one login for all channels. When connecting, select ALL pages you use in any channel — otherwise unselected pages in other channels will lose bot connection.",
+      "igTooltipTitle": "⚠️ Reconnecting? Select ALL accounts",
+      "igTooltipDesc": "Instagram uses the same Facebook login. Reconnecting here may disconnect Instagram accounts in other channels. Select ALL pages/accounts you need across all channels."
     },
     "xConnectBtn": {
       "connecting": "Verifying & Connecting...",

@@ -244,6 +244,55 @@ export async function GET(req: NextRequest) {
         }
         console.log(`[Facebook OAuth] Successfully imported ${imported}/${pages.length} pages. Errors: ${errors.length}`)
 
+        // ── Detect cross-channel token invalidation ──
+        // When a Facebook user re-authenticates, their OLD user token is revoked by Facebook.
+        // This means page tokens derived from the old user token (in OTHER channels) also become invalid.
+        // We detect this by finding other channels that share the same page IDs as the current OAuth batch,
+        // then mark any pages in those channels that were NOT in this batch as needsReconnect.
+        try {
+            const currentPageIds = pages.map(p => p.id)
+
+            // Find other channels that have at least one matching page (= same FB user connected)
+            const overlappingOtherChannels = await prisma.channelPlatform.findMany({
+                where: {
+                    platform: 'facebook',
+                    channelId: { not: state.channelId },
+                    accountId: { in: currentPageIds }, // overlap = same FB user
+                },
+                select: { channelId: true },
+            })
+
+            if (overlappingOtherChannels.length > 0) {
+                const affectedChannelIds = [...new Set(overlappingOtherChannels.map(p => p.channelId))]
+                console.log(`[Facebook OAuth] ⚠️ Detected ${affectedChannelIds.length} other channel(s) sharing same FB user — checking for stale page tokens...`)
+
+                // In those channels, pages NOT in the current OAuth batch now have invalidated tokens
+                const staleResult = await prisma.channelPlatform.updateMany({
+                    where: {
+                        platform: 'facebook',
+                        channelId: { in: affectedChannelIds },
+                        accountId: { notIn: currentPageIds }, // pages NOT refreshed by this OAuth
+                    },
+                    data: {
+                        config: {
+                            needsReconnect: true,
+                            lastError: 'Token invalidated: same Facebook account re-authenticated on another channel without selecting this page. Please reconnect.',
+                            lastErrorAt: new Date().toISOString(),
+                        } as any,
+                    },
+                })
+
+                if (staleResult.count > 0) {
+                    console.warn(`[Facebook OAuth] ⚠️ Marked ${staleResult.count} page(s) in other channel(s) as needsReconnect (token invalidated by new OAuth session)`)
+                } else {
+                    console.log(`[Facebook OAuth] ✅ No stale pages found in other channels — all pages were covered by this OAuth`)
+                }
+            }
+        } catch (crossErr) {
+            console.error('[Facebook OAuth] ❌ Error during cross-channel invalidation check:', crossErr)
+        }
+
+
         // ── Subscribe pages to webhook for real-time events ──
         for (const page of pages) {
             try {

@@ -72,6 +72,9 @@ export async function middleware(req: NextRequest) {
         pathname.startsWith('/coming-soon') ||
         pathname.startsWith('/maintenance') ||
         pathname.startsWith('/_next') ||
+        pathname.startsWith('/connect') ||       // EasyConnect — public for clients
+        pathname.startsWith('/invite') ||        // Invite links — public
+        pathname.startsWith('/setup-password') || // Invite activation — public
         pathname === '/favicon.ico'
 
     if (!isAllowedPath && setupComplete) {

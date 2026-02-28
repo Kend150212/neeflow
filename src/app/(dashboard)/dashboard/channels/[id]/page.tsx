@@ -1930,68 +1930,99 @@ export default function ChannelDetailPage({
                                 <p className="text-[11px] font-medium text-muted-foreground mb-2">{t('channels.aiConfig.connectPlatform')}</p>
 
                                 <div className="flex flex-wrap gap-2">
-                                    {[
-                                        { key: 'facebook', label: 'Facebook', border: 'border-blue-500/30', hover: 'hover:bg-blue-500/10' },
-                                        { key: 'instagram', label: 'Instagram', border: 'border-pink-500/30', hover: 'hover:bg-pink-500/10' },
-                                        { key: 'youtube', label: 'YouTube', border: 'border-red-500/30', hover: 'hover:bg-red-500/10' },
-                                        { key: 'tiktok', label: 'TikTok', border: 'border-neutral-500/30', hover: 'hover:bg-neutral-500/10' },
-                                        { key: 'linkedin', label: 'LinkedIn', border: 'border-blue-600/30', hover: 'hover:bg-blue-600/10' },
-                                        { key: 'pinterest', label: 'Pinterest', border: 'border-red-600/30', hover: 'hover:bg-red-600/10' },
-                                        { key: 'threads', label: 'Threads', border: 'border-neutral-600/30', hover: 'hover:bg-neutral-600/10' },
-                                        { key: 'gbp', label: 'Google Business', border: 'border-blue-400/30', hover: 'hover:bg-blue-400/10' },
-                                    ].map(({ key, label, border, hover }) => {
-                                        const btn = (
-                                            <Button
-                                                key={key}
-                                                variant="outline"
-                                                size="sm"
-                                                className={`gap-1.5 h-7 text-xs ${border} ${hover}`}
-                                                onClick={() => {
-                                                    const w = 500, h = 700
-                                                    const left = window.screenX + (window.outerWidth - w) / 2
-                                                    const top = window.screenY + (window.outerHeight - h) / 2
-                                                    const popup = window.open(
-                                                        `/api/oauth/${key}?channelId=${id}`,
-                                                        `${key}-oauth`,
-                                                        `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
-                                                    )
-                                                    const handler = (e: MessageEvent) => {
-                                                        if (e.data?.type === 'oauth-success' && e.data?.platform === key) {
-                                                            window.removeEventListener('message', handler)
-                                                            toast.success(`${label} connected successfully!`)
-                                                            fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { })
+                                    {
+                                        [
+                                            { key: 'facebook', label: 'Facebook', border: 'border-blue-500/30', hover: 'hover:bg-blue-500/10' },
+                                            { key: 'instagram', label: 'Instagram', border: 'border-pink-500/30', hover: 'hover:bg-pink-500/10' },
+                                            { key: 'youtube', label: 'YouTube', border: 'border-red-500/30', hover: 'hover:bg-red-500/10' },
+                                            { key: 'tiktok', label: 'TikTok', border: 'border-neutral-500/30', hover: 'hover:bg-neutral-500/10' },
+                                            { key: 'linkedin', label: 'LinkedIn', border: 'border-blue-600/30', hover: 'hover:bg-blue-600/10' },
+                                            { key: 'pinterest', label: 'Pinterest', border: 'border-red-600/30', hover: 'hover:bg-red-600/10' },
+                                            { key: 'threads', label: 'Threads', border: 'border-neutral-600/30', hover: 'hover:bg-neutral-600/10' },
+                                            { key: 'gbp', label: 'Google Business', border: 'border-blue-400/30', hover: 'hover:bg-blue-400/10' },
+                                        ].map(({ key, label, border, hover }) => {
+                                            const btn = (
+                                                <Button
+                                                    key={key}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className={`gap-1.5 h-7 text-xs ${border} ${hover}`}
+                                                    onClick={() => {
+                                                        const w = 500, h = 700
+                                                        const left = window.screenX + (window.outerWidth - w) / 2
+                                                        const top = window.screenY + (window.outerHeight - h) / 2
+                                                        const popup = window.open(
+                                                            `/api/oauth/${key}?channelId=${id}`,
+                                                            `${key}-oauth`,
+                                                            `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
+                                                        )
+                                                        const handler = (e: MessageEvent) => {
+                                                            if (e.data?.type === 'oauth-success' && e.data?.platform === key) {
+                                                                window.removeEventListener('message', handler)
+                                                                toast.success(`${label} connected successfully!`)
+                                                                // Show cross-channel warning toast for FB/IG
+                                                                if (key === 'facebook' || key === 'instagram') {
+                                                                    setTimeout(() => {
+                                                                        toast.warning(t('channels.platformActions.fbCrossChannelToast'), { duration: 8000 })
+                                                                    }, 1500)
+                                                                }
+                                                                fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { })
+                                                            }
                                                         }
-                                                    }
-                                                    window.addEventListener('message', handler)
-                                                    const check = setInterval(() => {
-                                                        if (popup?.closed) { clearInterval(check); window.removeEventListener('message', handler); fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { }) }
-                                                    }, 1000)
-                                                }}
-                                            >
-                                                {platformIcons[key]}
-                                                <span>{label}</span>
-                                            </Button>
-                                        )
-                                        if (key === 'tiktok') {
-                                            return (
-                                                <div key={key} className="relative group">
-                                                    {btn}
-                                                    {/* TikTok requirement tooltip — shown on hover */}
-                                                    <div className="absolute left-0 top-full mt-1.5 z-50 hidden group-hover:flex w-64 items-start gap-2 rounded-lg border border-amber-500/40 bg-popover shadow-lg px-3 py-2.5 pointer-events-none">
-                                                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 mt-0.5 shrink-0 fill-amber-500" xmlns="http://www.w3.org/2000/svg"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" /></svg>
-                                                        <div>
-                                                            <p className="text-[11px] font-semibold text-amber-500 leading-tight">Yêu cầu Business/Creator</p>
-                                                            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-                                                                Tài khoản phải là <strong className="text-foreground">Business</strong> hoặc <strong className="text-foreground">Creator</strong>.<br />
-                                                                TikTok App → <em>Cài đặt</em> → <em>Quản lý tài khoản</em> → <em>Chuyển sang Business</em>.
-                                                            </p>
+                                                        window.addEventListener('message', handler)
+                                                        const check = setInterval(() => {
+                                                            if (popup?.closed) { clearInterval(check); window.removeEventListener('message', handler); fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { }) }
+                                                        }, 1000)
+                                                    }}
+                                                >
+                                                    {platformIcons[key]}
+                                                    <span>{label}</span>
+                                                </Button>
+                                            )
+                                            if (key === 'facebook') {
+                                                return (
+                                                    <div key={key} className="relative group">
+                                                        {btn}
+                                                        <div className="absolute left-0 top-full mt-1.5 z-50 hidden group-hover:flex w-72 items-start gap-2 rounded-lg border border-amber-500/40 bg-popover shadow-lg px-3 py-2.5 pointer-events-none">
+                                                            <span className="text-amber-500 text-sm mt-0.5 shrink-0">⚠️</span>
+                                                            <div>
+                                                                <p className="text-[11px] font-semibold text-amber-500 leading-tight">{t('channels.platformActions.fbTooltipTitle')}</p>
+                                                                <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{t('channels.platformActions.fbTooltipDesc')}</p>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )
-                                        }
-                                        return btn
-                                    })}
+                                                )
+                                            }
+                                            if (key === 'instagram') {
+                                                return (
+                                                    <div key={key} className="relative group">
+                                                        {btn}
+                                                        <div className="absolute left-0 top-full mt-1.5 z-50 hidden group-hover:flex w-72 items-start gap-2 rounded-lg border border-amber-500/40 bg-popover shadow-lg px-3 py-2.5 pointer-events-none">
+                                                            <span className="text-amber-500 text-sm mt-0.5 shrink-0">⚠️</span>
+                                                            <div>
+                                                                <p className="text-[11px] font-semibold text-amber-500 leading-tight">{t('channels.platformActions.igTooltipTitle')}</p>
+                                                                <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{t('channels.platformActions.igTooltipDesc')}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }
+                                            if (key === 'tiktok') {
+                                                return (
+                                                    <div key={key} className="relative group">
+                                                        {btn}
+                                                        <div className="absolute left-0 top-full mt-1.5 z-50 hidden group-hover:flex w-64 items-start gap-2 rounded-lg border border-amber-500/40 bg-popover shadow-lg px-3 py-2.5 pointer-events-none">
+                                                            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 mt-0.5 shrink-0 fill-amber-500" xmlns="http://www.w3.org/2000/svg"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" /></svg>
+                                                            <div>
+                                                                <p className="text-[11px] font-semibold text-amber-500 leading-tight">{t('channels.platformActions.tiktokTooltipTitle')}</p>
+                                                                <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{t('channels.platformActions.tiktokTooltipDesc')}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }
+                                            return btn
+                                        })}
                                     {/* X — credential-based (requires developer API keys) */}
                                     <Button
                                         variant="outline"
@@ -2013,6 +2044,17 @@ export default function ChannelDetailPage({
                                         <span>Bluesky</span>
                                     </Button>
                                 </div>
+
+                                {/* ⚠️ Facebook & Instagram cross-channel warning */}
+                                <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/8 px-3 py-2.5 flex items-start gap-2.5">
+                                    <span className="text-amber-500 text-base leading-none mt-0.5 shrink-0">⚠️</span>
+                                    <div className="space-y-1">
+                                        <p className="text-[11px] font-semibold text-amber-500">{t('channels.platformActions.fbIgWarningTitle')}</p>
+                                        <p className="text-[11px] text-amber-400/90 leading-relaxed">{t('channels.platformActions.fbIgWarningDesc')}</p>
+                                        <p className="text-[11px] text-amber-400/80 font-medium leading-relaxed">👉 {t('channels.platformActions.fbIgWarningAction')}</p>
+                                    </div>
+                                </div>
+
                                 {showBlueskyForm && (
                                     <div className="mt-3 border rounded-lg p-3 bg-muted/30 space-y-2">
                                         <p className="text-xs font-medium text-muted-foreground">{t('channels.blueskyConnectTitle') || 'Connect Bluesky Account'}</p>
