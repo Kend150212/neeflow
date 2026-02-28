@@ -98,7 +98,8 @@ export async function POST(req: NextRequest) {
         mode: 'subscription',
         customer: stripeCustomerId,
         line_items: [{ price: priceId, quantity: 1 }],
-        payment_method_types: ['card', 'paypal', 'link'],
+        // Let Stripe Dashboard control which payment methods are shown
+        // (avoids errors when paypal/link aren't activated on the account)
         ...(discounts ? { discounts } : {}),
         success_url: `${APP_URL}/dashboard/billing?success=1`,
         cancel_url: `${APP_URL}/pricing?canceled=1`,
