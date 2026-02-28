@@ -123,7 +123,8 @@ export default function BillingPage() {
     if (!info) return null
 
     const { plan, subscription, usage, aiImage } = info
-    const isFree = plan.priceMonthly === 0 && plan.priceAnnual === 0 && !plan.isInTrial
+    // isFree = truly on free plan (no active paid subscription, not in trial)
+    const isFree = plan.planName === 'Free' && !plan.isInTrial
     const postsPercent = plan.maxPostsPerMonth === -1 ? 0 : Math.min(100, (usage.postsThisMonth / plan.maxPostsPerMonth) * 100)
     const channelsPercent = plan.maxChannels === -1 ? 0 : Math.min(100, (usage.channelCount / plan.maxChannels) * 100)
     const imagesPercent = aiImage.maxPerMonth <= 0 ? 0 : Math.min(100, (usage.imagesThisMonth / aiImage.maxPerMonth) * 100)

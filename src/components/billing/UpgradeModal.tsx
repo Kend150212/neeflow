@@ -144,7 +144,8 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
         }
     }
 
-    const paidPlans = plans.filter((_p, i) => i > 0)
+    // Show all paid plans (priceMonthly > 0 OR has a Stripe price configured)
+    const paidPlans = plans.filter(p => p.priceMonthly > 0 || !!p.stripePriceIdMonthly)
     // A plan is "contact sales" only if it has no price at all (custom pricing)
     const isContactSales = (plan: Plan) => plan.priceMonthly === 0 && !plan.stripePriceIdMonthly
 
@@ -194,8 +195,8 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                 </div>
 
                 {/* Plans grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-8 pb-6">
-                    {paidPlans.slice(0, 3).map((plan) => {
+                <div className={`grid grid-cols-1 gap-4 px-8 pb-6 ${paidPlans.length <= 3 ? 'md:grid-cols-' + paidPlans.length : 'md:grid-cols-3'}`}>
+                    {paidPlans.map((plan) => {
                         const style = planStyles[plan.name] ?? defaultStyle
                         const price = interval === 'annual' ? plan.priceAnnual : plan.priceMonthly
                         const priceLabel = price === 0

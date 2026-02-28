@@ -142,7 +142,40 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
         }
     }
 
-    // ── Free plan fallback ───────────────────────────────────────────────────
+    // ── Subscription exists but canceled/paused — show real plan, not Free ──
+    if (sub?.plan) {
+        const p = sub.plan
+        const statusLabel = sub.status === 'canceled' ? ' (Canceled)' : sub.status === 'paused' ? ' (Paused)' : ''
+        return {
+            planName: p.name + statusLabel,
+            planNameVi: (p.nameVi || p.name) + (sub.status === 'canceled' ? ' (Hủy)' : sub.status === 'paused' ? ' (Tạm dừng)' : ''),
+            priceMonthly: p.priceMonthly,
+            priceAnnual: p.priceAnnual,
+            billingInterval: sub.billingInterval,
+            status: sub.status,
+            currentPeriodEnd: sub.currentPeriodEnd,
+            cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+            maxChannels: p.maxChannels,
+            maxPostsPerMonth: p.maxPostsPerMonth,
+            maxMembersPerChannel: p.maxMembersPerChannel,
+            maxStorageMB: (p as any).maxStorageMB ?? 512,
+            maxAiImagesPerMonth: (p as any).maxAiImagesPerMonth ?? 0,
+            maxAiTextPerMonth: (p as any).maxAiTextPerMonth ?? 20,
+            maxApiCallsPerMonth: (p as any).maxApiCallsPerMonth ?? 0,
+            hasAutoSchedule: p.hasAutoSchedule,
+            hasWebhooks: p.hasWebhooks,
+            hasAdvancedReports: p.hasAdvancedReports,
+            hasPrioritySupport: p.hasPrioritySupport,
+            hasWhiteLabel: p.hasWhiteLabel,
+            hasSmartFlow: (p as any).hasSmartFlow ?? false,
+            maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
+            isInTrial: false,
+            trialEndsAt,
+            daysLeftInTrial: 0,
+        }
+    }
+
+    // ── True free plan fallback (no subscription record at all) ─────────────
     return {
         ...FREE_PLAN_DEFAULTS,
         planName: 'Free',
@@ -150,9 +183,9 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
         priceMonthly: 0,
         priceAnnual: 0,
         billingInterval: 'monthly',
-        status: sub?.status ?? 'active',
-        currentPeriodEnd: sub?.currentPeriodEnd ?? null,
-        cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
+        status: 'active',
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
         isInTrial: false,
         trialEndsAt,
         daysLeftInTrial: 0,
