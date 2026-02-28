@@ -203,18 +203,37 @@ export default function PricingPage() {
         fetch('/api/admin/branding').then(r => r.json()).then(d => setTrialEnabled(d.trialEnabled ?? true)).catch(() => { })
     }, [])
 
+    const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
     const handleCheckout = async (planId: string) => {
         setLoading(planId)
-        const res = await fetch('/api/billing/checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ planId, interval, couponCode: coupon || undefined }),
-        })
-        const data = await res.json()
-        if (data.url) window.location.href = data.url
-        else alert(data.error || 'Something went wrong')
-        setLoading(null)
+        setErrorMsg(null)
+        try {
+            const res = await fetch('/api/billing/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planId, interval, couponCode: coupon || undefined }),
+            })
+            const data = await res.json()
+            if (data.url) {
+                window.location.href = data.url
+            } else if (res.status === 401 || data.error?.toLowerCase().includes('unauthorized')) {
+                // Not logged in — send to login with redirect back to pricing
+                window.location.href = '/login?redirect=' + encodeURIComponent('/pricing')
+            } else if (data.noStripePrice) {
+                setErrorMsg(locale === 'vi'
+                    ? 'Stripe chưa được cấu hình cho gói này. Vui lòng liên hệ admin.'
+                    : 'Stripe is not configured for this plan. Please contact support.')
+            } else {
+                setErrorMsg(data.error || (locale === 'vi' ? 'Đã xảy ra lỗi. Thử lại sau.' : 'Something went wrong. Please try again.'))
+            }
+        } catch {
+            setErrorMsg(locale === 'vi' ? 'Lỗi kết nối. Thử lại sau.' : 'Connection error. Please try again.')
+        } finally {
+            setLoading(null)
+        }
     }
+
 
     const fmt = (n: number) => n === -1 ? '∞' : n.toLocaleString()
     const fmtStorage = (mb: number) => mb === -1 ? '∞' : mb >= 1024 ? `${(mb / 1024).toFixed(0)} GB` : `${mb} MB`
@@ -406,6 +425,17 @@ export default function PricingPage() {
                     )
                 })}
             </div>
+
+            {/* Inline error message */}
+            {errorMsg && (
+                <div className="flex justify-center pb-2">
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm max-w-lg text-center"
+                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
+                        <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                        {errorMsg}
+                    </div>
+                </div>
+            )}
 
             {/* Coupon */}
             <div className="flex justify-center pb-8">
