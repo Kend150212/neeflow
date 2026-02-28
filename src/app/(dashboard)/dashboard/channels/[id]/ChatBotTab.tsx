@@ -782,7 +782,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 { key: 'images' as const, icon: ImageIcon, label: t('chatbot.trainingTabs.images'), color: 'text-orange-500' },
                                 { key: 'video' as const, icon: Video, label: t('chatbot.trainingTabs.video'), color: 'text-red-500' },
                                 { key: 'qa' as const, icon: HelpCircle, label: t('chatbot.trainingTabs.qaPairs'), color: 'text-indigo-500' },
-                                { key: 'products' as const, icon: Package, label: `🛙 ${t('chatbot.trainingTabs.products')}`, color: 'text-emerald-500', count: products.length },
+                                { key: 'products' as const, icon: Package, label: t('chatbot.trainingTabs.products'), color: 'text-emerald-500', count: products.length },
                                 { key: 'promotions' as const, icon: Tag, label: t('chatbot.trainingTabs.promotions'), color: 'text-pink-500', count: promotions.length },
                                 { key: 'forbidden' as const, icon: Ban, label: t('chatbot.trainingTabs.forbidden'), color: 'text-red-500', count: config.forbiddenTopics?.length },
 
@@ -2101,12 +2101,12 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                             const res = await fetch(`/api/admin/channels/${channelId}/promotions/${editingPromo.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                             const updated: Promotion = await res.json()
                             setPromotions(prev => prev.map(p => p.id === updated.id ? updated : p))
-                            toast.success('Đã cập nhật chương trình!')
+                            toast.success('Promotion updated!')
                         } else {
                             const res = await fetch(`/api/admin/channels/${channelId}/promotions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
                             const created: Promotion = await res.json()
                             setPromotions(prev => [created, ...prev])
-                            toast.success('Đã tạo chương trình khuyến mãi!')
+                            toast.success('Promotion created!')
                         }
                         setShowPromoForm(false)
                         setEditingPromo(null)
@@ -2116,7 +2116,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                     const deletePromo = async (id: string) => {
                         await fetch(`/api/admin/channels/${channelId}/promotions/${id}`, { method: 'DELETE' })
                         setPromotions(prev => prev.filter(p => p.id !== id))
-                        toast.success('Đã xóa chương trình!')
+                        toast.success('Promotion deleted!')
                     }
 
                     const openEdit = (p: Promotion) => {
@@ -2174,30 +2174,30 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                             {/* Header */}
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-sm font-semibold">Chương trình Khuyến mãi / Giá Lễ</h3>
-                                    <p className="text-[11px] text-muted-foreground mt-0.5">Bot sẽ tự động áp dụng giá khuyến mãi và thông báo cho khách khi đang trong khung giờ.</p>
+                                    <h3 className="text-sm font-semibold">Promotions & Holiday Pricing</h3>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">Bot will automatically apply promotional pricing and notify customers during active promotion windows.</p>
                                 </div>
                                 <Button size="sm" onClick={() => { setEditingPromo(null); setNewPromo(emptyPromo); setShowPromoForm(true) }}>
-                                    + Thêm chương trình
+                                    + Add Promotion
                                 </Button>
                             </div>
 
                             {/* Form Dialog */}
                             {showPromoForm && (
                                 <div className="border rounded-xl p-4 bg-muted/30 flex flex-col gap-4">
-                                    <h4 className="text-sm font-semibold">{editingPromo ? 'Chỉnh sửa chương trình' : 'Tạo chương trình mới'}</h4>
+                                    <h4 className="text-sm font-semibold">{editingPromo ? 'Edit Promotion' : 'Create New Promotion'}</h4>
 
                                     {/* Basic info */}
                                     <div className="grid grid-cols-1 gap-3">
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Tên chương trình *</label>
-                                            <Input className="h-8 text-xs mt-1" placeholder="Lễ 8/3, Valentine 14/2..." value={newPromo.name} onChange={e => setNewPromo(p => ({ ...p, name: e.target.value }))} />
+                                            <label className="text-[11px] text-muted-foreground">Promotion name *</label>
+                                            <Input className="h-8 text-xs mt-1" placeholder="Women's Day 8/3, Valentine 14/2, Black Friday..." value={newPromo.name} onChange={e => setNewPromo(p => ({ ...p, name: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="text-[11px] text-muted-foreground">Mô tả (bot sẽ dùng để giới thiệu với khách)</label>
+                                            <label className="text-[11px] text-muted-foreground">Description (bot will use this to introduce the promotion to customers)</label>
                                             <textarea
                                                 className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-xs min-h-[60px] outline-none focus:ring-1 focus:ring-ring"
-                                                placeholder="Ví dụ: Nhân dịp Quốc tế Phụ nữ 8/3, shop ưu đãi đặc biệt..."
+                                                placeholder="e.g. Special offer for International Women's Day 8/3 — 20% off all rooms..."
                                                 value={newPromo.description}
                                                 onChange={e => setNewPromo(p => ({ ...p, description: e.target.value }))}
                                             />
@@ -2205,7 +2205,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                         {/* Date/time pickers */}
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
-                                                <label className="text-[11px] text-muted-foreground">Bắt đầu *</label>
+                                                <label className="text-[11px] text-muted-foreground">Start *</label>
                                                 <input
                                                     type="datetime-local"
                                                     className="w-full mt-1 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
@@ -2214,7 +2214,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[11px] text-muted-foreground">Kết thúc *</label>
+                                                <label className="text-[11px] text-muted-foreground">End *</label>
                                                 <input
                                                     type="datetime-local"
                                                     className="w-full mt-1 rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
@@ -2225,18 +2225,18 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <input type="checkbox" id="promoActive" checked={newPromo.isActive} onChange={e => setNewPromo(p => ({ ...p, isActive: e.target.checked }))} />
-                                            <label htmlFor="promoActive" className="text-xs">Kích hoạt chương trình</label>
+                                            <label htmlFor="promoActive" className="text-xs">Activate promotion</label>
                                         </div>
                                     </div>
 
                                     {/* Price Groups */}
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
-                                            <label className="text-[11px] text-muted-foreground font-medium">Nhóm điều chỉnh giá</label>
-                                            <button onClick={addGroup} className="text-[11px] text-primary hover:underline">+ Thêm nhóm</button>
+                                            <label className="text-[11px] text-muted-foreground font-medium">Price adjustment groups</label>
+                                            <button onClick={addGroup} className="text-[11px] text-primary hover:underline">+ Add group</button>
                                         </div>
                                         {newPromo.priceGroups.length === 0 && (
-                                            <p className="text-[11px] text-muted-foreground italic">Chưa có nhóm nào. Nhấn "+ Thêm nhóm" để tạo nhóm điều chỉnh giá.</p>
+                                            <p className="text-[11px] text-muted-foreground italic">No groups yet. Click "+ Add group" to create a price adjustment group.</p>
                                         )}
                                         {newPromo.priceGroups.map((g, idx) => (
                                             <div key={idx} className="border rounded-lg p-3 mb-2 flex flex-col gap-2 bg-background">
@@ -2251,29 +2251,29 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                 </div>
                                                 <div className="grid grid-cols-3 gap-2">
                                                     <div>
-                                                        <label className="text-[10px] text-muted-foreground">Hướng</label>
+                                                        <label className="text-[10px] text-muted-foreground">Direction</label>
                                                         <select
                                                             className="w-full mt-0.5 rounded border border-input bg-background px-2 py-1 text-xs outline-none"
                                                             value={g.direction}
                                                             onChange={e => updateGroup(idx, 'direction', e.target.value as 'increase' | 'decrease')}
                                                         >
-                                                            <option value="increase">↑ Tăng</option>
-                                                            <option value="decrease">↓ Giảm</option>
+                                                            <option value="increase">↑ Increase</option>
+                                                            <option value="decrease">↓ Decrease</option>
                                                         </select>
                                                     </div>
                                                     <div>
-                                                        <label className="text-[10px] text-muted-foreground">Loại</label>
+                                                        <label className="text-[10px] text-muted-foreground">Type</label>
                                                         <select
                                                             className="w-full mt-0.5 rounded border border-input bg-background px-2 py-1 text-xs outline-none"
                                                             value={g.adjustType}
                                                             onChange={e => updateGroup(idx, 'adjustType', e.target.value as 'fixed' | 'percent')}
                                                         >
-                                                            <option value="fixed">Cố định ($)</option>
-                                                            <option value="percent">Phần trăm (%)</option>
+                                                            <option value="fixed">Fixed ($)</option>
+                                                            <option value="percent">Percent (%)</option>
                                                         </select>
                                                     </div>
                                                     <div>
-                                                        <label className="text-[10px] text-muted-foreground">Mức {g.adjustType === 'fixed' ? '($)' : '(%)'}</label>
+                                                        <label className="text-[10px] text-muted-foreground">Amount {g.adjustType === 'fixed' ? '($)' : '(%)'}</label>
                                                         <input
                                                             type="number"
                                                             min={0}
@@ -2286,11 +2286,11 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                 </div>
                                                 {/* Product searchable list */}
                                                 <div className="mt-1">
-                                                    <label className="text-[10px] text-muted-foreground">Sản phẩm áp dụng ({g.productIds.length} đã chọn)</label>
+                                                    <label className="text-[10px] text-muted-foreground">Apply to products ({g.productIds.length} selected)</label>
                                                     {productsLoading ? (
                                                         <p className="text-[10px] text-muted-foreground italic mt-1">Đang tải sản phẩm...</p>
                                                     ) : products.length === 0 ? (
-                                                        <p className="text-[10px] text-muted-foreground italic mt-1">Chưa có sản phẩm nào trong catalog.</p>
+                                                        <p className="text-[10px] text-muted-foreground italic mt-1">No products in catalog yet.</p>
                                                     ) : (
                                                         <div className="mt-1.5 border rounded-lg overflow-hidden">
                                                             {/* Search */}
@@ -2299,7 +2299,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                                 <input
                                                                     type="text"
                                                                     className="flex-1 text-[11px] bg-transparent outline-none placeholder:text-muted-foreground"
-                                                                    placeholder="Tìm sản phẩm..."
+                                                                    placeholder="Search products..."
                                                                     value={promoProductSearch}
                                                                     onChange={e => setPromoProductSearch(e.target.value)}
                                                                 />
@@ -2333,14 +2333,14 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                                     })
                                                                 }
                                                                 {products.filter(prod => !promoProductSearch || prod.name.toLowerCase().includes(promoProductSearch.toLowerCase()) || (prod.category || '').toLowerCase().includes(promoProductSearch.toLowerCase())).length === 0 && (
-                                                                    <p className="text-[10px] text-muted-foreground italic px-3 py-2">Không tìm thấy sản phẩm.</p>
+                                                                    <p className="text-[10px] text-muted-foreground italic px-3 py-2">No products found.</p>
                                                                 )}
                                                             </div>
                                                             {/* Selection summary */}
                                                             {g.productIds.length > 0 && (
                                                                 <div className="px-3 py-1.5 bg-primary/5 border-t flex items-center justify-between">
-                                                                    <span className="text-[10px] text-primary font-medium">✓ Đã chọn {g.productIds.length} sản phẩm</span>
-                                                                    <button onClick={() => updateGroup(idx, 'productIds', [])} className="text-[10px] text-muted-foreground hover:text-red-500">Bỏ chọn tất cả</button>
+                                                                    <span className="text-[10px] text-primary font-medium">✓ {g.productIds.length} product(s) selected</span>
+                                                                    <button onClick={() => updateGroup(idx, 'productIds', [])} className="text-[10px] text-muted-foreground hover:text-red-500">Deselect all</button>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -2351,21 +2351,21 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                     </div>
 
                                     <div className="flex justify-end gap-2">
-                                        <Button variant="outline" size="sm" onClick={() => { setShowPromoForm(false); setEditingPromo(null); setNewPromo(emptyPromo) }}>Hủy</Button>
+                                        <Button variant="outline" size="sm" onClick={() => { setShowPromoForm(false); setEditingPromo(null); setNewPromo(emptyPromo) }}>Cancel</Button>
                                         <Button size="sm" disabled={!newPromo.name.trim() || !newPromo.startAt || !newPromo.endAt} onClick={savePromo}>
-                                            {editingPromo ? 'Lưu thay đổi' : 'Tạo chương trình'}
+                                            {editingPromo ? 'Save Changes' : 'Create Promotion'}
                                         </Button>
                                     </div>
                                 </div>
                             )}
 
                             {/* Promotion list */}
-                            {promotionsLoading && <p className="text-xs text-muted-foreground text-center py-4">Đang tải...</p>}
+                            {promotionsLoading && <p className="text-xs text-muted-foreground text-center py-4">Loading...</p>}
                             {!promotionsLoading && promotions.length === 0 && !showPromoForm && (
                                 <div className="text-center py-10 text-muted-foreground">
                                     <Tag className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                                    <p className="text-sm">Chưa có chương trình khuyến mãi nào</p>
-                                    <p className="text-xs mt-1">Tạo chương trình để bot tự động báo giá lễ cho khách.</p>
+                                    <p className="text-sm">No promotions yet</p>
+                                    <p className="text-xs mt-1">Create a promotion so the bot automatically quotes special pricing to customers.</p>
                                 </div>
                             )}
                             <div className="flex flex-col gap-3">

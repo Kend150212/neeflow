@@ -389,8 +389,7 @@ export async function botAutoReply(
 
         if (imageLibrary.length > 0) {
             systemPrompt += `\n\n--- IMAGE LIBRARY ---`
-            systemPrompt += `\nYou have access to the following images. If a customer asks to see something, find matching images and include their URLs in your reply.`
-            systemPrompt += `\nFormat image links as: [IMAGE: url]`
+            systemPrompt += `\nYou have access to the following named images. When a customer asks to see something, find the matching image(s) and send the URL(s) directly in your reply as plain text (one URL per line). Do NOT use markdown or brackets around URLs.`
             for (const img of imageLibrary) {
                 systemPrompt += `\n- "${img.originalName || 'Untitled'}": ${img.url}`
             }
@@ -399,9 +398,9 @@ export async function botAutoReply(
 
         if (consultVideos.length > 0) {
             systemPrompt += `\n\n--- CONSULTATION VIDEOS ---`
-            systemPrompt += `\nYou can reference these videos when relevant. Include the URL in your reply.`
+            systemPrompt += `\nWhen a customer asks something related to a video below, include the full URL in your reply so they can watch it. Send the URL as plain text directly in your message.`
             for (const vid of consultVideos) {
-                systemPrompt += `\n- "${vid.title}": ${vid.url}${vid.description ? ` (${vid.description})` : ''}`
+                systemPrompt += `\n- "${vid.title}": ${vid.url}${vid.description ? ` — ${vid.description}` : ''}`
             }
             systemPrompt += `\n--- END CONSULTATION VIDEOS ---`
         }
