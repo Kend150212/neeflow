@@ -2,10 +2,47 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Check, Zap, Loader2, Sparkles, ArrowRight, Crown } from 'lucide-react'
 
+// ─── Rule: NEVER use Lucide or any icon lib — always inline SVG ──────────────
+const SvgCheck = ({ color = '#10b981' }: { color?: string }) => (
+    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+    </svg>
+)
+const SvgArrow = ({ cls = 'h-4 w-4' }: { cls?: string }) => (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+    </svg>
+)
+const SvgSparkles = ({ cls = 'h-3.5 w-3.5' }: { cls?: string }) => (
+    <svg className={cls} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
+    </svg>
+)
+const SvgCrown = () => (
+    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 17l2-8 5 5 2-9 2 9 5-5 2 8H3zm2 3h14v1H5z" />
+    </svg>
+)
+const SvgLoader = () => (
+    <svg className="animate-spin h-8 w-8 text-gray-400" viewBox="0 0 24 24" fill="none">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+    </svg>
+)
+const SvgSpinner = () => (
+    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+    </svg>
+)
+const SvgZap = () => (
+    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+)
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 type Plan = {
     id: string
     name: string
@@ -30,27 +67,22 @@ type Plan = {
     stripePriceIdAnnual: string | null
 }
 
-/* ─── Color palette auto-assigned by plan index ──────────────────────────── */
+// ─── Plan color themes ────────────────────────────────────────────────────────
 const PLAN_THEMES = [
-    { accent: '#6b7280', gradient: 'from-gray-500/10 to-gray-600/5', border: 'border-gray-500/20', glow: '', badge: 'bg-gray-500', check: 'text-gray-400', btnClass: '' },
-    { accent: '#10b981', gradient: 'from-emerald-500/15 to-teal-500/5', border: 'border-emerald-500/30', glow: 'shadow-emerald-500/10', badge: 'bg-emerald-500', check: 'text-emerald-500', btnClass: 'bg-emerald-600 hover:bg-emerald-700 text-white border-0' },
-    { accent: '#8b5cf6', gradient: 'from-violet-500/15 to-purple-500/5', border: 'border-violet-500/30', glow: 'shadow-violet-500/10', badge: 'bg-violet-500', check: 'text-violet-500', btnClass: 'bg-violet-600 hover:bg-violet-700 text-white border-0' },
-    { accent: '#f59e0b', gradient: 'from-amber-500/15 to-orange-500/5', border: 'border-amber-500/30', glow: 'shadow-amber-500/10', badge: 'bg-amber-500', check: 'text-amber-500', btnClass: 'bg-amber-600 hover:bg-amber-700 text-white border-0' },
-    { accent: '#ef4444', gradient: 'from-red-500/15 to-rose-500/5', border: 'border-red-500/30', glow: 'shadow-red-500/10', badge: 'bg-red-500', check: 'text-red-500', btnClass: 'bg-red-600 hover:bg-red-700 text-white border-0' },
-    { accent: '#06b6d4', gradient: 'from-cyan-500/15 to-sky-500/5', border: 'border-cyan-500/30', glow: 'shadow-cyan-500/10', badge: 'bg-cyan-500', check: 'text-cyan-500', btnClass: 'bg-cyan-600 hover:bg-cyan-700 text-white border-0' },
-    { accent: '#ec4899', gradient: 'from-pink-500/15 to-fuchsia-500/5', border: 'border-pink-500/30', glow: 'shadow-pink-500/10', badge: 'bg-pink-500', check: 'text-pink-500', btnClass: 'bg-pink-600 hover:bg-pink-700 text-white border-0' },
-    { accent: '#14b8a6', gradient: 'from-teal-500/15 to-emerald-500/5', border: 'border-teal-500/30', glow: 'shadow-teal-500/10', badge: 'bg-teal-500', check: 'text-teal-500', btnClass: 'bg-teal-600 hover:bg-teal-700 text-white border-0' },
+    { accent: '#6b7280', gradient: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.2)', check: '#9ca3af', btn: 'outline' },
+    { accent: '#10b981', gradient: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.30)', check: '#10b981', btn: 'emerald' },
+    { accent: '#8b5cf6', gradient: 'rgba(139,92,246,0.10)', border: 'rgba(139,92,246,0.30)', check: '#8b5cf6', btn: 'violet' },
+    { accent: '#f59e0b', gradient: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.30)', check: '#f59e0b', btn: 'amber' },
+    { accent: '#06b6d4', gradient: 'rgba(6,182,212,0.10)', border: 'rgba(6,182,212,0.30)', check: '#06b6d4', btn: 'cyan' },
 ]
+const POPULAR_THEME = { accent: '#10b981', gradient: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.5)', check: '#34d399', btn: 'emerald' }
 
-/* Popular plan override — vibrant, unmistakable */
-const POPULAR_THEME = {
-    accent: '#10b981',
-    gradient: 'from-emerald-500/20 via-teal-500/10 to-cyan-500/5',
-    border: 'border-emerald-400/50',
-    glow: 'shadow-xl shadow-emerald-500/20',
-    badge: 'bg-emerald-500',
-    check: 'text-emerald-400',
-    btnClass: 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0 shadow-lg shadow-emerald-500/25',
+const BTN_STYLES: Record<string, string> = {
+    outline: 'border border-white/20 text-white hover:bg-white/10',
+    emerald: 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white shadow-lg shadow-emerald-500/25',
+    violet: 'bg-gradient-to-r from-violet-600 to-purple-600 hover:opacity-90 text-white shadow-lg shadow-violet-500/25',
+    amber: 'bg-gradient-to-r from-amber-600 to-orange-600 hover:opacity-90 text-white shadow-lg shadow-amber-500/25',
+    cyan: 'bg-gradient-to-r from-cyan-600 to-sky-600 hover:opacity-90 text-white shadow-lg shadow-cyan-500/25',
 }
 
 function getTheme(index: number, isPopular: boolean) {
@@ -61,241 +93,247 @@ function getTheme(index: number, isPopular: boolean) {
 function FeatureItem({ label, checkColor }: { label: string; checkColor: string }) {
     return (
         <li className="flex items-start gap-2.5 text-sm">
-            <div className={`mt-0.5 shrink-0 rounded-full p-0.5`}>
-                <Check className={`h-3.5 w-3.5 ${checkColor}`} />
-            </div>
-            <span className="text-muted-foreground">{label}</span>
+            <SvgCheck color={checkColor} />
+            <span style={{ color: 'rgba(255,255,255,0.6)' }}>{label}</span>
         </li>
     )
 }
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 export function PricingSection() {
     const [plans, setPlans] = useState<Plan[]>([])
     const [interval, setInterval] = useState<'monthly' | 'annual'>('monthly')
     const [loading, setLoading] = useState(true)
+    const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
+    const [trialEnabled, setTrialEnabled] = useState(false)
+    const [coupon, setCoupon] = useState('')
 
     useEffect(() => {
         fetch('/api/billing/plans')
             .then(r => r.json())
             .then(data => { setPlans(data); setLoading(false) })
             .catch(() => setLoading(false))
+
+        fetch('/api/admin/branding')
+            .then(r => r.json())
+            .then(d => setTrialEnabled(d.trialEnabled ?? false))
+            .catch(() => { })
     }, [])
+
+    const handleCheckout = async (planId: string) => {
+        setCheckoutLoading(planId)
+        try {
+            const res = await fetch('/api/billing/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planId, interval, couponCode: coupon || undefined }),
+            })
+            const data = await res.json()
+            if (data.url) {
+                window.location.href = data.url
+            } else if (res.status === 401) {
+                // Not logged in — redirect to register with plan context
+                window.location.href = `/register?planId=${planId}&interval=${interval}`
+            } else {
+                alert(data.error || 'Something went wrong')
+            }
+        } catch {
+            alert('Network error. Please try again.')
+        } finally {
+            setCheckoutLoading(null)
+        }
+    }
 
     const annualSaving = (plan: Plan) => {
         if (plan.priceMonthly === 0) return null
-        const saving = plan.priceMonthly * 12 - plan.priceAnnual
-        return saving > 0 ? saving : null
+        const s = plan.priceMonthly * 12 - plan.priceAnnual
+        return s > 0 ? s : null
     }
 
-    const gridCols = plans.length <= 3
-        ? 'md:grid-cols-3'
-        : plans.length === 4
-            ? 'md:grid-cols-2 lg:grid-cols-4'
-            : 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+    const gridCols = plans.length <= 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
+
+    const fmtStorage = (mb: number) =>
+        mb === -1 ? 'Unlimited storage' : mb >= 1024 ? `${(mb / 1024).toFixed(0)} GB storage` : `${mb} MB storage`
 
     return (
-        <section id="pricing" className="py-24 scroll-mt-24 relative">
-            {/* Subtle bg glow */}
-            <div className="absolute inset-0 -z-10 overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-gradient-radial from-primary/5 to-transparent rounded-full blur-3xl" />
-            </div>
+        <section id="pricing" className="py-24 scroll-mt-24 relative"
+            style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(139,92,246,0.04) 50%, transparent 100%)' }}>
 
             <div className="mx-auto max-w-7xl px-6">
-                {/* Section Header */}
-                <div className="text-center mb-16">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm text-primary mb-6">
-                        <Sparkles className="h-3.5 w-3.5" />
+
+                {/* Header */}
+                <div className="text-center mb-14">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-5"
+                        style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', color: '#a78bfa' }}>
+                        <SvgSparkles />
                         Pricing
                     </div>
-                    <h2 className="text-3xl md:text-5xl font-bold tracking-tight bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent">
+                    <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight">
                         Simple, transparent pricing
                     </h2>
-                    <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-xl mx-auto">
-                        Start free. Upgrade when you need more power. No hidden fees.
+                    <p className="text-gray-400 max-w-xl mx-auto">
+                        Start free. Scale when you need more. No hidden fees, no AI markup.
                     </p>
 
+                    {trialEnabled && (
+                        <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+                            style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399' }}>
+                            <SvgZap />
+                            Free trial available — no credit card required
+                        </div>
+                    )}
+
                     {/* Interval toggle */}
-                    <div className="mt-10 inline-flex items-center gap-1 p-1.5 rounded-full border bg-muted/40 backdrop-blur-sm">
-                        <button
-                            onClick={() => setInterval('monthly')}
-                            className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${interval === 'monthly'
-                                ? 'bg-background text-foreground shadow-md'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            Monthly
-                        </button>
-                        <button
-                            onClick={() => setInterval('annual')}
-                            className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 ${interval === 'annual'
-                                ? 'bg-background text-foreground shadow-md'
-                                : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            Annual
-                            <Badge className="text-[10px] bg-emerald-500 text-white border-0 px-2 py-0 font-semibold">
-                                SAVE 17%
-                            </Badge>
-                        </button>
+                    <div className="mt-8 inline-flex items-center p-1 rounded-full"
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        {(['monthly', 'annual'] as const).map(t => (
+                            <button key={t} onClick={() => setInterval(t)}
+                                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${interval === t ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                                style={interval === t ? { background: 'rgba(255,255,255,0.1)' } : {}}>
+                                {t === 'monthly' ? 'Monthly' : 'Annual'}
+                                {t === 'annual' && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                        style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff' }}>
+                                        SAVE 17%
+                                    </span>
+                                )}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* Plans Grid */}
+                {/* Plans */}
                 {loading ? (
-                    <div className="flex justify-center py-20">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
+                    <div className="flex justify-center py-20"><SvgLoader /></div>
                 ) : plans.length === 0 ? (
-                    <p className="text-center text-muted-foreground">No plans available yet.</p>
+                    <p className="text-center text-gray-400">No plans available yet.</p>
                 ) : (
-                    <div className={`grid gap-6 items-stretch ${gridCols}`}>
+                    <div className={`grid gap-5 md:grid-cols-2 ${gridCols}`}>
                         {plans.map((plan, idx) => {
                             const price = interval === 'annual' ? plan.priceAnnual : plan.priceMonthly
                             const monthlyEquiv = interval === 'annual' && plan.priceAnnual > 0
-                                ? Math.round(plan.priceAnnual / 12 * 100) / 100
-                                : null
+                                ? (plan.priceAnnual / 12).toFixed(0) : null
                             const isContact = price === 0 && (plan.maxChannels === -1 || plan.name.toLowerCase() === 'enterprise')
                             const isPopular = plan.name === 'Pro'
                             const isFree = price === 0 && !isContact
                             const saving = annualSaving(plan)
                             const theme = getTheme(idx, isPopular)
+                            const hasPriceId = interval === 'annual' ? !!plan.stripePriceIdAnnual : !!plan.stripePriceIdMonthly
+                            const btnStyle = BTN_STYLES[theme.btn] ?? BTN_STYLES.outline
 
                             return (
-                                <div
-                                    key={plan.id}
-                                    className={`
-                                        relative rounded-2xl border p-px transition-all duration-300
-                                        ${isPopular ? `${theme.border} ${theme.glow} scale-[1.02] z-10` : `border-border/60 hover:border-border hover:shadow-lg ${theme.glow}`}
-                                    `}
-                                >
-                                    {/* Inner card with gradient bg */}
-                                    <div className={`
-                                        h-full rounded-[15px] p-6 flex flex-col gap-5
-                                        bg-gradient-to-br ${theme.gradient}
-                                        ${isPopular ? 'bg-card/80 backdrop-blur-sm' : 'bg-card/60'}
-                                    `}>
-                                        {/* Popular badge */}
-                                        {isPopular && (
-                                            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                                                <Badge className={`${theme.badge} text-white px-4 py-1 text-xs font-semibold shadow-lg flex items-center gap-1.5 border-0`}>
-                                                    <Crown className="h-3 w-3" />
-                                                    Most Popular
-                                                </Badge>
-                                            </div>
-                                        )}
+                                <div key={plan.id}
+                                    className={`relative rounded-2xl flex flex-col transition-all duration-300 hover:translate-y-[-3px] ${isPopular ? 'scale-[1.02] z-10' : ''}`}
+                                    style={{
+                                        background: `radial-gradient(ellipse at top, ${theme.gradient} 0%, rgba(255,255,255,0.02) 60%)`,
+                                        border: `1px solid ${theme.border}`,
+                                        boxShadow: isPopular ? `0 0 50px ${theme.gradient}` : 'none',
+                                    }}>
 
-                                        {/* Plan header */}
+                                    {/* Popular badge */}
+                                    {isPopular && (
+                                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white"
+                                            style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 2px 12px rgba(16,185,129,0.5)' }}>
+                                            <SvgCrown /> Most Popular
+                                        </div>
+                                    )}
+
+                                    <div className="p-6 flex flex-col gap-5 flex-1">
+                                        {/* Name + description */}
                                         <div>
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-bold text-lg">{plan.name}</h3>
-                                                {isContact && (
-                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">Custom</Badge>
-                                                )}
-                                            </div>
+                                            <h3 className="font-bold text-lg text-white">{plan.name}</h3>
                                             {plan.description && (
-                                                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{plan.description}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{plan.description}</p>
                                             )}
                                         </div>
 
-                                        {/* Price block */}
-                                        <div className="py-1">
+                                        {/* Price */}
+                                        <div>
                                             {isContact ? (
-                                                <div className="text-2xl font-bold">Contact us</div>
+                                                <div className="text-2xl font-bold text-white">Contact us</div>
+                                            ) : isFree ? (
+                                                <>
+                                                    <div className="flex items-end gap-1">
+                                                        <span className="text-4xl font-black text-white">$0</span>
+                                                        <span className="text-gray-400 text-sm mb-1">/mo</span>
+                                                    </div>
+                                                    <p className="text-xs mt-0.5 font-medium" style={{ color: '#34d399' }}>Free forever · No credit card</p>
+                                                </>
                                             ) : (
                                                 <>
                                                     <div className="flex items-end gap-1">
-                                                        <span className="text-4xl font-extrabold tracking-tight">
-                                                            ${interval === 'annual' && monthlyEquiv ? monthlyEquiv : price}
+                                                        <span className="text-4xl font-black text-white">
+                                                            ${monthlyEquiv ?? price}
                                                         </span>
-                                                        <span className="text-sm text-muted-foreground mb-1.5 font-medium">
-                                                            /mo
-                                                        </span>
+                                                        <span className="text-gray-400 text-sm mb-1">/mo</span>
                                                     </div>
-                                                    {interval === 'annual' && !isFree && (
-                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                    {interval === 'annual' && (
+                                                        <p className="text-xs text-gray-400 mt-0.5">
                                                             Billed ${plan.priceAnnual}/year
-                                                            {saving && <span className="text-emerald-500 font-medium ml-1.5">Save ${saving}</span>}
+                                                            {saving && <span className="font-medium ml-1.5" style={{ color: '#34d399' }}>Save ${saving}</span>}
                                                         </p>
                                                     )}
-                                                    {isFree && (
-                                                        <p className="text-xs text-muted-foreground mt-1">Free forever • No credit card</p>
+                                                    {trialEnabled && (
+                                                        <p className="text-[11px] mt-1" style={{ color: '#a78bfa' }}>
+                                                            ✨ Start with free trial
+                                                        </p>
                                                     )}
                                                 </>
                                             )}
                                         </div>
 
-                                        {/* Divider */}
-                                        <div className="border-t border-border/50" />
+                                        <div className="h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
 
                                         {/* Features */}
                                         <ul className="space-y-2.5 flex-1">
                                             <FeatureItem checkColor={theme.check}
-                                                label={plan.maxChannels === -1
-                                                    ? 'Unlimited channels'
-                                                    : `${plan.maxChannels} channel${plan.maxChannels > 1 ? 's' : ''}`}
-                                            />
+                                                label={plan.maxChannels === -1 ? 'Unlimited channels' : `${plan.maxChannels} channel${plan.maxChannels > 1 ? 's' : ''}`} />
                                             <FeatureItem checkColor={theme.check}
-                                                label={plan.maxPostsPerMonth === -1
-                                                    ? 'Unlimited posts'
-                                                    : `${plan.maxPostsPerMonth} posts/month`}
-                                            />
+                                                label={plan.maxPostsPerMonth === -1 ? 'Unlimited posts' : `${plan.maxPostsPerMonth} posts/month`} />
                                             <FeatureItem checkColor={theme.check}
-                                                label={plan.maxMembersPerChannel === -1
-                                                    ? 'Unlimited members'
-                                                    : `${plan.maxMembersPerChannel} members/channel`}
-                                            />
-                                            {plan.hasAutoSchedule && <FeatureItem checkColor={theme.check} label="Auto scheduling" />}
+                                                label={plan.maxMembersPerChannel === -1 ? 'Unlimited members' : `${plan.maxMembersPerChannel} members/channel`} />
                                             {plan.maxAiTextPerMonth !== 0 && (
-                                                <FeatureItem checkColor={theme.check} label={plan.maxAiTextPerMonth === -1
-                                                    ? 'Unlimited AI content'
-                                                    : `${plan.maxAiTextPerMonth} AI content/mo`} />
+                                                <FeatureItem checkColor={theme.check}
+                                                    label={plan.maxAiTextPerMonth === -1 ? 'Unlimited AI content' : `${plan.maxAiTextPerMonth} AI content/mo`} />
                                             )}
                                             {plan.maxAiImagesPerMonth !== 0 && (
-                                                <FeatureItem checkColor={theme.check} label={plan.maxAiImagesPerMonth === -1
-                                                    ? 'Unlimited AI images'
-                                                    : `${plan.maxAiImagesPerMonth} AI images/mo`} />
+                                                <FeatureItem checkColor={theme.check}
+                                                    label={plan.maxAiImagesPerMonth === -1 ? 'Unlimited AI images' : `${plan.maxAiImagesPerMonth} AI images/mo`} />
                                             )}
-                                            {plan.maxStorageMB > 0 && (
-                                                <FeatureItem checkColor={theme.check} label={plan.maxStorageMB === -1
-                                                    ? 'Unlimited storage'
-                                                    : plan.maxStorageMB >= 1024
-                                                        ? `${(plan.maxStorageMB / 1024).toFixed(0)} GB storage`
-                                                        : `${plan.maxStorageMB} MB storage`} />
-                                            )}
+                                            {plan.maxStorageMB > 0 && <FeatureItem checkColor={theme.check} label={fmtStorage(plan.maxStorageMB)} />}
                                             {plan.maxApiCallsPerMonth !== 0 && (
-                                                <FeatureItem checkColor={theme.check} label={plan.maxApiCallsPerMonth === -1
-                                                    ? 'Unlimited API calls'
-                                                    : `${plan.maxApiCallsPerMonth.toLocaleString()} API calls/mo`} />
+                                                <FeatureItem checkColor={theme.check}
+                                                    label={plan.maxApiCallsPerMonth === -1 ? 'Unlimited API calls' : `${plan.maxApiCallsPerMonth.toLocaleString()} API calls/mo`} />
                                             )}
+                                            {plan.hasAutoSchedule && <FeatureItem checkColor={theme.check} label="Auto scheduling" />}
                                             {plan.hasWebhooks && <FeatureItem checkColor={theme.check} label="Webhooks" />}
                                             {plan.hasAdvancedReports && <FeatureItem checkColor={theme.check} label="Advanced reports" />}
                                             {plan.hasPrioritySupport && <FeatureItem checkColor={theme.check} label="Priority support" />}
                                             {plan.hasWhiteLabel && <FeatureItem checkColor={theme.check} label="White label" />}
                                         </ul>
 
-                                        {/* CTA Button */}
+                                        {/* CTA */}
                                         {isContact ? (
-                                            <Button variant="outline" asChild className="w-full h-11 font-semibold">
-                                                <a href="mailto:hello@neeflow.com">Contact Sales</a>
-                                            </Button>
+                                            <a href="mailto:hello@neeflow.com"
+                                                className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all ${btnStyle}`}>
+                                                Contact Sales <SvgArrow />
+                                            </a>
                                         ) : isFree ? (
-                                            <Button variant="outline" asChild className="w-full h-11 font-semibold group">
-                                                <Link href="/register">
-                                                    Start for Free
-                                                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                                                </Link>
-                                            </Button>
+                                            <Link href="/register"
+                                                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all"
+                                                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }}>
+                                                Start for Free <SvgArrow />
+                                            </Link>
                                         ) : (
-                                            <Button
-                                                asChild
-                                                className={`w-full h-11 font-semibold group transition-all duration-300 ${theme.btnClass || ''}`}
-                                                variant={theme.btnClass ? undefined : 'outline'}
-                                            >
-                                                <Link href="/register">
-                                                    Get Started
-                                                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                                                </Link>
-                                            </Button>
+                                            <button
+                                                onClick={() => handleCheckout(plan.id)}
+                                                disabled={!!checkoutLoading || !hasPriceId}
+                                                className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] disabled:opacity-50 ${btnStyle}`}>
+                                                {checkoutLoading === plan.id
+                                                    ? <><SvgSpinner />Processing...</>
+                                                    : <>{trialEnabled ? 'Start Free Trial' : 'Get Started'} <SvgArrow /></>
+                                                }
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -305,9 +343,9 @@ export function PricingSection() {
                 )}
 
                 {/* Trust notes */}
-                <div className="mt-14 text-center space-y-2 text-sm text-muted-foreground">
-                    <p>All plans use your own API keys — no extra AI fees.</p>
-                    <p>Media stored on your Google Drive — no storage limits.</p>
+                <div className="mt-14 text-center space-y-1.5 text-sm text-gray-500">
+                    <p>All plans use your own API keys — zero AI markup.</p>
+                    <p>Media stored on your Google Drive — unlimited storage.</p>
                     <p>Cancel anytime. No lock-in.</p>
                 </div>
             </div>

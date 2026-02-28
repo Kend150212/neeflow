@@ -5,12 +5,30 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useTheme } from 'next-themes'
 import { useBranding } from '@/lib/use-branding'
-import {
-  Moon, Sun, ArrowRight, Zap, Calendar, BarChart3, Users,
-  MessageSquare, CheckCircle, Menu, X, Sparkles, Globe,
-  Clock, TrendingUp, Shield, Bot, Bell, Layers, ChevronRight,
-  Star, Check, Inbox, FileText, RefreshCw, Lock
-} from 'lucide-react'
+// ─── Inline SVG icons — never use Lucide or any icon library ─────────────
+const SvgMoon = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>)
+const SvgSun = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>)
+const SvgArrowRight = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>)
+const SvgZap = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>)
+const SvgCalendar = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>)
+const SvgBarChart3 = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="18" y="3" width="4" height="18" rx="1" /><rect x="10" y="8" width="4" height="13" rx="1" /><rect x="2" y="13" width="4" height="8" rx="1" /></svg>)
+const SvgUsers = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>)
+const SvgMenu = ({ className = 'w-5 h-5' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>)
+const SvgX = ({ className = 'w-5 h-5' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>)
+const SvgSparkles = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" /></svg>)
+const SvgGlobe = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>)
+const SvgClock = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>)
+const SvgTrendingUp = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>)
+const SvgShield = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>)
+const SvgBot = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><line x1="8" y1="16" x2="8" y2="16" /><line x1="16" y1="16" x2="16" y2="16" /></svg>)
+const SvgLayers = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>)
+const SvgChevronRight = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>)
+const SvgStar = ({ className = 'w-4 h-4', filled = false }: { className?: string; filled?: boolean }) => (<svg className={className} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>)
+const SvgInbox = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11L2 12v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>)
+const SvgFileText = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>)
+const SvgRefreshCw = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>)
+const SvgLock = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>)
+const SvgCheckCircle = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>)
 import { PricingSection } from '@/components/pricing-section'
 
 // ── SVG Platform Logos ────────────────────────────────────────────────────────
@@ -63,42 +81,42 @@ const platforms = [
 // ── Feature Data ───────────────────────────────────────────────────────────────
 const features = [
   {
-    icon: Sparkles,
+    icon: SvgSparkles,
     title: 'AI Content Generation',
     desc: 'Generate captions, hashtags, and full content calendars in seconds. Powered by GPT-4 and Gemini.',
     gradient: 'from-violet-500 to-purple-600',
     badge: 'Most Popular',
   },
   {
-    icon: Calendar,
+    icon: SvgCalendar,
     title: 'Smart Scheduling',
     desc: 'AI predicts your optimal posting times based on audience behavior. Set it and forget it.',
     gradient: 'from-blue-500 to-cyan-600',
     badge: null,
   },
   {
-    icon: BarChart3,
+    icon: SvgBarChart3,
     title: 'Unified Analytics',
     desc: 'Get cross-platform reports in one dashboard. Track followers, engagement, reach, and ROI.',
     gradient: 'from-teal-500 to-emerald-600',
     badge: null,
   },
   {
-    icon: Inbox,
+    icon: SvgInbox,
     title: 'Unified Inbox',
     desc: 'Manage all DMs, comments, and mentions from every platform in one smart inbox.',
     gradient: 'from-orange-500 to-amber-600',
     badge: null,
   },
   {
-    icon: Users,
+    icon: SvgUsers,
     title: 'Team Collaboration',
     desc: 'Assign roles, set approval workflows, and collaborate seamlessly with your team.',
     gradient: 'from-pink-500 to-rose-600',
     badge: null,
   },
   {
-    icon: Bot,
+    icon: SvgBot,
     title: 'AI Auto-Reply Bot',
     desc: 'Train your own AI chatbot to handle FAQs and comment replies automatically 24/7.',
     gradient: 'from-indigo-500 to-blue-600',
@@ -109,19 +127,19 @@ const features = [
 const steps = [
   {
     number: '01',
-    icon: Globe,
+    icon: SvgGlobe,
     title: 'Connect Your Platforms',
     desc: 'Connect all your social media accounts in under 2 minutes. Facebook, Instagram, TikTok, YouTube, LinkedIn, X and Pinterest.',
   },
   {
     number: '02',
-    icon: Sparkles,
+    icon: SvgSparkles,
     title: 'Let AI Create Your Content',
     desc: 'Describe your brand or topic, and our AI generates captions, hashtags, and full content calendars tailored to each platform.',
   },
   {
     number: '03',
-    icon: TrendingUp,
+    icon: SvgTrendingUp,
     title: 'Publish & Grow',
     desc: 'Schedule posts at AI-optimized times, track performance with unified analytics, and grow your audience on autopilot.',
   },
@@ -309,21 +327,21 @@ export default function LandingPage() {
                 className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 aria-label="Toggle theme"
               >
-                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {theme === 'dark' ? <SvgSun className="w-4 h-4" /> : <SvgMoon className="w-4 h-4" />}
               </button>
             )}
             <Link href="/login" className="hidden sm:block text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
               Sign In
             </Link>
             <Link href="/login" className="btn-primary text-white text-sm font-semibold px-5 py-2.5 rounded-full flex items-center gap-1.5">
-              Get Started <ArrowRight className="w-3.5 h-3.5" />
+              Get Started <SvgArrowRight className="w-3.5 h-3.5" />
             </Link>
             {/* Mobile menu button */}
             <button
               className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer"
               onClick={() => setMobileMenuOpen(v => !v)}
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? <SvgX className="w-5 h-5" /> : <SvgMenu className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -353,7 +371,7 @@ export default function LandingPage() {
         <div className="relative max-w-5xl mx-auto px-6 text-center">
           {/* Badge */}
           <div className="animate-fade-up inline-flex items-center gap-2 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 text-xs font-semibold px-4 py-2 rounded-full mb-8">
-            <Sparkles className="w-3.5 h-3.5" />
+            <SvgSparkles className="w-3.5 h-3.5" />
             AI-Powered Social Media Management
           </div>
 
@@ -372,20 +390,20 @@ export default function LandingPage() {
           {/* CTAs */}
           <div className="animate-fade-up delay-300 flex flex-col sm:flex-row items-center justify-center gap-3 mb-14">
             <Link href="/login" className="btn-primary text-white font-semibold px-8 py-4 rounded-full text-base flex items-center gap-2 shadow-xl">
-              Start Free — No Credit Card <ArrowRight className="w-4 h-4" />
+              Start Free — No Credit Card <SvgArrowRight className="w-4 h-4" />
             </Link>
             <a href="#how-it-works" className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1.5 transition-colors px-6 py-4">
-              See How It Works <ChevronRight className="w-4 h-4" />
+              See How It Works <SvgChevronRight className="w-4 h-4" />
             </a>
           </div>
 
           {/* Trust badges */}
           <div className="animate-fade-up delay-400 flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500 dark:text-gray-500">
             {[
-              { icon: Shield, text: 'SOC 2 Ready' },
-              { icon: Lock, text: 'AES-256 Encrypted' },
-              { icon: RefreshCw, text: 'Cancel Anytime' },
-              { icon: Globe, text: '7 Platforms' },
+              { icon: SvgShield, text: 'SOC 2 Ready' },
+              { icon: SvgLock, text: 'AES-256 Encrypted' },
+              { icon: SvgRefreshCw, text: 'Cancel Anytime' },
+              { icon: SvgGlobe, text: '7 Platforms' },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-1.5">
                 <Icon className="w-4 h-4 text-teal-500" />
@@ -410,7 +428,7 @@ export default function LandingPage() {
 
               <div className="absolute -top-6 -right-4 md:-right-16 animate-float delay-200 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 rounded-2xl shadow-xl p-4 text-left z-10 w-44">
                 <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <SvgZap className="w-3.5 h-3.5 text-amber-500" />
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Time Saved</span>
                 </div>
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">45 hrs</div>
@@ -434,7 +452,7 @@ export default function LandingPage() {
                 <div className="grid grid-cols-12 h-72 md:h-96">
                   {/* Sidebar */}
                   <div className="col-span-2 border-r border-gray-100 dark:border-white/5 p-3 space-y-2">
-                    {[BarChart3, Calendar, Inbox, Users, FileText].map((Icon, i) => (
+                    {[SvgBarChart3, SvgCalendar, SvgInbox, SvgUsers, SvgFileText].map((Icon, i) => (
                       <div key={i} className={`w-9 h-9 rounded-xl flex items-center justify-center mx-auto cursor-pointer ${i === 0 ? 'bg-gradient-to-br from-teal-400 to-teal-600 text-white shadow-lg' : 'text-gray-400 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-white/5'}`}>
                         <Icon className="w-4 h-4" />
                       </div>
@@ -489,7 +507,7 @@ export default function LandingPage() {
               {/* Bottom floating card */}
               <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 animate-float delay-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 rounded-2xl shadow-xl px-5 py-3 flex items-center gap-3 z-10 whitespace-nowrap">
                 <div className="w-8 h-8 rounded-full btn-primary flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-white" />
+                  <SvgBot className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-gray-900 dark:text-white">AI just generated 12 posts</div>
@@ -543,7 +561,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/50 text-teal-700 dark:text-teal-300 text-xs font-semibold px-4 py-2 rounded-full mb-5">
-              <Layers className="w-3.5 h-3.5" /> Everything You Need
+              <SvgLayers className="w-3.5 h-3.5" /> Everything You Need
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               One platform.<br />
@@ -563,7 +581,7 @@ export default function LandingPage() {
                   </div>
                 )}
                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${f.gradient} flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform duration-200`}>
-                  <f.icon className="w-5.5 h-5.5 text-white w-6 h-6" />
+                  <f.icon className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">{f.title}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
@@ -587,7 +605,7 @@ export default function LandingPage() {
                 Start your free trial today. No credit card required. Cancel anytime.
               </p>
               <Link href="/login" className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold px-8 py-4 rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-200">
-                Start Free Trial <ArrowRight className="w-4.5 h-4.5 w-4 h-4" />
+                Start Free Trial <SvgArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -599,7 +617,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800/50 text-violet-700 dark:text-violet-300 text-xs font-semibold px-4 py-2 rounded-full mb-5">
-              <Clock className="w-3.5 h-3.5" /> Up & Running in Minutes
+              <SvgClock className="w-3.5 h-3.5" /> Up & Running in Minutes
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               How NeeFlow works
@@ -619,7 +637,7 @@ export default function LandingPage() {
                   {/* Number circle */}
                   <div className="relative inline-flex items-center justify-center mb-6">
                     <div className="w-16 h-16 rounded-2xl btn-primary flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-200 relative z-10">
-                      <step.icon className="w-7 h-7 text-white" />
+                      <step.icon className="w-7 h-7" />
                     </div>
                     <div className="absolute top-0 right-0 w-6 h-6 rounded-full bg-white dark:bg-gray-950 border-2 border-gray-200 dark:border-gray-700 -translate-y-1 translate-x-1 flex items-center justify-center z-20">
                       <span className="text-[9px] font-extrabold text-gray-500 dark:text-gray-400">{step.number}</span>
@@ -639,7 +657,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-300 text-xs font-semibold px-4 py-2 rounded-full mb-5">
-              <Star className="w-3.5 h-3.5 fill-current" /> Loved by Teams Worldwide
+              <SvgStar className="w-3.5 h-3.5" filled /> Loved by Teams Worldwide
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               Real results. Real people.
@@ -652,7 +670,7 @@ export default function LandingPage() {
                 {/* Stars */}
                 <div className="flex gap-1 mb-5">
                   {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                    <SvgStar key={j} className="w-4 h-4 text-amber-400" filled />
                   ))}
                 </div>
                 <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-6 italic">
@@ -685,7 +703,7 @@ export default function LandingPage() {
 
         <div className="relative max-w-3xl mx-auto px-6 text-center">
           <div className="inline-flex items-center gap-2 border border-teal-800 text-teal-400 text-xs font-semibold px-4 py-2 rounded-full mb-8">
-            <Sparkles className="w-3.5 h-3.5" /> Start Your Free Trial Today
+            <SvgSparkles className="w-3.5 h-3.5" /> Start Your Free Trial Today
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight tracking-tight">
             Your social media.<br />
@@ -696,10 +714,10 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/login" className="btn-primary text-white font-bold px-10 py-4 rounded-full text-base flex items-center gap-2 shadow-2xl">
-              Get Started Free <ArrowRight className="w-4 h-4" />
+              Get Started Free <SvgArrowRight className="w-4 h-4" />
             </Link>
             <Link href="/login" className="text-gray-400 hover:text-white font-medium text-sm flex items-center gap-1 transition-colors">
-              Sign in to existing account <ChevronRight className="w-4 h-4" />
+              Sign in to existing account <SvgChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
@@ -707,7 +725,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap justify-center gap-3 mt-10">
             {['14-day free trial', 'No credit card', 'Cancel anytime', '24/7 AI support'].map((t) => (
               <div key={t} className="flex items-center gap-1.5 text-xs text-gray-500">
-                <CheckCircle className="w-3.5 h-3.5 text-teal-500" />
+                <SvgCheckCircle className="w-3.5 h-3.5 text-teal-500" />
                 {t}
               </div>
             ))}
