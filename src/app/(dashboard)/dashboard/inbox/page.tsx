@@ -1461,7 +1461,7 @@ export default function InboxPage() {
                         <div
                             key={paneIdx}
                             className={cn(
-                                'flex flex-col min-w-0 min-h-0 overflow-hidden bg-background relative',
+                                'flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden bg-background relative',
                                 panelLayout > 1 && 'border-l border-b',
                                 panelLayout > 1 && isActive && 'ring-2 ring-inset ring-primary/60',
                             )}
