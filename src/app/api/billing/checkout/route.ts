@@ -123,7 +123,6 @@ export async function POST(req: NextRequest) {
         customer: stripeCustomerId,
         line_items: [{ price: priceId, quantity: 1 }],
         ...(discounts ? { discounts } : {}),
-        customer_email: isGuest ? guestEmail! : undefined,
         success_url: successUrl,
         cancel_url: `${APP_URL}/pricing?canceled=1`,
         metadata: {
