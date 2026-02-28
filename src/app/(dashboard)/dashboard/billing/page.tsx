@@ -131,6 +131,7 @@ export default function BillingPage() {
     const [addonOpen, setAddonOpen] = useState(false)
     const [portalLoading, setPortalLoading] = useState(false)
     const [cancelLoading, setCancelLoading] = useState(false)
+    const [removingAddon, setRemovingAddon] = useState<string | null>(null)
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [invoicesLoading, setInvoicesLoading] = useState(false)
 
@@ -196,6 +197,32 @@ export default function BillingPage() {
             toast.error(data.error || 'Failed to resume')
         }
         setCancelLoading(false)
+    }
+
+    const handleRemoveAddon = async (addonId: string, addonName: string) => {
+        if (!confirm(isVi
+            ? `Bạn có chắc muốn hủy "${addonName}"? Add-on sẽ bị gỡ ngay lập tức.`
+            : `Remove "${addonName}"? The add-on will be removed immediately.`
+        )) return
+        setRemovingAddon(addonId)
+        try {
+            const res = await fetch('/api/billing/addon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ addonId, action: 'cancel' }),
+            })
+            const data = await res.json()
+            if (res.ok) {
+                toast.success(isVi ? `Đã hủy ${addonName}` : `${addonName} removed`)
+                fetchBilling()
+            } else {
+                toast.error(data.error || 'Failed to remove')
+            }
+        } catch {
+            toast.error('Something went wrong')
+        } finally {
+            setRemovingAddon(null)
+        }
     }
 
     if (loading) {
@@ -327,10 +354,11 @@ export default function BillingPage() {
                                             <ArrowUpRight className="h-4 w-4" />
                                             {t('billing.changePlan')}
                                         </Button>
-                                        {subscription?.hasStripeSubscription && !subscription.cancelAtPeriodEnd && (
+                                        {/* Cancel Plan — show for any active sub that is not already canceling */}
+                                        {!subscription?.cancelAtPeriodEnd && (
                                             <Button
                                                 variant="outline"
-                                                className="gap-1 text-destructive hover:text-destructive"
+                                                className="gap-1 text-destructive hover:text-destructive border-destructive/30"
                                                 onClick={handleCancelPlan}
                                                 disabled={cancelLoading}
                                             >
@@ -512,19 +540,38 @@ export default function BillingPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {(info.activeAddons ?? []).length > 0 ? (
-                        <div className="space-y-2">
-                            {info.activeAddons.map(addon => (
-                                <div key={addon.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
-                                            {addon.category === 'quota' ? 'Quota' : 'Feature'}
-                                        </Badge>
-                                        <span className="text-sm">{isVi && addon.displayNameVi ? addon.displayNameVi : addon.displayName}</span>
-                                        {addon.quantity > 1 && <span className="text-xs text-muted-foreground">×{addon.quantity}</span>}
+                        <div className="divide-y divide-border/40">
+                            {info.activeAddons.map(addon => {
+                                const name = isVi && addon.displayNameVi ? addon.displayNameVi : addon.displayName
+                                const isRemoving = removingAddon === addon.id
+                                return (
+                                    <div key={addon.id} className="flex items-center justify-between py-2.5">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
+                                                {addon.category === 'quota' ? 'Quota' : 'Feature'}
+                                            </Badge>
+                                            <span className="text-sm">{name}</span>
+                                            {addon.quantity > 1 && <span className="text-xs text-muted-foreground">×{addon.quantity}</span>}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-muted-foreground">${addon.priceMonthly}/mo</span>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                disabled={isRemoving}
+                                                onClick={() => handleRemoveAddon(addon.id, name)}
+                                            >
+                                                {isRemoving
+                                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                                    : <XCircle className="h-3 w-3" />
+                                                }
+                                                {isVi ? 'Hủy' : 'Remove'}
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <span className="text-xs text-muted-foreground">${addon.priceMonthly}/mo</span>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     ) : (
                         <p className="text-sm text-muted-foreground">
