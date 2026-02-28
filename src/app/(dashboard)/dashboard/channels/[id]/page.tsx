@@ -1928,17 +1928,7 @@ export default function ChannelDetailPage({
                             {/* OAuth Connect Strip — always visible */}
                             <div className="border rounded-lg p-3 bg-muted/20">
                                 <p className="text-[11px] font-medium text-muted-foreground mb-2">{t('channels.aiConfig.connectPlatform')}</p>
-                                {/* TikTok requirement notice */}
-                                <div className="mb-2 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-2">
-                                    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 mt-0.5 shrink-0 fill-amber-500" xmlns="http://www.w3.org/2000/svg"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" /></svg>
-                                    <div>
-                                        <p className="text-[11px] font-semibold text-amber-600">TikTok yêu cầu tài khoản Business/Creator</p>
-                                        <p className="text-[10px] text-amber-600/80 mt-0.5">
-                                            Để đăng video công khai, tài khoản TikTok phải là <strong>Business</strong> hoặc <strong>Creator</strong> account.
-                                            Nếu đang dùng tài khoản cá nhân: TikTok App → <em>Cài đặt</em> → <em>Quản lý tài khoản</em> → <em>Chuyển sang Business</em>.
-                                        </p>
-                                    </div>
-                                </div>
+
                                 <div className="flex flex-wrap gap-2">
                                     {[
                                         { key: 'facebook', label: 'Facebook', border: 'border-blue-500/30', hover: 'hover:bg-blue-500/10' },
@@ -1949,38 +1939,59 @@ export default function ChannelDetailPage({
                                         { key: 'pinterest', label: 'Pinterest', border: 'border-red-600/30', hover: 'hover:bg-red-600/10' },
                                         { key: 'threads', label: 'Threads', border: 'border-neutral-600/30', hover: 'hover:bg-neutral-600/10' },
                                         { key: 'gbp', label: 'Google Business', border: 'border-blue-400/30', hover: 'hover:bg-blue-400/10' },
-                                    ].map(({ key, label, border, hover }) => (
-                                        <Button
-                                            key={key}
-                                            variant="outline"
-                                            size="sm"
-                                            className={`gap-1.5 h-7 text-xs ${border} ${hover}`}
-                                            onClick={() => {
-                                                const w = 500, h = 700
-                                                const left = window.screenX + (window.outerWidth - w) / 2
-                                                const top = window.screenY + (window.outerHeight - h) / 2
-                                                const popup = window.open(
-                                                    `/api/oauth/${key}?channelId=${id}`,
-                                                    `${key}-oauth`,
-                                                    `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
-                                                )
-                                                const handler = (e: MessageEvent) => {
-                                                    if (e.data?.type === 'oauth-success' && e.data?.platform === key) {
-                                                        window.removeEventListener('message', handler)
-                                                        toast.success(`${label} connected successfully!`)
-                                                        fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { })
+                                    ].map(({ key, label, border, hover }) => {
+                                        const btn = (
+                                            <Button
+                                                key={key}
+                                                variant="outline"
+                                                size="sm"
+                                                className={`gap-1.5 h-7 text-xs ${border} ${hover}`}
+                                                onClick={() => {
+                                                    const w = 500, h = 700
+                                                    const left = window.screenX + (window.outerWidth - w) / 2
+                                                    const top = window.screenY + (window.outerHeight - h) / 2
+                                                    const popup = window.open(
+                                                        `/api/oauth/${key}?channelId=${id}`,
+                                                        `${key}-oauth`,
+                                                        `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
+                                                    )
+                                                    const handler = (e: MessageEvent) => {
+                                                        if (e.data?.type === 'oauth-success' && e.data?.platform === key) {
+                                                            window.removeEventListener('message', handler)
+                                                            toast.success(`${label} connected successfully!`)
+                                                            fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { })
+                                                        }
                                                     }
-                                                }
-                                                window.addEventListener('message', handler)
-                                                const check = setInterval(() => {
-                                                    if (popup?.closed) { clearInterval(check); window.removeEventListener('message', handler); fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { }) }
-                                                }, 1000)
-                                            }}
-                                        >
-                                            {platformIcons[key]}
-                                            <span>{label}</span>
-                                        </Button>
-                                    ))}
+                                                    window.addEventListener('message', handler)
+                                                    const check = setInterval(() => {
+                                                        if (popup?.closed) { clearInterval(check); window.removeEventListener('message', handler); fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { }) }
+                                                    }, 1000)
+                                                }}
+                                            >
+                                                {platformIcons[key]}
+                                                <span>{label}</span>
+                                            </Button>
+                                        )
+                                        if (key === 'tiktok') {
+                                            return (
+                                                <div key={key} className="relative group">
+                                                    {btn}
+                                                    {/* TikTok requirement tooltip — shown on hover */}
+                                                    <div className="absolute left-0 top-full mt-1.5 z-50 hidden group-hover:flex w-64 items-start gap-2 rounded-lg border border-amber-500/40 bg-popover shadow-lg px-3 py-2.5 pointer-events-none">
+                                                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 mt-0.5 shrink-0 fill-amber-500" xmlns="http://www.w3.org/2000/svg"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" /></svg>
+                                                        <div>
+                                                            <p className="text-[11px] font-semibold text-amber-500 leading-tight">Yêu cầu Business/Creator</p>
+                                                            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                                                                Tài khoản phải là <strong className="text-foreground">Business</strong> hoặc <strong className="text-foreground">Creator</strong>.<br />
+                                                                TikTok App → <em>Cài đặt</em> → <em>Quản lý tài khoản</em> → <em>Chuyển sang Business</em>.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
+                                        return btn
+                                    })}
                                     {/* X — credential-based (requires developer API keys) */}
                                     <Button
                                         variant="outline"
