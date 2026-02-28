@@ -44,6 +44,9 @@ type Plan = {
     isActive: boolean
     isPublic: boolean
     sortOrder: number
+    // Per-plan trial
+    trialEnabled: boolean
+    trialDays: number
     _count: { subscriptions: number }
 }
 
@@ -59,6 +62,8 @@ const EMPTY_PLAN: Omit<Plan, 'id' | '_count'> = {
     maxSmartFlowJobsPerMonth: 0,
     allowedImageModels: null,
     isActive: true, isPublic: true, sortOrder: 0,
+    // Per-plan trial defaults: off
+    trialEnabled: false, trialDays: 14,
 }
 
 type Addon = {
@@ -490,6 +495,11 @@ export default function AdminPlansPage() {
                                         {plan.hasPrioritySupport && <Badge variant="secondary" className="text-xs px-1">Priority</Badge>}
                                         {plan.hasWhiteLabel && <Badge variant="secondary" className="text-xs px-1">White-label</Badge>}
                                         {plan.hasSmartFlow && <Badge variant="secondary" className="text-xs px-1">SmartFlow™</Badge>}
+                                        {plan.trialEnabled && (
+                                            <Badge className="text-xs px-1 bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-400">
+                                                🎁 {plan.trialDays}d trial
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
 
@@ -773,6 +783,47 @@ export default function AdminPlansPage() {
                             </div>
                         </div>
 
+                        {/* ─── TRIAL ─────────────────────────────────────── */}
+                        <div className="border-t pt-3">
+                            <div className="flex items-center gap-2 mb-3">
+                                <p className="text-xs font-medium text-muted-foreground">TRIAL</p>
+                                {editPlan.trialEnabled && (
+                                    <span className="text-[10px] bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-400 font-semibold px-1.5 py-0.5 rounded">
+                                        {editPlan.trialDays}d free
+                                    </span>
+                                )}
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label className="text-sm">Enable Trial for this Plan</Label>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            Bật trial riêng cho gói này (ưu tiên hơn cài đặt global)
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        checked={!!editPlan.trialEnabled}
+                                        onCheckedChange={v => setEditPlan(p => ({ ...p, trialEnabled: v }))}
+                                    />
+                                </div>
+                                {editPlan.trialEnabled && (
+                                    <div className="flex items-center gap-3">
+                                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Trial Days</Label>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            max={365}
+                                            value={editPlan.trialDays}
+                                            onChange={e => setEditPlan(p => ({ ...p, trialDays: Number(e.target.value) }))}
+                                            className="w-24 text-sm"
+                                        />
+                                        <p className="text-xs text-muted-foreground">days free, then charge</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* ─── VISIBILITY ─────────────────────────────────── */}
                         <div className="border-t pt-3">
                             <p className="text-xs font-medium text-muted-foreground mb-2">VISIBILITY</p>
                             <div className="space-y-2">
@@ -1042,6 +1093,6 @@ export default function AdminPlansPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }

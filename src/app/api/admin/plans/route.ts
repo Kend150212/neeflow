@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
         hasSmartFlow = false, maxSmartFlowJobsPerMonth = 0,
         allowedImageModels = null,
         isActive = true, isPublic = true, sortOrder = 0,
+        // ─── Per-plan trial config ─────────────────────────────
+        trialEnabled = false, trialDays = 14,
     } = body
 
     if (!name) {
@@ -58,7 +60,11 @@ export async function POST(req: NextRequest) {
         const product = await stripe.products.create({
             name,
             description: description || undefined,
-            metadata: { source: 'neeflow-admin' },
+            metadata: {
+                source: 'neeflow-admin',
+                trialEnabled: String(trialEnabled),
+                trialDays: String(trialDays),
+            },
         })
         stripeProductId = product.id
 
@@ -68,7 +74,11 @@ export async function POST(req: NextRequest) {
                 product: product.id,
                 unit_amount: Math.round(priceMonthly * 100), // dollars → cents
                 currency: 'usd',
-                recurring: { interval: 'month' },
+                recurring: {
+                    interval: 'month',
+                    // Attach trial days directly on the price recurring config
+                    ...(trialEnabled && trialDays > 0 ? { trial_period_days: trialDays } : {}),
+                },
                 metadata: { planName: name, interval: 'monthly' },
             })
             stripePriceIdMonthly = monthlyPrice.id
@@ -80,7 +90,10 @@ export async function POST(req: NextRequest) {
                 product: product.id,
                 unit_amount: Math.round(priceAnnual * 100),
                 currency: 'usd',
-                recurring: { interval: 'year' },
+                recurring: {
+                    interval: 'year',
+                    ...(trialEnabled && trialDays > 0 ? { trial_period_days: trialDays } : {}),
+                },
                 metadata: { planName: name, interval: 'annual' },
             })
             stripePriceIdAnnual = annualPrice.id
@@ -105,6 +118,7 @@ export async function POST(req: NextRequest) {
             hasSmartFlow, maxSmartFlowJobsPerMonth,
             allowedImageModels,
             isActive, isPublic, sortOrder,
+            trialEnabled, trialDays,
         },
     })
 

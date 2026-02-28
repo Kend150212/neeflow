@@ -48,10 +48,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
         hasSmartFlow, maxSmartFlowJobsPerMonth,
         allowedImageModels,
         isActive, isPublic, sortOrder,
+        trialEnabled, trialDays,
     } = body
 
+    // Resolved trial values (use currentPlan fallback for unchanged fields)
+    const resolvedTrialEnabled = trialEnabled !== undefined ? trialEnabled : undefined
+    const resolvedTrialDays = trialDays !== undefined ? trialDays : undefined
+
     // Get current plan to compare prices
-    const currentPlan = await prisma.plan.findUnique({ where: { id } })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currentPlan = await prisma.plan.findUnique({ where: { id } }) as any
     if (!currentPlan) {
         return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
@@ -91,11 +97,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
             }
 
             if (newMonthly > 0) {
+                const effectiveTrial = resolvedTrialEnabled ?? currentPlan.trialEnabled
+                const effectiveDays = resolvedTrialDays ?? currentPlan.trialDays
                 const mp = await stripe.prices.create({
                     product: productId,
                     unit_amount: Math.round(newMonthly * 100),
                     currency: 'usd',
-                    recurring: { interval: 'month' },
+                    recurring: {
+                        interval: 'month',
+                        ...(effectiveTrial && effectiveDays > 0 ? { trial_period_days: effectiveDays } : {}),
+                    },
                     metadata: { planName: name ?? currentPlan.name, interval: 'monthly' },
                 })
                 stripeUpdates.stripePriceIdMonthly = mp.id
@@ -123,11 +134,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
             }
 
             if (newAnnual > 0) {
+                const effectiveTrial = resolvedTrialEnabled ?? currentPlan.trialEnabled
+                const effectiveDays = resolvedTrialDays ?? currentPlan.trialDays
                 const ap = await stripe.prices.create({
                     product: productId,
                     unit_amount: Math.round(newAnnual * 100),
                     currency: 'usd',
-                    recurring: { interval: 'year' },
+                    recurring: {
+                        interval: 'year',
+                        ...(effectiveTrial && effectiveDays > 0 ? { trial_period_days: effectiveDays } : {}),
+                    },
                     metadata: { planName: name ?? currentPlan.name, interval: 'annual' },
                 })
                 stripeUpdates.stripePriceIdAnnual = ap.id
@@ -178,6 +194,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
             ...(isActive !== undefined && { isActive }),
             ...(isPublic !== undefined && { isPublic }),
             ...(sortOrder !== undefined && { sortOrder }),
+            ...(trialEnabled !== undefined && { trialEnabled }),
+            ...(trialDays !== undefined && { trialDays }),
             // Stripe auto-sync fields
             ...stripeUpdates,
         },

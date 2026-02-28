@@ -11,7 +11,7 @@ const APP_URL = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || '
  * Body: { planId, interval: 'monthly' | 'annual', couponCode? }
  *
  * Creates a Stripe Checkout session and returns the URL to redirect user.
- * Supports: Card (incl. Apple Pay & Google Pay), PayPal, Link (1-click).
+ * Trial period: per-plan trialEnabled/trialDays, falls back to global SiteSettings.
  */
 export async function POST(req: NextRequest) {
     const session = await auth()
@@ -41,6 +41,20 @@ export async function POST(req: NextRequest) {
             { error: 'This plan has no Stripe price configured. Please contact support to activate Stripe pricing.', noStripePrice: true },
             { status: 400 }
         )
+    }
+
+    // ─── Resolve trial: per-plan first, fallback to global SiteSettings ───
+    let trialDays = 0
+    if (plan.trialEnabled && plan.trialDays > 0) {
+        trialDays = plan.trialDays
+    } else {
+        // Check global setting
+        try {
+            const settings = await db.siteSettings.findUnique({ where: { id: 'default' } })
+            if (settings?.trialEnabled && settings?.trialDays > 0) {
+                trialDays = settings.trialDays
+            }
+        } catch { /* ignore */ }
     }
 
     const stripe = await getStripe()
@@ -92,6 +106,8 @@ export async function POST(req: NextRequest) {
         },
         subscription_data: {
             metadata: { userId: session.user.id, planId },
+            // ─── Apply per-plan or global trial ──────────────────────────
+            ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
         },
     })
 

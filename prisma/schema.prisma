@@ -771,6 +771,10 @@ model Plan {
   // null/empty = all models allowed. Example: [{"provider":"gemini","models":["imagen-3.0-generate-002"]}]
   allowedImageModels Json? @map("allowed_image_models")
 
+  // Per-plan trial config (overrides global SiteSettings trial when set)
+  trialEnabled   Boolean @default(false) @map("trial_enabled")
+  trialDays      Int     @default(14)    @map("trial_days")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
