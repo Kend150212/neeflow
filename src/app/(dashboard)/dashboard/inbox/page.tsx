@@ -1220,7 +1220,7 @@ export default function InboxPage() {
                     </div>
                 </div>
 
-                {/* Search + refresh */}
+                {/* Search + refresh + pane layout switcher */}
                 <div className="p-2 border-b flex gap-1.5">
                     <div className="relative flex-1">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -1240,6 +1240,30 @@ export default function InboxPage() {
                     >
                         <RefreshCcw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
                     </Button>
+                    {/* Pane layout switcher */}
+                    <div className="flex items-center gap-0.5 border rounded-md p-0.5 bg-muted/40">
+                        {([1, 2, 4] as const).map(n => (
+                            <button
+                                key={n}
+                                onClick={() => setPanelLayout(n)}
+                                title={`${n} pane${n > 1 ? 's' : ''}`}
+                                className={cn(
+                                    'h-7 px-1.5 rounded text-xs font-medium transition-colors',
+                                    panelLayout === n
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                                )}
+                            >
+                                {n === 1 ? (
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" /></svg>
+                                ) : n === 2 ? (
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5.5" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" /><rect x="7.5" y="1" width="5.5" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" /></svg>
+                                ) : (
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5" /><rect x="7.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5" /><rect x="1" y="7.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5" /><rect x="7.5" y="7.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5" /></svg>
+                                )}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Conversation list */}
@@ -1988,11 +2012,43 @@ export default function InboxPage() {
                                                     {/* Toolbar */}
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-0.5">
+                                                            {/* Emoji picker */}
+                                                            <div className="relative">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                                                    disabled={sc.mode === 'BOT'}
+                                                                    title={t('inbox.chat.emoji')}
+                                                                    onClick={() => updatePanel(paneIdx, { showEmojiPicker: !paneShowEmojiPicker })}
+                                                                >
+                                                                    <Smile className="h-4 w-4" />
+                                                                </Button>
+                                                                {paneShowEmojiPicker && (
+                                                                    <div className="absolute bottom-full left-0 mb-1 bg-popover border rounded-xl shadow-xl p-2 z-50 w-[260px]">
+                                                                        <div className="grid grid-cols-8 gap-0.5">
+                                                                            {['😀', '😂', '😍', '🥰', '😊', '😎', '🤔', '😢', '😡', '🙏', '👍', '👎', '❤️', '🔥', '🎉', '✅', '⭐', '💯', '👏', '🤝', '😘', '🥺', '😭', '🤩', '😤', '💪', '🙌', '💀', '🤣', '😅', '🫶', '💕', '💖', '😱', '🤗', '😏', '🤭', '😬', '🥳', '🎊', '💐', '🌟', '⚡', '💡', '📌', '📣', '🏠', '🛎️'].map(emoji => (
+                                                                                <button
+                                                                                    key={emoji}
+                                                                                    className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-md transition-colors text-base"
+                                                                                    onClick={() => {
+                                                                                        updatePanel(paneIdx, { replyText: paneReplyText + emoji, showEmojiPicker: false })
+                                                                                    }}
+                                                                                >
+                                                                                    {emoji}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
                                                             {/* Image upload */}
                                                             <label className={cn(
                                                                 'flex items-center justify-center h-7 w-7 rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
                                                                 sc.mode === 'BOT' && 'opacity-50 pointer-events-none'
-                                                            )}>
+                                                            )} title={t('inbox.chat.uploadImage')}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
                                                                 <input
                                                                     type="file"
                                                                     accept="image/*"
@@ -2004,14 +2060,78 @@ export default function InboxPage() {
                                                                         e.target.value = ''
                                                                     }}
                                                                 />
-                                                                <ExternalLink className="h-3.5 w-3.5" />
                                                             </label>
+
+                                                            <div className="w-px h-4 bg-border mx-0.5" />
+
+                                                            {/* AI Suggest */}
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-7 px-2 gap-1 text-muted-foreground hover:text-amber-500 text-[11px]"
+                                                                disabled={sc.mode === 'BOT' || paneAiSuggesting}
+                                                                title={t('inbox.chat.aiSuggestReply')}
+                                                                onClick={async () => {
+                                                                    updatePanel(paneIdx, { aiSuggesting: true })
+                                                                    try {
+                                                                        const res = await fetch(`/api/inbox/conversations/${sc.id}/suggest`, { method: 'POST' })
+                                                                        if (res.ok) {
+                                                                            const data = await res.json()
+                                                                            updatePanel(paneIdx, { replyText: data.suggestion })
+                                                                            toast.success(t('inbox.toast.aiSuggestionReady'))
+                                                                        } else {
+                                                                            const data = await res.json()
+                                                                            toast.error(data.error || t('inbox.toast.aiSuggestFailed'))
+                                                                        }
+                                                                    } catch {
+                                                                        toast.error(t('inbox.toast.aiSuggestFailed'))
+                                                                    } finally {
+                                                                        updatePanel(paneIdx, { aiSuggesting: false })
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {paneAiSuggesting ? (
+                                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                ) : (
+                                                                    <Sparkles className="h-3.5 w-3.5" />
+                                                                )}
+                                                                AI
+                                                            </Button>
+
+                                                            <div className="w-px h-4 bg-border mx-0.5" />
+
+                                                            {/* Bot / Agent transfer */}
+                                                            {sc.mode === 'BOT' ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-7 px-2 gap-1 text-[11px] text-muted-foreground hover:text-blue-500"
+                                                                    disabled={updatingConv}
+                                                                    onClick={() => updateConversation(sc.id, { action: 'takeover' }, paneIdx)}
+                                                                    title={t('inbox.chat.takeOverFromBot')}
+                                                                >
+                                                                    <UserCircle className="h-3.5 w-3.5" />
+                                                                    Agent
+                                                                </Button>
+                                                            ) : (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-7 px-2 gap-1 text-[11px] text-muted-foreground hover:text-green-500"
+                                                                    disabled={updatingConv}
+                                                                    onClick={() => updateConversation(sc.id, { action: 'transfer_bot' }, paneIdx)}
+                                                                    title={t('inbox.chat.transferToBotTitle')}
+                                                                >
+                                                                    <Bot className="h-3.5 w-3.5" />
+                                                                    Bot
+                                                                </Button>
+                                                            )}
                                                         </div>
 
                                                         {/* Send button */}
                                                         <Button
                                                             size="sm"
-                                                            className="h-7 text-xs gap-1.5"
+                                                            className="h-7 px-3 gap-1.5 text-xs"
                                                             disabled={sc.mode === 'BOT' || (!paneReplyText.trim() && !paneSelectedImage)}
                                                             onClick={() => handleSendReply(paneIdx)}
                                                         >
