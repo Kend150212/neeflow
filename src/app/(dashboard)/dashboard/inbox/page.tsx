@@ -1453,7 +1453,7 @@ export default function InboxPage() {
                                     const paneAiSuggesting = pane.aiSuggesting
                                     const sc = paneSC
                                     return (
-                                        <>
+                                        <div className="flex flex-col flex-1 min-h-0">
                                             {/* Header */}
                                             <div className="flex items-center gap-3 px-4 py-3 border-b bg-card shrink-0">
                                                 <Avatar className="h-8 w-8">
@@ -2141,7 +2141,7 @@ export default function InboxPage() {
                                                     </div>
                                                 </div>
                                             </div>
-                                        </>
+                                        </div>
                                     )
                                 })()
                             ) : (
