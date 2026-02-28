@@ -169,6 +169,40 @@ async function dispatchEvent(event: Stripe.Event) {
             await onCustomerDeleted(obj as Stripe.Customer)
             break
 
+        // ══════════════════════════════════════════════════════
+        // COUPON (admin-side management events)
+        // ══════════════════════════════════════════════════════
+        case 'coupon.created':
+            console.log(`[Webhook] coupon.created — ${obj.id} (${obj.name ?? 'unnamed'})`)
+            break
+
+        case 'coupon.deleted':
+            // If a coupon was deleted on Stripe directly, clear it from any active subs
+            await onCouponDeleted(obj)
+            break
+
+        case 'coupon.updated':
+            console.log(`[Webhook] coupon.updated — ${obj.id}`)
+            break
+
+        // ══════════════════════════════════════════════════════
+        // CUSTOMER DISCOUNT (coupon applied / removed per customer)
+        // ══════════════════════════════════════════════════════
+        case 'customer.discount.created':
+            // Coupon was applied to a customer → store couponId in our DB
+            await onDiscountCreated(obj)
+            break
+
+        case 'customer.discount.deleted':
+            // Coupon removed from customer → clear stripeCouponId
+            await onDiscountDeleted(obj)
+            break
+
+        case 'customer.discount.updated':
+            // Customer switched from one coupon to another
+            await onDiscountUpdated(obj)
+            break
+
         default:
             // Unknown event — acknowledged but not processed
             break
@@ -593,4 +627,78 @@ async function syncSubscriptionItems(stripeSub: any, db: any) {
     } catch (err) {
         console.error('[Webhook] syncSubscriptionItems failed:', err)
     }
+}
+
+// ─── Coupon Handlers ──────────────────────────────────────────────────────────
+
+/**
+ * coupon.deleted — coupon was deleted directly on Stripe (e.g. via Dashboard).
+ * Clear stripeCouponId on any subscriptions still referencing it.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function onCouponDeleted(coupon: any) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = prisma as any
+    const couponId = coupon.id
+    await db.subscription.updateMany({
+        where: { stripeCouponId: couponId },
+        data: { stripeCouponId: null },
+    })
+    console.log(`[Webhook] 🎟 coupon.deleted — ${couponId} (cleared from DB subs)`)
+}
+
+/**
+ * customer.discount.created — a coupon was applied to a customer on Stripe.
+ * Upsert stripeCouponId in our subscription row.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function onDiscountCreated(discount: any) {
+    const customerId = discount.customer as string
+    const couponId = discount.coupon?.id as string | undefined
+    if (!customerId || !couponId) return
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = prisma as any
+    await db.subscription.updateMany({
+        where: { stripeCustomerId: customerId },
+        data: { stripeCouponId: couponId },
+    })
+    console.log(`[Webhook] 🎟 customer.discount.created — customer ${customerId}, coupon ${couponId}`)
+}
+
+/**
+ * customer.discount.deleted — coupon was removed from a customer.
+ * Clear stripeCouponId.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function onDiscountDeleted(discount: any) {
+    const customerId = discount.customer as string
+    if (!customerId) return
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = prisma as any
+    await db.subscription.updateMany({
+        where: { stripeCustomerId: customerId },
+        data: { stripeCouponId: null },
+    })
+    console.log(`[Webhook] 🎟 customer.discount.deleted — customer ${customerId}, coupon cleared`)
+}
+
+/**
+ * customer.discount.updated — customer was switched from one coupon to another.
+ * Update stripeCouponId to the new coupon.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function onDiscountUpdated(discount: any) {
+    const customerId = discount.customer as string
+    const couponId = discount.coupon?.id as string | undefined
+    if (!customerId) return
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = prisma as any
+    await db.subscription.updateMany({
+        where: { stripeCustomerId: customerId },
+        data: { stripeCouponId: couponId ?? null },
+    })
+    console.log(`[Webhook] 🎟 customer.discount.updated — customer ${customerId}, coupon → ${couponId ?? 'none'}`)
 }
