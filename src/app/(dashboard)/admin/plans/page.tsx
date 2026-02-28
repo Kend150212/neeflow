@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Pencil, Trash2, Users, AlertTriangle, Package, Clock, Zap, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, AlertTriangle, Package, Clock, Zap, Loader2, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
 import { ProviderLogo } from '@/components/ui/provider-logos'
@@ -119,6 +119,8 @@ export default function AdminPlansPage() {
     const [isEditing, setIsEditing] = useState(false)
     const [saving, setSaving] = useState(false)
     const [deleteId, setDeleteId] = useState<string | null>(null)
+    const [syncingStripe, setSyncingStripe] = useState(false)
+    const [syncingPlanId, setSyncingPlanId] = useState<string | null>(null)
     // Add-on state
     const [addons, setAddons] = useState<Addon[]>([])
     const [addonDialogOpen, setAddonDialogOpen] = useState(false)
@@ -208,6 +210,48 @@ export default function AdminPlansPage() {
         }).catch(() => { })
     }
 
+    const syncAllToStripe = async () => {
+        setSyncingStripe(true)
+        try {
+            const res = await fetch('/api/admin/plans/sync-stripe', { method: 'POST' })
+            const data = await res.json()
+            if (data.ok) {
+                toast.success(`Stripe sync done — ${data.summary.synced} synced, ${data.summary.alreadySynced} already OK, ${data.summary.errors} errors`)
+                fetchPlans()
+            } else {
+                toast.error('Stripe sync failed')
+            }
+        } catch {
+            toast.error('Stripe sync failed')
+        } finally {
+            setSyncingStripe(false)
+        }
+    }
+
+    const syncOnePlan = async (planId: string) => {
+        setSyncingPlanId(planId)
+        try {
+            // Trigger a no-op PUT which runs the Stripe sync logic for missing IDs
+            const plan = plans.find(p => p.id === planId)
+            if (!plan) return
+            const res = await fetch(`/api/admin/plans/${planId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: plan.name }), // minimal payload triggers sync
+            })
+            if (res.ok) {
+                toast.success('Synced to Stripe')
+                fetchPlans()
+            } else {
+                toast.error('Stripe sync failed')
+            }
+        } catch {
+            toast.error('Stripe sync failed')
+        } finally {
+            setSyncingPlanId(null)
+        }
+    }
+
     const handleSave = async () => {
         setSaving(true)
         const method = isEditing ? 'PUT' : 'POST'
@@ -293,10 +337,23 @@ export default function AdminPlansPage() {
                     <h1 className="text-2xl font-bold">Plans Management</h1>
                     <p className="text-muted-foreground text-sm">Quản lý gói dịch vụ / Manage billing plans</p>
                 </div>
-                <Button onClick={openCreate} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    New Plan
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={syncAllToStripe}
+                        disabled={syncingStripe}
+                        className="gap-2"
+                    >
+                        {syncingStripe
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <RefreshCw className="h-4 w-4" />}
+                        Sync All to Stripe
+                    </Button>
+                    <Button onClick={openCreate} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        New Plan
+                    </Button>
+                </div>
             </div>
 
             {/* ── Trial Settings Card ────────────────────────────── */}
@@ -393,9 +450,14 @@ export default function AdminPlansPage() {
                                     <div>
                                         <CardTitle className="text-base">{isVi ? plan.nameVi || plan.name : plan.name}</CardTitle>
                                     </div>
-                                    <div className="flex gap-1">
+                                    <div className="flex gap-1 flex-wrap justify-end">
                                         {!plan.isActive && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
                                         {!plan.isPublic && <Badge variant="outline" className="text-xs">Hidden</Badge>}
+                                        {/* Stripe sync status */}
+                                        {plan.stripePriceIdMonthly || plan.stripePriceIdAnnual || (plan.priceMonthly === 0 && plan.priceAnnual === 0 && (plan as any).stripeProductId)
+                                            ? <Badge className="text-[10px] bg-emerald-500/15 text-emerald-600 border-emerald-500/30 gap-1"><CheckCircle2 className="h-2.5 w-2.5" />Stripe ✓</Badge>
+                                            : <Badge className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30 gap-1"><AlertCircle className="h-2.5 w-2.5" />No Stripe ID</Badge>
+                                        }
                                     </div>
                                 </div>
                             </CardHeader>
@@ -435,6 +497,20 @@ export default function AdminPlansPage() {
                                     <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => openEdit(plan)}>
                                         <Pencil className="h-3.5 w-3.5" /> Edit
                                     </Button>
+                                    {/* Per-plan Stripe sync button — only shown when IDs are missing */}
+                                    {!(plan.stripePriceIdMonthly && plan.stripePriceIdAnnual) && (plan.priceMonthly > 0 || plan.priceAnnual > 0) && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="gap-1 text-amber-600 border-amber-500/40 hover:bg-amber-50"
+                                            onClick={() => syncOnePlan(plan.id)}
+                                            disabled={syncingPlanId === plan.id}
+                                        >
+                                            {syncingPlanId === plan.id
+                                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                : <RefreshCw className="h-3.5 w-3.5" />}
+                                        </Button>
+                                    )}
                                     <Button
                                         size="sm"
                                         variant="outline"
