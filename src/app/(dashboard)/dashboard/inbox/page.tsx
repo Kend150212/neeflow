@@ -47,6 +47,9 @@ import {
     PanelLeftClose,
     PanelLeft,
     AlertTriangle,
+    LayoutTemplate,
+    Columns,
+    Square,
 } from 'lucide-react'
 import {
     DropdownMenu,
@@ -119,6 +122,41 @@ interface StatusCounts {
     mine: number
     all: number
 }
+
+// ─── Per-pane state ────────────────────
+interface PanelState {
+    conversation: Conversation | null
+    messages: InboxMessage[]
+    replyText: string
+    replyToName: string | null
+    selectedImage: File | null
+    dragOver: boolean
+    showEmojiPicker: boolean
+    aiSuggesting: boolean
+    postExpanded: boolean
+    likedCommentIds: Set<string>
+    msgPage: number
+    msgHasMore: boolean
+    loadingMessages: boolean
+    loadingMoreMsg: boolean
+}
+
+const initPanel = (): PanelState => ({
+    conversation: null,
+    messages: [],
+    replyText: '',
+    replyToName: null,
+    selectedImage: null,
+    dragOver: false,
+    showEmojiPicker: false,
+    aiSuggesting: false,
+    postExpanded: false,
+    likedCommentIds: new Set(),
+    msgPage: 1,
+    msgHasMore: false,
+    loadingMessages: false,
+    loadingMoreMsg: false,
+})
 
 // ─── Platform SVG icons ───────────────
 function PlatformIcon({ platform, size = 16 }: { platform: string; size?: number }) {
@@ -253,33 +291,30 @@ export default function InboxPage() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedPlatformIds, setSelectedPlatformIds] = useState<string[]>([])
-    const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
-    const [messages, setMessages] = useState<InboxMessage[]>([])
-    const [replyText, setReplyText] = useState('')
-    const [replyToName, setReplyToName] = useState<string | null>(null)
-    const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set())
-    const [selectedImage, setSelectedImage] = useState<File | null>(null)
-    const [dragOver, setDragOver] = useState(false)
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-    const [aiSuggesting, setAiSuggesting] = useState(false)
-    const [postExpanded, setPostExpanded] = useState(false)
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [platformAccounts, setPlatformAccounts] = useState<PlatformAccount[]>([])
     const [counts, setCounts] = useState<StatusCounts>({ new: 0, open: 0, done: 0, archived: 0, mine: 0, all: 0 })
     const [loading, setLoading] = useState(true)
-    const [loadingMessages, setLoadingMessages] = useState(false)
-    // Pagination state
+    // Conversations pagination
     const CONV_LIMIT = 30
     const MSG_LIMIT = 40
     const [convPage, setConvPage] = useState(1)
     const [convHasMore, setConvHasMore] = useState(false)
     const [loadingMoreConv, setLoadingMoreConv] = useState(false)
-    const [msgPage, setMsgPage] = useState(1)
-    const [msgHasMore, setMsgHasMore] = useState(false)
-    const [loadingMoreMsg, setLoadingMoreMsg] = useState(false)
     const [sendingReply, setSendingReply] = useState(false)
     const [updatingConv, setUpdatingConv] = useState(false)
-    const messagesEndRef = useRef<HTMLDivElement>(null)
+
+    // ─── Multi-pane layout ────────────
+    const MAX_PANELS = 4
+    const [panelLayout, setPanelLayout] = useState<1 | 2 | 4>(1)
+    const [activePanel, setActivePanel] = useState(0)
+    const [panels, setPanels] = useState<PanelState[]>(
+        Array.from({ length: MAX_PANELS }, initPanel)
+    )
+    const messagesEndRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null])
+    const updatePanel = (idx: number, updates: Partial<PanelState>) =>
+        setPanels(prev => prev.map((p, i) => i === idx ? { ...p, ...updates } : p))
+
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const prevUnreadRef = useRef<number>(0)
     const audioContextRef = useRef<AudioContext | null>(null)
@@ -291,6 +326,47 @@ export default function InboxPage() {
         return false
     })
     const soundMutedRef = useRef(soundMuted)
+
+    // ─── Active panel compatibility shims ────────────────────────────────────
+    // Derive current panel state as named vars so all existing JSX works unchanged.
+    const activeP = panels[activePanel]
+    const selectedConversation = activeP.conversation
+    const messages = activeP.messages
+    const replyText = activeP.replyText
+    const replyToName = activeP.replyToName
+    const selectedImage = activeP.selectedImage
+    const dragOver = activeP.dragOver
+    const showEmojiPicker = activeP.showEmojiPicker
+    const aiSuggesting = activeP.aiSuggesting
+    const postExpanded = activeP.postExpanded
+    const likedCommentIds = activeP.likedCommentIds
+    const loadingMessages = activeP.loadingMessages
+    const msgHasMore = activeP.msgHasMore
+    const loadingMoreMsg = activeP.loadingMoreMsg
+    const setSelectedConversation = (v: Conversation | null | ((p: Conversation | null) => Conversation | null)) => {
+        const next = typeof v === 'function' ? v(activeP.conversation) : v
+        updatePanel(activePanel, { conversation: next })
+    }
+    const setMessages = (v: InboxMessage[] | ((p: InboxMessage[]) => InboxMessage[])) => {
+        const next = typeof v === 'function' ? v(activeP.messages) : v
+        updatePanel(activePanel, { messages: next })
+    }
+    const setReplyText = (v: string) => updatePanel(activePanel, { replyText: v })
+    const setReplyToName = (v: string | null) => updatePanel(activePanel, { replyToName: v })
+    const setSelectedImage = (v: File | null) => updatePanel(activePanel, { selectedImage: v })
+    const setDragOver = (v: boolean) => updatePanel(activePanel, { dragOver: v })
+    const setShowEmojiPicker = (v: boolean | ((p: boolean) => boolean)) => {
+        const next = typeof v === 'function' ? v(activeP.showEmojiPicker) : v
+        updatePanel(activePanel, { showEmojiPicker: next })
+    }
+    const setAiSuggesting = (v: boolean) => updatePanel(activePanel, { aiSuggesting: v })
+    const setPostExpanded = (v: boolean) => updatePanel(activePanel, { postExpanded: v })
+    const setLikedCommentIds = (v: Set<string> | ((p: Set<string>) => Set<string>)) => {
+        const next = typeof v === 'function' ? v(activeP.likedCommentIds) : v
+        updatePanel(activePanel, { likedCommentIds: next })
+    }
+    // messagesEndRef → active panel's slot
+    const messagesEndRef = { current: messagesEndRefs.current[activePanel] }
 
     // ─── AI Settings state ───────────
     const [showAiSettings, setShowAiSettings] = useState(false)
@@ -514,23 +590,25 @@ export default function InboxPage() {
                     return brandNew.length > 0 ? [...brandNew, ...updated] : updated
                 })
 
-                // 4. If a conversation is selected, also refresh its messages (latest page)
-                if (selectedConversation) {
-                    const msgRes = await fetch(`/api/inbox/conversations/${selectedConversation.id}/messages?page=1&limit=${MSG_LIMIT}`)
-                    if (msgRes.ok) {
-                        const msgData = await msgRes.json()
-                        setMessages(prev => {
-                            const freshMsgs = msgData.messages || []
-                            // Only update if newest messages changed
-                            if (freshMsgs.length !== prev.length || freshMsgs[freshMsgs.length - 1]?.id !== prev[prev.length - 1]?.id) {
-                                // Merge: keep older pages that were loaded beyond page 1
-                                const freshIds = new Set(freshMsgs.map((m: InboxMessage) => m.id))
-                                const olderMsgs = prev.filter(m => !freshIds.has(m.id))
-                                return [...olderMsgs, ...freshMsgs]
-                            }
-                            return prev
-                        })
-                    }
+                // 4. Refresh messages for all open panels
+                for (let pi = 0; pi < MAX_PANELS; pi++) {
+                    const panelConv = panels[pi]?.conversation
+                    if (!panelConv) continue
+                    try {
+                        const msgRes = await fetch(`/api/inbox/conversations/${panelConv.id}/messages?page=1&limit=${MSG_LIMIT}`)
+                        if (msgRes.ok) {
+                            const msgData = await msgRes.json()
+                            setPanels(cur => cur.map((p, i) => {
+                                if (i !== pi || !p.conversation) return p
+                                const freshMsgs: InboxMessage[] = msgData.messages || []
+                                if (freshMsgs.length === 0) return p
+                                if (freshMsgs[freshMsgs.length - 1]?.id === p.messages[p.messages.length - 1]?.id) return p
+                                const freshIds = new Set(freshMsgs.map(m => m.id))
+                                const olderMsgs = p.messages.filter(m => !freshIds.has(m.id))
+                                return { ...p, messages: [...olderMsgs, ...freshMsgs] }
+                            }))
+                        }
+                    } catch { /* ignore */ }
                 }
             } catch {
                 // Silently ignore polling errors
@@ -620,11 +698,9 @@ export default function InboxPage() {
         }
     }, [activeChannel?.id, statusFilter, searchQuery, selectedPlatformIds, activeTab, convPage])
 
-    // ─── Fetch messages for a conversation (initial/reset) ─
-    const fetchMessages = useCallback(async (convId: string) => {
-        setLoadingMessages(true)
-        setMsgPage(1)
-        setMsgHasMore(false)
+    // ─── Fetch messages for a pane (initial/reset) ─
+    const fetchMessages = useCallback(async (convId: string, panelIdx: number) => {
+        updatePanel(panelIdx, { loadingMessages: true, msgPage: 1, msgHasMore: false })
         try {
             const params = new URLSearchParams()
             params.set('limit', String(MSG_LIMIT))
@@ -633,132 +709,127 @@ export default function InboxPage() {
             if (res.ok) {
                 const data = await res.json()
                 const msgs = data.messages || []
-                setMessages(msgs)
-                // If we got a full page, there might be more (older) messages
-                setMsgHasMore(data.total > MSG_LIMIT)
+                updatePanel(panelIdx, { messages: msgs, msgHasMore: data.total > MSG_LIMIT })
             }
         } catch (e) {
             console.error('Failed to fetch messages:', e)
         } finally {
-            setLoadingMessages(false)
+            updatePanel(panelIdx, { loadingMessages: false })
         }
-    }, [])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [MSG_LIMIT])
 
     // ─── Load earlier messages (older pages) ──────────
-    const msgScrollRef = useRef<HTMLDivElement | null>(null)
-    const loadEarlierMessages = useCallback(async () => {
-        if (!selectedConversation) return
-        const nextPage = msgPage + 1
-        setLoadingMoreMsg(true)
-        try {
-            const params = new URLSearchParams()
-            params.set('limit', String(MSG_LIMIT))
-            params.set('page', String(nextPage))
-            const res = await fetch(`/api/inbox/conversations/${selectedConversation.id}/messages?${params}`)
-            if (res.ok) {
-                const data = await res.json()
-                const older = data.messages || []
-                setMessages(prev => {
-                    const existingIds = new Set(prev.map(m => m.id))
-                    return [...older.filter((m: InboxMessage) => !existingIds.has(m.id)), ...prev]
+    const loadEarlierMessages = useCallback(async (panelIdx: number) => {
+        setPanels(prev => {
+            const panel = prev[panelIdx]
+            if (!panel.conversation || panel.loadingMoreMsg) return prev
+            const nextPage = panel.msgPage + 1
+            // Start loading
+            const started = prev.map((p, i) => i === panelIdx ? { ...p, loadingMoreMsg: true } : p)
+            // Do async work outside
+            fetch(`/api/inbox/conversations/${panel.conversation.id}/messages?limit=${MSG_LIMIT}&page=${nextPage}`)
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (!data) return
+                    const older: InboxMessage[] = data.messages || []
+                    setPanels(cur => cur.map((p, i) => {
+                        if (i !== panelIdx) return p
+                        const existingIds = new Set(p.messages.map(m => m.id))
+                        return {
+                            ...p,
+                            messages: [...older.filter(m => !existingIds.has(m.id)), ...p.messages],
+                            msgHasMore: older.length === MSG_LIMIT,
+                            msgPage: nextPage,
+                            loadingMoreMsg: false,
+                        }
+                    }))
                 })
-                setMsgHasMore(older.length === MSG_LIMIT)
-                setMsgPage(nextPage)
+                .catch(() => setPanels(cur => cur.map((p, i) => i === panelIdx ? { ...p, loadingMoreMsg: false } : p)))
+            return started
+        })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [MSG_LIMIT])
+
+    // ─── Send reply (per pane) ────────
+    const handleSendReply = useCallback(async (panelIdx: number) => {
+        setPanels(prev => {
+            const panel = prev[panelIdx]
+            const conv = panel.conversation
+            if (!conv || (!panel.replyText.trim() && !panel.selectedImage)) return prev
+
+            let contentToSend = panel.replyText.trim()
+            const imageToSend = panel.selectedImage
+
+            if (conv.type !== 'comment') {
+                contentToSend = contentToSend.replace(/^@\[[^\]]+\]\s*/, '')
+                if (!contentToSend && !imageToSend) return prev
             }
-        } catch (e) {
-            console.error('Failed to load earlier messages:', e)
-        } finally {
-            setLoadingMoreMsg(false)
-        }
-    }, [selectedConversation, msgPage])
 
-    // ─── Send reply ───────────────────
-    const handleSendReply = useCallback(async () => {
-        if (!selectedConversation || (!replyText.trim() && !selectedImage)) return
+            const tempId = `temp-${Date.now()}`
+            const displayText = imageToSend
+                ? contentToSend ? `${contentToSend}\n📷 Image` : '📷 Image'
+                : contentToSend
+            const optimisticMessage: InboxMessage = {
+                id: tempId, externalId: null, direction: 'outbound', senderType: 'agent',
+                content: displayText, contentOriginal: null, detectedLang: null,
+                mediaUrl: imageToSend ? URL.createObjectURL(imageToSend) : null,
+                mediaType: imageToSend ? 'image' : null,
+                senderName: null, senderAvatar: null, confidence: null,
+                sentAt: new Date().toISOString(),
+            }
 
-        let contentToSend = replyText.trim()
-        const imageToSend = selectedImage
-
-        // Only keep @[Name] tag for comment conversations — strip for DMs
-        if (selectedConversation.type !== 'comment') {
-            contentToSend = contentToSend.replace(/^@\[[^\]]+\]\s*/, '')
-            if (!contentToSend && !imageToSend) return
-        }
-
-        // ── Optimistic: show message instantly ──
-        const tempId = `temp-${Date.now()}`
-        const displayText = imageToSend
-            ? contentToSend ? `${contentToSend}\n📷 Image` : '📷 Image'
-            : contentToSend
-        const optimisticMessage: InboxMessage = {
-            id: tempId,
-            externalId: null,
-            direction: 'outbound',
-            senderType: 'agent',
-            content: displayText,
-            contentOriginal: null,
-            detectedLang: null,
-            mediaUrl: imageToSend ? URL.createObjectURL(imageToSend) : null,
-            mediaType: imageToSend ? 'image' : null,
-            senderName: null,
-            senderAvatar: null,
-            confidence: null,
-            sentAt: new Date().toISOString(),
-        }
-
-        // Show message instantly + clear input
-        setMessages(prev => [...prev, optimisticMessage])
-        setReplyText('')
-        setReplyToName(null)
-        setSelectedImage(null)
-        setShowEmojiPicker(false)
-
-        // Update conversation list instantly
-        const displayContent = (contentToSend || '📷 Image').replace(/@\[([^\]]+)\]/g, '@$1')
-        setConversations(prev =>
-            prev.map(c =>
-                c.id === selectedConversation.id
+            // Update conversation list immediately
+            const displayContent = (contentToSend || '📷 Image').replace(/@\[([^\]]+)\]/g, '@$1')
+            setConversations(prevConvs => prevConvs.map(c =>
+                c.id === conv.id
                     ? { ...c, lastMessage: displayContent, lastMessageSender: 'agent', mode: 'AGENT' as const, lastMessageAt: new Date().toISOString() }
                     : c
-            )
-        )
-        setSelectedConversation(prev => prev ? { ...prev, mode: 'AGENT' } : null)
+            ))
 
-        // ── Background: send via API ──
-        try {
-            let res: Response
-            if (imageToSend) {
-                // Send with FormData for image upload
-                const formData = new FormData()
-                formData.append('content', contentToSend || '📷 Image')
-                formData.append('image', imageToSend)
-                res = await fetch(`/api/inbox/conversations/${selectedConversation.id}/messages`, {
-                    method: 'POST',
-                    body: formData,
-                })
-            } else {
-                res = await fetch(`/api/inbox/conversations/${selectedConversation.id}/messages`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: contentToSend }),
-                })
+            // Send via API in background
+            const sendAsync = async () => {
+                let res: Response
+                if (imageToSend) {
+                    const formData = new FormData()
+                    formData.append('content', contentToSend || '📷 Image')
+                    formData.append('image', imageToSend)
+                    res = await fetch(`/api/inbox/conversations/${conv.id}/messages`, { method: 'POST', body: formData })
+                } else {
+                    res = await fetch(`/api/inbox/conversations/${conv.id}/messages`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: contentToSend }),
+                    })
+                }
+                if (res.ok) {
+                    const data = await res.json()
+                    setPanels(cur => cur.map((p, i) => i === panelIdx
+                        ? { ...p, messages: p.messages.map(m => m.id === tempId ? { ...optimisticMessage, ...data.message } : m) }
+                        : p
+                    ))
+                } else {
+                    toast.error(t('inbox.toast.sendFailed'))
+                }
             }
-            if (res.ok) {
-                const data = await res.json()
-                // Replace temp message with real one (for externalId etc.)
-                setMessages(prev =>
-                    prev.map(m => m.id === tempId ? { ...optimisticMessage, ...data.message } : m)
-                )
-            } else {
-                toast.error(t('inbox.toast.sendFailed'))
-            }
-        } catch {
-            toast.error(t('inbox.toast.sendNetworkError'))
-        }
-    }, [selectedConversation, replyText, selectedImage])
+            sendAsync().catch(() => toast.error(t('inbox.toast.sendNetworkError')))
+
+            // Optimistic: add message, clear input
+            return prev.map((p, i) => i === panelIdx ? {
+                ...p,
+                messages: [...p.messages, optimisticMessage],
+                replyText: '',
+                replyToName: null,
+                selectedImage: null,
+                showEmojiPicker: false,
+                conversation: conv ? { ...conv, mode: 'AGENT' as const } : null,
+            } : p)
+        })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [t])
 
     // ─── Update conversation ──────────
-    const updateConversation = useCallback(async (convId: string, body: Record<string, any>) => {
+    const updateConversation = useCallback(async (convId: string, body: Record<string, any>, panelIdx?: number) => {
         setUpdatingConv(true)
         try {
             const res = await fetch(`/api/inbox/conversations/${convId}`, {
@@ -769,16 +840,14 @@ export default function InboxPage() {
             if (res.ok) {
                 const data = await res.json()
                 const updated = data.conversation
-                // Update in list
-                setConversations(prev =>
-                    prev.map(c => c.id === convId ? { ...c, ...updated } : c)
-                )
-                // Update selected
-                if (selectedConversation?.id === convId) {
-                    setSelectedConversation(prev => prev ? { ...prev, ...updated } : null)
-                }
+                setConversations(prev => prev.map(c => c.id === convId ? { ...c, ...updated } : c))
+                // Update conversation in whichever panels reference it
+                setPanels(prev => prev.map(p =>
+                    p.conversation?.id === convId
+                        ? { ...p, conversation: { ...p.conversation!, ...updated } }
+                        : p
+                ))
                 toast.success(t('inbox.toast.updated'))
-                // Refresh counts
                 fetchConversations()
             } else {
                 toast.error(t('inbox.toast.updateFailed'))
@@ -788,7 +857,7 @@ export default function InboxPage() {
         } finally {
             setUpdatingConv(false)
         }
-    }, [selectedConversation, fetchConversations])
+    }, [fetchConversations, t])
 
     // ─── Effects ──────────────────────
     useEffect(() => {
@@ -799,21 +868,23 @@ export default function InboxPage() {
         fetchConversations()
     }, [fetchConversations])
 
-    // Auto-scroll messages to bottom
+    // Auto-scroll each pane to bottom when its messages change
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages])
+        panels.forEach((_, i) => {
+            messagesEndRefs.current[i]?.scrollIntoView({ behavior: 'smooth' })
+        })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [panels.map(p => p.messages.length).join(',')])
 
     // Debounced search
     const handleSearchChange = (value: string) => {
         setSearchQuery(value)
     }
 
-    // Select conversation
+    // Select conversation → load into active pane
     const selectConversation = (conv: Conversation) => {
-        setSelectedConversation(conv)
-        setPostExpanded(false)
-        fetchMessages(conv.id)
+        updatePanel(activePanel, { conversation: conv, postExpanded: false, replyText: '', replyToName: null })
+        fetchMessages(conv.id, activePanel)
     }
 
     // ─── Toggle platform filter ───────
@@ -1311,731 +1382,674 @@ export default function InboxPage() {
                 </ScrollArea>
             </div>
 
-            {/* ═══ RIGHT — Detail Panel ═══ */}
-            <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-background">
-                {selectedConversation ? (
-                    <>
-                        {/* Header */}
-                        <div className="flex items-center gap-3 px-4 py-3 border-b bg-card">
-                            <Avatar className="h-8 w-8">
-                                {selectedConversation.externalUserAvatar && (
-                                    <AvatarImage src={selectedConversation.externalUserAvatar} alt={selectedConversation.externalUserName || ''} />
-                                )}
-                                <AvatarFallback className={cn(
-                                    'text-xs',
-                                    platformConfig[selectedConversation.platform]?.color
-                                )}>
-                                    {selectedConversation.externalUserName?.charAt(0)?.toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-semibold">
-                                        {selectedConversation.externalUserName}
-                                    </span>
-                                    <PlatformIcon platform={selectedConversation.platform} size={16} />
-                                    <span className="text-[10px] text-muted-foreground">
-                                        {selectedConversation.platformAccount?.accountName}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    {selectedConversation.mode === 'BOT' && (
-                                        <Badge variant="outline" className="h-4 px-1.5 text-[9px] border-green-300 text-green-600 bg-green-50 dark:bg-green-500/10">
-                                            <Bot className="h-2.5 w-2.5 mr-0.5" />
-                                            {t('inbox.header.botActive')}
-                                        </Badge>
-                                    )}
-                                    {selectedConversation.mode === 'AGENT' && (
-                                        <Badge variant="outline" className="h-4 px-1.5 text-[9px] border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400">
-                                            <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                                            {t('inbox.header.needsAgent')}
-                                        </Badge>
-                                    )}
-                                    {selectedConversation.sentiment && (
-                                        <SentimentIcon sentiment={selectedConversation.sentiment} />
-                                    )}
-                                    {selectedConversation.intent && (
-                                        <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">
-                                            {selectedConversation.intent === 'buy' ? t('inbox.header.buyIntent') : selectedConversation.intent === 'complaint' ? t('inbox.header.complaint') : selectedConversation.intent}
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
+            {/* ═══ RIGHT — Multi-Pane Detail Area ═══ */}
+            <div className={cn(
+                'flex-1 min-w-0 min-h-0 overflow-hidden',
+                panelLayout === 1 ? 'flex flex-col' : panelLayout === 2 ? 'grid grid-cols-2' : 'grid grid-cols-2 grid-rows-2'
+            )}>
+                {Array.from({ length: panelLayout }, (_, paneIdx) => {
+                    const pane = panels[paneIdx]
+                    const paneConv = pane.conversation
+                    const isActive = paneIdx === activePanel
 
-                            {/* Action buttons */}
-                            <div className="flex items-center gap-1.5">
-                                {selectedConversation.mode === 'BOT' ? (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs gap-1.5"
-                                        disabled={updatingConv}
-                                        onClick={() => updateConversation(selectedConversation.id, { action: 'takeover' })}
-                                    >
-                                        <UserCircle className="h-3.5 w-3.5" />
-                                        {t('inbox.actions.takeOver')}
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs gap-1.5"
-                                        disabled={updatingConv}
-                                        onClick={() => updateConversation(selectedConversation.id, { action: 'transferToBot' })}
-                                    >
-                                        <Bot className="h-3.5 w-3.5" />
-                                        {t('inbox.actions.transferToBot')}
-                                    </Button>
-                                )}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs gap-1.5 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    disabled={updatingConv}
-                                    onClick={() => updateConversation(selectedConversation.id, { status: 'done' })}
-                                >
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    {t('inbox.actions.resolve')}
-                                </Button>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                                            <MoreVertical className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            className="text-xs cursor-pointer"
-                                            onClick={() => updateConversation(selectedConversation.id, { status: 'archived' })}
-                                        >
-                                            <Archive className="h-3.5 w-3.5 mr-2" />
-                                            {t('inbox.actions.archive')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="text-xs cursor-pointer">
-                                            <Sparkles className="h-3.5 w-3.5 mr-2" />
-                                            {t('inbox.actions.aiSummary')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="text-xs cursor-pointer text-red-500 focus:text-red-500"
-                                            onClick={async () => {
-                                                if (!window.confirm(t('inbox.actions.deleteConfirm'))) return
-                                                try {
-                                                    const res = await fetch(`/api/inbox/conversations/${selectedConversation.id}`, { method: 'DELETE' })
-                                                    if (res.ok) {
-                                                        setConversations(prev => prev.filter(c => c.id !== selectedConversation.id))
-                                                        setSelectedConversation(null)
-                                                        toast.success(t('inbox.toast.conversationDeleted'))
-                                                    } else {
-                                                        toast.error(t('inbox.toast.deleteFailed'))
-                                                    }
-                                                } catch {
-                                                    toast.error(t('inbox.toast.deleteFailed'))
-                                                }
-                                            }}
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                            {t('inbox.actions.delete')}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </div>
-
-                        {/* Agent escalation alert banner */}
-                        {selectedConversation?.mode === 'AGENT' && selectedConversation.status !== 'done' && selectedConversation.status !== 'archived' && (
-                            <div className="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2">
-                                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-                                <p className="text-xs text-amber-700 dark:text-amber-300 flex-1">
-                                    <span className="font-semibold">{t('inbox.escalation.botEscalated')}</span> {t('inbox.escalation.needsHumanAgent')}
-                                </p>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-6 text-[10px] px-2 border-amber-400/50 text-amber-600 hover:bg-amber-500/20 shrink-0"
-                                    onClick={() => {
-                                        const replyInput = document.querySelector<HTMLInputElement>('[data-reply-input]')
-                                        replyInput?.focus()
-                                    }}
-                                >
-                                    {t('inbox.escalation.replyNow')}
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* Post preview for comment conversations */}
-                        {selectedConversation?.type === 'comment' && selectedConversation.metadata && (
-                            <div className="px-4 pt-3 pb-1 border-b border-border/50">
-                                <div className="rounded-lg border border-border/60 bg-muted/30 overflow-hidden">
-                                    <div className="p-3">
-                                        <div className="flex items-center gap-1.5 mb-1.5">
-                                            <span className="text-[10px] font-medium text-blue-400/80">{t('inbox.postPreview.originalPost')}</span>
-                                            <a
-                                                href={(selectedConversation.metadata as any).postPermalink || '#'}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-[10px] text-muted-foreground hover:text-blue-400 transition-colors"
-                                            >
-                                                {t('inbox.postPreview.viewOnFacebook')}
-                                            </a>
-                                        </div>
-                                        {(selectedConversation.metadata as any).postContent && (
-                                            <div>
-                                                <p className={cn(
-                                                    'text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap',
-                                                    !postExpanded && 'line-clamp-3'
-                                                )}>
-                                                    {(selectedConversation.metadata as any).postContent}
-                                                </p>
-                                                {(selectedConversation.metadata as any).postContent.length > 200 && (
-                                                    <button
-                                                        onClick={() => setPostExpanded(!postExpanded)}
-                                                        className="text-[10px] text-blue-400 hover:text-blue-300 font-medium mt-1 cursor-pointer"
-                                                    >
-                                                        {postExpanded ? t('inbox.postPreview.seeLess') : t('inbox.postPreview.seeMore')}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {/* Post images — auto aspect ratio */}
-                                    {(selectedConversation.metadata as any).postImages?.length > 0 && (
-                                        (selectedConversation.metadata as any).postImages.length === 1 ? (
-                                            <div className="w-full bg-black/20">
-                                                <img
-                                                    src={(selectedConversation.metadata as any).postImages[0]}
-                                                    alt="Post image"
-                                                    className="w-full h-auto max-h-[500px] object-contain"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className={cn(
-                                                'grid gap-0.5',
-                                                (selectedConversation.metadata as any).postImages.length === 2 ? 'grid-cols-2' : 'grid-cols-2'
-                                            )}>
-                                                {((selectedConversation.metadata as any).postImages as string[]).slice(0, 4).map((img: string, idx: number) => (
-                                                    <div key={idx} className="relative bg-black/20 overflow-hidden">
-                                                        <img
-                                                            src={img}
-                                                            alt={`Post image ${idx + 1}`}
-                                                            className="w-full h-auto object-contain max-h-[300px]"
-                                                        />
-                                                        {idx === 3 && (selectedConversation.metadata as any).postImages.length > 4 && (
-                                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                                <span className="text-white font-bold text-lg">
-                                                                    +{(selectedConversation.metadata as any).postImages.length - 4}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Chat history */}
-                        <ScrollArea className="flex-1 min-h-0 p-4">
-                            {/* Load earlier messages button */}
-                            {!loadingMessages && msgHasMore && (
-                                <div className="flex justify-center mb-4">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs gap-1.5"
-                                        onClick={loadEarlierMessages}
-                                        disabled={loadingMoreMsg}
-                                    >
-                                        {loadingMoreMsg ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                            <ChevronUp className="h-3 w-3" />
-                                        )}
-                                        {loadingMoreMsg ? 'Loading...' : 'Load earlier messages'}
-                                    </Button>
-                                </div>
+                    return (
+                        <div
+                            key={paneIdx}
+                            className={cn(
+                                'flex flex-col min-w-0 min-h-0 overflow-hidden bg-background relative',
+                                panelLayout > 1 && 'border-l border-b',
+                                panelLayout > 1 && isActive && 'ring-2 ring-inset ring-primary/60',
                             )}
-                            {loadingMessages ? (
-                                <div className="flex items-center justify-center h-32">
-                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                                </div>
-                            ) : messages.length === 0 ? (
-                                <div className="flex items-center justify-center h-32">
-                                    <p className="text-xs text-muted-foreground">{t('inbox.chat.noMessagesYet')}</p>
-                                </div>
-                            ) : selectedConversation?.type === 'comment' ? (
-                                /* ═══ Facebook-style threaded comment thread ═══ */
-                                <div className="space-y-0.5">
-                                    {messages.map((msg, idx) => {
-                                        const isReply = msg.direction === 'outbound'
-                                        const prevMsg = idx > 0 ? messages[idx - 1] : null
-                                        const isFirstReplyInGroup = isReply && (!prevMsg || prevMsg.direction === 'inbound')
-
-                                        // Resolve sender info with fallback for old messages
-                                        const senderName = msg.senderName
-                                            || (msg.direction === 'inbound' ? selectedConversation.externalUserName : null)
-                                            || t('inbox.chat.user')
-                                        const senderAvatar = msg.senderAvatar
-                                            || (msg.direction === 'inbound' ? selectedConversation.externalUserAvatar : null)
-                                            || null
-
-                                        // Extract @mention from content — bracket syntax @[Name] for multi-word names
-                                        const bracketMatch = msg.content.match(/^@\[([^\]]+)\]\s?/)
-                                        const legacyMatch = !bracketMatch ? msg.content.match(/^@(\S+)\s/) : null
-                                        const mentionName = bracketMatch ? bracketMatch[1] : legacyMatch ? legacyMatch[1] : null
-                                        const mentionMatchUsed = bracketMatch || legacyMatch
-                                        const contentWithoutMention = mentionName && mentionMatchUsed
-                                            ? msg.content.substring(mentionMatchUsed[0].length)
-                                            : msg.content
-
-                                        return (
-                                            <div key={msg.id} className={cn(
-                                                'group',
-                                                isReply && 'ml-10 relative'
-                                            )}>
-                                                {/* Connecting line for replies */}
-                                                {isReply && isFirstReplyInGroup && (
-                                                    <div className="absolute -left-5 top-0 w-5 h-5 border-l-2 border-b-2 border-muted-foreground/20 rounded-bl-lg" />
-                                                )}
-
-                                                <div className="flex gap-2 py-1">
-                                                    {/* Avatar */}
-                                                    <Avatar className={cn('shrink-0 mt-0.5', isReply ? 'h-7 w-7' : 'h-8 w-8')}>
-                                                        {msg.direction === 'inbound' && senderAvatar ? (
-                                                            <AvatarImage src={senderAvatar} alt={senderName} />
-                                                        ) : null}
-                                                        <AvatarFallback className={cn(
-                                                            'text-[10px] font-medium',
-                                                            msg.direction === 'outbound'
-                                                                ? msg.senderType === 'bot'
-                                                                    ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                                                                : 'bg-gray-100 dark:bg-gray-800'
-                                                        )}>
-                                                            {msg.direction === 'outbound'
-                                                                ? msg.senderType === 'bot' ? '🤖' : 'S'
-                                                                : senderName.charAt(0).toUpperCase()
-                                                            }
-                                                        </AvatarFallback>
-                                                    </Avatar>
-
-                                                    {/* Comment body */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className={cn(
-                                                            'inline-block rounded-2xl px-3 py-2 max-w-[85%]',
-                                                            isReply
-                                                                ? 'bg-muted/80 dark:bg-muted/50'
-                                                                : 'bg-muted/60 dark:bg-muted/40'
-                                                        )}>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-xs font-semibold">
-                                                                    {msg.direction === 'outbound'
-                                                                        ? msg.senderType === 'bot'
-                                                                            ? '🤖 AI Bot'
-                                                                            : selectedConversation.platformAccount?.accountName || 'Page'
-                                                                        : senderName
-                                                                    }
-                                                                </span>
-                                                                {msg.direction === 'outbound' && msg.senderType !== 'bot' && (
-                                                                    <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">
-                                                                        ✍️ Author
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-xs leading-relaxed whitespace-pre-wrap mt-0.5">
-                                                                {mentionName && (
-                                                                    <span className="text-blue-500 font-semibold">@{mentionName} </span>
-                                                                )}
-                                                                {contentWithoutMention}
-                                                            </p>
-                                                        </div>
-                                                        {/* Like · Reply · Time */}
-                                                        <div className="flex items-center gap-3 mt-0.5 ml-3">
-                                                            {msg.direction === 'inbound' && msg.externalId && selectedConversation && (
-                                                                <button
-                                                                    className={cn(
-                                                                        'text-[10px] font-semibold transition-colors',
-                                                                        likedCommentIds.has(msg.externalId)
-                                                                            ? 'text-blue-500'
-                                                                            : 'text-muted-foreground hover:text-blue-500'
-                                                                    )}
-                                                                    onClick={async () => {
-                                                                        if (likedCommentIds.has(msg.externalId!)) return
-                                                                        try {
-                                                                            const res = await fetch(`/api/inbox/conversations/${selectedConversation.id}/like`, {
-                                                                                method: 'POST',
-                                                                                headers: { 'Content-Type': 'application/json' },
-                                                                                body: JSON.stringify({ commentExternalId: msg.externalId }),
-                                                                            })
-                                                                            if (res.ok) {
-                                                                                setLikedCommentIds(prev => new Set(prev).add(msg.externalId!))
-                                                                                toast.success(t('inbox.toast.liked'))
-                                                                            } else {
-                                                                                const data = await res.json()
-                                                                                toast.error(data.error || t('inbox.toast.likeFailed'))
-                                                                            }
-                                                                        } catch {
-                                                                            toast.error(t('inbox.toast.likeFailed'))
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    {likedCommentIds.has(msg.externalId) ? '💙 Liked' : '👍 Like'}
-                                                                </button>
-                                                            )}
-                                                            {msg.direction === 'inbound' && msg.externalId && selectedConversation?.type === 'comment' && (
-                                                                <button
-                                                                    className="text-[10px] font-semibold text-muted-foreground hover:text-purple-500 transition-colors"
-                                                                    onClick={async () => {
-                                                                        const privateMsg = prompt('Send a private DM to this commenter:')
-                                                                        if (!privateMsg?.trim()) return
-                                                                        try {
-                                                                            const res = await fetch(`/api/inbox/conversations/${selectedConversation.id}/private-reply`, {
-                                                                                method: 'POST',
-                                                                                headers: { 'Content-Type': 'application/json' },
-                                                                                body: JSON.stringify({ commentExternalId: msg.externalId, message: privateMsg.trim() }),
-                                                                            })
-                                                                            if (res.ok) {
-                                                                                toast.success(t('inbox.toast.privateReplySent'))
-                                                                                // Refresh messages to show the private reply
-                                                                                fetchMessages(selectedConversation.id)
-                                                                            } else {
-                                                                                const data = await res.json()
-                                                                                toast.error(data.error || t('inbox.toast.privateReplyFailed'))
-                                                                            }
-                                                                        } catch {
-                                                                            toast.error(t('inbox.toast.privateReplyFailed'))
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    📩 Private Reply
-                                                                </button>
-                                                            )}
-                                                            {msg.direction === 'inbound' && (
-                                                                <button
-                                                                    className="text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
-                                                                    onClick={async () => {
-                                                                        // Auto-transfer to Agent if in BOT mode
-                                                                        if (selectedConversation?.mode === 'BOT') {
-                                                                            await updateConversation(selectedConversation.id, { action: 'takeover' })
-                                                                            setSelectedConversation(prev => prev ? { ...prev, mode: 'AGENT' } : null)
-                                                                            setConversations(prev => prev.map(c => c.id === selectedConversation.id ? { ...c, mode: 'AGENT' as const } : c))
-                                                                        }
-                                                                        setReplyToName(senderName)
-                                                                        setReplyText(`@[${senderName}] `)
-                                                                        // Focus the textarea
-                                                                        setTimeout(() => {
-                                                                            const textarea = document.querySelector('textarea')
-                                                                            if (textarea) {
-                                                                                textarea.focus()
-                                                                                textarea.setSelectionRange(textarea.value.length, textarea.value.length)
-                                                                            }
-                                                                        }, 50)
-                                                                    }}
-                                                                >
-                                                                    Reply
-                                                                </button>
-                                                            )}
-                                                            <span className="text-[10px] text-muted-foreground/60">
-                                                                {timeAgo(msg.sentAt, t)}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                    <div ref={messagesEndRef} />
-                                </div>
-                            ) : (
-                                /* ═══ Normal DM-style chat ═══ */
-                                <div className="space-y-3">
-                                    {messages.map(msg => (
-                                        <div
-                                            key={msg.id}
-                                            className={cn(
-                                                'flex gap-2',
-                                                msg.direction === 'outbound' ? 'justify-end' : 'justify-start'
-                                            )}
-                                        >
-                                            {msg.direction === 'inbound' && (
-                                                <Avatar className="h-7 w-7 shrink-0 mt-1">
-                                                    {selectedConversation.externalUserAvatar && (
-                                                        <AvatarImage src={selectedConversation.externalUserAvatar} alt={selectedConversation.externalUserName || ''} />
+                            onClick={() => {
+                                if (paneIdx !== activePanel) setActivePanel(paneIdx)
+                            }}
+                        >
+                            {/* Active pane indicator bar */}
+                            {panelLayout > 1 && (
+                                <div className={cn(
+                                    'h-0.5 w-full shrink-0 transition-colors',
+                                    isActive ? 'bg-primary' : 'bg-transparent'
+                                )} />
+                            )}
+                            {paneConv ? (
+                                (() => {
+                                    // For non-active panels, derive panel state locally
+                                    const paneSC = paneConv
+                                    const paneMsgs = pane.messages
+                                    const paneReplyText = pane.replyText
+                                    const paneReplyToName = pane.replyToName
+                                    const paneSelectedImage = pane.selectedImage
+                                    const paneDragOver = pane.dragOver
+                                    const paneShowEmojiPicker = pane.showEmojiPicker
+                                    const panePostExpanded = pane.postExpanded
+                                    const paneLikedIds = pane.likedCommentIds
+                                    const paneLoadingMessages = pane.loadingMessages
+                                    const paneMsgHasMore = pane.msgHasMore
+                                    const paneLoadingMoreMsg = pane.loadingMoreMsg
+                                    const paneAiSuggesting = pane.aiSuggesting
+                                    const sc = paneSC
+                                    return (
+                                        <>
+                                            {/* Header */}
+                                            <div className="flex items-center gap-3 px-4 py-3 border-b bg-card shrink-0">
+                                                <Avatar className="h-8 w-8">
+                                                    {sc.externalUserAvatar && (
+                                                        <AvatarImage src={sc.externalUserAvatar} alt={sc.externalUserName || ''} />
                                                     )}
-                                                    <AvatarFallback className="text-[10px] bg-gray-100 dark:bg-gray-800">
-                                                        {selectedConversation.externalUserName?.charAt(0)}
+                                                    <AvatarFallback className={cn(
+                                                        'text-xs',
+                                                        platformConfig[sc.platform]?.color
+                                                    )}>
+                                                        {sc.externalUserName?.charAt(0)?.toUpperCase()}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                            )}
-                                            <div className={cn(
-                                                'max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed',
-                                                msg.direction === 'outbound'
-                                                    ? msg.senderType === 'bot'
-                                                        ? 'bg-green-500/10 text-foreground border border-green-200 dark:border-green-800'
-                                                        : 'bg-primary text-primary-foreground'
-                                                    : 'bg-muted'
-                                            )}>
-                                                {msg.senderType === 'bot' && (
-                                                    <div className="flex items-center gap-1 mb-1.5 text-green-600 dark:text-green-400 text-[10px] font-medium">
-                                                        <Bot className="h-3 w-3" />
-                                                        AI Bot
-                                                        {msg.confidence != null && (
-                                                            <span className="text-muted-foreground">
-                                                                · {Math.round(msg.confidence * 100)}%
-                                                            </span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-semibold">
+                                                            {sc.externalUserName}
+                                                        </span>
+                                                        <PlatformIcon platform={sc.platform} size={16} />
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            {sc.platformAccount?.accountName}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        {sc.mode === 'BOT' && (
+                                                            <Badge variant="outline" className="h-4 px-1.5 text-[9px] border-green-300 text-green-600 bg-green-50 dark:bg-green-500/10">
+                                                                <Bot className="h-2.5 w-2.5 mr-0.5" />
+                                                                {t('inbox.header.botActive')}
+                                                            </Badge>
+                                                        )}
+                                                        {sc.mode === 'AGENT' && (
+                                                            <Badge variant="outline" className="h-4 px-1.5 text-[9px] border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400">
+                                                                <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                                                                {t('inbox.header.needsAgent')}
+                                                            </Badge>
+                                                        )}
+                                                        {sc.sentiment && <SentimentIcon sentiment={sc.sentiment} />}
+                                                        {sc.intent && (
+                                                            <Badge variant="secondary" className="h-4 px-1.5 text-[9px]">
+                                                                {sc.intent === 'buy' ? t('inbox.header.buyIntent') : sc.intent === 'complaint' ? t('inbox.header.complaint') : sc.intent}
+                                                            </Badge>
                                                         )}
                                                     </div>
-                                                )}
-                                                {msg.mediaUrl && msg.mediaType === 'image' && (
-                                                    <img
-                                                        src={msg.mediaUrl}
-                                                        alt="Attached image"
-                                                        className="max-w-[200px] rounded-lg mb-1.5"
-                                                    />
-                                                )}
-                                                <div className="whitespace-pre-wrap">{msg.content}</div>
-                                                <div className={cn(
-                                                    'text-[9px] mt-1.5',
-                                                    msg.direction === 'outbound' && msg.senderType !== 'bot'
-                                                        ? 'text-primary-foreground/70'
-                                                        : 'text-muted-foreground'
-                                                )}>
-                                                    {new Date(msg.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
-                                            </div>
-                                            {msg.direction === 'outbound' && msg.senderType === 'agent' && (
-                                                <Avatar className="h-7 w-7 shrink-0 mt-1">
-                                                    <AvatarFallback className="text-[10px] bg-primary/10">
-                                                        A
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            )}
-                                        </div>
-                                    ))}
-                                    <div ref={messagesEndRef} />
-                                </div>
-                            )}
-                        </ScrollArea>
 
-                        {/* Reply box */}
-                        <div className="border-t bg-card p-3">
-                            {/* Reply-to indicator */}
-                            {replyToName && (
-                                <div className="flex items-center gap-2 mb-2 px-1">
-                                    <Reply className="h-3 w-3 text-muted-foreground rotate-180" />
-                                    <span className="text-[11px] text-muted-foreground">
-                                        {t('inbox.chat.replyingTo')} <strong className="text-foreground">{replyToName}</strong>
-                                    </span>
-                                    <button
-                                        onClick={() => setReplyToName(null)}
-                                        className="text-[10px] text-muted-foreground hover:text-foreground ml-auto"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Image preview */}
-                            {selectedImage && (
-                                <div className="relative inline-block mb-2">
-                                    <img src={URL.createObjectURL(selectedImage)} alt="Preview" className="h-20 rounded-lg border object-cover" />
-                                    <button
-                                        onClick={() => setSelectedImage(null)}
-                                        className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-[10px] font-bold hover:scale-110 transition-transform"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            )}
-
-                            <div className="flex flex-col gap-2">
-                                {/* Textarea with drag-drop */}
-                                <div
-                                    className="relative"
-                                    onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                                    onDragLeave={() => setDragOver(false)}
-                                    onDrop={(e) => {
-                                        e.preventDefault()
-                                        setDragOver(false)
-                                        const file = e.dataTransfer.files?.[0]
-                                        if (file && file.type.startsWith('image/')) {
-                                            setSelectedImage(file)
-                                        } else if (file) {
-                                            toast.error(t('inbox.toast.onlyImages'))
-                                        }
-                                    }}
-                                >
-                                    {dragOver && (
-                                        <div className="absolute inset-0 z-10 rounded-xl border-2 border-dashed border-primary bg-primary/5 flex items-center justify-center pointer-events-none">
-                                            <span className="text-xs font-medium text-primary">{t('inbox.chat.dropImageHere')}</span>
-                                        </div>
-                                    )}
-                                    <textarea
-                                        data-reply-input
-                                        value={replyText}
-                                        onChange={e => setReplyText(e.target.value)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault()
-                                                handleSendReply()
-                                            }
-                                        }}
-                                        placeholder={selectedConversation.mode === 'BOT' ? t('inbox.chat.takeOverToReply') : t('inbox.chat.typeReply')}
-                                        disabled={selectedConversation.mode === 'BOT'}
-                                        rows={2}
-                                        className="w-full resize-none rounded-xl border bg-background px-3.5 py-2.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                                    />
-                                </div>
-
-                                {/* Rich toolbar */}
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-0.5">
-                                        {/* Emoji picker */}
-                                        <div className="relative">
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                                                disabled={selectedConversation.mode === 'BOT'}
-                                                title={t('inbox.chat.emoji')}
-                                                onClick={() => setShowEmojiPicker(p => !p)}
-                                            >
-                                                <Smile className="h-4 w-4" />
-                                            </Button>
-                                            {showEmojiPicker && (
-                                                <div className="absolute bottom-full left-0 mb-1 bg-popover border rounded-xl shadow-xl p-2 z-50 w-[280px]">
-                                                    <div className="grid grid-cols-8 gap-0.5">
-                                                        {['😀', '😂', '😍', '🥰', '😊', '😎', '🤔', '😢', '😡', '🙏', '👍', '👎', '❤️', '🔥', '🎉', '✅', '⭐', '💯', '👏', '🤝', '😘', '🥺', '😭', '🤩', '😤', '💪', '🙌', '💀', '🤣', '😅', '🫶', '💕', '💖', '😱', '🤗', '😏', '🤭', '😬', '🥳', '🎊', '💐', '🌟', '⚡', '💡', '📌', '📣', '🏠', '🛎️'].map(emoji => (
-                                                            <button
-                                                                key={emoji}
-                                                                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-md transition-colors text-base"
-                                                                onClick={() => {
-                                                                    setReplyText(prev => prev + emoji)
-                                                                    setShowEmojiPicker(false)
+                                                {/* Action buttons */}
+                                                <div className="flex items-center gap-1.5">
+                                                    {sc.mode === 'BOT' ? (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-7 text-xs gap-1.5"
+                                                            disabled={updatingConv}
+                                                            onClick={() => updateConversation(sc.id, { action: 'takeover' }, paneIdx)}
+                                                        >
+                                                            <UserCircle className="h-3.5 w-3.5" />
+                                                            {t('inbox.actions.takeOver')}
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-7 text-xs gap-1.5"
+                                                            disabled={updatingConv}
+                                                            onClick={() => updateConversation(sc.id, { action: 'transferToBot' }, paneIdx)}
+                                                        >
+                                                            <Bot className="h-3.5 w-3.5" />
+                                                            {t('inbox.actions.transferToBot')}
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 text-xs gap-1.5 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        disabled={updatingConv}
+                                                        onClick={() => updateConversation(sc.id, { status: 'done' }, paneIdx)}
+                                                    >
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                        {t('inbox.actions.resolve')}
+                                                    </Button>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                                <MoreVertical className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                className="text-xs cursor-pointer"
+                                                                onClick={() => updateConversation(sc.id, { status: 'archived' }, paneIdx)}
+                                                            >
+                                                                <Archive className="h-3.5 w-3.5 mr-2" />
+                                                                {t('inbox.actions.archive')}
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-xs cursor-pointer">
+                                                                <Sparkles className="h-3.5 w-3.5 mr-2" />
+                                                                {t('inbox.actions.aiSummary')}
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                className="text-xs cursor-pointer text-red-500 focus:text-red-500"
+                                                                onClick={async () => {
+                                                                    if (!window.confirm(t('inbox.actions.deleteConfirm'))) return
+                                                                    try {
+                                                                        const res = await fetch(`/api/inbox/conversations/${sc.id}`, { method: 'DELETE' })
+                                                                        if (res.ok) {
+                                                                            setConversations(prev => prev.filter(c => c.id !== sc.id))
+                                                                            updatePanel(paneIdx, { conversation: null, messages: [] })
+                                                                            toast.success(t('inbox.toast.conversationDeleted'))
+                                                                        } else {
+                                                                            toast.error(t('inbox.toast.deleteFailed'))
+                                                                        }
+                                                                    } catch {
+                                                                        toast.error(t('inbox.toast.deleteFailed'))
+                                                                    }
                                                                 }}
                                                             >
-                                                                {emoji}
-                                                            </button>
-                                                        ))}
+                                                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                                {t('inbox.actions.delete')}
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </div>
+
+                                            {/* Agent escalation alert banner */}
+                                            {sc.mode === 'AGENT' && sc.status !== 'done' && sc.status !== 'archived' && (
+                                                <div className="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 shrink-0">
+                                                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                                                    <p className="text-xs text-amber-700 dark:text-amber-300 flex-1">
+                                                        <span className="font-semibold">{t('inbox.escalation.botEscalated')}</span> {t('inbox.escalation.needsHumanAgent')}
+                                                    </p>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-6 text-[10px] px-2 border-amber-400/50 text-amber-600 hover:bg-amber-500/20 shrink-0"
+                                                        onClick={() => {
+                                                            setActivePanel(paneIdx)
+                                                            const replyInput = document.querySelector<HTMLInputElement>('[data-reply-input]')
+                                                            replyInput?.focus()
+                                                        }}
+                                                    >
+                                                        {t('inbox.escalation.replyNow')}
+                                                    </Button>
+                                                </div>
+                                            )}
+
+                                            {/* Post preview for comment conversations */}
+                                            {sc.type === 'comment' && sc.metadata && (
+                                                <div className="px-4 pt-3 pb-1 border-b border-border/50 shrink-0">
+                                                    <div className="rounded-lg border border-border/60 bg-muted/30 overflow-hidden">
+                                                        <div className="p-3">
+                                                            <div className="flex items-center gap-1.5 mb-1.5">
+                                                                <span className="text-[10px] font-medium text-blue-400/80">{t('inbox.postPreview.originalPost')}</span>
+                                                                <a
+                                                                    href={(sc.metadata as any).postPermalink || '#'}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-[10px] text-muted-foreground hover:text-blue-400 transition-colors"
+                                                                >
+                                                                    {t('inbox.postPreview.viewOnFacebook')}
+                                                                </a>
+                                                            </div>
+                                                            {(sc.metadata as any).postContent && (
+                                                                <div>
+                                                                    <p className={cn(
+                                                                        'text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap',
+                                                                        !panePostExpanded && 'line-clamp-3'
+                                                                    )}>
+                                                                        {(sc.metadata as any).postContent}
+                                                                    </p>
+                                                                    {(sc.metadata as any).postContent.length > 200 && (
+                                                                        <button
+                                                                            onClick={() => updatePanel(paneIdx, { postExpanded: !panePostExpanded })}
+                                                                            className="text-[10px] text-blue-400 hover:text-blue-300 font-medium mt-1 cursor-pointer"
+                                                                        >
+                                                                            {panePostExpanded ? t('inbox.postPreview.seeLess') : t('inbox.postPreview.seeMore')}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {(sc.metadata as any).postImages?.length > 0 && (
+                                                            (sc.metadata as any).postImages.length === 1 ? (
+                                                                <div className="w-full bg-black/20">
+                                                                    <img
+                                                                        src={(sc.metadata as any).postImages[0]}
+                                                                        alt="Post image"
+                                                                        className="w-full h-auto max-h-[200px] object-contain"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="grid grid-cols-2 gap-0.5">
+                                                                    {((sc.metadata as any).postImages as string[]).slice(0, 4).map((img: string, idx: number) => (
+                                                                        <div key={idx} className="relative bg-black/20 overflow-hidden">
+                                                                            <img
+                                                                                src={img}
+                                                                                alt={`Post image ${idx + 1}`}
+                                                                                className="w-full h-auto object-contain max-h-[150px]"
+                                                                            />
+                                                                            {idx === 3 && (sc.metadata as any).postImages.length > 4 && (
+                                                                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                                                    <span className="text-white font-bold text-lg">
+                                                                                        +{(sc.metadata as any).postImages.length - 4}
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
-                                        </div>
 
-                                        {/* Image upload */}
-                                        <label
-                                            className={cn(
-                                                'inline-flex items-center justify-center h-7 w-7 rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
-                                                selectedConversation.mode === 'BOT' && 'opacity-50 pointer-events-none'
-                                            )}
-                                            title={t('inbox.chat.uploadImage')}
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                disabled={selectedConversation.mode === 'BOT'}
-                                                onChange={(e) => {
-                                                    const file = e.target.files?.[0]
-                                                    if (file) setSelectedImage(file)
-                                                    e.target.value = ''
-                                                }}
-                                            />
-                                        </label>
+                                            {/* Chat history */}
+                                            <ScrollArea className="flex-1 min-h-0 p-4">
+                                                {/* Load earlier messages button */}
+                                                {!paneLoadingMessages && paneMsgHasMore && (
+                                                    <div className="flex justify-center mb-4">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-7 text-xs gap-1.5"
+                                                            onClick={() => loadEarlierMessages(paneIdx)}
+                                                            disabled={paneLoadingMoreMsg}
+                                                        >
+                                                            {paneLoadingMoreMsg ? (
+                                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                                            ) : (
+                                                                <ChevronUp className="h-3 w-3" />
+                                                            )}
+                                                            {paneLoadingMoreMsg ? 'Loading...' : 'Load earlier messages'}
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                                {paneLoadingMessages ? (
+                                                    <div className="flex items-center justify-center h-32">
+                                                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                                    </div>
+                                                ) : paneMsgs.length === 0 ? (
+                                                    <div className="flex items-center justify-center h-32">
+                                                        <p className="text-xs text-muted-foreground">{t('inbox.chat.noMessagesYet')}</p>
+                                                    </div>
+                                                ) : sc.type === 'comment' ? (
+                                                    /* ═══ Facebook-style threaded comment thread ═══ */
+                                                    <div className="space-y-0.5">
+                                                        {paneMsgs.map((msg: InboxMessage, idx: number) => {
+                                                            const isReply = msg.direction === 'outbound'
+                                                            const prevMsg = idx > 0 ? paneMsgs[idx - 1] : null
+                                                            const isFirstReplyInGroup = isReply && (!prevMsg || prevMsg.direction === 'inbound')
+                                                            const senderName = msg.senderName
+                                                                || (msg.direction === 'inbound' ? sc.externalUserName : null)
+                                                                || t('inbox.chat.user')
+                                                            const senderAvatar = msg.senderAvatar
+                                                                || (msg.direction === 'inbound' ? sc.externalUserAvatar : null)
+                                                                || null
+                                                            const bracketMatch = msg.content.match(/^@\[([^\]]+)\]\s?/)
+                                                            const legacyMatch = !bracketMatch ? msg.content.match(/^@(\S+)\s/) : null
+                                                            const mentionName = bracketMatch ? bracketMatch[1] : legacyMatch ? legacyMatch[1] : null
+                                                            const mentionMatchUsed = bracketMatch || legacyMatch
+                                                            const contentWithoutMention = mentionName && mentionMatchUsed
+                                                                ? msg.content.substring(mentionMatchUsed[0].length)
+                                                                : msg.content
 
-                                        <div className="w-px h-4 bg-border mx-0.5" />
+                                                            return (
+                                                                <div key={msg.id} className={cn(
+                                                                    'group',
+                                                                    isReply && 'ml-10 relative'
+                                                                )}>
+                                                                    {isReply && isFirstReplyInGroup && (
+                                                                        <div className="absolute -left-5 top-0 w-5 h-5 border-l-2 border-b-2 border-muted-foreground/20 rounded-bl-lg" />
+                                                                    )}
+                                                                    <div className="flex gap-2 py-1">
+                                                                        <Avatar className={cn('shrink-0 mt-0.5', isReply ? 'h-7 w-7' : 'h-8 w-8')}>
+                                                                            {msg.direction === 'inbound' && senderAvatar ? (
+                                                                                <AvatarImage src={senderAvatar} alt={senderName} />
+                                                                            ) : null}
+                                                                            <AvatarFallback className={cn(
+                                                                                'text-[10px] font-medium',
+                                                                                msg.direction === 'outbound'
+                                                                                    ? msg.senderType === 'bot'
+                                                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                                                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                                                                                    : 'bg-gray-100 dark:bg-gray-800'
+                                                                            )}>
+                                                                                {msg.direction === 'outbound'
+                                                                                    ? msg.senderType === 'bot' ? '🤖' : 'S'
+                                                                                    : senderName.charAt(0).toUpperCase()
+                                                                                }
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className={cn(
+                                                                                'inline-block rounded-2xl px-3 py-2 max-w-[85%]',
+                                                                                isReply
+                                                                                    ? 'bg-muted/80 dark:bg-muted/50'
+                                                                                    : 'bg-muted/60 dark:bg-muted/40'
+                                                                            )}>
+                                                                                <div className="flex items-center gap-1.5">
+                                                                                    <span className="text-xs font-semibold">
+                                                                                        {msg.direction === 'outbound'
+                                                                                            ? msg.senderType === 'bot'
+                                                                                                ? '🤖 AI Bot'
+                                                                                                : sc.platformAccount?.accountName || 'Page'
+                                                                                            : senderName
+                                                                                        }
+                                                                                    </span>
+                                                                                    {msg.direction === 'outbound' && msg.senderType !== 'bot' && (
+                                                                                        <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">
+                                                                                            ✍️ Author
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <p className="text-xs leading-relaxed whitespace-pre-wrap mt-0.5">
+                                                                                    {mentionName && (
+                                                                                        <span className="text-blue-500 font-semibold">@{mentionName} </span>
+                                                                                    )}
+                                                                                    {contentWithoutMention}
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-3 mt-0.5 ml-3">
+                                                                                {msg.direction === 'inbound' && msg.externalId && sc && (
+                                                                                    <button
+                                                                                        className={cn(
+                                                                                            'text-[10px] font-semibold transition-colors',
+                                                                                            paneLikedIds.has(msg.externalId)
+                                                                                                ? 'text-blue-500'
+                                                                                                : 'text-muted-foreground hover:text-blue-500'
+                                                                                        )}
+                                                                                        onClick={async () => {
+                                                                                            if (paneLikedIds.has(msg.externalId!)) return
+                                                                                            try {
+                                                                                                const res = await fetch(`/api/inbox/conversations/${sc.id}/like`, {
+                                                                                                    method: 'POST',
+                                                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                                                    body: JSON.stringify({ commentExternalId: msg.externalId }),
+                                                                                                })
+                                                                                                if (res.ok) {
+                                                                                                    updatePanel(paneIdx, { likedCommentIds: new Set([...paneLikedIds, msg.externalId!]) })
+                                                                                                    toast.success(t('inbox.toast.liked'))
+                                                                                                } else {
+                                                                                                    const data = await res.json()
+                                                                                                    toast.error(data.error || t('inbox.toast.likeFailed'))
+                                                                                                }
+                                                                                            } catch {
+                                                                                                toast.error(t('inbox.toast.likeFailed'))
+                                                                                            }
+                                                                                        }}
+                                                                                    >
+                                                                                        {paneLikedIds.has(msg.externalId) ? '💙 Liked' : '👍 Like'}
+                                                                                    </button>
+                                                                                )}
+                                                                                {msg.direction === 'inbound' && msg.externalId && sc.type === 'comment' && (
+                                                                                    <button
+                                                                                        className="text-[10px] font-semibold text-muted-foreground hover:text-purple-500 transition-colors"
+                                                                                        onClick={async () => {
+                                                                                            const privateMsg = prompt('Send a private DM to this commenter:')
+                                                                                            if (!privateMsg?.trim()) return
+                                                                                            try {
+                                                                                                const res = await fetch(`/api/inbox/conversations/${sc.id}/private-reply`, {
+                                                                                                    method: 'POST',
+                                                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                                                    body: JSON.stringify({ commentExternalId: msg.externalId, message: privateMsg.trim() }),
+                                                                                                })
+                                                                                                if (res.ok) {
+                                                                                                    toast.success(t('inbox.toast.privateReplySent'))
+                                                                                                    fetchMessages(sc.id, paneIdx)
+                                                                                                } else {
+                                                                                                    const data = await res.json()
+                                                                                                    toast.error(data.error || t('inbox.toast.privateReplyFailed'))
+                                                                                                }
+                                                                                            } catch {
+                                                                                                toast.error(t('inbox.toast.privateReplyFailed'))
+                                                                                            }
+                                                                                        }}
+                                                                                    >
+                                                                                        📩 Private Reply
+                                                                                    </button>
+                                                                                )}
+                                                                                {msg.direction === 'inbound' && (
+                                                                                    <button
+                                                                                        className="text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                                                                                        onClick={async () => {
+                                                                                            if (sc.mode === 'BOT') {
+                                                                                                await updateConversation(sc.id, { action: 'takeover' }, paneIdx)
+                                                                                                updatePanel(paneIdx, { conversation: { ...sc, mode: 'AGENT' as const } })
+                                                                                            }
+                                                                                            setActivePanel(paneIdx)
+                                                                                            updatePanel(paneIdx, { replyToName: senderName, replyText: `@[${senderName}] ` })
+                                                                                            setTimeout(() => {
+                                                                                                const textarea = document.querySelector('textarea')
+                                                                                                if (textarea) {
+                                                                                                    textarea.focus()
+                                                                                                    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+                                                                                                }
+                                                                                            }, 50)
+                                                                                        }}
+                                                                                    >
+                                                                                        Reply
+                                                                                    </button>
+                                                                                )}
+                                                                                <span className="text-[10px] text-muted-foreground/60">
+                                                                                    {timeAgo(msg.sentAt, t)}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                        <div ref={el => { messagesEndRefs.current[paneIdx] = el }} />
+                                                    </div>
+                                                ) : (
+                                                    /* ═══ Normal DM-style chat ═══ */
+                                                    <div className="space-y-3">
+                                                        {paneMsgs.map((msg: InboxMessage) => (
+                                                            <div
+                                                                key={msg.id}
+                                                                className={cn(
+                                                                    'flex gap-2',
+                                                                    msg.direction === 'outbound' ? 'justify-end' : 'justify-start'
+                                                                )}
+                                                            >
+                                                                {msg.direction === 'inbound' && (
+                                                                    <Avatar className="h-7 w-7 shrink-0 mt-1">
+                                                                        {sc.externalUserAvatar && (
+                                                                            <AvatarImage src={sc.externalUserAvatar} alt={sc.externalUserName || ''} />
+                                                                        )}
+                                                                        <AvatarFallback className="text-[10px] bg-gray-100 dark:bg-gray-800">
+                                                                            {sc.externalUserName?.charAt(0)}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                )}
+                                                                <div className={cn(
+                                                                    'max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed',
+                                                                    msg.direction === 'outbound'
+                                                                        ? msg.senderType === 'bot'
+                                                                            ? 'bg-green-500/10 text-foreground border border-green-200 dark:border-green-800'
+                                                                            : 'bg-primary text-primary-foreground'
+                                                                        : 'bg-muted'
+                                                                )}>
+                                                                    {msg.senderType === 'bot' && (
+                                                                        <div className="flex items-center gap-1 mb-1.5 text-green-600 dark:text-green-400 text-[10px] font-medium">
+                                                                            <Bot className="h-3 w-3" />
+                                                                            AI Bot
+                                                                            {msg.confidence != null && (
+                                                                                <span className="text-muted-foreground">
+                                                                                    · {Math.round(msg.confidence * 100)}%
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                    {msg.mediaUrl && msg.mediaType === 'image' && (
+                                                                        <img
+                                                                            src={msg.mediaUrl}
+                                                                            alt="Attached image"
+                                                                            className="max-w-[200px] rounded-lg mb-1.5"
+                                                                        />
+                                                                    )}
+                                                                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                                                                    <div className={cn(
+                                                                        'text-[9px] mt-1.5',
+                                                                        msg.direction === 'outbound' && msg.senderType !== 'bot'
+                                                                            ? 'text-primary-foreground/70'
+                                                                            : 'text-muted-foreground'
+                                                                    )}>
+                                                                        {new Date(msg.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                                                    </div>
+                                                                </div>
+                                                                {msg.direction === 'outbound' && msg.senderType === 'agent' && (
+                                                                    <Avatar className="h-7 w-7 shrink-0 mt-1">
+                                                                        <AvatarFallback className="text-[10px] bg-primary/10">
+                                                                            A
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                        <div ref={el => { messagesEndRefs.current[paneIdx] = el }} />
+                                                    </div>
+                                                )}
+                                            </ScrollArea>
 
-                                        {/* AI Suggest */}
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-7 px-2 gap-1 text-muted-foreground hover:text-amber-500 text-[11px]"
-                                            disabled={selectedConversation.mode === 'BOT' || aiSuggesting}
-                                            title={t('inbox.chat.aiSuggestReply')}
-                                            onClick={async () => {
-                                                setAiSuggesting(true)
-                                                try {
-                                                    const res = await fetch(`/api/inbox/conversations/${selectedConversation.id}/suggest`, {
-                                                        method: 'POST',
-                                                    })
-                                                    if (res.ok) {
-                                                        const data = await res.json()
-                                                        setReplyText(data.suggestion)
-                                                        toast.success(t('inbox.toast.aiSuggestionReady'))
-                                                    } else {
-                                                        const data = await res.json()
-                                                        toast.error(data.error || t('inbox.toast.aiSuggestFailed'))
-                                                    }
-                                                } catch {
-                                                    toast.error(t('inbox.toast.aiSuggestFailed'))
-                                                } finally {
-                                                    setAiSuggesting(false)
-                                                }
-                                            }}
-                                        >
-                                            {aiSuggesting ? (
-                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                            ) : (
-                                                <Sparkles className="h-3.5 w-3.5" />
-                                            )}
-                                            AI
-                                        </Button>
+                                            {/* Reply box */}
+                                            <div className="border-t bg-card p-3 shrink-0">
+                                                {/* Reply-to indicator */}
+                                                {paneReplyToName && (
+                                                    <div className="flex items-center gap-2 mb-2 px-1">
+                                                        <Reply className="h-3 w-3 text-muted-foreground rotate-180" />
+                                                        <span className="text-[11px] text-muted-foreground">
+                                                            {t('inbox.chat.replyingTo')} <strong className="text-foreground">{paneReplyToName}</strong>
+                                                        </span>
+                                                        <button
+                                                            onClick={() => updatePanel(paneIdx, { replyToName: null })}
+                                                            className="text-[10px] text-muted-foreground hover:text-foreground ml-auto"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                )}
 
-                                        <div className="w-px h-4 bg-border mx-0.5" />
+                                                {/* Image preview */}
+                                                {paneSelectedImage && (
+                                                    <div className="relative inline-block mb-2">
+                                                        <img src={URL.createObjectURL(paneSelectedImage)} alt="Preview" className="h-20 rounded-lg border object-cover" />
+                                                        <button
+                                                            onClick={() => updatePanel(paneIdx, { selectedImage: null })}
+                                                            className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-[10px] font-bold hover:scale-110 transition-transform"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                )}
 
-                                        {/* Transfer Agent / Bot toggle */}
-                                        {selectedConversation.mode === 'BOT' ? (
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-7 px-2 gap-1 text-[11px] text-muted-foreground hover:text-blue-500"
-                                                disabled={updatingConv}
-                                                onClick={() => updateConversation(selectedConversation.id, { action: 'takeover' })}
-                                                title={t('inbox.chat.takeOverFromBot')}
-                                            >
-                                                <UserCircle className="h-3.5 w-3.5" />
-                                                Agent
-                                            </Button>
+                                                <div className="flex flex-col gap-2">
+                                                    {/* Textarea with drag-drop */}
+                                                    <div
+                                                        className="relative"
+                                                        onDragOver={(e) => { e.preventDefault(); updatePanel(paneIdx, { dragOver: true }) }}
+                                                        onDragLeave={() => updatePanel(paneIdx, { dragOver: false })}
+                                                        onDrop={(e) => {
+                                                            e.preventDefault()
+                                                            updatePanel(paneIdx, { dragOver: false })
+                                                            const file = e.dataTransfer.files?.[0]
+                                                            if (file && file.type.startsWith('image/')) {
+                                                                updatePanel(paneIdx, { selectedImage: file })
+                                                            } else if (file) {
+                                                                toast.error(t('inbox.toast.onlyImages'))
+                                                            }
+                                                        }}
+                                                    >
+                                                        {paneDragOver && (
+                                                            <div className="absolute inset-0 z-10 rounded-xl border-2 border-dashed border-primary bg-primary/5 flex items-center justify-center pointer-events-none">
+                                                                <span className="text-xs font-medium text-primary">{t('inbox.chat.dropImageHere')}</span>
+                                                            </div>
+                                                        )}
+                                                        <textarea
+                                                            data-reply-input={isActive ? 'true' : undefined}
+                                                            value={paneReplyText}
+                                                            onChange={e => updatePanel(paneIdx, { replyText: e.target.value })}
+                                                            onFocus={() => { if (paneIdx !== activePanel) setActivePanel(paneIdx) }}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                                    e.preventDefault()
+                                                                    handleSendReply(paneIdx)
+                                                                }
+                                                            }}
+                                                            placeholder={sc.mode === 'BOT' ? t('inbox.chat.takeOverToReply') : t('inbox.chat.typeReply')}
+                                                            disabled={sc.mode === 'BOT'}
+                                                            rows={panelLayout === 4 ? 1 : 2}
+                                                            className="w-full resize-none rounded-xl border bg-background px-3.5 py-2.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        />
+                                                    </div>
+
+                                                    {/* Toolbar */}
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-0.5">
+                                                            {/* Image upload */}
+                                                            <label className={cn(
+                                                                'flex items-center justify-center h-7 w-7 rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
+                                                                sc.mode === 'BOT' && 'opacity-50 pointer-events-none'
+                                                            )}>
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    className="hidden"
+                                                                    disabled={sc.mode === 'BOT'}
+                                                                    onChange={e => {
+                                                                        const file = e.target.files?.[0]
+                                                                        if (file) updatePanel(paneIdx, { selectedImage: file })
+                                                                        e.target.value = ''
+                                                                    }}
+                                                                />
+                                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                            </label>
+                                                        </div>
+
+                                                        {/* Send button */}
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-7 text-xs gap-1.5"
+                                                            disabled={sc.mode === 'BOT' || (!paneReplyText.trim() && !paneSelectedImage)}
+                                                            onClick={() => handleSendReply(paneIdx)}
+                                                        >
+                                                            <Send className="h-3.5 w-3.5" />
+                                                            {t('inbox.chat.send')}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )
+                                })()
+                            ) : (
+                                /* Empty pane state */
+                                <div className="flex-1 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <MessageSquare className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
+                                        {panelLayout > 1 ? (
+                                            <>
+                                                <p className="text-xs text-muted-foreground font-medium">
+                                                    Panel {paneIdx + 1}
+                                                </p>
+                                                <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                                                    {isActive ? 'Select a conversation from the list' : 'Click here then select a conversation'}
+                                                </p>
+                                            </>
                                         ) : (
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-7 px-2 gap-1 text-[11px] text-muted-foreground hover:text-green-500"
-                                                disabled={updatingConv}
-                                                onClick={() => updateConversation(selectedConversation.id, { action: 'transfer_bot' })}
-                                                title={t('inbox.chat.transferToBotTitle')}
-                                            >
-                                                <Bot className="h-3.5 w-3.5" />
-                                                Bot
-                                            </Button>
+                                            <>
+                                                <h3 className="text-sm font-medium text-foreground mb-1">{t('inbox.emptyState.selectConversation')}</h3>
+                                                <p className="text-xs text-muted-foreground">{t('inbox.emptyState.selectConversationDesc')}</p>
+                                            </>
                                         )}
                                     </div>
-
-                                    <Button
-                                        size="sm"
-                                        className="h-7 px-3 gap-1.5 text-xs"
-                                        disabled={selectedConversation.mode === 'BOT' || (!replyText.trim() && !selectedImage)}
-                                        onClick={handleSendReply}
-                                    >
-                                        <Send className="h-3.5 w-3.5" />
-                                        {t('inbox.chat.send')}
-                                    </Button>
                                 </div>
-                            </div>
+                            )}
                         </div>
-                    </>
-                ) : (
-                    /* Empty state */
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="text-center">
-                            <MessageSquare className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                            <h3 className="text-sm font-medium text-foreground mb-1">{t('inbox.emptyState.selectConversation')}</h3>
-                            <p className="text-xs text-muted-foreground">{t('inbox.emptyState.selectConversationDesc')}</p>
-                        </div>
-                    </div>
-                )}
+                    )
+                })}
             </div>
         </div>
     )
