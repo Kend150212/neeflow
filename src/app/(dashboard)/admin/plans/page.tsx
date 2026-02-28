@@ -126,6 +126,7 @@ export default function AdminPlansPage() {
     const [deleteId, setDeleteId] = useState<string | null>(null)
     const [syncingStripe, setSyncingStripe] = useState(false)
     const [syncingPlanId, setSyncingPlanId] = useState<string | null>(null)
+    const [syncingAddons, setSyncingAddons] = useState(false)
     // Add-on state
     const [addons, setAddons] = useState<Addon[]>([])
     const [addonDialogOpen, setAddonDialogOpen] = useState(false)
@@ -232,6 +233,23 @@ export default function AdminPlansPage() {
             setSyncingStripe(false)
         }
     }
+    const syncAllAddonsToStripe = async () => {
+        setSyncingAddons(true)
+        try {
+            const res = await fetch('/api/admin/addons/sync-stripe', { method: 'POST' })
+            const data = await res.json()
+            if (data.ok) {
+                toast.success(`Addons synced — ${data.summary.synced} synced, ${data.summary.alreadySynced} already OK, ${data.summary.skipped} free (skipped), ${data.summary.errors} errors`)
+                fetchAddons()
+            } else {
+                toast.error('Addon Stripe sync failed')
+            }
+        } catch {
+            toast.error('Addon Stripe sync failed')
+        } finally {
+            setSyncingAddons(false)
+        }
+    }
 
     const syncOnePlan = async (planId: string) => {
         setSyncingPlanId(planId)
@@ -256,6 +274,7 @@ export default function AdminPlansPage() {
             setSyncingPlanId(null)
         }
     }
+
 
     const handleSave = async () => {
         setSaving(true)
@@ -352,7 +371,18 @@ export default function AdminPlansPage() {
                         {syncingStripe
                             ? <Loader2 className="h-4 w-4 animate-spin" />
                             : <RefreshCw className="h-4 w-4" />}
-                        Sync All to Stripe
+                        Sync Plans
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={syncAllAddonsToStripe}
+                        disabled={syncingAddons}
+                        className="gap-2 text-purple-600 border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                    >
+                        {syncingAddons
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <RefreshCw className="h-4 w-4" />}
+                        Sync Addons
                     </Button>
                     <Button onClick={openCreate} className="gap-2">
                         <Plus className="h-4 w-4" />
