@@ -6,7 +6,7 @@ import {
     XCircle, Clock, Zap, ExternalLink, Download, Sparkles,
     ArrowUpRight, Target, RotateCcw, Search, Tag, ChevronRight,
     Copy, Shield, Calendar, Pause, Play, Gift, PauseCircle,
-    X, CheckCheck,
+    X, CheckCheck, FlaskConical, Loader2,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,7 @@ interface SubRow {
     stripeCustomerId: string | null
     stripeSubscriptionId: string | null
     stripeCouponId: string | null
+    isInternal: boolean
     createdAt: string
     user: {
         id: string
@@ -77,6 +78,8 @@ interface BillingData {
     mrrHistory: MrrPoint[]
     planBreakdown: PlanPoint[]
     trialStats: TrialStats
+    currentMrr: number
+    internalCount: number
 }
 
 const PIE_COLORS = ['#7c3aed', '#2563eb', '#059669', '#d97706', '#dc2626', '#6366f1']
@@ -586,6 +589,8 @@ export default function AdminBillingPage() {
     const [refundTarget, setRefundTarget] = useState<SubRow | null>(null)
     const [refundReason, setRefundReason] = useState('')
     const [refunding, setRefunding] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [togglingInternal, setTogglingInternal] = useState(false)
 
     const fetchData = useCallback(async () => {
         setLoading(true)
@@ -624,6 +629,38 @@ export default function AdminBillingPage() {
         finally { setRefunding(false) }
     }
 
+    const handleToggleInternal = async (markAsInternal: boolean) => {
+        if (selectedIds.size === 0) return
+        setTogglingInternal(true)
+        try {
+            const res = await fetch('/api/admin/billing/internal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscriptionIds: Array.from(selectedIds), isInternal: markAsInternal }),
+            })
+            const d = await res.json()
+            if (res.ok) {
+                toast.success(d.message)
+                setSelectedIds(new Set())
+                fetchData()
+            } else {
+                toast.error(d.error || 'Failed to update')
+            }
+        } catch {
+            toast.error('Something went wrong')
+        } finally {
+            setTogglingInternal(false)
+        }
+    }
+
+    const toggleSelectAll = (filteredSubs: SubRow[]) => {
+        if (selectedIds.size === filteredSubs.length) {
+            setSelectedIds(new Set())
+        } else {
+            setSelectedIds(new Set(filteredSubs.map(s => s.id)))
+        }
+    }
+
     if (loading || !data) {
         return (
             <div className="p-6 space-y-6 animate-pulse">
@@ -636,15 +673,11 @@ export default function AdminBillingPage() {
         )
     }
 
-    const { subs, mrrHistory, planBreakdown, trialStats } = data
-    const active = subs.filter(s => s.status === 'active')
-    const pastDue = subs.filter(s => s.status === 'past_due')
-    const canceled = subs.filter(s => s.status === 'canceled')
-    const trialing = subs.filter(s => s.status === 'trialing')
-    const mrr = active.reduce((sum, s) => {
-        const price = s.billingInterval === 'annual' ? s.plan.priceAnnual / 12 : s.plan.priceMonthly
-        return sum + price
-    }, 0)
+    const { subs, mrrHistory, planBreakdown, trialStats, currentMrr, internalCount } = data
+    const active = subs.filter(s => s.status === 'active' && !s.isInternal)
+    const pastDue = subs.filter(s => s.status === 'past_due' && !s.isInternal)
+    const canceled = subs.filter(s => s.status === 'canceled' && !s.isInternal)
+    const trialing = subs.filter(s => s.status === 'trialing' && !s.isInternal)
 
     const filtered = subs.filter(s => {
         if (statusFilter !== 'ALL' && s.status !== statusFilter) return false
@@ -683,8 +716,12 @@ export default function AdminBillingPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">${mrr.toFixed(0)}</p>
-                        <p className="text-xs text-muted-foreground">per month</p>
+                        <p className="text-2xl font-bold">${(currentMrr ?? 0).toFixed(0)}</p>
+                        {internalCount > 0 ? (
+                            <p className="text-xs text-muted-foreground">excl. {internalCount} internal</p>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">per month</p>
+                        )}
                     </CardContent>
                 </Card>
                 <Card>
@@ -850,7 +887,7 @@ export default function AdminBillingPage() {
 
                 {/* ── Subscriptions Tab ── */}
                 <TabsContent value="subscriptions" className="space-y-3 mt-0">
-                    {/* Filters */}
+                    {/* Filters + Bulk action bar */}
                     <div className="flex items-center gap-2 flex-wrap">
                         <div className="relative flex-1 min-w-[200px] max-w-[320px]">
                             <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -896,12 +933,55 @@ export default function AdminBillingPage() {
                         <span className="text-xs text-muted-foreground ml-auto">{filtered.length} subscriptions</span>
                     </div>
 
+                    {/* Bulk action bar — visible when rows selected */}
+                    {selectedIds.size > 0 && (
+                        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                            <FlaskConical className="h-4 w-4 text-violet-400 shrink-0" />
+                            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                            <div className="flex gap-2 ml-auto">
+                                <Button
+                                    size="sm" variant="outline"
+                                    className="h-7 text-xs gap-1.5 border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                                    disabled={togglingInternal}
+                                    onClick={() => handleToggleInternal(true)}
+                                >
+                                    {togglingInternal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FlaskConical className="h-3.5 w-3.5" />}
+                                    Mark as Internal
+                                </Button>
+                                <Button
+                                    size="sm" variant="outline"
+                                    className="h-7 text-xs gap-1.5"
+                                    disabled={togglingInternal}
+                                    onClick={() => handleToggleInternal(false)}
+                                >
+                                    {togglingInternal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCheck className="h-3.5 w-3.5" />}
+                                    Unmark Internal
+                                </Button>
+                                <Button
+                                    size="sm" variant="ghost"
+                                    className="h-7 text-xs gap-1"
+                                    onClick={() => setSelectedIds(new Set())}
+                                >
+                                    <X className="h-3.5 w-3.5" /> Clear
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Table */}
                     <Card>
                         <CardContent className="p-0">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-8">
+                                            <input
+                                                type="checkbox"
+                                                className="h-3.5 w-3.5 rounded border-border cursor-pointer"
+                                                checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                                                onChange={() => toggleSelectAll(filtered)}
+                                            />
+                                        </TableHead>
                                         <TableHead>User</TableHead>
                                         <TableHead>Plan</TableHead>
                                         <TableHead>Status</TableHead>
@@ -918,16 +998,29 @@ export default function AdminBillingPage() {
                                 <TableBody>
                                     {filtered.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
+                                            <TableCell colSpan={12} className="text-center py-12 text-muted-foreground">
                                                 No subscriptions found
                                             </TableCell>
                                         </TableRow>
                                     ) : filtered.map(sub => (
                                         <TableRow
                                             key={sub.id}
-                                            className="cursor-pointer hover:bg-muted/30 transition-colors"
+                                            className={`cursor-pointer hover:bg-muted/30 transition-colors ${sub.isInternal ? 'opacity-60' : ''}`}
                                             onClick={() => setSelectedSub(sub)}
                                         >
+                                            <TableCell onClick={e => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-3.5 w-3.5 rounded border-border cursor-pointer"
+                                                    checked={selectedIds.has(sub.id)}
+                                                    onChange={() => {
+                                                        const next = new Set(selectedIds)
+                                                        if (next.has(sub.id)) next.delete(sub.id)
+                                                        else next.add(sub.id)
+                                                        setSelectedIds(next)
+                                                    }}
+                                                />
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     {sub.user.image ? (
@@ -938,7 +1031,14 @@ export default function AdminBillingPage() {
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <p className="font-medium text-sm leading-tight">{sub.user.name ?? '—'}</p>
+                                                        <p className="font-medium text-sm leading-tight flex items-center gap-1">
+                                                            {sub.user.name ?? '—'}
+                                                            {sub.isInternal && (
+                                                                <span title="Internal/test account — excluded from reports">
+                                                                    <FlaskConical className="h-3 w-3 text-amber-400" />
+                                                                </span>
+                                                            )}
+                                                        </p>
                                                         <p className="text-xs text-muted-foreground">{sub.user.email}</p>
                                                     </div>
                                                 </div>
@@ -954,7 +1054,7 @@ export default function AdminBillingPage() {
                                                         {sub.status}{sub.cancelAtPeriodEnd && <Clock className="h-3 w-3 ml-1" />}
                                                     </Badge>
                                                     {sub.cancelAtPeriodEnd && (
-                                                        <span className="text-xs text-red-400">↩ Cancels {fmtDate(sub.currentPeriodEnd)}</span>
+                                                        <span className="text-xs text-red-400">&larr; Cancels {fmtDate(sub.currentPeriodEnd)}</span>
                                                     )}
                                                 </div>
                                             </TableCell>

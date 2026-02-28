@@ -799,6 +799,7 @@ model Subscription {
   trialEndsAt          DateTime? @map("trial_ends_at")
   currentPeriodEnd     DateTime  @map("current_period_end")
   cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
+  isInternal           Boolean   @default(false) @map("is_internal") // Exclude from MRR/revenue reports (test/dev accounts)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
