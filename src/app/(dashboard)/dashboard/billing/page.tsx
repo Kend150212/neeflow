@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import {
     CreditCard, Zap, Calendar, AlertCircle, CheckCircle2,
-    ExternalLink, ArrowUpRight, Clock, Check, X, ImageIcon, KeyRound, HardDrive, Bot, Code2, Plus
+    ExternalLink, ArrowUpRight, Clock, Check, X, ImageIcon, KeyRound, HardDrive, Bot, Code2, Plus,
+    Receipt, Download, AlertTriangle, RefreshCw, Loader2, DollarSign, XCircle,
 } from 'lucide-react'
 import { UpgradeModal } from '@/components/billing/UpgradeModal'
 import { AddonModal } from '@/components/billing/AddonModal'
 import { useTranslation } from '@/lib/i18n'
+import { toast } from 'sonner'
 
 type BillingInfo = {
     plan: {
@@ -67,9 +69,31 @@ type BillingInfo = {
         featureField: string | null
         icon: string
         priceMonthly: number
+        priceAnnual: number
         quantity: number
     }[]
     effectiveLimits: Record<string, number | boolean> | null
+}
+
+type Invoice = {
+    id: string
+    number: string | null
+    status: string | null
+    amountPaid: number
+    amountDue: number
+    currency: string
+    periodStart: number
+    periodEnd: number
+    created: number
+    invoicePdf: string | null
+    hostedInvoiceUrl: string | null
+    description: string | null
+    lines: {
+        description: string | null
+        amount: number
+        currency: string
+        period: { start: number; end: number }
+    }[]
 }
 
 function fmtStorage(mb: number, unlimited: string): string {
@@ -78,28 +102,62 @@ function fmtStorage(mb: number, unlimited: string): string {
     return `${mb} MB`
 }
 
+function fmtCurrency(cents: number, currency: string): string {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    }).format(cents / 100)
+}
+
+function fmtDate(iso: string | number): string {
+    const d = typeof iso === 'number' ? new Date(iso * 1000) : new Date(iso)
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+const STATUS_COLORS: Record<string, string> = {
+    paid: 'bg-emerald-500/10 text-emerald-500',
+    open: 'bg-orange-500/10 text-orange-500',
+    draft: 'bg-muted text-muted-foreground',
+    void: 'bg-muted text-muted-foreground',
+    uncollectible: 'bg-red-500/10 text-red-500',
+}
+
 export default function BillingPage() {
     const [info, setInfo] = useState<BillingInfo | null>(null)
     const [loading, setLoading] = useState(true)
     const [upgradeOpen, setUpgradeOpen] = useState(false)
     const [addonOpen, setAddonOpen] = useState(false)
     const [portalLoading, setPortalLoading] = useState(false)
+    const [cancelLoading, setCancelLoading] = useState(false)
+    const [invoices, setInvoices] = useState<Invoice[]>([])
+    const [invoicesLoading, setInvoicesLoading] = useState(false)
 
-    // Use the shared app i18n system — syncs with user's language choice
     const t = useTranslation()
+    const isVi = t('lang') === 'vi'
 
-    useEffect(() => {
-        fetch('/api/billing')
-            .then(r => r.json())
-            .then(data => { setInfo(data); setLoading(false) })
-            .catch(() => setLoading(false))
-    }, [])
-
-    const refreshBilling = () => {
-        fetch('/api/billing')
+    const fetchBilling = useCallback(() => {
+        return fetch('/api/billing')
             .then(r => r.json())
             .then(data => setInfo(data))
-    }
+    }, [])
+
+    useEffect(() => {
+        setLoading(true)
+        fetchBilling().finally(() => setLoading(false))
+    }, [fetchBilling])
+
+    // Fetch invoices when subscription exists
+    useEffect(() => {
+        if (!info?.subscription?.hasStripeSubscription) return
+        setInvoicesLoading(true)
+        fetch('/api/billing/invoices')
+            .then(r => r.json())
+            .then(data => setInvoices(data.invoices ?? []))
+            .catch(() => { })
+            .finally(() => setInvoicesLoading(false))
+    }, [info?.subscription?.hasStripeSubscription])
 
     const openPortal = async () => {
         setPortalLoading(true)
@@ -107,6 +165,37 @@ export default function BillingPage() {
         const data = await res.json()
         if (data.url) window.location.href = data.url
         setPortalLoading(false)
+    }
+
+    const handleCancelPlan = async () => {
+        if (!confirm(isVi
+            ? 'Bạn có chắc muốn hủy? Bạn vẫn có thể sử dụng đến hết kỳ thanh toán.'
+            : 'Are you sure you want to cancel? You can still use the plan until the billing period ends.'
+        )) return
+
+        setCancelLoading(true)
+        const res = await fetch('/api/billing/cancel', { method: 'POST' })
+        const data = await res.json()
+        if (res.ok) {
+            toast.success(isVi ? 'Đã lên lịch hủy subscription' : 'Cancellation scheduled')
+            fetchBilling()
+        } else {
+            toast.error(data.error || 'Failed to cancel')
+        }
+        setCancelLoading(false)
+    }
+
+    const handleResumePlan = async () => {
+        setCancelLoading(true)
+        const res = await fetch('/api/billing/resume', { method: 'POST' })
+        const data = await res.json()
+        if (res.ok) {
+            toast.success(isVi ? 'Đã tiếp tục subscription' : 'Subscription resumed')
+            fetchBilling()
+        } else {
+            toast.error(data.error || 'Failed to resume')
+        }
+        setCancelLoading(false)
     }
 
     if (loading) {
@@ -123,7 +212,6 @@ export default function BillingPage() {
     if (!info) return null
 
     const { plan, subscription, usage, aiImage } = info
-    // isFree = truly on free plan (no active paid subscription, not in trial)
     const isFree = plan.planName === 'Free' && !plan.isInTrial
     const postsPercent = plan.maxPostsPerMonth === -1 ? 0 : Math.min(100, (usage.postsThisMonth / plan.maxPostsPerMonth) * 100)
     const channelsPercent = plan.maxChannels === -1 ? 0 : Math.min(100, (usage.channelCount / plan.maxChannels) * 100)
@@ -133,8 +221,17 @@ export default function BillingPage() {
     const statusColor = subscription?.status === 'active' ? 'text-green-500' : subscription?.status === 'past_due' ? 'text-red-500' : 'text-orange-500'
     const StatusIcon = subscription?.status === 'active' ? CheckCircle2 : AlertCircle
 
-    // Locale-aware date formatter using the i18n context locale
-    const fmtDate = (iso: string) => new Date(iso).toLocaleDateString()
+    // Monthly total = plan + addons
+    const planPrice = subscription?.billingInterval === 'annual'
+        ? +(plan.priceAnnual / 12).toFixed(2)
+        : +plan.priceMonthly
+    const addonsTotal = (info.activeAddons ?? []).reduce((sum, a) => {
+        const price = subscription?.billingInterval === 'annual' && a.priceAnnual
+            ? +(a.priceAnnual / 12).toFixed(2)
+            : +a.priceMonthly
+        return sum + price * a.quantity
+    }, 0)
+    const monthlyTotal = planPrice + addonsTotal
 
     return (
         <div className="space-y-6 p-6 max-w-5xl">
@@ -155,76 +252,153 @@ export default function BillingPage() {
                 </div>
             )}
 
-            {/* Current Plan Card */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        {t('billing.currentPlan')}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                        <div>
-                            <div className="text-xl font-bold flex items-center gap-2">
-                                {plan.planName}
-                                {!isFree && (
-                                    <Badge variant="secondary" className="text-xs">
-                                        {subscription?.billingInterval === 'annual' ? t('billing.annual') : t('billing.monthly')}
-                                    </Badge>
+            {/* Cancel-at-period-end warning */}
+            {subscription?.cancelAtPeriodEnd && (
+                <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-500 text-sm">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <span>
+                            {isVi
+                                ? `Subscription sẽ hủy vào ${fmtDate(subscription.currentPeriodEnd)}. Bạn vẫn sử dụng được đến lúc đó.`
+                                : `Subscription cancels on ${fmtDate(subscription.currentPeriodEnd)}. You can keep using it until then.`
+                            }
+                        </span>
+                    </div>
+                    <Button
+                        size="sm" variant="outline"
+                        className="h-7 text-xs gap-1.5 shrink-0 border-orange-500/40 hover:bg-orange-500/10"
+                        onClick={handleResumePlan} disabled={cancelLoading}
+                    >
+                        {cancelLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                        {isVi ? 'Tiếp tục dùng' : 'Resume Plan'}
+                    </Button>
+                </div>
+            )}
+
+            {/* Current Plan + Monthly Total */}
+            <div className="grid gap-4 md:grid-cols-3">
+                {/* Plan Card */}
+                <Card className="md:col-span-2">
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            {t('billing.currentPlan')}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <div className="text-xl font-bold flex items-center gap-2">
+                                    {plan.planName}
+                                    {!isFree && (
+                                        <Badge variant="secondary" className="text-xs">
+                                            {subscription?.billingInterval === 'annual' ? t('billing.annual') : t('billing.monthly')}
+                                        </Badge>
+                                    )}
+                                    {plan.isInTrial && (
+                                        <Badge className="text-xs bg-indigo-500/20 text-indigo-400 border-indigo-500/30">
+                                            {t('billing.trial')}
+                                        </Badge>
+                                    )}
+                                </div>
+                                {subscription && (
+                                    <div className={`flex items-center gap-1.5 text-sm mt-1 ${statusColor}`}>
+                                        <StatusIcon className="h-3.5 w-3.5" />
+                                        <span className="capitalize">{subscription.status.replace('_', ' ')}</span>
+                                    </div>
                                 )}
-                                {plan.isInTrial && (
-                                    <Badge className="text-xs bg-indigo-500/20 text-indigo-400 border-indigo-500/30">
-                                        {t('billing.trial')}
-                                    </Badge>
+                                {subscription?.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                                        <Calendar className="h-3 w-3" />
+                                        {t('billing.renewsOn').replace('{date}', fmtDate(subscription.currentPeriodEnd))}
+                                    </div>
                                 )}
                             </div>
-                            {subscription && (
-                                <div className={`flex items-center gap-1.5 text-sm mt-1 ${statusColor}`}>
-                                    <StatusIcon className="h-3.5 w-3.5" />
-                                    <span className="capitalize">{subscription.status.replace('_', ' ')}</span>
+
+                            <div className="flex gap-2 flex-wrap">
+                                {isFree ? (
+                                    <Button onClick={() => setUpgradeOpen(true)} className="gap-2">
+                                        <Zap className="h-4 w-4" />
+                                        {t('billing.upgrade')}
+                                    </Button>
+                                ) : (
+                                    <>
+                                        <Button variant="outline" onClick={() => setUpgradeOpen(true)} className="gap-1">
+                                            <ArrowUpRight className="h-4 w-4" />
+                                            {t('billing.changePlan')}
+                                        </Button>
+                                        {subscription?.hasStripeSubscription && !subscription.cancelAtPeriodEnd && (
+                                            <Button
+                                                variant="outline"
+                                                className="gap-1 text-destructive hover:text-destructive"
+                                                onClick={handleCancelPlan}
+                                                disabled={cancelLoading}
+                                            >
+                                                {cancelLoading
+                                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                                    : <XCircle className="h-4 w-4" />
+                                                }
+                                                {isVi ? 'Hủy Plan' : 'Cancel Plan'}
+                                            </Button>
+                                        )}
+                                        {subscription?.hasStripeSubscription && (
+                                            <Button variant="outline" onClick={openPortal} disabled={portalLoading} className="gap-1">
+                                                <ExternalLink className="h-4 w-4" />
+                                                {t('billing.manageBilling')}
+                                            </Button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Monthly Total Card */}
+                <Card className="flex flex-col">
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <DollarSign className="h-4 w-4" />
+                            {isVi ? 'Tổng / Tháng' : 'Monthly Total'}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-between gap-3">
+                        <div>
+                            <div className="text-3xl font-bold">
+                                ${monthlyTotal.toFixed(2)}
+                                <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                            </div>
+                            {subscription?.billingInterval === 'annual' && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    {isVi ? 'Tính theo gói năm' : 'Billed annually'}
+                                </p>
+                            )}
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>{plan.planName}</span>
+                                <span>${planPrice.toFixed(2)}</span>
+                            </div>
+                            {(info.activeAddons ?? []).map(a => {
+                                const p = subscription?.billingInterval === 'annual' && a.priceAnnual
+                                    ? +(a.priceAnnual / 12).toFixed(2) : +a.priceMonthly
+                                return (
+                                    <div key={a.id} className="flex justify-between text-muted-foreground">
+                                        <span className="truncate">{isVi && a.displayNameVi ? a.displayNameVi : a.displayName}</span>
+                                        <span className="ml-2 shrink-0">+${(p * a.quantity).toFixed(2)}</span>
+                                    </div>
+                                )
+                            })}
+                            {addonsTotal > 0 && (
+                                <div className="flex justify-between font-semibold border-t border-border/50 pt-1 mt-1">
+                                    <span>Total</span>
+                                    <span>${monthlyTotal.toFixed(2)}</span>
                                 </div>
                             )}
                         </div>
-
-                        <div className="flex gap-2 flex-wrap">
-                            {isFree ? (
-                                <Button onClick={() => setUpgradeOpen(true)} className="gap-2">
-                                    <Zap className="h-4 w-4" />
-                                    {t('billing.upgrade')}
-                                </Button>
-                            ) : (
-                                <>
-                                    <Button variant="outline" onClick={() => setUpgradeOpen(true)} className="gap-1">
-                                        <ArrowUpRight className="h-4 w-4" />
-                                        {t('billing.changePlan')}
-                                    </Button>
-                                    {subscription?.hasStripeSubscription && (
-                                        <Button variant="outline" onClick={openPortal} disabled={portalLoading} className="gap-1">
-                                            <ExternalLink className="h-4 w-4" />
-                                            {t('billing.manageBilling')}
-                                        </Button>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {subscription?.cancelAtPeriodEnd && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-orange-500/10 text-orange-600 text-sm">
-                            <Clock className="h-4 w-4" />
-                            {t('billing.cancelNote').replace('{date}', fmtDate(subscription.currentPeriodEnd))}
-                        </div>
-                    )}
-
-                    {subscription?.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            {t('billing.renewsOn').replace('{date}', fmtDate(subscription.currentPeriodEnd))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Usage Cards */}
             <div className="grid gap-4 md:grid-cols-2">
@@ -345,7 +519,7 @@ export default function BillingPage() {
                                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
                                             {addon.category === 'quota' ? 'Quota' : 'Feature'}
                                         </Badge>
-                                        <span className="text-sm">{addon.displayName}</span>
+                                        <span className="text-sm">{isVi && addon.displayNameVi ? addon.displayNameVi : addon.displayName}</span>
                                         {addon.quantity > 1 && <span className="text-xs text-muted-foreground">×{addon.quantity}</span>}
                                     </div>
                                     <span className="text-xs text-muted-foreground">${addon.priceMonthly}/mo</span>
@@ -354,12 +528,12 @@ export default function BillingPage() {
                         </div>
                     ) : (
                         <p className="text-sm text-muted-foreground">
-                            {t('lang') === 'vi' ? 'Chưa có add-on nào. Thêm add-on để mở rộng plan của bạn.' : 'No add-ons yet. Browse add-ons to expand your plan.'}
+                            {isVi ? 'Chưa có add-on nào. Thêm add-on để mở rộng plan của bạn.' : 'No add-ons yet. Browse add-ons to expand your plan.'}
                         </p>
                     )}
                     <Button variant="outline" className="gap-2 w-full" onClick={() => setAddonOpen(true)}>
                         <Plus className="h-4 w-4" />
-                        {t('lang') === 'vi' ? 'Xem Add-ons' : 'Browse Add-ons'}
+                        {isVi ? 'Xem & Quản lý Add-ons' : 'Browse & Manage Add-ons'}
                     </Button>
                 </CardContent>
             </Card>
@@ -403,8 +577,87 @@ export default function BillingPage() {
                 </CardContent>
             </Card>
 
+            {/* Payment History */}
+            {subscription?.hasStripeSubscription && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Receipt className="h-4 w-4" />
+                            {isVi ? 'Lịch sử thanh toán' : 'Payment History'}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {invoicesLoading ? (
+                            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-sm">{isVi ? 'Đang tải...' : 'Loading...'}</span>
+                            </div>
+                        ) : invoices.length === 0 ? (
+                            <p className="text-sm text-muted-foreground py-4 text-center">
+                                {isVi ? 'Chưa có hóa đơn nào.' : 'No invoices yet.'}
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto -mx-2">
+                                <table className="w-full text-sm min-w-[500px]">
+                                    <thead>
+                                        <tr className="text-xs text-muted-foreground border-b border-border/50">
+                                            <th className="text-left py-2 px-2 font-medium">{isVi ? 'Ngày' : 'Date'}</th>
+                                            <th className="text-left py-2 px-2 font-medium">{isVi ? 'Mô tả' : 'Description'}</th>
+                                            <th className="text-right py-2 px-2 font-medium">{isVi ? 'Số tiền' : 'Amount'}</th>
+                                            <th className="text-center py-2 px-2 font-medium">{isVi ? 'Trạng thái' : 'Status'}</th>
+                                            <th className="text-right py-2 px-2 font-medium"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/30">
+                                        {invoices.map(inv => (
+                                            <tr key={inv.id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="py-3 px-2 text-muted-foreground text-xs whitespace-nowrap">
+                                                    {fmtDate(inv.created)}
+                                                </td>
+                                                <td className="py-3 px-2">
+                                                    <div className="font-medium leading-snug">
+                                                        {inv.description || inv.lines[0]?.description || (isVi ? 'Đăng ký dịch vụ' : 'Subscription')}
+                                                    </div>
+                                                    {inv.number && (
+                                                        <div className="text-[10px] text-muted-foreground">#{inv.number}</div>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-2 text-right font-semibold whitespace-nowrap">
+                                                    {fmtCurrency(inv.status === 'paid' ? inv.amountPaid : inv.amountDue, inv.currency)}
+                                                </td>
+                                                <td className="py-3 px-2 text-center">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[inv.status ?? 'draft'] ?? 'bg-muted text-muted-foreground'}`}>
+                                                        {inv.status === 'paid' ? (isVi ? 'Đã thanh toán' : 'Paid')
+                                                            : inv.status === 'open' ? (isVi ? 'Chưa thanh toán' : 'Open')
+                                                                : inv.status === 'void' ? (isVi ? 'Đã hủy' : 'Void')
+                                                                    : inv.status ?? 'Unknown'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-2 text-right">
+                                                    {inv.invoicePdf && (
+                                                        <a
+                                                            href={inv.invoicePdf}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                                        >
+                                                            <Download className="h-3 w-3" />
+                                                            PDF
+                                                        </a>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
             <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
-            <AddonModal open={addonOpen} onClose={() => setAddonOpen(false)} onPurchased={refreshBilling} />
+            <AddonModal open={addonOpen} onClose={() => setAddonOpen(false)} onPurchased={fetchBilling} />
         </div>
     )
 }
