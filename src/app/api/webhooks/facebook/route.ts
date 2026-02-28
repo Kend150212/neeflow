@@ -246,8 +246,40 @@ async function handleInstagramMessaging(igAccountId: string, event: any, botTask
     if (!senderId || !recipientId) return
 
     const isEcho = event.message?.is_echo === true
+
+    // Capture echo = admin replied from Instagram app / Meta Business Suite
     if (isEcho) {
-        console.log(`[IG Webhook] 🔄 Echo skipped: "${(event.message?.text || '').substring(0, 50)}"`)
+        const recipientId = event.recipient?.id
+        if (!recipientId) return
+
+        const platformAccounts = await prisma.channelPlatform.findMany({
+            where: { platform: 'instagram', accountId: igAccountId, isActive: true },
+        })
+        if (platformAccounts.length === 0) return
+
+        const content = event.message?.text || '[Attachment]'
+        const mediaUrl = event.message?.attachments?.[0]?.payload?.url || null
+        const mediaType = event.message?.attachments?.[0]?.type || null
+
+        for (const platformAccount of platformAccounts) {
+            await upsertConversation({
+                channelId: platformAccount.channelId,
+                platformAccountId: platformAccount.id,
+                platform: 'instagram',
+                externalUserId: recipientId,
+                content,
+                direction: 'outbound',
+                senderType: 'agent',
+                senderName: 'Page',
+                senderAvatar: null,
+                mediaUrl,
+                mediaType,
+                externalId: platformAccounts.length > 1
+                    ? `${event.message?.mid}_${platformAccount.channelId}`
+                    : event.message?.mid,
+            })
+        }
+        console.log(`[IG Webhook] 📤 Echo captured (agent reply): "${content.substring(0, 60)}"`)
         return
     }
 
@@ -471,8 +503,63 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
     if (!senderId || !recipientId) return
 
     const isEcho = event.message?.is_echo === true
+
+    // ─── Echo = message sent BY the page admin (Meta Business Suite, 3rd-party tool, etc.)
+    // We capture it as an outbound/agent message for bi-directional sync (like Hootsuite).
+    // Echoes should NEVER trigger the bot.
     if (isEcho) {
-        console.log(`[FB Webhook] 🔄 Echo skipped: "${(event.message?.text || '').substring(0, 50)}" app_id=${event.message?.app_id || 'none'}`)
+        const recipientId = event.recipient?.id   // customer's PSID
+        const pageAccountId = pageId              // who sent it = the page
+        if (!recipientId) return
+
+        const platformAccounts = await prisma.channelPlatform.findMany({
+            where: { platform: 'facebook', accountId: pageAccountId, isActive: true },
+        })
+        if (platformAccounts.length === 0) return
+
+        const content = event.message?.text || '[Attachment]'
+        const mediaUrl = event.message?.attachments?.[0]?.payload?.url || null
+        const mediaType = event.message?.attachments?.[0]?.type || null
+        const tokenAccount = platformAccounts.find(a => a.accessToken) || platformAccounts[0]
+
+        // Get customer profile for conversation labelling
+        let senderName = recipientId
+        let senderAvatar: string | null = null
+        if (tokenAccount.accessToken) {
+            try {
+                const res = await fetch(
+                    `https://graph.facebook.com/v19.0/${recipientId}?fields=name,profile_pic&access_token=${tokenAccount.accessToken}`
+                )
+                if (res.ok) {
+                    const data = await res.json()
+                    senderName = data.name || senderName
+                    senderAvatar = data.profile_pic || null
+                }
+            } catch { /* fallback */ }
+        }
+
+        for (const platformAccount of platformAccounts) {
+            await upsertConversation({
+                channelId: platformAccount.channelId,
+                platformAccountId: platformAccount.id,
+                platform: 'facebook',
+                externalUserId: recipientId,
+                externalUserName: senderName !== recipientId ? senderName : undefined,
+                externalUserAvatar: senderAvatar,
+                content,
+                direction: 'outbound',
+                senderType: 'agent',
+                senderName: 'Page',
+                senderAvatar: null,
+                mediaUrl,
+                mediaType,
+                externalId: platformAccounts.length > 1
+                    ? `${event.message?.mid}_${platformAccount.channelId}`
+                    : event.message?.mid,
+                // No botTasks — echo should never trigger bot
+            })
+        }
+        console.log(`[FB Webhook] 📤 Echo captured (agent reply via Meta/3rd-party): "${content.substring(0, 60)}"`)
         return
     }
 
