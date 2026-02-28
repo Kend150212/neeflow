@@ -96,6 +96,22 @@ type Invoice = {
     }[]
 }
 
+type PaymentMethod = {
+    id: string
+    type: string
+    card: {
+        brand: string
+        last4: string
+        expMonth: number
+        expYear: number
+        funding: string
+    } | null
+    billingDetails: {
+        name: string | null
+        email: string | null
+    }
+} | null
+
 function fmtStorage(mb: number, unlimited: string): string {
     if (mb === -1) return `∞ ${unlimited}`
     if (mb >= 1024) return `${(mb / 1024).toFixed(0)} GB`
@@ -116,6 +132,24 @@ function fmtDate(iso: string | number): string {
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+// Card brand helpers
+function cardBrandLabel(brand: string): string {
+    const map: Record<string, string> = {
+        visa: 'Visa', mastercard: 'Mastercard', amex: 'American Express',
+        discover: 'Discover', jcb: 'JCB', unionpay: 'UnionPay',
+        diners: 'Diners Club', unknown: 'Card',
+    }
+    return map[brand] ?? brand.charAt(0).toUpperCase() + brand.slice(1)
+}
+
+function cardBrandColor(brand: string): string {
+    const map: Record<string, string> = {
+        visa: 'text-blue-400', mastercard: 'text-orange-400',
+        amex: 'text-sky-400', discover: 'text-amber-400',
+    }
+    return map[brand] ?? 'text-muted-foreground'
+}
+
 const STATUS_COLORS: Record<string, string> = {
     paid: 'bg-emerald-500/10 text-emerald-500',
     open: 'bg-orange-500/10 text-orange-500',
@@ -123,6 +157,7 @@ const STATUS_COLORS: Record<string, string> = {
     void: 'bg-muted text-muted-foreground',
     uncollectible: 'bg-red-500/10 text-red-500',
 }
+
 
 export default function BillingPage() {
     const [info, setInfo] = useState<BillingInfo | null>(null)
@@ -134,6 +169,8 @@ export default function BillingPage() {
     const [removingAddon, setRemovingAddon] = useState<string | null>(null)
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [invoicesLoading, setInvoicesLoading] = useState(false)
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null)
+    const [pmLoading, setPmLoading] = useState(false)
 
     const t = useTranslation()
     const isVi = t('lang') === 'vi'
@@ -149,15 +186,23 @@ export default function BillingPage() {
         fetchBilling().finally(() => setLoading(false))
     }, [fetchBilling])
 
-    // Fetch invoices when subscription exists
+    // Fetch invoices + payment method when Stripe subscription exists
     useEffect(() => {
         if (!info?.subscription?.hasStripeSubscription) return
         setInvoicesLoading(true)
+        setPmLoading(true)
+        // Invoices
         fetch('/api/billing/invoices')
             .then(r => r.json())
             .then(data => setInvoices(data.invoices ?? []))
             .catch(() => { })
             .finally(() => setInvoicesLoading(false))
+        // Payment method
+        fetch('/api/billing/payment-method')
+            .then(r => r.json())
+            .then(data => setPaymentMethod(data.paymentMethod ?? null))
+            .catch(() => { })
+            .finally(() => setPmLoading(false))
     }, [info?.subscription?.hasStripeSubscription])
 
     const openPortal = async () => {
@@ -624,84 +669,174 @@ export default function BillingPage() {
                 </CardContent>
             </Card>
 
-            {/* Payment History */}
+            {/* Payment Method Card */}
             {subscription?.hasStripeSubscription && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
-                            <Receipt className="h-4 w-4" />
-                            {isVi ? 'Lịch sử thanh toán' : 'Payment History'}
+                            <CreditCard className="h-4 w-4" />
+                            {isVi ? 'Phương thức thanh toán' : 'Payment Method'}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {invoicesLoading ? (
-                            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                        {pmLoading ? (
+                            <div className="flex items-center gap-2 text-muted-foreground py-2">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span className="text-sm">{isVi ? 'Đang tải...' : 'Loading...'}</span>
                             </div>
-                        ) : invoices.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-4 text-center">
-                                {isVi ? 'Chưa có hóa đơn nào.' : 'No invoices yet.'}
-                            </p>
+                        ) : paymentMethod?.card ? (
+                            <div className="flex items-center justify-between flex-wrap gap-4">
+                                {/* Card display */}
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-9 rounded-md bg-muted/60 border border-border flex items-center justify-center">
+                                        <CreditCard className={`h-5 w-5 ${cardBrandColor(paymentMethod.card.brand)}`} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`font-semibold text-sm ${cardBrandColor(paymentMethod.card.brand)}`}>
+                                                {cardBrandLabel(paymentMethod.card.brand)}
+                                            </span>
+                                            <span className="text-sm font-mono tracking-widest">
+                                                &bull;&bull;&bull;&bull; {paymentMethod.card.last4}
+                                            </span>
+                                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 capitalize">
+                                                {paymentMethod.card.funding}
+                                            </Badge>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-0.5">
+                                            {isVi ? 'Hết hạn' : 'Expires'}{' '}
+                                            {String(paymentMethod.card.expMonth).padStart(2, '0')}/{paymentMethod.card.expYear}
+                                            {paymentMethod.billingDetails.name && (
+                                                <span className="ml-2">&middot; {paymentMethod.billingDetails.name}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Change Card via Stripe Portal */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5"
+                                    onClick={openPortal}
+                                    disabled={portalLoading}
+                                >
+                                    {portalLoading
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <CreditCard className="h-3.5 w-3.5" />
+                                    }
+                                    {isVi ? 'Đổi thẻ' : 'Change Card'}
+                                </Button>
+                            </div>
                         ) : (
-                            <div className="overflow-x-auto -mx-2">
-                                <table className="w-full text-sm min-w-[500px]">
-                                    <thead>
-                                        <tr className="text-xs text-muted-foreground border-b border-border/50">
-                                            <th className="text-left py-2 px-2 font-medium">{isVi ? 'Ngày' : 'Date'}</th>
-                                            <th className="text-left py-2 px-2 font-medium">{isVi ? 'Mô tả' : 'Description'}</th>
-                                            <th className="text-right py-2 px-2 font-medium">{isVi ? 'Số tiền' : 'Amount'}</th>
-                                            <th className="text-center py-2 px-2 font-medium">{isVi ? 'Trạng thái' : 'Status'}</th>
-                                            <th className="text-right py-2 px-2 font-medium"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border/30">
-                                        {invoices.map(inv => (
-                                            <tr key={inv.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="py-3 px-2 text-muted-foreground text-xs whitespace-nowrap">
-                                                    {fmtDate(inv.created)}
-                                                </td>
-                                                <td className="py-3 px-2">
-                                                    <div className="font-medium leading-snug">
-                                                        {inv.description || inv.lines[0]?.description || (isVi ? 'Đăng ký dịch vụ' : 'Subscription')}
-                                                    </div>
-                                                    {inv.number && (
-                                                        <div className="text-[10px] text-muted-foreground">#{inv.number}</div>
-                                                    )}
-                                                </td>
-                                                <td className="py-3 px-2 text-right font-semibold whitespace-nowrap">
-                                                    {fmtCurrency(inv.status === 'paid' ? inv.amountPaid : inv.amountDue, inv.currency)}
-                                                </td>
-                                                <td className="py-3 px-2 text-center">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[inv.status ?? 'draft'] ?? 'bg-muted text-muted-foreground'}`}>
-                                                        {inv.status === 'paid' ? (isVi ? 'Đã thanh toán' : 'Paid')
-                                                            : inv.status === 'open' ? (isVi ? 'Chưa thanh toán' : 'Open')
-                                                                : inv.status === 'void' ? (isVi ? 'Đã hủy' : 'Void')
-                                                                    : inv.status ?? 'Unknown'}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-2 text-right">
-                                                    {inv.invoicePdf && (
-                                                        <a
-                                                            href={inv.invoicePdf}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                                        >
-                                                            <Download className="h-3 w-3" />
-                                                            PDF
-                                                        </a>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="flex items-center justify-between gap-4">
+                                <p className="text-sm text-muted-foreground">
+                                    {isVi ? 'Chưa có thẻ thanh toán được lưu.' : 'No payment card on file.'}
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5"
+                                    onClick={openPortal}
+                                    disabled={portalLoading}
+                                >
+                                    {portalLoading
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <CreditCard className="h-3.5 w-3.5" />
+                                    }
+                                    {isVi ? 'Thêm thẻ' : 'Add Card'}
+                                </Button>
                             </div>
                         )}
                     </CardContent>
                 </Card>
             )}
+
+            {/* Payment History — Stripe subs: real invoices; manual subs: note */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Receipt className="h-4 w-4" />
+                        {isVi ? 'Lịch sử thanh toán' : 'Payment History'}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {!subscription?.hasStripeSubscription ? (
+                        <div className="flex flex-col items-center gap-3 py-6">
+                            <Receipt className="h-8 w-8 text-muted-foreground/40" />
+                            <p className="text-sm text-muted-foreground text-center">
+                                {isVi
+                                    ? 'Subscription được kích hoạt thủ công — không có hóa đơn tự động. Liên hệ admin để được hỗ trợ.'
+                                    : 'This subscription was set up manually — no automatic invoices are generated. Contact support for billing details.'
+                                }
+                            </p>
+                        </div>
+                    ) : invoicesLoading ? (
+                        <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">{isVi ? '\u0110ang t\u1ea3i...' : 'Loading...'}</span>
+                        </div>
+                    ) : invoices.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                            {isVi ? 'Ch\u01b0a c\u00f3 h\u00f3a \u0111\u01a1n n\u00e0o.' : 'No invoices yet.'}
+                        </p>
+                    ) : (
+                        <div className="overflow-x-auto -mx-2">
+                            <table className="w-full text-sm min-w-[500px]">
+                                <thead>
+                                    <tr className="text-xs text-muted-foreground border-b border-border/50">
+                                        <th className="text-left py-2 px-2 font-medium">{isVi ? 'Ng\u00e0y' : 'Date'}</th>
+                                        <th className="text-left py-2 px-2 font-medium">{isVi ? 'M\u00f4 t\u1ea3' : 'Description'}</th>
+                                        <th className="text-right py-2 px-2 font-medium">{isVi ? 'S\u1ed1 ti\u1ec1n' : 'Amount'}</th>
+                                        <th className="text-center py-2 px-2 font-medium">{isVi ? 'Tr\u1ea1ng th\u00e1i' : 'Status'}</th>
+                                        <th className="text-right py-2 px-2 font-medium"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/30">
+                                    {invoices.map(inv => (
+                                        <tr key={inv.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="py-3 px-2 text-muted-foreground text-xs whitespace-nowrap">
+                                                {fmtDate(inv.created)}
+                                            </td>
+                                            <td className="py-3 px-2">
+                                                <div className="font-medium leading-snug">
+                                                    {inv.description || inv.lines[0]?.description || (isVi ? '\u0110\u0103ng k\u00fd d\u1ecbch v\u1ee5' : 'Subscription')}
+                                                </div>
+                                                {inv.number && (
+                                                    <div className="text-[10px] text-muted-foreground">#{inv.number}</div>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-2 text-right font-semibold whitespace-nowrap">
+                                                {fmtCurrency(inv.status === 'paid' ? inv.amountPaid : inv.amountDue, inv.currency)}
+                                            </td>
+                                            <td className="py-3 px-2 text-center">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_COLORS[inv.status ?? 'draft'] ?? 'bg-muted text-muted-foreground'}`}>
+                                                    {inv.status === 'paid' ? (isVi ? '\u0110\u00e3 thanh to\u00e1n' : 'Paid')
+                                                        : inv.status === 'open' ? (isVi ? 'Ch\u01b0a thanh to\u00e1n' : 'Open')
+                                                            : inv.status === 'void' ? (isVi ? '\u0110\u00e3 h\u1ee7y' : 'Void')
+                                                                : inv.status ?? 'Unknown'}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-2 text-right">
+                                                {inv.invoicePdf && (
+                                                    <a
+                                                        href={inv.invoicePdf}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                                    >
+                                                        <Download className="h-3 w-3" />
+                                                        PDF
+                                                    </a>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
             <AddonModal open={addonOpen} onClose={() => setAddonOpen(false)} onPurchased={fetchBilling} />
