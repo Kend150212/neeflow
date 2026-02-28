@@ -42,6 +42,7 @@ import {
     Settings,
     ChevronDown,
     ChevronUp,
+    ChevronLeft,
     Save,
     Trash2,
     PanelLeftClose,
@@ -1192,7 +1193,10 @@ export default function InboxPage() {
 
 
             {/* ═══ CENTER — Conversation List ═══ */}
-            <div className="w-[320px] border-r flex flex-col shrink-0 bg-background">
+            <div className={cn(
+                "w-[320px] border-r flex-col shrink-0 bg-background",
+                selectedConversation ? 'hidden md:flex' : 'flex'
+            )}>
                 {/* Tabs */}
                 <div className="border-b">
                     <div className="flex">
@@ -1455,7 +1459,14 @@ export default function InboxPage() {
                                     return (
                                         <div className="flex flex-col flex-1 min-h-0">
                                             {/* Header */}
-                                            <div className="flex items-center gap-3 px-4 py-3 border-b bg-card shrink-0">
+                                            <div className="flex items-center gap-3 px-2 py-3 border-b bg-card shrink-0">
+                                                {/* Back button - mobile only */}
+                                                <button
+                                                    className="md:hidden shrink-0 p-1 rounded hover:bg-accent"
+                                                    onClick={(e) => { e.stopPropagation(); updatePanel(paneIdx, { conversation: null, messages: [] }) }}
+                                                >
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                </button>
                                                 <Avatar className="h-8 w-8">
                                                     {sc.externalUserAvatar && (
                                                         <AvatarImage src={sc.externalUserAvatar} alt={sc.externalUserName || ''} />
@@ -1464,13 +1475,13 @@ export default function InboxPage() {
                                                         'text-xs',
                                                         platformConfig[sc.platform]?.color
                                                     )}>
-                                                        {sc.externalUserName?.charAt(0)?.toUpperCase()}
+                                                        {(sc.externalUserName || sc.externalUserId || '?').charAt(0).toUpperCase()}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-semibold">
-                                                            {sc.externalUserName}
+                                                            {sc.externalUserName || sc.externalUserId}
                                                         </span>
                                                         <PlatformIcon platform={sc.platform} size={16} />
                                                         <span className="text-[10px] text-muted-foreground">
