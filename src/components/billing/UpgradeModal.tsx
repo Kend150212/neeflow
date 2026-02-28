@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Check, Zap, Building2, Rocket, Crown } from 'lucide-react'
+import { Check, Zap, Building2, Rocket, Crown, AlertTriangle, X, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 // Simple locale detection — reads from localStorage (same as sidebar lang switcher)
@@ -108,6 +108,11 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
     const [coupon, setCoupon] = useState('')
     const [currentPlanName, setCurrentPlanName] = useState<string | null>(null)
     const [currentPlanPrice, setCurrentPlanPrice] = useState<number>(0)
+    const [downgradeConfirm, setDowngradeConfirm] = useState<{
+        planId: string
+        planName: string
+        price: number
+    } | null>(null)
 
     useEffect(() => {
         if (open) {
@@ -148,6 +153,56 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
             }
         } catch (err) {
             console.error('Checkout error:', err)
+            toast.error('Something went wrong')
+        } finally {
+            setLoading(null)
+        }
+    }
+
+    const handleDowngrade = async () => {
+        if (!downgradeConfirm) return
+        setLoading(downgradeConfirm.planId)
+        try {
+            const res = await fetch('/api/billing/downgrade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planId: downgradeConfirm.planId, interval }),
+            })
+            const data = await res.json()
+            if (data.ok) {
+                if (data.effectiveDate) {
+                    const date = new Date(data.effectiveDate).toLocaleDateString(
+                        locale === 'vi' ? 'vi-VN' : 'en-US',
+                        { year: 'numeric', month: 'long', day: 'numeric' }
+                    )
+                    const price = data.newPrice
+                    const currency = (data.currency ?? 'USD').toUpperCase()
+                    toast.success(
+                        locale === 'vi'
+                            ? `Đã hạ cấp xuống gói ${downgradeConfirm.planName}. Kể từ ${date}, bạn sẽ được tính phí $${price}/${interval === 'annual' ? 'năm' : 'tháng'} (${currency}).`
+                            : `Downgraded to ${downgradeConfirm.planName}. Starting ${date}, you will be charged $${price}/${interval === 'annual' ? 'yr' : 'mo'} (${currency}).`,
+                        { duration: 8000 }
+                    )
+                } else {
+                    toast.success(
+                        locale === 'vi'
+                            ? `Đã chuyển xuống gói ${downgradeConfirm.planName} thành công.`
+                            : `Switched to ${downgradeConfirm.planName} plan.`
+                    )
+                }
+                setDowngradeConfirm(null)
+                onClose()
+            } else if (data.noStripePrice) {
+                toast.error(
+                    locale === 'vi'
+                        ? 'Stripe chưa được thiết lập cho gói này.'
+                        : 'Stripe not configured for this plan.'
+                )
+            } else {
+                toast.error(data.error ?? 'Downgrade failed')
+            }
+        } catch (err) {
+            console.error('Downgrade error:', err)
             toast.error('Something went wrong')
         } finally {
             setLoading(null)
@@ -309,6 +364,13 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                                         if (isCurrent) return
                                         if (contactSales) {
                                             window.open('mailto:sales@yourdomain.com', '_blank')
+                                        } else if (isDowngrade) {
+                                            // Show in-modal confirmation before executing downgrade
+                                            setDowngradeConfirm({
+                                                planId: plan.id,
+                                                planName: locale === 'vi' ? plan.nameVi : plan.name,
+                                                price: interval === 'annual' ? plan.priceAnnual : plan.priceMonthly,
+                                            })
                                         } else {
                                             handleUpgrade(plan.id)
                                         }
@@ -338,6 +400,50 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                         )
                     })}
                 </div>
+
+                {/* Downgrade confirmation banner */}
+                {downgradeConfirm && (
+                    <div className="mx-8 mb-4 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="h-5 w-5 text-orange-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-semibold text-sm text-orange-300">
+                                        {locale === 'vi'
+                                            ? `Xác nhận hạ cấp xuống gói ${downgradeConfirm.planName}`
+                                            : `Confirm downgrade to ${downgradeConfirm.planName}`
+                                        }
+                                    </p>
+                                    <p className="text-xs text-orange-200/80 mt-1 leading-relaxed">
+                                        {locale === 'vi'
+                                            ? `Bạn sẽ tiếp tục dùng gói hiện tại đến hết chu kỳ thanh toán này. Kể từ chu kỳ tiếp theo, bạn sẽ được charge $${downgradeConfirm.price}/${interval === 'annual' ? 'năm' : 'tháng'} theo gói ${downgradeConfirm.planName}.`
+                                            : `You’ll keep your current plan until this billing period ends. From the next cycle, you’ll be charged $${downgradeConfirm.price}/${interval === 'annual' ? 'yr' : 'mo'} on the ${downgradeConfirm.planName} plan.`
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                            <button onClick={() => setDowngradeConfirm(null)} className="text-orange-400/60 hover:text-orange-300 transition-colors shrink-0">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                            <button
+                                onClick={handleDowngrade}
+                                disabled={!!loading}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+                            >
+                                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                                {locale === 'vi' ? 'Xác nhận hạ cấp' : 'Confirm Downgrade'}
+                            </button>
+                            <button
+                                onClick={() => setDowngradeConfirm(null)}
+                                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold transition-colors"
+                            >
+                                {locale === 'vi' ? 'Hủy' : 'Cancel'}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Coupon */}
                 <div className="px-8 pb-8">
