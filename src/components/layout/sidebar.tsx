@@ -53,6 +53,7 @@ import {
     Paintbrush,
     FileText,
     BookOpen,
+    Tag,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -87,7 +88,8 @@ const adminNav: NavItem[] = [
     { titleKey: 'nav.users', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
     { titleKey: 'nav.apiHub', href: '/admin/integrations', icon: Plug, roles: ['ADMIN'] },
     { titleKey: 'nav.plans', href: '/admin/plans', icon: LayoutList, roles: ['ADMIN'] },
-    { titleKey: 'nav.billing', href: '/admin/billing', icon: CreditCard, roles: ['ADMIN'] },
+    { titleKey: 'nav.billing', href: '/admin/billing', icon: CreditCard, roles: ['ADMIN'], exact: true },
+    { titleKey: 'nav.coupons', href: '/admin/billing/coupons', icon: Tag, roles: ['ADMIN'] },
     { titleKey: 'nav.activity', href: '/admin/activity', icon: Activity, roles: ['ADMIN'] },
     { titleKey: 'nav.branding', href: '/admin/branding', icon: Paintbrush, roles: ['ADMIN'] },
     { titleKey: 'nav.legal', href: '/admin/legal', icon: FileText, roles: ['ADMIN'] },
