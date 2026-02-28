@@ -304,6 +304,7 @@ export default function InboxPage() {
     const [loadingMoreConv, setLoadingMoreConv] = useState(false)
     const [sendingReply, setSendingReply] = useState(false)
     const [updatingConv, setUpdatingConv] = useState(false)
+    const [syncingProfiles, setSyncingProfiles] = useState(false)
 
     // ─── Multi-pane layout ────────────
     const MAX_PANELS = 4
@@ -1243,6 +1244,42 @@ export default function InboxPage() {
                         disabled={loading}
                     >
                         <RefreshCcw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+                    </Button>
+                    {/* Sync missing profiles button */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        title="Sync Facebook names & avatars"
+                        onClick={async () => {
+                            setSyncingProfiles(true)
+                            try {
+                                const res = await fetch('/api/inbox/sync-profiles', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(activeChannel?.id ? { channelId: activeChannel.id } : {})
+                                })
+                                const data = await res.json()
+                                if (res.ok) {
+                                    toast.success(`✅ Synced ${data.synced}/${data.total} profiles`)
+                                    if (data.failed > 0 && data.errors?.length) {
+                                        console.warn('[Sync Profiles] Errors:', data.errors)
+                                    }
+                                    fetchConversations()
+                                } else {
+                                    toast.error('Sync failed')
+                                }
+                            } catch {
+                                toast.error('Sync error')
+                            } finally {
+                                setSyncingProfiles(false)
+                            }
+                        }}
+                        disabled={syncingProfiles}
+                    >
+                        {syncingProfiles
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <UserPlus className="h-3.5 w-3.5" />}
                     </Button>
                     {/* Pane layout switcher */}
                     <div className="flex items-center gap-0.5 border rounded-md p-0.5 bg-muted/40">

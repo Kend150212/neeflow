@@ -591,10 +591,19 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
             )
             if (res.ok) {
                 const data = await res.json()
-                senderName = data.name || senderName
-                senderAvatar = data.profile_pic || null
+                if (data.error) {
+                    console.warn(`[FB Webhook] ⚠️ Profile fetch error for ${externalUserId} on page ${pageId}: ${data.error.message} (code: ${data.error.code})`)
+                } else {
+                    senderName = data.name || senderName
+                    senderAvatar = data.profile_pic || null
+                }
+            } else {
+                const errText = await res.text()
+                console.warn(`[FB Webhook] ⚠️ Profile fetch HTTP ${res.status} for ${externalUserId}: ${errText.substring(0, 200)}`)
             }
-        } catch { /* fallback */ }
+        } catch (e) {
+            console.warn(`[FB Webhook] ⚠️ Profile fetch exception for ${externalUserId}:`, e)
+        }
         if (!senderAvatar) {
             senderAvatar = `https://graph.facebook.com/${externalUserId}/picture?type=small&access_token=${tokenAccount.accessToken}`
         }
