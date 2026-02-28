@@ -544,8 +544,8 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
                 platformAccountId: platformAccount.id,
                 platform: 'facebook',
                 externalUserId: recipientId,
-                externalUserName: senderName !== recipientId ? senderName : undefined,
-                externalUserAvatar: senderAvatar,
+                externalUserName: senderName !== recipientId ? senderName : 'Facebook User',
+                externalUserAvatar: senderAvatar || `https://graph.facebook.com/${recipientId}/picture?type=small&access_token=${tokenAccount?.accessToken || ''}`,
                 content,
                 direction: 'outbound',
                 senderType: 'agent',
@@ -582,7 +582,7 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
 
     // Get user profile once using first account's token
     const tokenAccount = platformAccounts.find(a => a.accessToken) || platformAccounts[0]
-    let senderName = externalUserId
+    let senderName: string | null = null  // null = unknown, will use 'Facebook User' fallback
     let senderAvatar: string | null = null
     if (tokenAccount.accessToken) {
         try {
@@ -592,19 +592,20 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
             if (res.ok) {
                 const data = await res.json()
                 if (data.error) {
-                    console.warn(`[FB Webhook] ⚠️ Profile fetch error for ${externalUserId} on page ${pageId}: ${data.error.message} (code: ${data.error.code})`)
+                    console.warn(`[FB Webhook] ⚠️ Profile fetch error for ${externalUserId}: ${data.error.message} (code: ${data.error.code})`)
                 } else {
-                    senderName = data.name || senderName
+                    senderName = data.name || null
                     senderAvatar = data.profile_pic || null
                 }
             } else {
                 const errText = await res.text()
-                console.warn(`[FB Webhook] ⚠️ Profile fetch HTTP ${res.status} for ${externalUserId}: ${errText.substring(0, 200)}`)
+                console.warn(`[FB Webhook] ⚠️ Profile fetch HTTP ${res.status} for ${externalUserId}: ${errText.substring(0, 150)}`)
             }
         } catch (e) {
             console.warn(`[FB Webhook] ⚠️ Profile fetch exception for ${externalUserId}:`, e)
         }
         if (!senderAvatar) {
+            // Fallback: Facebook profile picture endpoint (may still serve generic avatar)
             senderAvatar = `https://graph.facebook.com/${externalUserId}/picture?type=small&access_token=${tokenAccount.accessToken}`
         }
     }
@@ -616,7 +617,7 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
             platformAccountId: platformAccount.id,
             platform: 'facebook',
             externalUserId,
-            externalUserName: senderName !== externalUserId ? senderName : undefined,
+            externalUserName: senderName || 'Facebook User',
             externalUserAvatar: senderAvatar,
             content,
             direction: isOutbound ? 'outbound' : 'inbound',
@@ -717,7 +718,10 @@ async function upsertConversation(opts: {
                 updateData.status = 'new'
             }
         }
-        if (opts.externalUserName && (!conversation.externalUserName || /^\d{10,}$/.test(conversation.externalUserName))) {
+        const isPlaceholderName = !conversation.externalUserName
+            || /^\d{10,}$/.test(conversation.externalUserName)
+            || conversation.externalUserName === 'Facebook User'
+        if (opts.externalUserName && isPlaceholderName && opts.externalUserName !== 'Facebook User') {
             updateData.externalUserName = opts.externalUserName
         }
         if (opts.externalUserAvatar) {

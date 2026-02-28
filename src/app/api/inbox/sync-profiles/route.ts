@@ -48,12 +48,14 @@ export async function POST(req: NextRequest) {
         },
     })
 
-    // Filter: only those where name is null, empty, or equals the numeric userId
+    // Filter: only those where name is null, empty, equals numeric userId, or is 'Facebook User' placeholder
     const needsUpdate = conversations.filter(c => {
         if (!c.externalUserName) return true
         if (c.externalUserName === c.externalUserId) return true
         // Pure numeric string (PSID)
         if (/^\d{10,}$/.test(c.externalUserName)) return true
+        // Previous 'Facebook User' placeholder - try again for real name
+        if (c.externalUserName === 'Facebook User') return true
         return false
     })
 
@@ -103,29 +105,30 @@ export async function POST(req: NextRequest) {
                 continue
             }
 
-            const newName: string | undefined = data.name
+            const newName: string | null = data.name || null
             const newAvatar: string | null = data.profile_pic || null
             const fallbackAvatar = `https://graph.facebook.com/${conv.externalUserId}/picture?type=small&access_token=${pa.accessToken}`
 
-            if (newName || newAvatar) {
-                await prisma.conversation.update({
-                    where: { id: conv.id },
-                    data: {
-                        ...(newName ? { externalUserName: newName } : {}),
-                        externalUserAvatar: newAvatar || fallbackAvatar,
-                    },
-                })
+            await prisma.conversation.update({
+                where: { id: conv.id },
+                data: {
+                    externalUserName: newName || undefined, // only update if we got a real name
+                    externalUserAvatar: newAvatar || conv.externalUserAvatar || fallbackAvatar,
+                },
+            })
+            if (newName) {
                 synced++
             } else {
-                // No name from API but set avatar fallback
-                if (!conv.externalUserAvatar) {
+                // No name from API (permission issue) - already has 'Facebook User' from webhook
+                if (/^\d{10,}$/.test(conv.externalUserName || '')) {
+                    // Still has raw PSID - set friendly name
                     await prisma.conversation.update({
                         where: { id: conv.id },
-                        data: { externalUserAvatar: fallbackAvatar },
+                        data: { externalUserName: 'Facebook User', externalUserAvatar: fallbackAvatar },
                     })
                 }
                 failed++
-                errors.push(`${conv.externalUserId}: No name returned (permission issue)`)
+                errors.push(`${conv.externalUserId}: No name (permission restricted by Facebook)`)
             }
         } catch (e: any) {
             errors.push(`${conv.externalUserId}: ${e?.message || 'Unknown error'}`)
