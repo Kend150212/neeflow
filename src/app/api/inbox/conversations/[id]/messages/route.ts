@@ -41,12 +41,14 @@ export async function GET(
     const [messages, total] = await Promise.all([
         prisma.inboxMessage.findMany({
             where: { conversationId: id },
-            orderBy: { sentAt: 'asc' },
+            orderBy: { sentAt: 'desc' }, // newest first — page 1 = most recent
             skip: (page - 1) * limit,
             take: limit,
         }),
         prisma.inboxMessage.count({ where: { conversationId: id } }),
     ])
+    // Reverse so messages render chronologically (oldest at top, newest at bottom)
+    const ordered = messages.reverse()
 
     // Mark conversation as read when agent opens it
     await prisma.conversation.update({
@@ -55,7 +57,7 @@ export async function GET(
     })
 
     return NextResponse.json({
-        messages: messages.map(m => ({
+        messages: ordered.map(m => ({
             id: m.id,
             externalId: m.externalId,
             direction: m.direction,

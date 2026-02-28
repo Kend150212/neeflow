@@ -268,6 +268,15 @@ export default function InboxPage() {
     const [counts, setCounts] = useState<StatusCounts>({ new: 0, open: 0, done: 0, archived: 0, mine: 0, all: 0 })
     const [loading, setLoading] = useState(true)
     const [loadingMessages, setLoadingMessages] = useState(false)
+    // Pagination state
+    const CONV_LIMIT = 30
+    const MSG_LIMIT = 40
+    const [convPage, setConvPage] = useState(1)
+    const [convHasMore, setConvHasMore] = useState(false)
+    const [loadingMoreConv, setLoadingMoreConv] = useState(false)
+    const [msgPage, setMsgPage] = useState(1)
+    const [msgHasMore, setMsgHasMore] = useState(false)
+    const [loadingMoreMsg, setLoadingMoreMsg] = useState(false)
     const [sendingReply, setSendingReply] = useState(false)
     const [updatingConv, setUpdatingConv] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -447,13 +456,15 @@ export default function InboxPage() {
     useEffect(() => {
         const pollInterval = setInterval(async () => {
             try {
-                // 1. Fetch latest conversations
+                // 1. Fetch latest conversations (page 1 only)
                 const params = new URLSearchParams()
                 if (activeChannel?.id) params.set('channelId', activeChannel.id)
                 if (statusFilter !== 'all' && statusFilter !== 'mine') params.set('status', statusFilter)
                 if (statusFilter === 'mine') params.set('mine', 'true')
                 if (activeTab !== 'all') params.set('tab', activeTab)
                 if (selectedPlatformIds.length === 1) params.set('platformAccountId', selectedPlatformIds[0])
+                params.set('limit', String(CONV_LIMIT))
+                params.set('page', '1')
 
                 const res = await fetch(`/api/inbox/conversations?${params}`)
                 if (!res.ok) return
@@ -493,20 +504,29 @@ export default function InboxPage() {
                 }
                 prevUnreadRef.current = totalUnread
 
-                // 3. Update conversation list (smart merge — preserve selection)
-                setConversations(freshConversations)
+                // 3. Smart merge — update existing convs, prepend new ones, preserve extra-loaded pages
                 setCounts(freshCounts)
+                setConversations(prev => {
+                    const freshMap = new Map(freshConversations.map((c: Conversation) => [c.id, c]))
+                    const updated = prev.map(c => freshMap.has(c.id) ? (freshMap.get(c.id) as Conversation) : c)
+                    const existingIds = new Set(prev.map(c => c.id))
+                    const brandNew = freshConversations.filter((c: Conversation) => !existingIds.has(c.id))
+                    return brandNew.length > 0 ? [...brandNew, ...updated] : updated
+                })
 
-                // 4. If a conversation is selected, also refresh its messages
+                // 4. If a conversation is selected, also refresh its messages (latest page)
                 if (selectedConversation) {
-                    const msgRes = await fetch(`/api/inbox/conversations/${selectedConversation.id}/messages`)
+                    const msgRes = await fetch(`/api/inbox/conversations/${selectedConversation.id}/messages?page=1&limit=${MSG_LIMIT}`)
                     if (msgRes.ok) {
                         const msgData = await msgRes.json()
                         setMessages(prev => {
                             const freshMsgs = msgData.messages || []
-                            // Only update if message count changed (avoid scroll reset)
+                            // Only update if newest messages changed
                             if (freshMsgs.length !== prev.length || freshMsgs[freshMsgs.length - 1]?.id !== prev[prev.length - 1]?.id) {
-                                return freshMsgs
+                                // Merge: keep older pages that were loaded beyond page 1
+                                const freshIds = new Set(freshMsgs.map((m: InboxMessage) => m.id))
+                                const olderMsgs = prev.filter(m => !freshIds.has(m.id))
+                                return [...olderMsgs, ...freshMsgs]
                             }
                             return prev
                         })
@@ -538,9 +558,10 @@ export default function InboxPage() {
         }
     }, [activeChannel?.id])
 
-    // ─── Fetch conversations ──────────
+    // ─── Fetch conversations (initial/reset) ──────────
     const fetchConversations = useCallback(async () => {
         setLoading(true)
+        setConvPage(1)
         try {
             const params = new URLSearchParams()
             if (activeChannel?.id) params.set('channelId', activeChannel.id)
@@ -548,16 +569,16 @@ export default function InboxPage() {
             if (statusFilter === 'mine') params.set('mine', 'true')
             if (searchQuery) params.set('search', searchQuery)
             if (activeTab !== 'all') params.set('tab', activeTab)
-            // If filtering by specific platform accounts
-            if (selectedPlatformIds.length === 1) {
-                params.set('platformAccountId', selectedPlatformIds[0])
-            }
+            if (selectedPlatformIds.length === 1) params.set('platformAccountId', selectedPlatformIds[0])
+            params.set('limit', String(CONV_LIMIT))
+            params.set('page', '1')
 
             const res = await fetch(`/api/inbox/conversations?${params}`)
             if (res.ok) {
                 const data = await res.json()
                 setConversations(data.conversations || [])
                 setCounts(data.counts || { new: 0, open: 0, done: 0, archived: 0, mine: 0, all: 0 })
+                setConvHasMore((data.conversations || []).length === CONV_LIMIT)
             }
         } catch (e) {
             console.error('Failed to fetch conversations:', e)
@@ -566,14 +587,55 @@ export default function InboxPage() {
         }
     }, [activeChannel?.id, statusFilter, searchQuery, selectedPlatformIds, activeTab])
 
-    // ─── Fetch messages for a conversation ─
-    const fetchMessages = useCallback(async (convId: string) => {
-        setLoadingMessages(true)
+    // ─── Load more conversations ──────────
+    const loadMoreConversations = useCallback(async () => {
+        const nextPage = convPage + 1
+        setLoadingMoreConv(true)
         try {
-            const res = await fetch(`/api/inbox/conversations/${convId}/messages`)
+            const params = new URLSearchParams()
+            if (activeChannel?.id) params.set('channelId', activeChannel.id)
+            if (statusFilter !== 'all' && statusFilter !== 'mine') params.set('status', statusFilter)
+            if (statusFilter === 'mine') params.set('mine', 'true')
+            if (searchQuery) params.set('search', searchQuery)
+            if (activeTab !== 'all') params.set('tab', activeTab)
+            if (selectedPlatformIds.length === 1) params.set('platformAccountId', selectedPlatformIds[0])
+            params.set('limit', String(CONV_LIMIT))
+            params.set('page', String(nextPage))
+
+            const res = await fetch(`/api/inbox/conversations?${params}`)
             if (res.ok) {
                 const data = await res.json()
-                setMessages(data.messages || [])
+                const more = data.conversations || []
+                setConversations(prev => {
+                    const existingIds = new Set(prev.map(c => c.id))
+                    return [...prev, ...more.filter((c: Conversation) => !existingIds.has(c.id))]
+                })
+                setConvHasMore(more.length === CONV_LIMIT)
+                setConvPage(nextPage)
+            }
+        } catch (e) {
+            console.error('Failed to load more conversations:', e)
+        } finally {
+            setLoadingMoreConv(false)
+        }
+    }, [activeChannel?.id, statusFilter, searchQuery, selectedPlatformIds, activeTab, convPage])
+
+    // ─── Fetch messages for a conversation (initial/reset) ─
+    const fetchMessages = useCallback(async (convId: string) => {
+        setLoadingMessages(true)
+        setMsgPage(1)
+        setMsgHasMore(false)
+        try {
+            const params = new URLSearchParams()
+            params.set('limit', String(MSG_LIMIT))
+            params.set('page', '1')
+            const res = await fetch(`/api/inbox/conversations/${convId}/messages?${params}`)
+            if (res.ok) {
+                const data = await res.json()
+                const msgs = data.messages || []
+                setMessages(msgs)
+                // If we got a full page, there might be more (older) messages
+                setMsgHasMore(data.total > MSG_LIMIT)
             }
         } catch (e) {
             console.error('Failed to fetch messages:', e)
@@ -581,6 +643,34 @@ export default function InboxPage() {
             setLoadingMessages(false)
         }
     }, [])
+
+    // ─── Load earlier messages (older pages) ──────────
+    const msgScrollRef = useRef<HTMLDivElement | null>(null)
+    const loadEarlierMessages = useCallback(async () => {
+        if (!selectedConversation) return
+        const nextPage = msgPage + 1
+        setLoadingMoreMsg(true)
+        try {
+            const params = new URLSearchParams()
+            params.set('limit', String(MSG_LIMIT))
+            params.set('page', String(nextPage))
+            const res = await fetch(`/api/inbox/conversations/${selectedConversation.id}/messages?${params}`)
+            if (res.ok) {
+                const data = await res.json()
+                const older = data.messages || []
+                setMessages(prev => {
+                    const existingIds = new Set(prev.map(m => m.id))
+                    return [...older.filter((m: InboxMessage) => !existingIds.has(m.id)), ...prev]
+                })
+                setMsgHasMore(older.length === MSG_LIMIT)
+                setMsgPage(nextPage)
+            }
+        } catch (e) {
+            console.error('Failed to load earlier messages:', e)
+        } finally {
+            setLoadingMoreMsg(false)
+        }
+    }, [selectedConversation, msgPage])
 
     // ─── Send reply ───────────────────
     const handleSendReply = useCallback(async () => {
@@ -1097,7 +1187,7 @@ export default function InboxPage() {
                             </p>
                         </div>
                     ) : (
-                        <div className="divide-y">
+                        <div className="divide-y flex flex-col">
                             {filteredConversations.map(conv => (
                                 <button
                                     key={conv.id}
@@ -1197,6 +1287,25 @@ export default function InboxPage() {
                                     </div>
                                 </button>
                             ))}
+                            {/* Load more conversations */}
+                            {convHasMore && (
+                                <div className="p-2 flex justify-center border-t">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                                        onClick={loadMoreConversations}
+                                        disabled={loadingMoreConv}
+                                    >
+                                        {loadingMoreConv ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                            <ChevronDown className="h-3 w-3" />
+                                        )}
+                                        {loadingMoreConv ? 'Loading...' : 'Load more'}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </ScrollArea>
@@ -1428,6 +1537,25 @@ export default function InboxPage() {
 
                         {/* Chat history */}
                         <ScrollArea className="flex-1 min-h-0 p-4">
+                            {/* Load earlier messages button */}
+                            {!loadingMessages && msgHasMore && (
+                                <div className="flex justify-center mb-4">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1.5"
+                                        onClick={loadEarlierMessages}
+                                        disabled={loadingMoreMsg}
+                                    >
+                                        {loadingMoreMsg ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                            <ChevronUp className="h-3 w-3" />
+                                        )}
+                                        {loadingMoreMsg ? 'Loading...' : 'Load earlier messages'}
+                                    </Button>
+                                </div>
+                            )}
                             {loadingMessages ? (
                                 <div className="flex items-center justify-center h-32">
                                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
