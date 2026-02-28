@@ -106,12 +106,22 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
     const [interval, setInterval] = useState<'monthly' | 'annual'>('monthly')
     const [loading, setLoading] = useState<string | null>(null)
     const [coupon, setCoupon] = useState('')
+    const [currentPlanName, setCurrentPlanName] = useState<string | null>(null)
+    const [currentPlanPrice, setCurrentPlanPrice] = useState<number>(0)
 
     useEffect(() => {
         if (open) {
             fetch('/api/billing/plans')
                 .then(r => r.json())
                 .then(setPlans)
+                .catch(console.error)
+            // Get current user plan for button state
+            fetch('/api/billing')
+                .then(r => r.json())
+                .then(data => {
+                    setCurrentPlanName(data?.plan?.planName ?? null)
+                    setCurrentPlanPrice(data?.plan?.priceMonthly ?? 0)
+                })
                 .catch(console.error)
         }
     }, [open])
@@ -161,7 +171,10 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                             <span className="p-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                                 <Zap className="h-5 w-5 text-yellow-400" />
                             </span>
-                            {locale === 'vi' ? 'Nâng cấp gói dịch vụ' : 'Upgrade Your Plan'}
+                            {currentPlanName && currentPlanName !== 'Free'
+                                ? (locale === 'vi' ? 'Thay đổi gói dịch vụ' : 'Change Your Plan')
+                                : (locale === 'vi' ? 'Nâng cấp gói dịch vụ' : 'Upgrade Your Plan')
+                            }
                         </DialogTitle>
                         {reason && (
                             <DialogDescription className="text-sm text-red-400 mt-1">
@@ -207,6 +220,12 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                             : (locale === 'vi' ? '/tháng' : '/mo'))
                         const hasPriceId = interval === 'annual' ? !!plan.stripePriceIdAnnual : !!plan.stripePriceIdMonthly
                         const contactSales = isContactSales(plan)
+                        // Current plan detection: match by name, fallback to priceMonthly
+                        const isCurrent = currentPlanName
+                            ? plan.name === currentPlanName
+                            : plan.priceMonthly === currentPlanPrice
+                        // Downgrade if the plan costs less than the current plan
+                        const isDowngrade = !isCurrent && plan.priceMonthly < currentPlanPrice
 
                         const features = [
                             plan.maxChannels === -1
@@ -228,12 +247,21 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
                         return (
                             <div
                                 key={plan.id}
-                                className={`relative rounded-2xl border ${style.border} bg-gradient-to-b ${style.gradient} p-6 flex flex-col gap-5 shadow-xl ${style.glow} transition-all duration-300 hover:scale-[1.01]`}
+                                className={`relative rounded-2xl border ${isCurrent
+                                    ? 'border-emerald-500/60 ring-1 ring-emerald-500/30'
+                                    : style.border
+                                    } bg-gradient-to-b ${style.gradient} p-6 flex flex-col gap-5 shadow-xl ${style.glow} transition-all duration-300 hover:scale-[1.01]`}
                             >
                                 {/* Popular badge */}
-                                {style.tag && (
+                                {style.tag && !isCurrent && (
                                     <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full text-white ${style.tagColor}`}>
                                         {style.tag}
+                                    </span>
+                                )}
+                                {/* Current plan badge */}
+                                {isCurrent && (
+                                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full text-white bg-emerald-600">
+                                        {locale === 'vi' ? 'Gói hiện tại' : 'Current Plan'}
                                     </span>
                                 )}
 
@@ -277,20 +305,34 @@ export function UpgradeModal({ open, onClose, reason }: UpgradeModalProps) {
 
                                 {/* CTA */}
                                 <button
-                                    onClick={() => contactSales
-                                        ? window.open('mailto:sales@yourdomain.com', '_blank')
-                                        : handleUpgrade(plan.id)}
-                                    disabled={!!loading}
-                                    className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 ${contactSales
-                                        ? 'bg-white/5 text-muted-foreground border border-white/10 hover:bg-white/10'
-                                        : style.button
-                                        } disabled:opacity-60`}
+                                    onClick={() => {
+                                        if (isCurrent) return
+                                        if (contactSales) {
+                                            window.open('mailto:sales@yourdomain.com', '_blank')
+                                        } else {
+                                            handleUpgrade(plan.id)
+                                        }
+                                    }}
+                                    disabled={!!loading || isCurrent}
+                                    className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-60 ${isCurrent
+                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 cursor-default'
+                                        : contactSales
+                                            ? 'bg-white/5 text-muted-foreground border border-white/10 hover:bg-white/10'
+                                            : isDowngrade
+                                                ? 'bg-white/5 text-white border border-white/20 hover:bg-white/10'
+                                                : style.button
+                                        }`}
                                 >
                                     {loading === plan.id
                                         ? (locale === 'vi' ? 'Đang xử lý...' : 'Processing...')
-                                        : contactSales
-                                            ? (locale === 'vi' ? 'Liên hệ tư vấn' : 'Contact Sales')
-                                            : (locale === 'vi' ? '🚀 Nâng cấp ngay' : '🚀 Upgrade Now')}
+                                        : isCurrent
+                                            ? (locale === 'vi' ? '✓ Gói hiện tại' : '✓ Current Plan')
+                                            : contactSales
+                                                ? (locale === 'vi' ? 'Liên hệ tư vấn' : 'Contact Sales')
+                                                : isDowngrade
+                                                    ? (locale === 'vi' ? '↓ Hạ cấp' : '↓ Downgrade')
+                                                    : (locale === 'vi' ? '🚀 Nâng cấp ngay' : '🚀 Upgrade Now')
+                                    }
                                 </button>
                             </div>
                         )
