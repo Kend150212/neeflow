@@ -1,9 +1,6 @@
-/**
- * Stripe client — reads keys from the BILLING integration stored in the DB.
- * Falls back to env vars for backwards compatibility (local dev / cold start).
- */
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
+import { decrypt } from '@/lib/encryption'
 
 const STRIPE_API_VERSION = '2026-01-28.clover' as Stripe.LatestApiVersion
 
@@ -28,7 +25,18 @@ export async function getStripe(): Promise<Stripe> {
     }
 
     const row = await getStripeRow()
-    const secretKey = row?.apiKeyEncrypted || process.env.STRIPE_SECRET_KEY
+
+    // apiKeyEncrypted is AES-encrypted in DB — must decrypt before use
+    let secretKey: string | undefined
+    if (row?.apiKeyEncrypted) {
+        try {
+            secretKey = decrypt(row.apiKeyEncrypted)
+        } catch {
+            // If decrypt fails (e.g. wrong key), fall through to env var
+            secretKey = undefined
+        }
+    }
+    secretKey = secretKey || process.env.STRIPE_SECRET_KEY
 
     if (!secretKey) {
         throw new Error('Stripe secret key not configured. Add it in Admin → API Hub → Stripe.')
@@ -39,6 +47,7 @@ export async function getStripe(): Promise<Stripe> {
     _cacheTs = Date.now()
     return instance
 }
+
 
 export async function getStripeWebhookSecret(): Promise<string> {
     const row = await getStripeRow()
