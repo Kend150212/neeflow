@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getStripe, getStripeWebhookSecret } from '@/lib/stripe'
+import { sendWelcomeEmail, sendPaymentConfirmationEmail } from '@/lib/email'
 import type Stripe from 'stripe'
+import crypto from 'crypto'
 
 /**
  * POST /api/billing/webhook
@@ -217,11 +219,12 @@ async function dispatchEvent(event: Stripe.Event) {
 
 async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
     const userId = session.metadata?.userId
+    const guestEmail = session.metadata?.guestEmail
     const planId = session.metadata?.planId
     const interval = session.metadata?.interval ?? 'monthly'
 
-    if (!userId || !planId) {
-        console.error('[Webhook] checkout.session.completed — missing metadata', session.id)
+    if (!planId) {
+        console.error('[Webhook] checkout.session.completed — missing planId metadata', session.id)
         return
     }
 
@@ -234,11 +237,101 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
     const periodEnd = stripeSub.current_period_end ?? 0
     const trialEnd = stripeSub.trial_end ?? null
     const couponId = (stripeSub.discounts as Array<{ coupon?: { id?: string } }>)?.[0]?.coupon?.id ?? null
+    const trialDays = trialEnd ? Math.ceil((trialEnd * 1000 - Date.now()) / 86400000) : 0
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = prisma as any
+
+    // ── Load plan for email ─────────────────────────────────────────────────
+    const plan = await db.plan.findUnique({ where: { id: planId }, select: { name: true, priceMonthly: true, priceAnnual: true } })
+    const planName = plan?.name ?? 'Your Plan'
+    const planPrice = interval === 'annual'
+        ? (plan?.priceAnnual ?? 0).toString()
+        : (plan?.priceMonthly ?? 0).toString()
+    const nextBillingDate = new Date(periodEnd * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    const APP_URL = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+    // ══════════════════════════════════════════════════════════════════════
+    // BRANCH A: Existing logged-in user checkout (userId in metadata)
+    // ══════════════════════════════════════════════════════════════════════
+    if (userId) {
+        await db.subscription.upsert({
+            where: { userId },
+            update: {
+                planId, stripeCustomerId, stripeSubscriptionId: stripeSubId,
+                stripeCouponId: couponId, billingInterval: interval,
+                status: stripeSub.status,
+                trialEndsAt: trialEnd ? new Date(trialEnd * 1000) : null,
+                currentPeriodEnd: new Date(periodEnd * 1000),
+                cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+            },
+            create: {
+                userId, planId, stripeCustomerId, stripeSubscriptionId: stripeSubId,
+                stripeCouponId: couponId, billingInterval: interval,
+                status: stripeSub.status,
+                trialEndsAt: trialEnd ? new Date(trialEnd * 1000) : null,
+                currentPeriodEnd: new Date(periodEnd * 1000),
+                cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+            },
+        })
+        await syncSubscriptionItems(stripeSub, db)
+        console.log(`[Webhook] ✅ checkout.session.completed — user ${userId}, plan ${planId}, status ${stripeSub.status}`)
+        return
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // BRANCH B: Guest checkout (guestEmail in metadata) — Pay-First flow
+    // ══════════════════════════════════════════════════════════════════════
+    if (!guestEmail) {
+        console.error('[Webhook] checkout.session.completed — missing both userId and guestEmail', session.id)
+        return
+    }
+
+    // Fetch customer name from Stripe
+    let customerName = guestEmail.split('@')[0]
+    try {
+        const stripeCustomer = await stripe.customers.retrieve(stripeCustomerId) as Stripe.Customer
+        if (!stripeCustomer.deleted && stripeCustomer.name) customerName = stripeCustomer.name
+    } catch { /* ignore */ }
+
+    // Check if user already exists
+    let existingUser = await db.user.findUnique({ where: { email: guestEmail } })
+
+    if (!existingUser) {
+        // ── Create new user ──────────────────────────────────────────────
+        const inviteToken = crypto.randomUUID()
+        const inviteExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000) // 72h
+
+        existingUser = await db.user.create({
+            data: {
+                email: guestEmail,
+                name: customerName,
+                inviteToken,
+                inviteExpiresAt,
+                emailVerified: null,
+                passwordHash: null,
+            },
+        })
+        console.log(`[Webhook] 🆕 Created new user for guest checkout: ${guestEmail}`)
+
+        // Send welcome email with set-password link
+        const setupUrl = `${APP_URL}/setup-password?token=${inviteToken}`
+        await sendWelcomeEmail({
+            toEmail: guestEmail,
+            userName: customerName,
+            planName,
+            planPrice,
+            billingInterval: interval,
+            trialDays: trialDays > 0 ? trialDays : undefined,
+            setupUrl,
+        })
+    } else {
+        console.log(`[Webhook] ↩️ Guest checkout matched existing user: ${guestEmail}`)
+    }
+
+    // Upsert subscription for the user
     await db.subscription.upsert({
-        where: { userId },
+        where: { userId: existingUser.id },
         update: {
             planId, stripeCustomerId, stripeSubscriptionId: stripeSubId,
             stripeCouponId: couponId, billingInterval: interval,
@@ -248,7 +341,7 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
             cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
         },
         create: {
-            userId, planId, stripeCustomerId, stripeSubscriptionId: stripeSubId,
+            userId: existingUser.id, planId, stripeCustomerId, stripeSubscriptionId: stripeSubId,
             stripeCouponId: couponId, billingInterval: interval,
             status: stripeSub.status,
             trialEndsAt: trialEnd ? new Date(trialEnd * 1000) : null,
@@ -257,11 +350,22 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
         },
     })
 
-    // Sync subscription items (addons)
     await syncSubscriptionItems(stripeSub, db)
 
-    console.log(`[Webhook] ✅ checkout.session.completed — user ${userId}, plan ${planId}, status ${stripeSub.status}`)
+    // Send payment confirmation email
+    await sendPaymentConfirmationEmail({
+        toEmail: guestEmail,
+        userName: customerName,
+        planName,
+        planPrice,
+        billingInterval: interval,
+        trialDays: trialDays > 0 ? trialDays : undefined,
+        nextBillingDate,
+    })
+
+    console.log(`[Webhook] ✅ checkout.session.completed (guest) — email ${guestEmail}, plan ${planId}, status ${stripeSub.status}`)
 }
+
 
 // ── Subscription ──────────────────────────────────────────────────────────────
 

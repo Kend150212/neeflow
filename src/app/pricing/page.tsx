@@ -204,22 +204,28 @@ export default function PricingPage() {
     }, [])
 
     const [errorMsg, setErrorMsg] = useState<string | null>(null)
+    // Guest email modal state
+    const [guestModal, setGuestModal] = useState<{ planId: string } | null>(null)
+    const [guestEmail, setGuestEmail] = useState('')
+    const [guestEmailError, setGuestEmailError] = useState('')
 
-    const handleCheckout = async (planId: string) => {
+    const handleCheckout = async (planId: string, emailOverride?: string) => {
         setLoading(planId)
         setErrorMsg(null)
         try {
             const res = await fetch('/api/billing/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planId, interval, couponCode: coupon || undefined }),
+                body: JSON.stringify({ planId, interval, couponCode: coupon || undefined, guestEmail: emailOverride || undefined }),
             })
             const data = await res.json()
             if (data.url) {
                 window.location.href = data.url
-            } else if (res.status === 401 || data.error?.toLowerCase().includes('unauthorized')) {
-                // Not logged in — send to login with redirect back to pricing
-                window.location.href = '/login?redirect=' + encodeURIComponent('/pricing')
+            } else if (res.status === 401) {
+                // Not logged in AND no email provided — open guest email modal
+                setLoading(null)
+                setGuestModal({ planId })
+                return
             } else if (data.noStripePrice) {
                 setErrorMsg(locale === 'vi'
                     ? 'Stripe chưa được cấu hình cho gói này. Vui lòng liên hệ admin.'
@@ -232,6 +238,20 @@ export default function PricingPage() {
         } finally {
             setLoading(null)
         }
+    }
+
+    const handleGuestSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!guestEmail.trim() || !emailRegex.test(guestEmail)) {
+            setGuestEmailError(locale === 'vi' ? 'Email không hợp lệ' : 'Please enter a valid email')
+            return
+        }
+        const planId = guestModal!.planId
+        setGuestModal(null)
+        setGuestEmail('')
+        setGuestEmailError('')
+        await handleCheckout(planId, guestEmail.trim())
     }
 
 
@@ -571,6 +591,123 @@ export default function PricingPage() {
                     <p>{locale === 'vi' ? 'Hủy bất cứ lúc nào. Không ràng buộc.' : 'Cancel anytime. No lock-in.'}</p>
                 </div>
             </div>
+
+            {/* ── Guest Email Modal ── */}
+            {guestModal && (
+                <div
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 9999,
+                        background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+                    }}
+                    onClick={(e) => { if (e.target === e.currentTarget) setGuestModal(null) }}
+                >
+                    <div style={{
+                        background: '#111827',
+                        border: '1px solid rgba(139,92,246,0.3)',
+                        borderRadius: '20px',
+                        maxWidth: '420px',
+                        width: '100%',
+                        overflow: 'hidden',
+                        boxShadow: '0 25px 60px rgba(0,0,0,0.8)',
+                        position: 'relative',
+                    }}>
+                        <div style={{ height: '3px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7, #ec4899)' }} />
+                        <div style={{ padding: '32px 32px 28px' }}>
+                            {/* Close button */}
+                            <button
+                                onClick={() => setGuestModal(null)}
+                                style={{
+                                    position: 'absolute', top: '16px', right: '16px',
+                                    background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px',
+                                    color: '#6b7280', borderRadius: '8px',
+                                }}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                            </button>
+
+                            {/* Lock icon */}
+                            <div style={{
+                                width: 56, height: 56, borderRadius: '14px',
+                                background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))',
+                                border: '1px solid rgba(139,92,246,0.3)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                marginBottom: '20px',
+                            }}>
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" stroke="#8b5cf6" strokeWidth="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" />
+                                    <circle cx="12" cy="16" r="1.5" fill="#8b5cf6" />
+                                </svg>
+                            </div>
+
+                            <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#f9fafb', margin: '0 0 8px' }}>
+                                {locale === 'vi' ? 'Nhập email của bạn' : 'Enter your email to continue'}
+                            </h2>
+                            <p style={{ fontSize: '14px', color: '#9ca3af', lineHeight: 1.6, margin: '0 0 24px' }}>
+                                {locale === 'vi'
+                                    ? 'Bạn sẽ thanh toán trước, sau đó thiết lập mật khẩu để đăng nhập.'
+                                    : "You'll complete payment, then we'll send you a link to set up your password."}
+                            </p>
+
+                            <form onSubmit={handleGuestSubmit}>
+                                <div style={{ position: 'relative', marginBottom: '8px' }}>
+                                    <svg style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+                                        width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                        <rect x="2" y="4" width="20" height="16" rx="3" stroke="#6b7280" strokeWidth="2" />
+                                        <path d="M2 8l10 6 10-6" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" />
+                                    </svg>
+                                    <input
+                                        type="email"
+                                        autoFocus
+                                        placeholder={locale === 'vi' ? 'email@cuaban.com' : 'you@example.com'}
+                                        value={guestEmail}
+                                        onChange={e => { setGuestEmail(e.target.value); setGuestEmailError('') }}
+                                        style={{
+                                            width: '100%', boxSizing: 'border-box',
+                                            padding: '14px 14px 14px 46px',
+                                            background: 'rgba(255,255,255,0.05)',
+                                            border: guestEmailError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.12)',
+                                            borderRadius: '10px',
+                                            color: '#f9fafb',
+                                            fontSize: '15px',
+                                            outline: 'none',
+                                        }}
+                                    />
+                                </div>
+                                {guestEmailError && (
+                                    <p style={{ fontSize: '13px', color: '#f87171', margin: '0 0 4px' }}>{guestEmailError}</p>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={!!loading}
+                                    style={{
+                                        width: '100%', marginTop: '12px',
+                                        padding: '14px',
+                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                        border: 'none', borderRadius: '10px',
+                                        color: '#fff', fontSize: '15px', fontWeight: 600,
+                                        cursor: loading ? 'wait' : 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    }}
+                                >
+                                    {loading ? 'Processing...' : (locale === 'vi' ? 'Tiến hành thanh toán →' : 'Continue to Payment →')}
+                                </button>
+                            </form>
+
+                            <p style={{ fontSize: '12px', color: '#6b7280', textAlign: 'center', marginTop: '16px' }}>
+                                {locale === 'vi' ? 'Đã có tài khoản? ' : 'Already have an account? '}
+                                <a href="/login" style={{ color: '#8b5cf6', textDecoration: 'none', fontWeight: 500 }}>
+                                    {locale === 'vi' ? 'Đăng nhập' : 'Sign in'}
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

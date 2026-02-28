@@ -17,11 +17,14 @@ const APP_URL = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || '
  */
 export async function POST(req: NextRequest) {
     const session = await auth()
-    if (!session?.user?.id) {
+    const body = await req.json()
+    const { planId, interval = 'monthly', couponCode, guestEmail: rawGuestEmail } = body
+
+    // Auth check: must be logged in OR provide a guest email
+    const guestEmail = rawGuestEmail?.trim()?.toLowerCase() || null
+    if (!session?.user?.id && !guestEmail) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const { planId, interval = 'monthly', couponCode } = await req.json()
 
     if (!planId) {
         return NextResponse.json({ error: 'planId is required' }, { status: 400 })
@@ -63,22 +66,37 @@ export async function POST(req: NextRequest) {
         } catch { /* ignore */ }
     }
 
-    // Get or create Stripe customer
+    // ─── Resolve Stripe customer ──────────────────────────────────────────────
     let stripeCustomerId: string | undefined
-    const existingSub = await db.subscription.findUnique({
-        where: { userId: session.user.id },
-        select: { stripeCustomerId: true },
-    })
 
-    if (existingSub?.stripeCustomerId) {
-        stripeCustomerId = existingSub.stripeCustomerId
-    } else {
-        const customer = await stripe.customers.create({
-            email: session.user.email ?? undefined,
-            name: session.user.name ?? undefined,
-            metadata: { userId: session.user.id },
+    if (session?.user?.id) {
+        // Logged-in user: look up their existing Stripe customer
+        const existingSub = await db.subscription.findUnique({
+            where: { userId: session.user.id },
+            select: { stripeCustomerId: true },
         })
-        stripeCustomerId = customer.id
+        if (existingSub?.stripeCustomerId) {
+            stripeCustomerId = existingSub.stripeCustomerId
+        } else {
+            const customer = await stripe.customers.create({
+                email: session.user.email ?? undefined,
+                name: session.user.name ?? undefined,
+                metadata: { userId: session.user.id },
+            })
+            stripeCustomerId = customer.id
+        }
+    } else {
+        // Guest user: find or create customer by email
+        const existing = await stripe.customers.list({ email: guestEmail!, limit: 1 })
+        if (existing.data.length > 0) {
+            stripeCustomerId = existing.data[0].id
+        } else {
+            const customer = await stripe.customers.create({
+                email: guestEmail!,
+                metadata: { guestEmail: guestEmail! },
+            })
+            stripeCustomerId = customer.id
+        }
     }
 
     // Resolve coupon
@@ -94,22 +112,30 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    // ─── Build checkout session ───────────────────────────────────────────────
+    const isGuest = !session?.user?.id
+    const successUrl = isGuest
+        ? `${APP_URL}/register/complete?session_id={CHECKOUT_SESSION_ID}`
+        : `${APP_URL}/dashboard/billing?success=1`
+
     const checkoutSession = await stripe.checkout.sessions.create({
         mode: 'subscription',
         customer: stripeCustomerId,
         line_items: [{ price: priceId, quantity: 1 }],
-        // Let Stripe Dashboard control which payment methods are shown
-        // (avoids errors when paypal/link aren't activated on the account)
         ...(discounts ? { discounts } : {}),
-        success_url: `${APP_URL}/dashboard/billing?success=1`,
+        customer_email: isGuest ? guestEmail! : undefined,
+        success_url: successUrl,
         cancel_url: `${APP_URL}/pricing?canceled=1`,
         metadata: {
-            userId: session.user.id,
+            ...(session?.user?.id ? { userId: session.user.id } : { guestEmail: guestEmail! }),
             planId,
             interval,
         },
         subscription_data: {
-            metadata: { userId: session.user.id, planId },
+            metadata: {
+                ...(session?.user?.id ? { userId: session.user.id } : { guestEmail: guestEmail! }),
+                planId,
+            },
             ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
         },
     })

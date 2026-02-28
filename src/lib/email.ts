@@ -74,6 +74,157 @@ export async function sendEmail({
     return { success: true }
 }
 
+// ─── DB Template Engine ──────────────────────────────────────────────────────
+// Fetches a template from the DB by key, replaces {{variable}} placeholders,
+// and falls back to the provided fallbackHtml if the template doesn't exist.
+export async function renderTemplate(
+    key: string,
+    vars: Record<string, string>,
+    fallbackSubject?: string,
+    fallbackHtml?: string
+): Promise<{ subject: string; html: string } | null> {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db = prisma as any
+        const template = await db.emailTemplate?.findUnique({ where: { key, isActive: true } })
+        const brand = await getBrand()
+        const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        const logoUrl = brand.logoUrl?.startsWith('http') ? brand.logoUrl : `${appUrl}${brand.logoUrl || '/logo.png'}`
+
+        const allVars: Record<string, string> = {
+            appName: brand.appName,
+            appUrl,
+            logoUrl,
+            year: new Date().getFullYear().toString(),
+            ...vars,
+        }
+
+        // Simple {{var}} replace — handles {{var}} and strips unsupported {{#if}} blocks
+        function replaceVars(str: string): string {
+            // Replace {{var}} with value
+            let result = str.replace(/\{\{(\w+)\}\}/g, (_, key) => allVars[key] ?? '')
+            // Strip {{#if varName}}...{{/if}} blocks — show content only if var is truthy
+            result = result.replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, varName, inner) => {
+                return allVars[varName] ? inner : ''
+            })
+            // Strip {{else}} handled version (simplified — no nested ifs)
+            result = result.replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, varName, ifInner, elseInner) => {
+                return allVars[varName] ? ifInner : elseInner
+            })
+            return result
+        }
+
+        if (template) {
+            return {
+                subject: replaceVars(template.subject),
+                html: replaceVars(template.htmlBody),
+            }
+        }
+
+        // Fallback to hardcoded
+        if (fallbackSubject && fallbackHtml) {
+            return {
+                subject: replaceVars(fallbackSubject),
+                html: replaceVars(fallbackHtml),
+            }
+        }
+
+        return null
+    } catch (err) {
+        console.error('[Email] renderTemplate error:', err)
+        return null
+    }
+}
+
+// ─── Send Welcome Email (Pay-First new user) ────────────────────────────────
+export async function sendWelcomeEmail({
+    toEmail,
+    userName,
+    planName,
+    planPrice,
+    billingInterval,
+    trialDays,
+    setupUrl,
+}: {
+    toEmail: string
+    userName: string
+    planName: string
+    planPrice: string
+    billingInterval: string
+    trialDays?: number
+    setupUrl: string
+}) {
+    try {
+        const brand = await getBrand()
+        const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+        const rendered = await renderTemplate('welcome', {
+            userName,
+            userEmail: toEmail,
+            planName,
+            planPrice,
+            billingInterval,
+            trialDays: trialDays ? String(trialDays) : '',
+            setupUrl,
+            dashboardUrl: `${appUrl}/dashboard`,
+        })
+
+        if (!rendered) {
+            console.warn('[Email] welcome template not found, skipping')
+            return { success: false, reason: 'Template not found' }
+        }
+
+        return await sendEmail({ to: toEmail, subject: rendered.subject || `Welcome to ${brand.appName}!`, html: rendered.html })
+    } catch (error) {
+        console.error('[Email] sendWelcomeEmail failed:', error)
+        return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' }
+    }
+}
+
+// ─── Send Payment Confirmation Email ─────────────────────────────────────────
+export async function sendPaymentConfirmationEmail({
+    toEmail,
+    userName,
+    planName,
+    planPrice,
+    billingInterval,
+    trialDays,
+    nextBillingDate,
+}: {
+    toEmail: string
+    userName: string
+    planName: string
+    planPrice: string
+    billingInterval: string
+    trialDays?: number
+    nextBillingDate: string
+}) {
+    try {
+        const brand = await getBrand()
+        const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+        const rendered = await renderTemplate('payment_confirmation', {
+            userName,
+            planName,
+            planPrice,
+            billingInterval,
+            trialDays: trialDays ? String(trialDays) : '',
+            nextBillingDate,
+            dashboardUrl: `${appUrl}/dashboard`,
+        })
+
+        if (!rendered) {
+            console.warn('[Email] payment_confirmation template not found, skipping')
+            return { success: false, reason: 'Template not found' }
+        }
+
+        return await sendEmail({ to: toEmail, subject: rendered.subject || `Payment confirmed — ${planName}`, html: rendered.html })
+    } catch (error) {
+        console.error('[Email] sendPaymentConfirmationEmail failed:', error)
+        return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' }
+    }
+}
+
 // ─── Send Invitation Email ──────────────────────────
 export async function sendInvitationEmail({
     toEmail,

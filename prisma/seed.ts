@@ -2,6 +2,7 @@ import { PrismaClient, UserRole, IntegrationCategory, IntegrationStatus } from '
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 import bcrypt from 'bcryptjs'
+import { seedEmailTemplates } from './seed-email-templates'
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 const adapter = new PrismaPg(pool)
@@ -232,6 +233,9 @@ async function main() {
     }
 
     console.log('✅ API integrations seeded:', integrations.length)
+
+    await seedEmailTemplates()
+
     console.log('')
     console.log('🎉 Database seeded successfully!')
     console.log('   Login: admin@neeflow.com / admin123')
