@@ -98,9 +98,50 @@ export async function POST(req: NextRequest) {
         if (parts.length > 0) bizContext = parts.join(', ')
     }
 
-    const systemPrompt = `You are an expert SEO copywriter and social media content strategist. You deeply understand how to create compelling, SEO-optimized content ideas that resonate with specific target audiences and drive engagement. Analyze the brand data provided and generate highly relevant, data-driven topic suggestions. Respond ONLY with valid JSON.`
+    // Random seed to force AI to generate fresh ideas every call
+    const seedTime = Date.now()
+    const seedMinute = Math.floor(seedTime / 60000)
 
-    const userPrompt = `As an expert SEO copywriter and content strategist, brainstorm 8 highly compelling, SEO-optimized social media post ideas for this brand. Analyze ALL the brand data below to create hyper-relevant, targeted topics.
+    // Randomly pick 5 content styles from a big pool to force variety each refresh
+    const ALL_CONTENT_STYLES = [
+        'Hot Take / Controversial Opinion', 'Myth vs Reality', 'Unpopular Opinion + Why I Stand By It',
+        'Step-by-Step Tutorial', 'Quick Tips (3 in 60 seconds)', 'Deep Dive Explainer',
+        'Before & After Transformation', 'Day in the Life', 'Behind the Scenes',
+        'Customer Success Story (storytelling format)', 'Mistake I Made + Lesson Learned',
+        'The Truth About [Topic] Nobody Talks About', 'I Tried X For 30 Days — Here\'s What Happened',
+        'Comparison / Head-to-Head Battle', 'Red Flags vs Green Flags', 'Tier List Ranking',
+        'This or That Poll', 'Fill in the Blank', 'Would You Rather',
+        'Trending Audio / Sound', 'React & Respond to Industry News', 'Stitch / Duet Opportunity',
+        'POV: You\'re a [customer type]', 'A Day Without [Product/Service]',
+        'Industry Predictions for This Year', 'I Asked 100 Customers This — Their Answers Surprised Me',
+        'Why Most People Get [Topic] Wrong', 'The [X] Things I Wish I Knew Earlier',
+        'Science-backed Fact + Surprise Twist', 'Local / Community Event Tie-in',
+        'Seasonal / Holiday Angle', 'Cultural Moment Leverage', 'Nostalgia Hook',
+        'Aesthetic / Vibe Post (no caption needed, visual story)', 'ASMR / Sensory Content',
+        'Founder Story / Origin Arc', 'Team Spotlight', 'Process Reveal (how we make it)',
+        'FAQ Smash (answer 5 questions in one post)', 'Testimonial Remix',
+        'User-Generated Content Prompt', 'Challenge Launch', 'Series Post (episode 1 of X)',
+        'Listicle (Top 7, Top 10, Top 13)', 'Stats & Data that Shock', 'Infographic Style',
+        'Rant Post (passionate about something in industry)', 'Appreciation / Thank You Post',
+        'Aspirational / Dream Big Content', 'Relatable Struggle Post', 'Humor / Meme Format',
+    ]
+    const shuffled = ALL_CONTENT_STYLES.sort(() => 0.5 - Math.random())
+    const pickedStyles = shuffled.slice(0, 10).join('\n- ')
+
+    const ALL_VIBES = [
+        'Raw & Unfiltered', 'Cinematic & Moody', 'Gen Z Chaotic Energy', 'Luxury & Aspirational',
+        'Warm & Community-driven', 'Edgy & Provocative', 'Playful & Silly',
+        'Expert Authority', 'Underdog Story', 'Minimalist Clean',
+        'Nostalgic Retro', 'Hype & High Energy', 'ASMR Calm & Soothing',
+        'Academic & Research-backed', 'Street-level Authentic',
+    ]
+    const pickedVibes = shuffled.slice(0, 4).map((_, i) => ALL_VIBES[i % ALL_VIBES.length]).join(', ')
+
+    const systemPrompt = `You are the world's most creative social media content ideation engine. You specialize in generating WILDLY DIVERSE, UNEXPECTED, and HIGHLY ENGAGING content ideas. Your ideas never repeat. You think across all formats, vibes, styles, emotions, and cultural angles. You mix viral formulas with brand-specific nuance. You NEVER generate generic content. Respond ONLY with valid JSON.`
+
+    const userPrompt = `You are generating content topic ideas for a social media brand. Your job is to be MAXIMALLY CREATIVE and DIVERSE.
+
+SEED: ${seedMinute} — use this as your creative starting point to ensure fresh, unique output every single time.
 
 ═══ BRAND DATA ═══
 Brand: ${channel.displayName}
@@ -111,45 +152,49 @@ ${brandContext ? `\n${brandContext}` : ''}
 ${kbContext ? `\nKnowledge Base:\n${kbContext}` : ''}
 ${seoTags ? `SEO Tags: ${seoTags}` : ''}
 ${hashtags ? `Popular Hashtags: ${hashtags}` : ''}
-${templateNames ? `Content Templates: ${templateNames}` : ''}
 ${bizContext ? `Business: ${bizContext}` : ''}
 
-═══ INSTRUCTIONS ═══
-For each topic, provide:
-1. A catchy, SEO-friendly headline that's optimized for social engagement
-2. The primary target keyword this post should rank for
-3. A brief angle explaining the core value (solving a problem, answering a question, providing insight)
-4. 2-3 related keywords or long-tail phrases
+═══ THIS SESSION'S ASSIGNED CONTENT STYLES ═══
+You MUST use these 10 content styles (one per suggestion, in order):
+- ${pickedStyles}
 
-═══ DIVERSITY RULES ═══
-Mix these content types across the 8 suggestions:
-- 2 Educational/How-To (teach something valuable to the target audience)
-- 2 Engagement/Community (conversation starters, polls, debates, "hot takes")
-- 1 Trending/Timely (connect to current events, seasons, or trends)
-- 1 Behind-the-Scenes/Story (brand personality, journey, lessons learned)
-- 1 Promotional/Value (showcase product/service without being salesy)
-- 1 Thought Leadership (industry insights, predictions, expert analysis)
+═══ THIS SESSION'S ASSIGNED EMOTIONAL VIBES ═══
+Rotate through these vibes across your suggestions: ${pickedVibes}
+
+═══ INSTRUCTIONS ═══
+Generate EXACTLY 10 content topic ideas. Each must:
+1. Match one of the assigned content styles above (in order)
+2. Be 100% specific to this brand's niche — NEVER generic
+3. Have a different emotional angle from the others
+4. Feel like it was written by a creator who deeply knows this brand AND is obsessed with virality
+5. Include a punchy 5-12 word headline as the topic
+6. Use specific numbers, names, or provocative hooks where possible
+
+═══ ANTI-REPETITION RULES ═══
+- NO two topics can start with the same word
+- NO two topics can use the same structure (e.g. "How to X" twice)
+- NO safe, boring, predictable topics (no "5 tips for...", no "Why X is important")
+- Each topic should feel completely different in FORMAT, EMOTION, and ANGLE
+- Mix serious ↔ playful ↔ controversial ↔ educational ↔ emotional
+- Some topics should be risky/edgy but brand-aligned
 
 ═══ RESPONSE FORMAT ═══
-Return EXACTLY this JSON:
+Return EXACTLY this JSON (no extra text):
 {
   "suggestions": [
     {
-      "topic": "Short catchy headline (5-12 words)",
+      "topic": "Punchy 5-12 word headline",
       "emoji": "🔥",
-      "keyword": "primary target keyword",
-      "angle": "Brief description of the content angle and value (1 sentence)",
+      "keyword": "primary seo keyword",
+      "angle": "One sentence: what makes this fresh and engaging",
       "relatedKeywords": ["keyword1", "keyword2"]
     }
   ]
 }
 
-CRITICAL:
-- Write ALL topics in ${langLabel}
-- Topics MUST be specific to THIS brand's niche — NOT generic social media advice
-- Each topic should feel like it was crafted by someone who deeply understands this brand
-- Include actionable, specific hooks — avoid vague topics like "Tips for success"
-- Make headlines click-worthy but NOT clickbait`
+CRITICAL: Write ALL content in ${langLabel}. Be BOLD. Be UNEXPECTED. Create topics that make the creator think "I HAVE to post this."
+The topics MUST feel like they were invented RIGHT NOW, not recycled ideas. Seed ${seedMinute} ensures uniqueness.`
+
 
     try {
         const result = await callAI(providerName, apiKey, model, systemPrompt, userPrompt, baseUrl)
