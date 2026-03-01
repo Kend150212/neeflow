@@ -183,11 +183,33 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [learningLoading, setLearningLoading] = useState(false)
     const [learningFetched, setLearningFetched] = useState(false)
 
-    // Normalize AI-returned learning data to safe types (AI can return strings instead of arrays)
+    // Normalize AI-returned learning data to safe types (AI can return objects instead of strings)
     const normalizeLearningData = (raw: any) => {
         if (!raw || typeof raw !== 'object') return {}
-        const toArr = (v: any): string[] => Array.isArray(v) ? v : (typeof v === 'string' && v ? [v] : [])
+
+        // Convert any value to a safe string for rendering
+        const itemToString = (v: any): string => {
+            if (typeof v === 'string') return v
+            if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+            if (v && typeof v === 'object') {
+                // AI sometimes returns {term, meaning}, {word, definition}, {phrase}, {text}, {scenario, approach} etc.
+                const str = v.term || v.word || v.phrase || v.text || v.value || v.name
+                if (str) return typeof str === 'string' ? str : String(str)
+                // Fallback: joined key=value pairs
+                return Object.entries(v).map(([k, val]) => `${k}: ${val}`).join(' | ')
+            }
+            return ''
+        }
+
+        // Convert value to safe string array
+        const toArr = (v: any): string[] => {
+            if (Array.isArray(v)) return v.map(itemToString).filter(Boolean)
+            if (typeof v === 'string' && v) return [v]
+            return []
+        }
+
         const tone = raw.toneAnalysis && typeof raw.toneAnalysis === 'object' ? raw.toneAnalysis : {}
+
         return {
             ...raw,
             vocabulary: toArr(raw.vocabulary),
@@ -196,8 +218,19 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
             closingStyles: toArr(raw.closingStyles),
             keyPhrases: toArr(raw.keyPhrases),
             customerHandlingTechniques: toArr(raw.customerHandlingTechniques),
-            dealingPatterns: Array.isArray(raw.dealingPatterns) ? raw.dealingPatterns : [],
-            toneAnalysis: tone ? { ...tone, languages: toArr(tone.languages) } : undefined,
+            dealingPatterns: Array.isArray(raw.dealingPatterns)
+                ? raw.dealingPatterns.map((p: any) => ({
+                    scenario: itemToString(typeof p === 'object' ? (p.scenario ?? p) : p),
+                    approach: itemToString(typeof p === 'object' ? (p.approach ?? '') : ''),
+                }))
+                : [],
+            toneAnalysis: Object.keys(tone).length > 0 ? {
+                formality: String(tone.formality || ''),
+                emojiUsage: String(tone.emojiUsage || ''),
+                avgMessageLength: Number(tone.avgMessageLength) || 0,
+                writingStyle: String(tone.writingStyle || ''),
+                languages: toArr(tone.languages),
+            } : undefined,
         }
     }
 
