@@ -59,6 +59,12 @@ import { useState, useEffect } from 'react'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useBranding } from '@/lib/use-branding'
 
+interface PlanUsage {
+    aiImage: { used: number; limit: number }
+    posts: { used: number; limit: number }
+    apiKeys: { count: number }
+}
+
 interface NavItem {
     titleKey: string
     href: string
@@ -112,6 +118,14 @@ export function Sidebar({ session }: { session: Session }) {
     const t = useTranslation()
     const { activeChannel, channels, setActiveChannel, loadingChannels } = useWorkspace()
     const branding = useBranding()
+    const [usage, setUsage] = useState<PlanUsage | null>(null)
+
+    useEffect(() => {
+        fetch('/api/user/plan-usage')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => d && setUsage(d))
+            .catch(() => { })
+    }, [])
 
     // Handle workspace channel switch — navigate to channel page
     const handleChannelSwitch = (ch: typeof channels[0]) => {
@@ -262,6 +276,79 @@ export function Sidebar({ session }: { session: Session }) {
                     </>
                 )}
             </div>
+
+            {/* ── Plan Usage Widget ── */}
+            {usage && (
+                <div className="px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">⚡ Plan Usage</p>
+                    <div className="space-y-2">
+                        {/* AI Image */}
+                        {(() => {
+                            const { used, limit } = usage.aiImage
+                            const pct = limit === -1 ? 0 : limit === 0 ? 100 : Math.min(100, (used / limit) * 100)
+                            const remaining = limit === -1 ? '∞' : Math.max(0, limit - used)
+                            const isHot = limit !== -1 && pct >= 80
+                            return (
+                                <div>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500" />
+                                            AI Image
+                                        </span>
+                                        <span className={`text-[10px] font-semibold tabular-nums ${isHot ? 'text-red-400' : 'text-violet-400'}`}>
+                                            {remaining}{limit !== -1 && ` / ${limit}`}
+                                        </span>
+                                    </div>
+                                    <div className="h-1 rounded-full bg-muted overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-violet-500 to-fuchsia-500'}`}
+                                            style={{ width: limit === -1 ? '100%' : `${pct}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        })()}
+
+                        {/* Posts */}
+                        {(() => {
+                            const { used, limit } = usage.posts
+                            const pct = limit === -1 ? 0 : limit === 0 ? 100 : Math.min(100, (used / limit) * 100)
+                            const remaining = limit === -1 ? '∞' : Math.max(0, limit - used)
+                            const isHot = limit !== -1 && pct >= 80
+                            return (
+                                <div>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                            Posts
+                                        </span>
+                                        <span className={`text-[10px] font-semibold tabular-nums ${isHot ? 'text-red-400' : 'text-emerald-400'}`}>
+                                            {remaining}{limit !== -1 && ` / ${limit}`}
+                                        </span>
+                                    </div>
+                                    <div className="h-1 rounded-full bg-muted overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`}
+                                            style={{ width: limit === -1 ? '100%' : `${pct}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        })()}
+
+                        {/* API Keys */}
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                API Keys
+                            </span>
+                            <span className="text-[10px] font-semibold text-amber-400 tabular-nums">
+                                {usage.apiKeys.count} saved
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <Separator />
 
