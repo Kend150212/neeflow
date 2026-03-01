@@ -1658,17 +1658,17 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm flex items-center gap-2">
                                     <Brain className="h-4 w-4 text-violet-500" />
-                                    Smart Memory — Ghi nhớ khách hàng xuyên phiên
+                                    {t('chatbot.behavior.smartMemory')} — {t('chatbot.behavior.smartMemorySubtitle')}
                                 </CardTitle>
                                 <CardDescription className="text-[11px]">
-                                    Bot sẽ tạo hồ sơ khách hàng (tên, sở thích, lịch sử) và ghi nhớ giữa các cuộc trò chuyện. Khi khách quay lại sau nhiều ngày, bot sẽ nhớ họ.
+                                    {t('chatbot.behavior.smartMemoryDesc')}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <Label className="text-sm">Bật Smart Memory</Label>
-                                        <p className="text-[11px] text-muted-foreground">Tự động tóm tắt mỗi phiên và cập nhật hồ sơ khách hàng</p>
+                                        <Label className="text-sm">{t('chatbot.behavior.smartMemoryEnable')}</Label>
+                                        <p className="text-[11px] text-muted-foreground">{t('chatbot.behavior.smartMemoryEnableDesc')}</p>
                                     </div>
                                     <Switch
                                         checked={config.enableSmartMemory}
@@ -1679,8 +1679,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 {config.enableSmartMemory && (
                                     <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
                                         <div>
-                                            <Label className="text-[11px] text-muted-foreground">Timeout phiên (giờ)</Label>
-                                            <p className="text-[10px] text-muted-foreground mb-1">Sau bao lâu không có tin nhắn thì kết thúc phiên</p>
+                                            <Label className="text-[11px] text-muted-foreground">{t('chatbot.behavior.smartMemoryTimeout')}</Label>
+                                            <p className="text-[10px] text-muted-foreground mb-1">{t('chatbot.behavior.smartMemoryTimeoutDesc')}</p>
                                             <Input
                                                 type="number"
                                                 min={1}
@@ -1691,8 +1691,8 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                             />
                                         </div>
                                         <div>
-                                            <Label className="text-[11px] text-muted-foreground">Nén sau bao nhiêu phiên</Label>
-                                            <p className="text-[10px] text-muted-foreground mb-1">AI sẽ gộp lịch sử sau N phiên để tiết kiệm bộ nhớ</p>
+                                            <Label className="text-[11px] text-muted-foreground">{t('chatbot.behavior.smartMemoryMerge')}</Label>
+                                            <p className="text-[10px] text-muted-foreground mb-1">{t('chatbot.behavior.smartMemoryMergeDesc')}</p>
                                             <Input
                                                 type="number"
                                                 min={2}
@@ -1706,8 +1706,9 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 )}
 
                                 <p className="text-[10px] text-muted-foreground border-t pt-2 border-border/50">
-                                    💡 Session tự động tóm tắt sau {config.sessionTimeoutHours}h không hoạt động.
-                                    Sau {config.summariesBeforeMerge} phiên, AI sẽ nén thành 1 hồ sơ tổng hợp.
+                                    💡 {t('chatbot.behavior.smartMemoryHint')
+                                        .replace('{hours}', String(config.sessionTimeoutHours))
+                                        .replace('{merge}', String(config.summariesBeforeMerge))}
                                 </p>
                             </CardContent>
                         </Card>

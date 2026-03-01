@@ -1152,7 +1152,17 @@
       "autoTranslate": "Auto Translate",
       "autoTranslateDesc": "Auto-translate customer language",
       "smartAssign": "Smart Assign",
-      "smartAssignDesc": "Assign to the most suitable agent"
+      "smartAssignDesc": "Assign to the most suitable agent",
+      "smartMemory": "Smart Memory",
+      "smartMemorySubtitle": "Remember customers across sessions",
+      "smartMemoryDesc": "Bot will build a customer profile (name, preferences, history) and remember it between conversations. When customers return days later, the bot will recognize them.",
+      "smartMemoryEnable": "Enable Smart Memory",
+      "smartMemoryEnableDesc": "Auto-summarize each session and update customer profile",
+      "smartMemoryTimeout": "Session timeout (hours)",
+      "smartMemoryTimeoutDesc": "How long before inactivity ends the session",
+      "smartMemoryMerge": "Sessions before compression",
+      "smartMemoryMergeDesc": "AI will compress history after N sessions to save memory",
+      "smartMemoryHint": "Session auto-summarized after {hours}h idle. After {merge} sessions, AI compresses into 1 master profile."
     },
     "escalation": {
       "title": "Escalation",

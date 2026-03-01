@@ -1152,7 +1152,17 @@
       "autoTranslate": "Tự động dịch",
       "autoTranslateDesc": "Tự dịch ngôn ngữ khách hàng",
       "smartAssign": "Phân công thông minh",
-      "smartAssignDesc": "Giao cho agent phù hợp nhất"
+      "smartAssignDesc": "Giao cho agent phù hợp nhất",
+      "smartMemory": "Smart Memory",
+      "smartMemorySubtitle": "Ghi nhớ khách hàng xuyên phiên",
+      "smartMemoryDesc": "Bot sẽ tạo hồ sơ khách hàng (tên, sở thích, lịch sử) và ghi nhớ giữa các cuộc trò chuyện. Khi khách quay lại sau nhiều ngày, bot sẽ nhớ họ.",
+      "smartMemoryEnable": "Bật Smart Memory",
+      "smartMemoryEnableDesc": "Tự động tóm tắt mỗi phiên và cập nhật hồ sơ khách hàng",
+      "smartMemoryTimeout": "Timeout phiên (giờ)",
+      "smartMemoryTimeoutDesc": "Sau bao lâu không có tin nhắn thì kết thúc phiên",
+      "smartMemoryMerge": "Nén sau bao nhiêu phiên",
+      "smartMemoryMergeDesc": "AI sẽ gộp lịch sử sau N phiên để tiết kiệm bộ nhớ",
+      "smartMemoryHint": "Session tự động tóm tắt sau {hours}h không hoạt động. Sau {merge} phiên, AI sẽ nén thành 1 hồ sơ tổng hợp."
     },
     "escalation": {
       "title": "Chuyển tiếp",
