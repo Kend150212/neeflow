@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { getBrandingServer } from '@/lib/use-branding-server'
 
-const inter = Inter({
-  subsets: ['latin', 'vietnamese'],
-  variable: '--font-inter',
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
 })
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -70,12 +71,17 @@ export default function RootLayout({
         <link rel="privacy-policy" href="https://neeflow.com/privacy" />
         <link rel="terms-of-service" href="https://neeflow.com/terms" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${spaceGrotesk.variable} font-sans antialiased`}>
         <Providers>
+          {/* Background ambient orb blobs — purple layout style */}
+          <div className="fixed inset-0 -z-50 overflow-hidden pointer-events-none">
+            <div className="absolute top-[8%] left-[15%] w-[500px] h-[500px] rounded-full bg-primary/5 blur-[120px]" />
+            <div className="absolute bottom-[10%] right-[8%] w-[600px] h-[600px] rounded-full bg-primary/4 blur-[150px]" />
+            <div className="absolute top-[45%] right-[25%] w-[300px] h-[300px] rounded-full bg-primary/3 blur-[100px]" />
+          </div>
           {children}
         </Providers>
       </body>
     </html>
   )
 }
-

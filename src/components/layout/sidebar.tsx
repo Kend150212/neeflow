@@ -225,27 +225,31 @@ export function Sidebar({ session }: { session: Session }) {
             {/* Navigation */}
             <div className="flex-1 overflow-y-auto overscroll-contain py-4">
                 <nav className="space-y-1 px-3">
-                    {mainNav.map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={cn(
-                                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                                'hover:bg-accent hover:text-accent-foreground',
-                                item.exact ? pathname === item.href : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                                    ? 'bg-accent text-accent-foreground'
-                                    : 'text-muted-foreground',
-                            )}
-                        >
-                            <item.icon className="h-4 w-4 shrink-0" />
-                            <span>{t(item.titleKey)}</span>
-                            {item.badge && (
-                                <Badge variant="secondary" className="ml-auto text-xs">
-                                    {item.badge}
-                                </Badge>
-                            )}
-                        </Link>
-                    ))}
+                    {mainNav.map((item) => {
+                        const isActive = item.exact
+                            ? pathname === item.href
+                            : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                                    isActive
+                                        ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
+                                        : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
+                                )}
+                            >
+                                <item.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
+                                <span>{t(item.titleKey)}</span>
+                                {item.badge && (
+                                    <Badge variant="secondary" className="ml-auto text-xs">
+                                        {item.badge}
+                                    </Badge>
+                                )}
+                            </Link>
+                        )
+                    })}
                 </nav>
 
                 {isAdmin && (
@@ -256,22 +260,26 @@ export function Sidebar({ session }: { session: Session }) {
                                 {t('nav.administration')}
                             </p>
                             <nav className="space-y-1">
-                                {adminNav.map((item) => (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        className={cn(
-                                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                                            'hover:bg-accent hover:text-accent-foreground',
-                                            item.exact ? pathname === item.href : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                                                ? 'bg-accent text-accent-foreground'
-                                                : 'text-muted-foreground',
-                                        )}
-                                    >
-                                        <item.icon className="h-4 w-4 shrink-0" />
-                                        <span>{t(item.titleKey)}</span>
-                                    </Link>
-                                ))}
+                                {adminNav.map((item) => {
+                                    const isActive = item.exact
+                                        ? pathname === item.href
+                                        : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            className={cn(
+                                                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                                                isActive
+                                                    ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
+                                                    : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
+                                            )}
+                                        >
+                                            <item.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
+                                            <span>{t(item.titleKey)}</span>
+                                        </Link>
+                                    )
+                                })}
                             </nav>
                         </div>
                     </>
