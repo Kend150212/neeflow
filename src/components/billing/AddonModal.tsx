@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -11,27 +11,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
-    HardDrive, Tv, Image as ImageIcon, PenTool, Users, Code2,
-    CalendarClock, BarChart3, Tag, Headphones, Plus, Check, Loader2, X,
-    Sparkles, Zap, Shield,
+    Image as ImageIcon, PenTool, Users, Code2,
+    Plus, Check, Loader2, X, Sparkles, Shield,
+    Building2, Palette, ChevronDown,
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 
-// Icon map for add-on icons
-const iconMap: Record<string, React.ReactNode> = {
-    'hard-drive': <HardDrive className="h-5 w-5" />,
-    'tv': <Tv className="h-5 w-5" />,
-    'image': <ImageIcon className="h-5 w-5" />,
-    'pen-tool': <PenTool className="h-5 w-5" />,
-    'users': <Users className="h-5 w-5" />,
-    'code-2': <Code2 className="h-5 w-5" />,
-    'calendar-clock': <CalendarClock className="h-5 w-5" />,
-    'bar-chart-3': <BarChart3 className="h-5 w-5" />,
-    'tag': <Tag className="h-5 w-5" />,
-    'headphones': <Headphones className="h-5 w-5" />,
-    'plus': <Plus className="h-5 w-5" />,
-}
-
+/* ─── Types ─────────────────────────── */
 type Addon = {
     id: string
     name: string
@@ -55,77 +41,105 @@ type Props = {
     onPurchased?: () => void
 }
 
-// Group definitions with visual styling
-const QUOTA_GROUPS = [
+/* ─── Catalog definition ─────────────────────────── */
+type CatalogEntry = {
+    key: string                            // quotaField or featureField or '*'
+    label: string
+    labelVi: string
+    desc: string
+    descVi: string
+    iconBg: string                         // tailwind bg
+    iconColor: string                      // tailwind text
+    Icon: React.ComponentType<{ className?: string }>
+    match: (a: Addon) => boolean
+}
+
+const CATALOG: CatalogEntry[] = [
     {
-        key: 'maxStorageMB',
-        label: '💾 Storage',
-        labelVi: '💾 Lưu trữ',
-        gradient: 'from-blue-500/10 to-cyan-500/10',
-        border: 'border-blue-500/20',
-        iconBg: 'bg-blue-500/10 text-blue-400',
-        activeBg: 'bg-blue-500/5 border-blue-500/40',
-        activeBadge: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+        key: 'maxAiImagesPerMonth',
+        label: 'AI Media Credits',
+        labelVi: 'AI Media Credits',
+        desc: 'Generate images and videos',
+        descVi: 'Tạo hình ảnh và video',
+        iconBg: 'bg-blue-500',
+        iconColor: 'text-white',
+        Icon: ImageIcon,
+        match: (a) => a.quotaField === 'maxAiImagesPerMonth',
     },
     {
-        key: 'maxChannels',
-        label: '📺 Channels',
-        labelVi: '📺 Kênh',
-        gradient: 'from-violet-500/10 to-purple-500/10',
-        border: 'border-violet-500/20',
-        iconBg: 'bg-violet-500/10 text-violet-400',
-        activeBg: 'bg-violet-500/5 border-violet-500/40',
-        activeBadge: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-    },
-    {
-        key: 'ai',
-        match: (a: Addon) => a.quotaField === 'maxAiImagesPerMonth' || a.quotaField === 'maxAiTextPerMonth',
-        label: '✨ AI Credits',
-        labelVi: '✨ AI Credits',
-        gradient: 'from-amber-500/10 to-orange-500/10',
-        border: 'border-amber-500/20',
-        iconBg: 'bg-amber-500/10 text-amber-400',
-        activeBg: 'bg-amber-500/5 border-amber-500/40',
-        activeBadge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        key: 'maxAiTextPerMonth',
+        label: 'Add AI Text Credits',
+        labelVi: 'AI Text Credits',
+        desc: 'Generate content and captions',
+        descVi: 'Tạo nội dung và caption',
+        iconBg: 'bg-emerald-500',
+        iconColor: 'text-white',
+        Icon: PenTool,
+        match: (a) => a.quotaField === 'maxAiTextPerMonth',
     },
     {
         key: 'maxMembersPerChannel',
-        label: '👥 Team Members',
-        labelVi: '👥 Thành viên',
-        gradient: 'from-green-500/10 to-emerald-500/10',
-        border: 'border-green-500/20',
-        iconBg: 'bg-green-500/10 text-green-400',
-        activeBg: 'bg-green-500/5 border-green-500/40',
-        activeBadge: 'bg-green-500/10 text-green-400 border-green-500/20',
+        label: 'Add Users',
+        labelVi: 'Thêm người dùng',
+        desc: 'Invite more team members',
+        descVi: 'Mời thêm thành viên nhóm',
+        iconBg: 'bg-violet-500',
+        iconColor: 'text-white',
+        Icon: Users,
+        match: (a) => a.quotaField === 'maxMembersPerChannel',
+    },
+    {
+        key: 'maxChannels',
+        label: 'Add Companies',
+        labelVi: 'Thêm công ty',
+        desc: 'Manage multiple companies',
+        descVi: 'Quản lý nhiều công ty',
+        iconBg: 'bg-orange-500',
+        iconColor: 'text-white',
+        Icon: Building2,
+        match: (a) => a.quotaField === 'maxChannels',
     },
     {
         key: 'maxApiCallsPerMonth',
-        label: '🔌 API Access',
-        labelVi: '🔌 Truy cập API',
-        gradient: 'from-rose-500/10 to-pink-500/10',
-        border: 'border-rose-500/20',
-        iconBg: 'bg-rose-500/10 text-rose-400',
-        activeBg: 'bg-rose-500/5 border-rose-500/40',
-        activeBadge: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+        label: 'API Access',
+        labelVi: 'Truy cập API',
+        desc: 'Integrate with your apps',
+        descVi: 'Tích hợp với ứng dụng',
+        iconBg: 'bg-slate-600',
+        iconColor: 'text-white',
+        Icon: Code2,
+        match: (a) => a.quotaField === 'maxApiCallsPerMonth',
+    },
+    {
+        key: 'whiteLabel',
+        label: 'White Label',
+        labelVi: 'White Label',
+        desc: 'Custom branding options',
+        descVi: 'Tùy chỉnh thương hiệu',
+        iconBg: 'bg-pink-500',
+        iconColor: 'text-white',
+        Icon: Palette,
+        match: (a) => a.featureField === 'whiteLabel' || a.name?.toLowerCase().includes('white'),
     },
 ]
 
-const FEATURE_GROUP = {
-    label: '⚡ Premium Features',
-    labelVi: '⚡ Tính năng Premium',
-    gradient: 'from-emerald-500/10 to-teal-500/10',
-    border: 'border-emerald-500/20',
-    iconBg: 'bg-emerald-500/10 text-emerald-400',
-    activeBg: 'bg-emerald-500/5 border-emerald-500/40',
-    activeBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-}
-
+/* ─── Main Component ─────────────────────────── */
 export function AddonModal({ open, onClose, onPurchased }: Props) {
     const t = useTranslation()
+    const isVi = t('lang') === 'vi'
+
     const [addons, setAddons] = useState<Addon[]>([])
     const [activeAddons, setActiveAddons] = useState<Record<string, number>>({})
     const [loading, setLoading] = useState(true)
-    const [purchasing, setPurchasing] = useState<string | null>(null)
+
+    // Catalog popover
+    const [catalogOpen, setCatalogOpen] = useState(false)
+    const catalogRef = useRef<HTMLDivElement>(null)
+
+    // Tier picker
+    const [selectedCatalog, setSelectedCatalog] = useState<CatalogEntry | null>(null)
+    const [selectedTier, setSelectedTier] = useState<Addon | null>(null)
+    const [purchasing, setPurchasing] = useState(false)
 
     useEffect(() => {
         if (!open) return
@@ -140,195 +154,264 @@ export function AddonModal({ open, onClose, onPurchased }: Props) {
             .catch(() => setLoading(false))
     }, [open])
 
-    const handlePurchase = async (addon: Addon) => {
-        setPurchasing(addon.id)
+    // Close catalog on outside click
+    useEffect(() => {
+        if (!catalogOpen) return
+        const handler = (e: MouseEvent) => {
+            if (catalogRef.current && !catalogRef.current.contains(e.target as Node)) {
+                setCatalogOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [catalogOpen])
+
+    const handleSelectCatalog = (entry: CatalogEntry) => {
+        setCatalogOpen(false)
+        const tiers = addons.filter(entry.match)
+        if (tiers.length === 0) {
+            toast.info(isVi ? 'Không có tùy chọn cho danh mục này.' : 'No options for this category yet.')
+            return
+        }
+        setSelectedCatalog(entry)
+        setSelectedTier(tiers[0]) // default select first
+    }
+
+    const handlePurchaseTier = async () => {
+        if (!selectedTier) return
+        setPurchasing(true)
         try {
-            const isActive = activeAddons[addon.id]
             const res = await fetch('/api/billing/addon', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    addonId: addon.id,
-                    action: isActive ? 'cancel' : 'purchase',
-                }),
+                body: JSON.stringify({ addonId: selectedTier.id, action: 'purchase' }),
             })
             const data = await res.json()
-            if (!res.ok) {
-                toast.error(data.error || 'Failed')
-                return
-            }
-
-            if (data.action === 'purchased') {
-                setActiveAddons(prev => ({ ...prev, [addon.id]: data.quantity }))
-                toast.success(`${addon.displayName} activated!`)
-            } else {
-                setActiveAddons(prev => {
-                    const next = { ...prev }
-                    delete next[addon.id]
-                    return next
-                })
-                toast.success(`${addon.displayName} canceled`)
-            }
-
+            if (!res.ok) { toast.error(data.error || 'Failed'); return }
+            setActiveAddons(prev => ({ ...prev, [selectedTier.id]: data.quantity ?? 1 }))
+            toast.success(`${selectedTier.displayName} ${isVi ? 'đã kích hoạt!' : 'activated!'}`)
             onPurchased?.()
-        } catch {
-            toast.error('Something went wrong')
-        } finally {
-            setPurchasing(null)
-        }
+            setSelectedCatalog(null)
+            setSelectedTier(null)
+        } catch { toast.error('Something went wrong') }
+        finally { setPurchasing(false) }
     }
 
-    const locale = t('lang') || 'en'
-    const isVi = locale === 'vi'
+    const handleRemoveAddon = async (addonId: string, name: string) => {
+        if (!confirm(isVi ? `Hủy "${name}"?` : `Remove "${name}"?`)) return
+        try {
+            const res = await fetch('/api/billing/addon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ addonId, action: 'cancel' }),
+            })
+            const data = await res.json()
+            if (!res.ok) { toast.error(data.error || 'Failed'); return }
+            setActiveAddons(prev => { const n = { ...prev }; delete n[addonId]; return n })
+            toast.success(isVi ? 'Đã hủy add-on' : 'Add-on removed')
+            onPurchased?.()
+        } catch { toast.error('Something went wrong') }
+    }
+
+    const activeList = addons.filter(a => !!activeAddons[a.id])
     const getName = (a: Addon) => isVi && a.displayNameVi ? a.displayNameVi : a.displayName
-    const getDesc = (a: Addon) => isVi && a.descriptionVi ? a.descriptionVi : a.description
 
-    // Group quota addons by field
-    const quotaAddons = addons.filter(a => a.category === 'quota')
-    const featureAddons = addons.filter(a => a.category === 'feature')
+    /* ── Tier picker dialog ── */
+    const tierItems = selectedCatalog ? addons.filter(selectedCatalog.match) : []
 
-    const groupedQuotas = QUOTA_GROUPS.map(group => {
-        const items = group.match
-            ? quotaAddons.filter(group.match)
-            : quotaAddons.filter(a => a.quotaField === group.key)
-        return { ...group, items }
-    }).filter(g => g.items.length > 0)
-
-    // Count active add-ons
-    const totalActive = Object.keys(activeAddons).length
-
-    const renderAddonCard = (addon: Addon, style: typeof FEATURE_GROUP) => {
-        const isActive = !!activeAddons[addon.id]
-        const isProcessing = purchasing === addon.id
-        return (
-            <div
-                key={addon.id}
-                className={`group relative flex flex-col gap-2 p-3.5 rounded-xl border transition-all duration-200 ${isActive
-                        ? style.activeBg
-                        : 'border-border/60 hover:border-border hover:bg-accent/30'
-                    }`}
-            >
-                <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg shrink-0 transition-colors ${isActive ? style.iconBg : 'bg-muted/60 text-muted-foreground group-hover:bg-muted'
-                        }`}>
-                        {iconMap[addon.icon] ?? <Plus className="h-5 w-5" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium truncate">{getName(addon)}</span>
-                            {isActive && (
-                                <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${style.activeBadge}`}>
-                                    <Check className="h-2.5 w-2.5 mr-0.5" /> Active
-                                </Badge>
-                            )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{getDesc(addon)}</p>
-                    </div>
-                </div>
-                <div className="flex items-center justify-between mt-auto pt-1">
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-base font-bold">${addon.priceMonthly}</span>
-                        <span className="text-[10px] text-muted-foreground">/mo</span>
-                    </div>
-                    <Button
-                        size="sm"
-                        variant={isActive ? 'outline' : 'default'}
-                        className={`h-7 text-xs gap-1 rounded-lg ${!isActive ? 'shadow-sm' : ''}`}
-                        disabled={isProcessing}
-                        onClick={() => handlePurchase(addon)}
-                    >
-                        {isProcessing ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : isActive ? (
-                            <><X className="h-3 w-3" /> {isVi ? 'Hủy' : 'Remove'}</>
-                        ) : (
-                            <><Plus className="h-3 w-3" /> {isVi ? 'Thêm' : 'Add'}</>
-                        )}
-                    </Button>
-                </div>
-            </div>
-        )
-    }
+    /* ── Catalog icons mapping ── */
+    const getCatalogForAddon = (a: Addon) =>
+        CATALOG.find(c => c.match(a)) ?? { iconBg: 'bg-slate-600', iconColor: 'text-white', Icon: Plus }
 
     return (
-        <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0">
-                {/* Header */}
-                <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-6 py-4">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2.5 text-lg">
-                            <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5">
-                                <Sparkles className="h-5 w-5 text-primary" />
-                            </div>
-                            {isVi ? 'Nâng cấp Add-ons' : 'Power-up Add-ons'}
-                            {totalActive > 0 && (
-                                <Badge variant="secondary" className="text-xs ml-1">
-                                    {totalActive} {isVi ? 'đang dùng' : 'active'}
-                                </Badge>
-                            )}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        {isVi
-                            ? 'Mở rộng plan của bạn với các add-on linh hoạt. Thêm hoặc hủy bất cứ lúc nào.'
-                            : 'Extend your plan with flexible add-ons. Add or remove anytime.'}
-                    </p>
-                </div>
-
-                {loading ? (
-                    <div className="flex items-center justify-center py-16">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <>
+            {/* ── Main panel (active add-ons + new button) ── */}
+            <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
+                <DialogContent className="max-w-lg p-0">
+                    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-6 py-4">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2.5 text-base">
+                                <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5">
+                                    <Sparkles className="h-4 w-4 text-primary" />
+                                </div>
+                                {isVi ? 'Add-ons của bạn' : 'Your Add-Ons'}
+                                {activeList.length > 0 && (
+                                    <Badge variant="secondary" className="text-xs ml-1">
+                                        {activeList.length} {isVi ? 'đang dùng' : 'active'}
+                                    </Badge>
+                                )}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {isVi ? 'Quản lý add-on đang dùng và thêm mới.' : 'Manage active add-ons and add new ones.'}
+                        </p>
                     </div>
-                ) : (
-                    <div className="px-6 pb-6 space-y-5 pt-4">
-                        {/* Quota Groups */}
-                        {groupedQuotas.map(group => (
-                            <div key={group.key}>
-                                <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${group.border}`}>
-                                    <h3 className="text-sm font-semibold tracking-wide">
-                                        {isVi ? group.labelVi : group.label}
-                                    </h3>
-                                    <div className="flex-1" />
-                                    <span className="text-[10px] text-muted-foreground">
-                                        {group.items.filter(a => !!activeAddons[a.id]).length}/{group.items.length}
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                    {group.items.map(addon => renderAddonCard(addon, group))}
-                                </div>
-                            </div>
-                        ))}
 
-                        {/* Feature Add-ons */}
-                        {featureAddons.length > 0 && (
-                            <div>
-                                <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${FEATURE_GROUP.border}`}>
-                                    <h3 className="text-sm font-semibold tracking-wide">
-                                        {isVi ? FEATURE_GROUP.labelVi : FEATURE_GROUP.label}
-                                    </h3>
-                                    <div className="flex-1" />
-                                    <span className="text-[10px] text-muted-foreground">
-                                        {featureAddons.filter(a => !!activeAddons[a.id]).length}/{featureAddons.length}
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                    {featureAddons.map(addon => renderAddonCard(addon, FEATURE_GROUP))}
-                                </div>
+                    <div className="px-6 pb-6 pt-4 space-y-4">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : activeList.length === 0 ? (
+                            <div className="text-center py-10 text-muted-foreground">
+                                <Shield className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                <p className="text-sm">{isVi ? 'Chưa có add-on nào.' : 'No add-ons yet.'}</p>
+                                <p className="text-xs mt-1">{isVi ? 'Thêm credits, thành viên, tính năng premium...' : 'Add credits, team members, premium features...'}</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {activeList.map(addon => {
+                                    const cat = getCatalogForAddon(addon)
+                                    return (
+                                        <div key={addon.id}
+                                            className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-card/80">
+                                            <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${cat.iconBg}`}>
+                                                <cat.Icon className={`h-4 w-4 ${cat.iconColor}`} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">{getName(addon)}</p>
+                                                <p className="text-xs text-muted-foreground">${addon.priceMonthly}/mo</p>
+                                            </div>
+                                            <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20 px-1.5">
+                                                <Check className="h-2.5 w-2.5 mr-0.5" /> Active
+                                            </Badge>
+                                            <button
+                                                onClick={() => handleRemoveAddon(addon.id, getName(addon))}
+                                                className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-red-500/10 hover:text-red-400 text-muted-foreground transition-colors">
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         )}
 
-                        {/* Footer */}
-                        <div className="flex items-center gap-2 pt-3 border-t text-xs text-muted-foreground">
+                        {/* ── "+ New Add-Ons" catalog trigger ── */}
+                        <div className="relative" ref={catalogRef}>
+                            <button
+                                onClick={() => setCatalogOpen(v => !v)}
+                                className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold transition-all"
+                                style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)', color: 'white' }}
+                            >
+                                <Plus className="h-4 w-4" />
+                                {isVi ? 'Thêm Add-On mới' : 'New Add-Ons'}
+                                <ChevronDown className={`h-4 w-4 transition-transform ${catalogOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Catalog popover */}
+                            {catalogOpen && (
+                                <div className="absolute bottom-full left-0 right-0 mb-2 z-50 rounded-2xl border border-border/60 bg-popover/95 backdrop-blur-md shadow-2xl overflow-hidden">
+                                    {CATALOG.map((entry, i) => {
+                                        const tiers = addons.filter(entry.match)
+                                        if (tiers.length === 0) return null
+                                        return (
+                                            <button
+                                                key={entry.key}
+                                                onClick={() => handleSelectCatalog(entry)}
+                                                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/60 transition-colors text-left ${i < CATALOG.length - 1 ? 'border-b border-border/30' : ''}`}
+                                            >
+                                                <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${entry.iconBg}`}>
+                                                    <entry.Icon className={`h-4 w-4 ${entry.iconColor}`} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold">{isVi ? entry.labelVi : entry.label}</p>
+                                                    <p className="text-xs text-muted-foreground">{isVi ? entry.descVi : entry.desc}</p>
+                                                </div>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
                             <Shield className="h-3.5 w-3.5 shrink-0" />
-                            <span>
-                                {isVi
-                                    ? 'Add-on sẽ được tính vào hóa đơn hàng tháng. Hủy bất cứ lúc nào.'
-                                    : 'Add-ons are billed monthly. Cancel anytime with no penalty.'}
-                            </span>
+                            <span>{isVi ? 'Tính vào hóa đơn hàng tháng. Hủy bất cứ lúc nào.' : 'Billed monthly. Cancel anytime with no penalty.'}</span>
                         </div>
                     </div>
-                )}
-            </DialogContent>
-        </Dialog>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Tier Picker Dialog ── */}
+            <Dialog open={!!selectedCatalog} onOpenChange={v => { if (!v) { setSelectedCatalog(null); setSelectedTier(null) } }}>
+                <DialogContent className="max-w-md p-0 bg-[#1a1f2e] border-border/40" style={{ borderRadius: '18px' }}>
+                    {selectedCatalog && (
+                        <>
+                            {/* Header */}
+                            <div className="px-6 pt-6 pb-4">
+                                <div className="flex items-center gap-4 mb-1">
+                                    <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${selectedCatalog.iconBg}`}>
+                                        <selectedCatalog.Icon className="h-7 w-7 text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white">
+                                            {isVi ? `Thêm ${selectedCatalog.labelVi}` : `Add ${selectedCatalog.label}`}
+                                        </h2>
+                                        <p className="text-sm text-slate-400">
+                                            {isVi ? selectedCatalog.descVi : selectedCatalog.desc}!
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tier list */}
+                            <div className="px-4 pb-4 space-y-2 max-h-80 overflow-y-auto">
+                                {tierItems.map((addon, i) => {
+                                    const isSelected = selectedTier?.id === addon.id
+                                    // Pick an icon variant based on index
+                                    const tierIcons = [ImageIcon, PenTool, Building2, Code2, Sparkles]
+                                    const TierIcon = tierIcons[Math.min(i, tierIcons.length - 1)]
+                                    return (
+                                        <button
+                                            key={addon.id}
+                                            onClick={() => setSelectedTier(addon)}
+                                            className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${isSelected
+                                                ? 'border-blue-500 bg-blue-500/10'
+                                                : 'border-slate-700/60 bg-slate-800/50 hover:border-slate-600'
+                                                }`}
+                                        >
+                                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? selectedCatalog.iconBg : 'bg-slate-700'}`}>
+                                                <TierIcon className="h-5 w-5 text-white" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-semibold text-white">{getName(addon)}</p>
+                                                <p className="text-xs text-slate-400">+${addon.priceMonthly}/month</p>
+                                            </div>
+                                            <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? `border-blue-500 ${selectedCatalog.iconBg}` : 'border-slate-600'}`}>
+                                                {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+                                            </div>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3 px-4 pb-6">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 rounded-xl bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
+                                    onClick={() => { setSelectedCatalog(null); setSelectedTier(null) }}
+                                >
+                                    {isVi ? 'Hủy' : 'Cancel'}
+                                </Button>
+                                <Button
+                                    className="flex-1 rounded-xl font-semibold"
+                                    style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}
+                                    disabled={!selectedTier || purchasing}
+                                    onClick={handlePurchaseTier}
+                                >
+                                    {purchasing ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : (
+                                        <Sparkles className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isVi ? 'Thêm Credits' : 'Add Credits'}
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </>
     )
 }
