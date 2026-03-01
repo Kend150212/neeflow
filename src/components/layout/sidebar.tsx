@@ -63,7 +63,7 @@ import { useBranding } from '@/lib/use-branding'
 interface PlanUsage {
     aiImage: { used: number; limit: number }
     posts: { used: number; limit: number }
-    apiKeys: { count: number }
+    apiCalls: { used: number; limit: number }
 }
 
 interface NavItem {
@@ -360,18 +360,37 @@ export function Sidebar({ session }: { session: Session }) {
                         )
                     })()}
 
-                    {/* API Keys row — only shown when user has at least one key */}
-                    {usage.apiKeys.count > 0 && (
-                        <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-amber-500/20">
-                                    <Key className="h-3.5 w-3.5 text-amber-400" />
+                    {/* API Calls Card — only shown when plan has API access */}
+                    {usage.apiCalls.limit !== 0 && (() => {
+                        const { used, limit } = usage.apiCalls
+                        const pct = limit === -1 ? 0 : Math.min(100, (used / limit) * 100)
+                        const isHot = limit !== -1 && pct >= 80
+                        const barColor = isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                        return (
+                            <div className="rounded-xl border border-border/60 bg-card/80 p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${isHot ? 'bg-red-500/20' : 'bg-amber-500/20'}`}>
+                                            <Key className={`h-3.5 w-3.5 ${isHot ? 'text-red-400' : 'text-amber-400'}`} />
+                                        </div>
+                                        <span className="text-xs font-semibold">API Calls</span>
+                                    </div>
                                 </div>
-                                <span className="text-xs font-semibold">API Keys</span>
+                                <div className="flex items-center justify-between text-[11px]">
+                                    <span className="text-muted-foreground">This month</span>
+                                    <span className={`font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
+                                        {used.toLocaleString()}
+                                        {limit !== -1 && <span className="font-normal text-muted-foreground"> / {limit.toLocaleString()}</span>}
+                                        {limit === -1 && <span className="font-normal text-muted-foreground"> / ∞</span>}
+                                    </span>
+                                </div>
+                                <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
+                                    <div className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                                        style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
+                                </div>
                             </div>
-                            <span className="text-xs font-bold text-amber-400 tabular-nums">{usage.apiKeys.count} <span className="font-normal text-muted-foreground text-[10px]">keys</span></span>
-                        </div>
-                    )}
+                        )
+                    })()}
                 </div>
             )}
 

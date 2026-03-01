@@ -20,7 +20,9 @@ export async function GET() {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    const [limits, imageUsageRow, postCount, apiKeyCount] = await Promise.all([
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+    const [limits, imageUsageRow, postCount, apiCallsUsage] = await Promise.all([
         getEffectiveLimits(userId),
 
         // AI Image usage — UsageRecord model not in schema yet, return 0
@@ -35,10 +37,14 @@ export async function GET() {
             },
         }).catch(() => 0),
 
-        // Active API keys saved by user
-        db.userApiKey.count({
-            where: { userId },
-        }).catch(() => 0),
+        // API Calls this month from Usage table
+        db.usage.findFirst({
+            where: {
+                subscription: { userId },
+                month: currentMonth,
+            },
+            select: { apiCalls: true },
+        }).catch(() => null),
     ])
 
     return NextResponse.json({
@@ -50,8 +56,9 @@ export async function GET() {
             used: postCount,
             limit: limits.maxPostsPerMonth,
         },
-        apiKeys: {
-            count: apiKeyCount,
+        apiCalls: {
+            used: apiCallsUsage?.apiCalls ?? 0,
+            limit: limits.maxApiCallsPerMonth,
         },
         planName: null, // optional, can extend later
     })
