@@ -209,10 +209,20 @@ export default function BillingPage() {
 
     const openPortal = async () => {
         setPortalLoading(true)
-        const res = await fetch('/api/billing/portal', { method: 'POST' })
-        const data = await res.json()
-        if (data.url) window.location.href = data.url
-        setPortalLoading(false)
+        try {
+            const res = await fetch('/api/billing/portal', { method: 'POST' })
+            const data = await res.json()
+            if (data.url) {
+                window.location.href = data.url
+            } else {
+                const msg = isVi ? (data.errorVi ?? data.error) : (data.error ?? 'Failed to open billing portal')
+                toast.error(msg)
+            }
+        } catch {
+            toast.error(isVi ? 'Không thể mở cổng thanh toán' : 'Failed to open billing portal')
+        } finally {
+            setPortalLoading(false)
+        }
     }
 
     const handleCancelPlan = async () => {
@@ -424,11 +434,19 @@ export default function BillingPage() {
 
                                     <div className="flex gap-2 flex-wrap">
                                         {isFree ? (
+                                            // Free plan — show Upgrade CTA
                                             <Button onClick={() => setUpgradeOpen(true)} className="gap-2">
                                                 <Zap className="h-4 w-4" />
                                                 {t('billing.upgrade')}
                                             </Button>
+                                        ) : plan.isInTrial ? (
+                                            // Trial — show prominent Upgrade (no Change/Cancel during trial)
+                                            <Button onClick={() => setUpgradeOpen(true)} className="gap-2">
+                                                <Zap className="h-4 w-4" />
+                                                {isVi ? 'Nâng cấp Plan' : 'Upgrade Plan'}
+                                            </Button>
                                         ) : (
+                                            // Paid subscription — show full set of actions
                                             <>
                                                 <Button variant="outline" onClick={() => setUpgradeOpen(true)} className="gap-1">
                                                     <ArrowUpRight className="h-4 w-4" />
