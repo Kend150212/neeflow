@@ -80,14 +80,22 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({
         plan,
         subscription: sub
-            ? {
-                id: sub.id,
-                status: sub.status,
-                billingInterval: sub.billingInterval,
-                currentPeriodEnd: sub.currentPeriodEnd,
-                cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
-                hasStripeSubscription: !!sub.stripeSubscriptionId,
-            }
+            ? (() => {
+                // Fix: when currentPeriodEnd is epoch 0 (Stripe trial bug), use trialEndsAt
+                const rawEnd = sub.currentPeriodEnd
+                const effectiveEnd = (!rawEnd || new Date(rawEnd).getTime() <= 0)
+                    ? (sub.trialEndsAt ?? null)
+                    : rawEnd
+                return {
+                    id: sub.id,
+                    status: sub.status,
+                    billingInterval: sub.billingInterval,
+                    currentPeriodEnd: effectiveEnd,
+                    trialEndsAt: sub.trialEndsAt ?? null,
+                    cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+                    hasStripeSubscription: !!sub.stripeSubscriptionId,
+                }
+            })()
             : null,
         usage: {
             postsThisMonth,

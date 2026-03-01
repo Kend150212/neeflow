@@ -105,11 +105,13 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             hasWhiteLabel: p.hasWhiteLabel,
             hasSmartFlow: (p as any).hasSmartFlow ?? false,
             maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
-            isInTrial: isStripeTrial || daysLeftInTrial > 0,
+            isInTrial: isStripeTrial
+                || daysLeftInTrial > 0
+                || (!!sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > Date.now()),
             trialEndsAt: sub.trialEndsAt ?? trialEndsAt,
-            daysLeftInTrial: isStripeTrial
+            daysLeftInTrial: isStripeTrial || (!!sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > Date.now())
                 ? getDaysLeftInTrial(sub.trialEndsAt ?? trialEndsAt)
-                : 0,
+                : daysLeftInTrial,
         }
     }
 

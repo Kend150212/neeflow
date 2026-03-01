@@ -44,7 +44,8 @@ type BillingInfo = {
     subscription: {
         status: string
         billingInterval: string
-        currentPeriodEnd: string
+        currentPeriodEnd: string | null
+        trialEndsAt: string | null
         cancelAtPeriodEnd: boolean
         hasStripeSubscription: boolean
     } | null
@@ -347,8 +348,8 @@ export default function BillingPage() {
                                 <AlertTriangle className="h-4 w-4 shrink-0" />
                                 <span>
                                     {isVi
-                                        ? `Subscription sẽ hủy vào ${fmtDate(subscription.currentPeriodEnd)}. Bạn vẫn sử dụng được đến lúc đó.`
-                                        : `Subscription cancels on ${fmtDate(subscription.currentPeriodEnd)}. You can keep using it until then.`
+                                        ? `Subscription sẽ hủy vào ${fmtDate(subscription.currentPeriodEnd ?? '')}. Bạn vẫn sử dụng được đến lúc đó.`
+                                        : `Subscription cancels on ${fmtDate(subscription.currentPeriodEnd ?? '')}. You can keep using it until then.`
                                     }
                                 </span>
                             </div>
@@ -397,7 +398,10 @@ export default function BillingPage() {
                                         )}
                                         {subscription?.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (() => {
                                             const daysLeft = Math.max(0, Math.ceil((new Date(subscription.currentPeriodEnd).getTime() - Date.now()) / 86400000))
-                                            const isTrialing = subscription.status === 'trialing' || plan.isInTrial
+                                            // Detect trial: Stripe status OR trialEndsAt still in future
+                                            const isTrialing = subscription.status === 'trialing'
+                                                || plan.isInTrial
+                                                || (!!subscription.trialEndsAt && new Date(subscription.trialEndsAt).getTime() > Date.now())
                                             const color = daysLeft <= 3
                                                 ? 'text-red-500 bg-red-500/10 border-red-500/25'
                                                 : daysLeft <= 7
