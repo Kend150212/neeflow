@@ -2419,37 +2419,6 @@ export default function ComposePage() {
                         </div>
                     </div>
 
-                    {/* Schedule */}
-                    <div className="px-3 pb-3 shrink-0">
-                        <div className="border border-border/60 rounded-xl overflow-hidden">
-                            <button
-                                type="button"
-                                className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-medium hover:bg-primary/4 transition-colors"
-                                onClick={() => { }}
-                            >
-                                <span className="flex items-center gap-1.5 text-muted-foreground"><Calendar className="h-3.5 w-3.5" />{t('compose.schedule')}</span>
-                            </button>
-                            <div className="px-3 pb-3 space-y-1.5 border-t border-border/60">
-                                <div className="border-t pt-1.5">
-                                    <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleDate')}</Label>
-                                    <Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-0.5 h-7 text-xs" />
-                                </div>
-                                <div>
-                                    <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleTime')}</Label>
-                                    <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-0.5 h-7 text-xs" />
-                                </div>
-                                {/* Timezone indicator */}
-                                <div className="flex items-center gap-1">
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] text-muted-foreground">
-                                        🌐 {(selectedChannel as any)?.timezone || 'UTC'}
-                                    </span>
-                                </div>
-                                {scheduleDate && (
-                                    <Button variant="ghost" size="sm" onClick={() => { setScheduleDate(''); setScheduleTime(''); setAiScheduleSuggestions([]) }} className="text-xs cursor-pointer">
-                                        <X className="h-3 w-3 mr-1" /> Clear schedule
-                                    </Button>
-                                )}
-                            </div></div></div>
                 </div>
 
             {/* ── Center: Editor ── */}
@@ -4451,84 +4420,111 @@ export default function ComposePage() {
                         </div>
                     )}
 
-                    {/* AI Best Time — below phone/schedule */}
-                    <div className="mt-2 shrink-0">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-xs cursor-pointer gap-2"
-                            disabled={!selectedChannel || generating || aiScheduleLoading}
-                            onClick={async () => {
-                                if (!selectedChannel) return
-                                const platforms = activePlatforms
-                                    .filter((p) => selectedPlatformIds.has(p.id))
-                                    .map((p) => p.platform)
-                                if (platforms.length === 0) {
-                                    toast.error('Select at least one platform')
-                                    return
-                                }
-                                setAiScheduleLoading(true)
-                                try {
-                                    const res = await fetch('/api/admin/posts/suggest-schedule', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                            channelId: selectedChannel.id,
-                                            platforms,
-                                            content: content.slice(0, 200),
-                                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                                        }),
-                                    })
-                                    const data = await res.json()
-                                    if (!res.ok) {
-                                        toast.error(data.error || 'Failed to get suggestions')
+                    {/* ── Schedule section (full) — below phone ── */}
+                    <div className="mt-3 shrink-0 border border-border/60 rounded-xl overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-muted-foreground border-b border-border/60">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {t('compose.schedule')}
+                        </div>
+                        {/* Body */}
+                        <div className="px-3 py-2 space-y-2">
+                            {/* AI Best Time button */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-xs cursor-pointer gap-2"
+                                disabled={!selectedChannel || generating || aiScheduleLoading}
+                                onClick={async () => {
+                                    if (!selectedChannel) return
+                                    const platforms = activePlatforms
+                                        .filter((p) => selectedPlatformIds.has(p.id))
+                                        .map((p) => p.platform)
+                                    if (platforms.length === 0) {
+                                        toast.error('Select at least one platform')
                                         return
                                     }
-                                    setAiScheduleSuggestions(data.suggestions || [])
-                                    toast.success('AI schedule suggestions ready!')
-                                } catch {
-                                    toast.error('Failed to get AI suggestions')
-                                } finally {
-                                    setAiScheduleLoading(false)
-                                }
-                            }}
-                        >
-                            {aiScheduleLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-amber-500" />}
-                            {aiScheduleLoading ? 'Analyzing...' : '✨ Best Time'}
-                        </Button>
-                        {aiScheduleSuggestions.length > 0 && (
-                            <div className="grid grid-cols-1 gap-1.5 mt-2">
-                                {aiScheduleSuggestions.map((s: { date: string; time: string; label: string; reason: string; score?: number }, i: number) => {
-                                    const isSelected = scheduleDate === s.date && scheduleTime === s.time
-                                    return (
-                                        <button
-                                            key={i}
-                                            onClick={() => {
-                                                setScheduleDate(s.date)
-                                                setScheduleTime(s.time)
-                                            }}
-                                            className={`text-left px-2.5 py-2 rounded-md text-xs transition-colors cursor-pointer ${isSelected
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                                                }`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <span className="font-medium">{s.label}</span>
-                                                <div className="flex items-center gap-1.5">
-                                                    {s.score && (
-                                                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${isSelected ? 'bg-primary-foreground/20' : s.score >= 90 ? 'bg-green-100 text-green-700' : s.score >= 75 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                            {s.score}%
-                                                        </span>
-                                                    )}
-                                                    <span className="opacity-70">{s.date} {s.time}</span>
+                                    setAiScheduleLoading(true)
+                                    try {
+                                        const res = await fetch('/api/admin/posts/suggest-schedule', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                channelId: selectedChannel.id,
+                                                platforms,
+                                                content: content.slice(0, 200),
+                                                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                            }),
+                                        })
+                                        const data = await res.json()
+                                        if (!res.ok) {
+                                            toast.error(data.error || 'Failed to get suggestions')
+                                            return
+                                        }
+                                        setAiScheduleSuggestions(data.suggestions || [])
+                                        toast.success('AI schedule suggestions ready!')
+                                    } catch {
+                                        toast.error('Failed to get AI suggestions')
+                                    } finally {
+                                        setAiScheduleLoading(false)
+                                    }
+                                }}
+                            >
+                                {aiScheduleLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-amber-500" />}
+                                {aiScheduleLoading ? 'Analyzing...' : '✨ AI Best Time'}
+                            </Button>
+
+                            {/* AI Suggestions list */}
+                            {aiScheduleSuggestions.length > 0 && (
+                                <div className="grid grid-cols-1 gap-1.5">
+                                    {aiScheduleSuggestions.map((s: { date: string; time: string; label: string; reason: string; score?: number }, i: number) => {
+                                        const isSelected = scheduleDate === s.date && scheduleTime === s.time
+                                        return (
+                                            <button
+                                                key={i}
+                                                onClick={() => { setScheduleDate(s.date); setScheduleTime(s.time) }}
+                                                className={`text-left px-2.5 py-2 rounded-md text-xs transition-colors cursor-pointer ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-medium">{s.label}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        {s.score && (
+                                                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${isSelected ? 'bg-primary-foreground/20' : s.score >= 90 ? 'bg-green-100 text-green-700' : s.score >= 75 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                {s.score}%
+                                                            </span>
+                                                        )}
+                                                        <span className="opacity-70">{s.date} {s.time}</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <p className="opacity-60 mt-0.5 text-[10px]">{s.reason}</p>
-                                        </button>
-                                    )
-                                })}
+                                                <p className="opacity-60 mt-0.5 text-[10px]">{s.reason}</p>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Date */}
+                            <div>
+                                <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleDate')}</Label>
+                                <Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-0.5 h-7 text-xs" />
                             </div>
-                        )}
+                            {/* Time */}
+                            <div>
+                                <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleTime')}</Label>
+                                <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-0.5 h-7 text-xs" />
+                            </div>
+                            {/* Timezone */}
+                            <div className="flex items-center justify-between">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] text-muted-foreground">
+                                    🌐 {(selectedChannel as any)?.timezone || 'UTC'}
+                                </span>
+                                {scheduleDate && (
+                                    <Button variant="ghost" size="sm" onClick={() => { setScheduleDate(''); setScheduleTime(''); setAiScheduleSuggestions([]) }} className="text-xs cursor-pointer h-6 px-2">
+                                        <X className="h-3 w-3 mr-1" /> Clear
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
