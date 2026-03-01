@@ -1157,14 +1157,17 @@ export default function ChannelDetailPage({
     }
 
     const togglePlatformActive = async (platformId: string, isActive: boolean) => {
+        // Optimistic update first (functional form avoids stale closure)
+        setPlatforms(prev => prev.map(p => p.id === platformId ? { ...p, isActive } : p))
         try {
             await fetch(`/api/admin/channels/${id}/platforms`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ platformId, isActive }),
             })
-            setPlatforms(platforms.map(p => p.id === platformId ? { ...p, isActive } : p))
         } catch {
+            // Rollback on error
+            setPlatforms(prev => prev.map(p => p.id === platformId ? { ...p, isActive: !isActive } : p))
             toast.error(t('channels.platforms.connectFailed'))
         }
     }
@@ -1184,7 +1187,11 @@ export default function ChannelDetailPage({
     const toggleAllPlatforms = async (active: boolean) => {
         const toToggle = platforms.filter(p => p.isActive !== active)
         if (toToggle.length === 0) return
-        // Fire all API calls in parallel
+        // If disabling all: reset filter FIRST so list stays visible during & after the API calls
+        if (!active) setHideDisabled(false)
+        // Optimistic update
+        setPlatforms(prev => prev.map(p => ({ ...p, isActive: active })))
+        // Fire all API calls in parallel (best-effort, no rollback needed for bulk toggle)
         await Promise.all(
             toToggle.map(p =>
                 fetch(`/api/admin/channels/${id}/platforms`, {
@@ -1194,10 +1201,6 @@ export default function ChannelDetailPage({
                 })
             )
         )
-        // Update state once
-        setPlatforms(prev => prev.map(p => ({ ...p, isActive: active })))
-        // When disabling all, always show the list so user can see (and re-enable) accounts
-        if (!active) setHideDisabled(false)
     }
 
     // ─── Loading state ──────────────────────────────
@@ -2263,9 +2266,11 @@ export default function ChannelDetailPage({
                                 <div className="space-y-4">
                                     {(() => {
                                         // Filter based on role and hide-disabled toggle
-                                        const visiblePlatforms = isAdmin
-                                            ? (hideDisabled ? platforms.filter(p => p.isActive) : platforms)
-                                            : platforms.filter(p => p.isActive)
+                                        // Show All (hideDisabled=false): always show every account
+                                        // Hide Disabled (hideDisabled=true): only show active accounts
+                                        const visiblePlatforms = hideDisabled
+                                            ? platforms.filter(p => p.isActive)
+                                            : platforms
                                         const searchLower = platformSearch.toLowerCase()
                                         const filtered = searchLower
                                             ? visiblePlatforms.filter(p =>
