@@ -395,12 +395,27 @@ export default function BillingPage() {
                                                 <span className="capitalize">{subscription.status.replace('_', ' ')}</span>
                                             </div>
                                         )}
-                                        {subscription?.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (
-                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                                                <Calendar className="h-3 w-3" />
-                                                {t('billing.renewsOn').replace('{date}', fmtDate(subscription.currentPeriodEnd))}
-                                            </div>
-                                        )}
+                                        {subscription?.currentPeriodEnd && !subscription.cancelAtPeriodEnd && (() => {
+                                            const daysLeft = Math.max(0, Math.ceil((new Date(subscription.currentPeriodEnd).getTime() - Date.now()) / 86400000))
+                                            const isTrialing = subscription.status === 'trialing' || plan.isInTrial
+                                            const color = daysLeft <= 3
+                                                ? 'text-red-500 bg-red-500/10 border-red-500/25'
+                                                : daysLeft <= 7
+                                                    ? 'text-amber-500 bg-amber-500/10 border-amber-500/25'
+                                                    : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/25'
+                                            return (
+                                                <div className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full border text-xs font-medium ${color}`}>
+                                                    {isTrialing
+                                                        ? <Zap className="h-3 w-3" />
+                                                        : <Clock className="h-3 w-3" />}
+                                                    {daysLeft === 0
+                                                        ? 'Expires today'
+                                                        : daysLeft === 1
+                                                            ? '1 day remaining'
+                                                            : `${daysLeft} days remaining`}
+                                                </div>
+                                            )
+                                        })()}
                                     </div>
 
                                     <div className="flex gap-2 flex-wrap">
