@@ -92,7 +92,8 @@ async function publishToFacebook(
                 video_id: videoId,
                 title: content.substring(0, 100),
                 description: content,
-                published: true,
+                video_state: 'PUBLISHED',   // Required for /video_reels endpoint (not published:true)
+                share_to_feed: true,        // Make it appear on the page feed too
                 access_token: accessToken,
             }),
         })
