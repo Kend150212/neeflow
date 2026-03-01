@@ -122,6 +122,7 @@ interface ChannelPlatform {
     accountId: string
     accountName: string
     isActive: boolean
+    config?: Record<string, unknown> | null
 }
 
 interface Channel {
@@ -227,9 +228,53 @@ const ACCEPTED_FILE_TYPES = [
 
 // ─── Realistic Preview Components ───────────────────
 
-function FacebookPreview({ content, media, accountName, postType, mediaRatio, firstComment }: {
-    content: string; media: MediaItem[]; accountName: string; postType: string; mediaRatio: string; firstComment?: string
+// Helper: extract avatar URL from platform config (Facebook, Instagram, etc. store picture in config)
+function getPlatformAvatar(platform: ChannelPlatform | undefined): string | null {
+    if (!platform?.config) return null
+    const cfg = platform.config as Record<string, unknown>
+    // Common fields: picture, avatar, profilePicture, profile_picture_url
+    const url = cfg.picture || cfg.avatar || cfg.profilePicture || cfg.profile_picture_url
+    if (typeof url === 'string') return url
+    // Facebook style: { picture: { data: { url } } }
+    if (cfg.picture && typeof cfg.picture === 'object') {
+        const pic = cfg.picture as Record<string, unknown>
+        if (pic.data && typeof pic.data === 'object') {
+            const data = pic.data as Record<string, unknown>
+            if (typeof data.url === 'string') return data.url
+        }
+    }
+    return null
+}
+
+// Avatar circle — shows real photo if available, fallback to colored initials
+function AccountAvatar({ name, avatarUrl, size = 'md', style }: {
+    name: string
+    avatarUrl?: string | null
+    size?: 'sm' | 'md' | 'lg'
+    style?: React.CSSProperties
 }) {
+    const sizeClass = size === 'sm' ? 'h-7 w-7 text-[10px]' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-10 w-10 text-sm'
+    if (avatarUrl) {
+        return (
+            <img
+                src={avatarUrl}
+                alt={name}
+                className={`${sizeClass} rounded-full object-cover shrink-0`}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextSibling as HTMLElement | null)?.style && ((e.currentTarget.nextSibling as HTMLElement).style.display = 'flex') }}
+            />
+        )
+    }
+    return (
+        <div className={`${sizeClass} rounded-full flex items-center justify-center text-white font-bold shrink-0`} style={style}>
+            {name.charAt(0).toUpperCase()}
+        </div>
+    )
+}
+
+function FacebookPreview({ content, media, accountName, accountAvatar, postType, mediaRatio, firstComment }: {
+    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; postType: string; mediaRatio: string; firstComment?: string
+}) {
+    const fbColor = '#1877F2'
     if (postType === 'story') {
         return (
             <div className="rounded-xl overflow-hidden bg-gradient-to-b from-blue-600 to-blue-800 text-white relative" style={{ minHeight: 280 }}>
@@ -238,9 +283,7 @@ function FacebookPreview({ content, media, accountName, postType, mediaRatio, fi
                 )}
                 <div className="relative z-10 p-4 flex flex-col justify-between h-full" style={{ minHeight: 280 }}>
                     <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
-                            {accountName.charAt(0).toUpperCase()}
-                        </div>
+                        <AccountAvatar name={accountName} avatarUrl={accountAvatar} size="sm" style={{ backgroundColor: '#1877F2' }} />
                         <span className="text-sm font-semibold">{accountName}</span>
                         <span className="text-xs opacity-60">Story</span>
                     </div>
@@ -256,9 +299,7 @@ function FacebookPreview({ content, media, accountName, postType, mediaRatio, fi
         <div className="rounded-xl border bg-card overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 p-3">
-                <div className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#1877F2' }}>
-                    {accountName.charAt(0).toUpperCase()}
-                </div>
+                <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: fbColor }} />
                 <div className="flex-1">
                     <p className="text-sm font-semibold">{accountName}</p>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -328,9 +369,7 @@ function FacebookPreview({ content, media, accountName, postType, mediaRatio, fi
             {firstComment && (
                 <div className="px-3 py-2 border-t">
                     <div className="flex gap-2">
-                        <div className="h-7 w-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: '#1877F2' }}>
-                            {accountName.charAt(0).toUpperCase()}
-                        </div>
+                        <AccountAvatar name={accountName} avatarUrl={accountAvatar} size="sm" style={{ backgroundColor: fbColor }} />
                         <div className="bg-muted rounded-xl px-3 py-1.5 flex-1">
                             <p className="text-xs font-semibold">{accountName}</p>
                             <p className="text-xs whitespace-pre-wrap break-words">{firstComment}</p>
@@ -342,14 +381,14 @@ function FacebookPreview({ content, media, accountName, postType, mediaRatio, fi
     )
 }
 
-function InstagramPreview({ content, media, accountName, mediaRatio }: {
-    content: string; media: MediaItem[]; accountName: string; mediaRatio: string
+function InstagramPreview({ content, media, accountName, accountAvatar, mediaRatio }: {
+    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; mediaRatio: string
 }) {
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             <div className="flex items-center gap-3 p-3">
-                <div className="h-8 w-8 rounded-full ring-2 ring-pink-500 ring-offset-2 ring-offset-background flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: '#E4405F' }}>
-                    {accountName.charAt(0).toUpperCase()}
+                <div className="h-8 w-8 rounded-full ring-2 ring-pink-500 ring-offset-2 ring-offset-background overflow-hidden shrink-0">
+                    <AccountAvatar name={accountName} avatarUrl={accountAvatar} size="sm" style={{ backgroundColor: '#E4405F' }} />
                 </div>
                 <p className="text-sm font-semibold flex-1">{accountName}</p>
                 <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
@@ -406,8 +445,8 @@ function InstagramPreview({ content, media, accountName, mediaRatio }: {
     )
 }
 
-function TikTokPreview({ content, media, accountName, mediaRatio }: {
-    content: string; media: MediaItem[]; accountName: string; mediaRatio: string
+function TikTokPreview({ content, media, accountName, accountAvatar, mediaRatio }: {
+    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; mediaRatio: string
 }) {
     return (
         <div className={`rounded-xl overflow-hidden bg-black text-white relative ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'
@@ -421,8 +460,8 @@ function TikTokPreview({ content, media, accountName, mediaRatio }: {
                 {/* Right sidebar */}
                 <div className="flex-1" />
                 <div className="flex flex-col items-center justify-end gap-4 p-3 pb-16">
-                    <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold border-2 border-white">
-                        {accountName.charAt(0).toUpperCase()}
+                    <div className="h-10 w-10 rounded-full border-2 border-white overflow-hidden">
+                        <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#333' }} />
                     </div>
                     <div className="flex flex-col items-center gap-1">
                         <Heart className="h-6 w-6" />
@@ -455,15 +494,13 @@ function TikTokPreview({ content, media, accountName, mediaRatio }: {
     )
 }
 
-function XPreview({ content, accountName }: {
-    content: string; accountName: string
+function XPreview({ content, accountName, accountAvatar }: {
+    content: string; accountName: string; accountAvatar?: string | null
 }) {
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             <div className="p-3 flex gap-3">
-                <div className="h-10 w-10 rounded-full bg-black flex items-center justify-center text-white text-sm font-bold shrink-0">
-                    {accountName.charAt(0).toUpperCase()}
-                </div>
+                <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#000' }} />
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
                         <p className="text-sm font-bold">{accountName}</p>
@@ -492,8 +529,8 @@ function XPreview({ content, accountName }: {
     )
 }
 
-function YouTubePreview({ content, media, accountName, mediaRatio }: {
-    content: string; media: MediaItem[]; accountName: string; mediaRatio: string
+function YouTubePreview({ content, media, accountName, accountAvatar, mediaRatio }: {
+    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; mediaRatio: string
 }) {
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
@@ -515,9 +552,7 @@ function YouTubePreview({ content, media, accountName, mediaRatio }: {
                 </div>
             )}
             <div className="p-3 flex gap-3">
-                <div className="h-9 w-9 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {accountName.charAt(0).toUpperCase()}
-                </div>
+                <AccountAvatar name={accountName} avatarUrl={accountAvatar} size="sm" style={{ backgroundColor: '#FF0000' }} />
                 <div>
                     <p className="text-sm font-semibold line-clamp-2">{content.slice(0, 100)}</p>
                     <p className="text-xs text-muted-foreground mt-1">{accountName} · 0 views · Just now</p>
@@ -527,15 +562,13 @@ function YouTubePreview({ content, media, accountName, mediaRatio }: {
     )
 }
 
-function LinkedInPreview({ content, media, accountName, mediaRatio }: {
-    content: string; media: MediaItem[]; accountName: string; mediaRatio: string
+function LinkedInPreview({ content, media, accountName, accountAvatar, mediaRatio }: {
+    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; mediaRatio: string
 }) {
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             <div className="flex items-center gap-3 p-3">
-                <div className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#0A66C2' }}>
-                    {accountName.charAt(0).toUpperCase()}
-                </div>
+                <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#0A66C2' }} />
                 <div className="flex-1">
                     <p className="text-sm font-semibold">{accountName}</p>
                     <p className="text-xs text-muted-foreground">Just now · <Globe className="h-3 w-3 inline" /></p>
@@ -4395,17 +4428,17 @@ export default function ComposePage() {
                                             <button
                                                 key={platform}
                                                 onClick={() => setPreviewPlatform(platform)}
-                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all cursor-pointer ${isActive
-                                                    ? 'text-white shadow-sm'
-                                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                                title={platformLabels[platform] || platform}
+                                                className={`relative flex items-center justify-center h-8 w-8 rounded-full transition-all cursor-pointer ring-2 ${isActive
+                                                    ? 'ring-offset-2 ring-offset-background shadow-md scale-110'
+                                                    : 'ring-transparent hover:ring-offset-1 hover:ring-offset-background hover:scale-105'
                                                     }`}
-                                                style={isActive ? { backgroundColor: platformColors[platform] || '#666' } : {}}
+                                                style={{ backgroundColor: platformColors[platform] || '#666', ...(isActive ? { '--tw-ring-color': platformColors[platform] } as React.CSSProperties : {}) }}
                                             >
                                                 <PlatformIcon platform={platform} size="xs" />
-                                                {platformLabels[platform] || platform}
                                                 {accountsForPlatform.length > 1 && (
-                                                    <span className={`text-[9px] ${isActive ? 'opacity-80' : 'opacity-60'}`}>
-                                                        ×{accountsForPlatform.length}
+                                                    <span className="absolute -top-1 -right-1 bg-foreground text-background text-[8px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full px-0.5">
+                                                        {accountsForPlatform.length}
                                                     </span>
                                                 )}
                                             </button>
@@ -4420,6 +4453,7 @@ export default function ComposePage() {
                                 const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
                                 if (!entry) return null
                                 const name = entry.accountName
+                                const accountAvatar = getPlatformAvatar(entry)
                                 const accountsCount = selectedEntries.filter((e) => e.platform === effectivePreviewPlatform).length
 
                                 return (
@@ -4429,18 +4463,18 @@ export default function ComposePage() {
                                             const previewContent = contentPerPlatform[effectivePreviewPlatform]?.trim() || content
                                             switch (effectivePreviewPlatform) {
                                                 case 'facebook':
-                                                    return <FacebookPreview content={previewContent} media={attachedMedia} accountName={name} postType={fbPostTypes[entry.id] || 'feed'} mediaRatio={mediaRatio} firstComment={fbFirstComment || undefined} />
+                                                    return <FacebookPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} postType={fbPostTypes[entry.id] || 'feed'} mediaRatio={mediaRatio} firstComment={fbFirstComment || undefined} />
                                                 case 'instagram':
-                                                    return <InstagramPreview content={previewContent} media={attachedMedia} accountName={name} mediaRatio={mediaRatio} />
+                                                    return <InstagramPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
                                                 case 'tiktok':
-                                                    return <TikTokPreview content={previewContent} media={attachedMedia} accountName={name} mediaRatio={mediaRatio} />
+                                                    return <TikTokPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
                                                 case 'x':
                                                 case 'twitter':
-                                                    return <XPreview content={previewContent} accountName={name} />
+                                                    return <XPreview content={previewContent} accountName={name} accountAvatar={accountAvatar} />
                                                 case 'youtube':
-                                                    return <YouTubePreview content={previewContent} media={attachedMedia} accountName={name} mediaRatio={mediaRatio} />
+                                                    return <YouTubePreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
                                                 case 'linkedin':
-                                                    return <LinkedInPreview content={previewContent} media={attachedMedia} accountName={name} mediaRatio={mediaRatio} />
+                                                    return <LinkedInPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
                                                 default:
                                                     return <GenericPreview content={previewContent} media={attachedMedia} accountName={name} platform={effectivePreviewPlatform} mediaRatio={mediaRatio} />
                                             }
