@@ -287,110 +287,93 @@ export function Sidebar({ session }: { session: Session }) {
                 )}
             </div>
 
-            {/* ── Plan Credits Widget ── */}
+            {/* ── Plan Usage Widget — compact single card ── */}
             {usage && (
-                <div className="px-3 py-2 space-y-2">
-                    {/* AI Image Card */}
-                    {(() => {
-                        const { used, limit } = usage.aiImage
-                        const pct = limit === -1 ? 0 : limit === 0 ? 100 : Math.min(100, (used / limit) * 100)
-                        const isHot = limit !== -1 && pct >= 80
-                        const barColor = isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-violet-500 to-fuchsia-400'
-                        return (
-                            <div className="rounded-xl border border-border/60 bg-card/80 p-3 space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${isHot ? 'bg-red-500/20' : 'bg-violet-500/20'}`}>
-                                            <Sparkles className={`h-3.5 w-3.5 ${isHot ? 'text-red-400' : 'text-violet-400'}`} />
-                                        </div>
-                                        <span className="text-xs font-semibold">AI Images</span>
-                                    </div>
-                                    <div className={`h-5 w-5 rounded-full flex items-center justify-center ${isHot ? 'bg-red-500' : 'bg-violet-500'}`}>
-                                        <Plus className="h-3 w-3 text-white" />
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between text-[11px]">
-                                    <span className="text-muted-foreground">Usage</span>
-                                    <span className={`font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
-                                        {used.toLocaleString()}
-                                        {limit !== -1 && <span className="font-normal text-muted-foreground"> / {limit.toLocaleString()}</span>}
-                                        {limit === -1 && <span className="font-normal text-muted-foreground"> / ∞</span>}
-                                    </span>
-                                </div>
-                                <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
-                                    <div className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                                        style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
-                                </div>
-                            </div>
-                        )
-                    })()}
+                <div className="px-3 py-2">
+                    <div className="rounded-xl border border-border/60 bg-card/80 p-3 space-y-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Plan Usage</p>
 
-                    {/* Posts Card */}
-                    {(() => {
-                        const { used, limit } = usage.posts
-                        const pct = limit === -1 ? 0 : limit === 0 ? 100 : Math.min(100, (used / limit) * 100)
-                        const isHot = limit !== -1 && pct >= 80
-                        const barColor = isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                        return (
-                            <div className="rounded-xl border border-border/60 bg-card/80 p-3 space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${isHot ? 'bg-red-500/20' : 'bg-emerald-500/20'}`}>
-                                            <PenSquare className={`h-3.5 w-3.5 ${isHot ? 'text-red-400' : 'text-emerald-400'}`} />
+                        {/* AI Images row */}
+                        {(() => {
+                            const { used, limit } = usage.aiImage
+                            const pct = limit === -1 ? 0 : limit === 0 ? 100 : Math.min(100, (used / limit) * 100)
+                            const isHot = limit !== -1 && pct >= 80
+                            return (
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <Sparkles className={`h-3 w-3 ${isHot ? 'text-red-400' : 'text-violet-400'}`} />
+                                            <span className="text-[11px] font-medium text-muted-foreground">AI Images</span>
                                         </div>
-                                        <span className="text-xs font-semibold">Posts</span>
+                                        <span className={`text-[11px] font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
+                                            {used.toLocaleString()}
+                                            <span className="font-normal text-muted-foreground">
+                                                {limit === -1 ? ' / ∞' : ` / ${limit.toLocaleString()}`}
+                                            </span>
+                                        </span>
                                     </div>
-                                    <div className={`h-5 w-5 rounded-full flex items-center justify-center ${isHot ? 'bg-red-500' : 'bg-emerald-500'}`}>
-                                        <Plus className="h-3 w-3 text-white" />
+                                    <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all duration-500 ${isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-violet-500 to-fuchsia-400'}`}
+                                            style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between text-[11px]">
-                                    <span className="text-muted-foreground">Usage</span>
-                                    <span className={`font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
-                                        {used.toLocaleString()}
-                                        {limit !== -1 && <span className="font-normal text-muted-foreground"> / {limit.toLocaleString()}</span>}
-                                        {limit === -1 && <span className="font-normal text-muted-foreground"> / ∞</span>}
-                                    </span>
-                                </div>
-                                <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
-                                    <div className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                                        style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
-                                </div>
-                            </div>
-                        )
-                    })()}
+                            )
+                        })()}
 
-                    {/* API Calls Card — only shown when plan has API access */}
-                    {usage.apiCalls.limit !== 0 && (() => {
-                        const { used, limit } = usage.apiCalls
-                        const pct = limit === -1 ? 0 : Math.min(100, (used / limit) * 100)
-                        const isHot = limit !== -1 && pct >= 80
-                        const barColor = isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                        return (
-                            <div className="rounded-xl border border-border/60 bg-card/80 p-3 space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${isHot ? 'bg-red-500/20' : 'bg-amber-500/20'}`}>
-                                            <Key className={`h-3.5 w-3.5 ${isHot ? 'text-red-400' : 'text-amber-400'}`} />
+                        {/* Posts row */}
+                        {(() => {
+                            const { used, limit } = usage.posts
+                            const pct = limit === -1 ? 0 : limit === 0 ? 100 : Math.min(100, (used / limit) * 100)
+                            const isHot = limit !== -1 && pct >= 80
+                            return (
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <PenSquare className={`h-3 w-3 ${isHot ? 'text-red-400' : 'text-emerald-500'}`} />
+                                            <span className="text-[11px] font-medium text-muted-foreground">Posts</span>
                                         </div>
-                                        <span className="text-xs font-semibold">API Calls</span>
+                                        <span className={`text-[11px] font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
+                                            {used.toLocaleString()}
+                                            <span className="font-normal text-muted-foreground">
+                                                {limit === -1 ? ' / ∞' : ` / ${limit.toLocaleString()}`}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all duration-500 ${isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`}
+                                            style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between text-[11px]">
-                                    <span className="text-muted-foreground">This month</span>
-                                    <span className={`font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
-                                        {used.toLocaleString()}
-                                        {limit !== -1 && <span className="font-normal text-muted-foreground"> / {limit.toLocaleString()}</span>}
-                                        {limit === -1 && <span className="font-normal text-muted-foreground"> / ∞</span>}
-                                    </span>
+                            )
+                        })()}
+
+                        {/* API Calls row — only when plan has API access */}
+                        {usage.apiCalls.limit !== 0 && (() => {
+                            const { used, limit } = usage.apiCalls
+                            const pct = limit === -1 ? 0 : Math.min(100, (used / limit) * 100)
+                            const isHot = limit !== -1 && pct >= 80
+                            return (
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <Key className={`h-3 w-3 ${isHot ? 'text-red-400' : 'text-amber-400'}`} />
+                                            <span className="text-[11px] font-medium text-muted-foreground">API Calls</span>
+                                        </div>
+                                        <span className={`text-[11px] font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
+                                            {used.toLocaleString()}
+                                            <span className="font-normal text-muted-foreground">
+                                                {limit === -1 ? ' / ∞' : ` / ${limit.toLocaleString()}`}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all duration-500 ${isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-amber-500 to-yellow-400'}`}
+                                            style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
+                                    </div>
                                 </div>
-                                <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
-                                    <div className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                                        style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
-                                </div>
-                            </div>
-                        )
-                    })()}
+                            )
+                        })()}
+                    </div>
                 </div>
             )}
 
