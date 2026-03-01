@@ -173,14 +173,15 @@ async function publishToFacebook(
             }
             const postId = data.id || data.post_id
             return { externalId: postId }
-        } else if (imageItems.length > 1) {
-            // Auto-carousel when 2+ images
-            console.log(`[Facebook] Multi-photo carousel with ${imageItems.length} images`)
-            // ── Carousel: upload each photo unpublished, then batch ──
+        }
+
+        // ── Carousel: only when carousel flag is true AND 2+ images ──
+        if (carousel && imageItems.length >= 2) {
+            console.log(`[Facebook] Carousel mode: uploading ${imageItems.length} images as swipeable carousel`)
             const photoIds: string[] = []
             for (let i = 0; i < imageItems.length; i++) {
                 const media = imageItems[i]
-                console.log(`[Facebook] Uploading photo ${i + 1}/${imageItems.length}: ${media.url.slice(0, 80)}...`)
+                console.log(`[Facebook] Uploading carousel photo ${i + 1}/${imageItems.length}: ${media.url.slice(0, 80)}...`)
                 const photoUrl = `https://graph.facebook.com/v21.0/${accountId}/photos`
                 const photoBody: Record<string, string | boolean> = {
                     url: media.url,
@@ -196,10 +197,10 @@ async function publishToFacebook(
                 if (data.error) throw new Error(data.error.message || `Facebook carousel photo ${i + 1} error`)
                 if (data.id) {
                     photoIds.push(data.id)
-                    console.log(`[Facebook] Photo ${i + 1} uploaded: ${data.id}`)
+                    console.log(`[Facebook] Carousel photo ${i + 1} uploaded: ${data.id}`)
                 }
             }
-            // Batch publish — use form-encoded params (Facebook Graph API requirement)
+            // Batch publish as carousel — use form-encoded params (Facebook Graph API requirement)
             console.log(`[Facebook] Publishing carousel with ${photoIds.length} photos`)
             const feedUrl = `https://graph.facebook.com/v21.0/${accountId}/feed`
             const params = new URLSearchParams()
@@ -215,10 +216,46 @@ async function publishToFacebook(
             const data = await res.json()
             console.log(`[Facebook] Carousel publish result:`, JSON.stringify(data).slice(0, 200))
             if (data.error) throw new Error(data.error.message || 'Facebook carousel publish error')
-            const postId = data.id
-            return { externalId: postId }
-        } else {
-            // ── Single Image: use /photos endpoint ──
+            return { externalId: data.id }
+        }
+
+        // ── Carousel flag ON but only 1 image — warn and fall through to single photo ──
+        if (carousel && imageItems.length === 1) {
+            console.warn(`[Facebook] Carousel requested but only 1 image — posting as single photo. Add ≥2 images for carousel.`)
+        }
+
+        // ── Multiple images WITHOUT carousel flag — post all as attached photos (not carousel) ──
+        if (imageItems.length > 1) {
+            console.log(`[Facebook] Multi-photo post (non-carousel): attaching ${imageItems.length} images`)
+            const photoIds: string[] = []
+            for (let i = 0; i < imageItems.length; i++) {
+                const media = imageItems[i]
+                const photoUrl = `https://graph.facebook.com/v21.0/${accountId}/photos`
+                const res = await fetch(photoUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: media.url, published: 'false', access_token: accessToken }),
+                })
+                const data = await res.json()
+                if (data.error) throw new Error(data.error.message || `Facebook photo ${i + 1} upload error`)
+                if (data.id) photoIds.push(data.id)
+            }
+            const feedUrl = `https://graph.facebook.com/v21.0/${accountId}/feed`
+            const params = new URLSearchParams()
+            params.append('message', content)
+            params.append('access_token', accessToken)
+            photoIds.forEach((pid, i) => {
+                params.append(`attached_media[${i}]`, JSON.stringify({ media_fbid: pid }))
+            })
+            const res = await fetch(feedUrl, { method: 'POST', body: params })
+            const data = await res.json()
+            if (data.error) throw new Error(data.error.message || 'Facebook multi-photo post error')
+            return { externalId: data.id }
+        }
+
+        // ── Single image ──
+        if (imageItems.length === 1) {
+            console.log(`[Facebook] Single photo post`)
             const photoUrl = `https://graph.facebook.com/v21.0/${accountId}/photos`
             const photoBody: Record<string, string> = {
                 caption: content,
@@ -238,6 +275,7 @@ async function publishToFacebook(
             return { externalId: postId }
         }
     }
+
 
     // ── Text-only post: use /feed endpoint ──
     const url = `https://graph.facebook.com/v21.0/${accountId}/feed`
