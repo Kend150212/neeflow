@@ -704,9 +704,10 @@ export default function CalendarPage() {
     // Reschedule confirmation modal state
     const [pendingDrop, setPendingDrop] = useState<{
         post: CalendarPost
-        newDateStr: string   // YYYY-MM-DD of the drop target
+        newDateStr: string
         oldScheduledAt: string | null
     } | null>(null)
+    const [rescheduleCustomTime, setRescheduleCustomTime] = useState<string>('')
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -901,20 +902,21 @@ export default function CalendarPage() {
     }
 
     // Called after user chooses in the modal
-    const confirmReschedule = async (keepTime: boolean) => {
+    const confirmReschedule = async (keepTime: boolean, customTime?: string) => {
         if (!pendingDrop) return
         const { post, newDateStr, oldScheduledAt } = pendingDrop
         setPendingDrop(null)
+        setRescheduleCustomTime('')
 
         const oldDate = getPostDate(post)
 
-        // Build new datetime
         const newDate = new Date(`${newDateStr}T00:00:00`)
         if (keepTime) {
-            // Preserve original HH:MM
             newDate.setHours(oldDate.getHours(), oldDate.getMinutes(), 0, 0)
+        } else if (customTime) {
+            const [h, m] = customTime.split(':').map(Number)
+            newDate.setHours(h, m, 0, 0)
         } else {
-            // Default to noon on the new day
             newDate.setHours(9, 0, 0, 0)
         }
         const newScheduledAt = newDate.toISOString()
@@ -1221,10 +1223,18 @@ export default function CalendarPage() {
             </DndContext>
 
             {/* ── Reschedule confirmation modal ── */}
-            <Dialog open={!!pendingDrop} onOpenChange={(open) => { if (!open) setPendingDrop(null) }}>
+            <Dialog open={!!pendingDrop} onOpenChange={(open) => { if (!open) { setPendingDrop(null); setRescheduleCustomTime('') } }}>
                 <DialogContent className="max-w-sm">
                     <DialogHeader>
-                        <DialogTitle>{locale === 'vi' ? 'Đổi lịch bài viết' : 'Reschedule Post'}</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2 text-primary">
+                            {/* Calendar SVG */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M8 2v4" /><path d="M16 2v4" />
+                                <rect width="18" height="18" x="3" y="4" rx="2" />
+                                <path d="M3 10h18" />
+                            </svg>
+                            {locale === 'vi' ? 'Đổi lịch bài viết' : 'Reschedule Post'}
+                        </DialogTitle>
                         <DialogDescription>
                             {locale === 'vi'
                                 ? `Chuyển đến ${pendingDrop?.newDateStr ? new Date(pendingDrop.newDateStr + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}`
@@ -1233,14 +1243,20 @@ export default function CalendarPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 py-1">
+                        {/* Option 1: Keep same time */}
                         <button
                             onClick={() => confirmReschedule(true)}
                             className="w-full text-left px-4 py-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group"
                         >
-                            <p className="text-sm font-semibold group-hover:text-primary">
-                                {locale === 'vi' ? '⏰ Giữ nguyên thời gian' : '⏰ Keep same time'}
+                            <p className="text-sm font-semibold group-hover:text-primary flex items-center gap-2">
+                                {/* Clock SVG */}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                                {locale === 'vi' ? 'Giữ nguyên thời gian' : 'Keep same time'}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                            <p className="text-xs text-muted-foreground mt-0.5 ml-[22px]">
                                 {pendingDrop?.post ? (() => {
                                     const d = getPostDate(pendingDrop.post)
                                     return locale === 'vi'
@@ -1249,20 +1265,36 @@ export default function CalendarPage() {
                                 })() : ''}
                             </p>
                         </button>
-                        <button
-                            onClick={() => confirmReschedule(false)}
-                            className="w-full text-left px-4 py-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group"
-                        >
-                            <p className="text-sm font-semibold group-hover:text-primary">
-                                {locale === 'vi' ? '📅 Đặt lại 9:00 AM' : '📅 Set to 9:00 AM'}
+
+                        {/* Option 2: Custom time picker */}
+                        <div className="px-4 py-3 rounded-lg border border-border">
+                            <p className="text-sm font-semibold flex items-center gap-2 mb-2.5">
+                                {/* Edit clock SVG */}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+                                    <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                </svg>
+                                {locale === 'vi' ? 'Đặt giờ khác' : 'Set a different time'}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                {locale === 'vi' ? 'Đặt giờ đăng là 9 giờ sáng ngày mới' : 'Schedule for 9:00 AM on the new day'}
-                            </p>
-                        </button>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="time"
+                                    value={rescheduleCustomTime}
+                                    onChange={(e) => setRescheduleCustomTime(e.target.value)}
+                                    className="flex-1 h-8 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                />
+                                <Button
+                                    size="sm"
+                                    className="cursor-pointer shrink-0"
+                                    disabled={!rescheduleCustomTime}
+                                    onClick={() => confirmReschedule(false, rescheduleCustomTime)}
+                                >
+                                    {locale === 'vi' ? 'Áp dụng' : 'Apply'}
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" size="sm" onClick={() => setPendingDrop(null)} className="cursor-pointer">
+                        <Button variant="ghost" size="sm" onClick={() => { setPendingDrop(null); setRescheduleCustomTime('') }} className="cursor-pointer">
                             {locale === 'vi' ? 'Huỷ' : 'Cancel'}
                         </Button>
                     </DialogFooter>
