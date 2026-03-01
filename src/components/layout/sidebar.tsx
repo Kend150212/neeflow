@@ -289,7 +289,7 @@ export function Sidebar({ session }: { session: Session }) {
 
             {/* ── Plan Usage Widget — compact single card ── */}
             {usage && (
-                <div className="px-3 py-2">
+                <div className="px-3 py-2 hidden md:block">
                     <div className="rounded-xl border border-border/60 bg-card/80 p-3 space-y-3">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Plan Usage</p>
 
