@@ -11,6 +11,7 @@ import { callAI, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 import { OAUTH_PLATFORMS, CREDENTIAL_PLATFORMS } from '@/lib/platform-registry'
 import { buildPromotionContext } from '@/lib/product-context'
+import { buildMemoryContext, summarizeSession } from '@/lib/customer-memory'
 
 // ─── Dedup cache: prevent duplicate Messenger sends ─────────
 // Key: "recipientId" → timestamp of last bot send
@@ -134,6 +135,41 @@ export async function botAutoReply(
         const provider = ownerKey.provider!
         const apiKey = ownerKey.apiKey
         const model = channel.defaultAiModel || ownerKey.model || getDefaultModel(provider, {})
+
+        // ─── 7b. Smart Memory: detect session timeout ─────────────
+        // If enabled and the conversation was dormant for > sessionTimeoutHours,
+        // summarize the previous session before continuing.
+        if (botConfig?.enableSmartMemory && conversation.lastMessageAt) {
+            const timeoutHours = botConfig.sessionTimeoutHours ?? 8
+            const hoursSinceLastMsg = (Date.now() - conversation.lastMessageAt.getTime()) / (1000 * 60 * 60)
+            if (hoursSinceLastMsg >= timeoutHours) {
+                // Fire session summarization in setImmediate — don't block the reply
+                const _convId = conversationId
+                const _channelId = channel.id
+                const _extUserId = conversation.externalUserId
+                const _platform = platform
+                const _provider = provider
+                const _apiKey = apiKey
+                const _model = model
+                const _smBefore = botConfig.summariesBeforeMerge ?? 5
+                setImmediate(async () => {
+                    try {
+                        await summarizeSession({
+                            conversationId: _convId,
+                            channelId: _channelId,
+                            externalUserId: _extUserId,
+                            platform: _platform,
+                            provider: _provider,
+                            apiKey: _apiKey,
+                            model: _model,
+                            summariesBeforeMerge: _smBefore,
+                        })
+                    } catch (err) {
+                        console.error('[Smart Memory] ❌ Session summarization failed:', err)
+                    }
+                })
+            }
+        }
 
         // ─── 8. Load context ──────────────────────────────────────
         const knowledgeEntries = await prisma.knowledgeBase.findMany({
@@ -450,13 +486,19 @@ export async function botAutoReply(
 
         // ─── 10. Call AI ──────────────────────────────────────────
         let contextSection = ''
-        if (conversation.aiSummary) {
+        if (conversation.aiSummary && !conversation.aiSummary.startsWith('[Smart Memory:')) {
             contextSection = `Conversation summary so far:\n${conversation.aiSummary}\n\nRecent messages:\n${messageHistory}`
         } else {
             contextSection = `Recent conversation:\n${messageHistory}`
         }
 
-        const userPrompt = `Customer name: ${conversation.externalUserName || 'Customer'}
+        // Inject Smart Memory (customer profile + event log)
+        let memoryContext = ''
+        if (botConfig?.enableSmartMemory) {
+            memoryContext = await buildMemoryContext(channel.id, conversation.externalUserId, platform)
+        }
+
+        const userPrompt = `Customer name: ${conversation.externalUserName || 'Customer'}${memoryContext ? `\n\n${memoryContext}` : ''}
 
 ${contextSection}
 

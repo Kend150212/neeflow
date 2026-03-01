@@ -71,6 +71,10 @@ interface BotConfigData {
     applyToMessages: boolean
     commentReplyMinDelay: number
     commentReplyMaxDelay: number
+    // Smart Memory
+    enableSmartMemory: boolean
+    sessionTimeoutHours: number
+    summariesBeforeMerge: number
 }
 
 interface ChatBotTabProps {
@@ -381,6 +385,9 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         applyToMessages: data.applyToMessages ?? true,
                         commentReplyMinDelay: data.commentReplyMinDelay ?? 30,
                         commentReplyMaxDelay: data.commentReplyMaxDelay ?? 600,
+                        enableSmartMemory: data.enableSmartMemory ?? false,
+                        sessionTimeoutHours: data.sessionTimeoutHours ?? 8,
+                        summariesBeforeMerge: data.summariesBeforeMerge ?? 5,
                     })
                 }
             } catch { /* ignore */ }
@@ -1645,6 +1652,65 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 </CardContent>
                             </Card>
                         )}
+
+                        {/* ─── Smart Memory ─── */}
+                        <Card className="mt-4 border-violet-500/30 bg-violet-500/5">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                    <Brain className="h-4 w-4 text-violet-500" />
+                                    Smart Memory — Ghi nhớ khách hàng xuyên phiên
+                                </CardTitle>
+                                <CardDescription className="text-[11px]">
+                                    Bot sẽ tạo hồ sơ khách hàng (tên, sở thích, lịch sử) và ghi nhớ giữa các cuộc trò chuyện. Khi khách quay lại sau nhiều ngày, bot sẽ nhớ họ.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label className="text-sm">Bật Smart Memory</Label>
+                                        <p className="text-[11px] text-muted-foreground">Tự động tóm tắt mỗi phiên và cập nhật hồ sơ khách hàng</p>
+                                    </div>
+                                    <Switch
+                                        checked={config.enableSmartMemory}
+                                        onCheckedChange={v => update('enableSmartMemory', v)}
+                                    />
+                                </div>
+
+                                {config.enableSmartMemory && (
+                                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
+                                        <div>
+                                            <Label className="text-[11px] text-muted-foreground">Timeout phiên (giờ)</Label>
+                                            <p className="text-[10px] text-muted-foreground mb-1">Sau bao lâu không có tin nhắn thì kết thúc phiên</p>
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                max={168}
+                                                value={config.sessionTimeoutHours}
+                                                onChange={e => update('sessionTimeoutHours', Math.max(1, parseInt(e.target.value) || 8))}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[11px] text-muted-foreground">Nén sau bao nhiêu phiên</Label>
+                                            <p className="text-[10px] text-muted-foreground mb-1">AI sẽ gộp lịch sử sau N phiên để tiết kiệm bộ nhớ</p>
+                                            <Input
+                                                type="number"
+                                                min={2}
+                                                max={20}
+                                                value={config.summariesBeforeMerge}
+                                                onChange={e => update('summariesBeforeMerge', Math.max(2, parseInt(e.target.value) || 5))}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <p className="text-[10px] text-muted-foreground border-t pt-2 border-border/50">
+                                    💡 Session tự động tóm tắt sau {config.sessionTimeoutHours}h không hoạt động.
+                                    Sau {config.summariesBeforeMerge} phiên, AI sẽ nén thành 1 hồ sơ tổng hợp.
+                                </p>
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
 

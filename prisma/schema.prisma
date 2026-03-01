@@ -292,6 +292,7 @@ model Channel {
   contentJobs          ContentJob[]
   productCatalog       ProductCatalog[]
   promotions           Promotion[]
+  customerMemories     CustomerMemory[]
 
 
   @@map("channels")
@@ -1065,12 +1066,37 @@ model BotConfig {
   agentLearning  Json?     @default("{}") @map("agent_learning")
   lastLearnedAt  DateTime? @map("last_learned_at")
 
+  // Smart Memory
+  enableSmartMemory    Boolean @default(false) @map("enable_smart_memory")
+  sessionTimeoutHours  Int     @default(8)     @map("session_timeout_hours")
+  summariesBeforeMerge Int     @default(5)     @map("summaries_before_merge")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@map("bot_configs")
+}
+
+model CustomerMemory {
+  id             String   @id @default(cuid())
+  channelId      String   @map("channel_id")
+  externalUserId String   @map("external_user_id")
+  platform       String
+  // Structured customer profile — enriched over lifetime
+  profile        Json     @default("{}") @db.JsonB
+  // Session event log — array of { date, summary } entries
+  eventLog       Json     @default("[]") @db.JsonB
+  lastSummarizedAt DateTime? @map("last_summarized_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, externalUserId, platform])
+  @@index([channelId])
+  @@map("customer_memories")
 }
 
 

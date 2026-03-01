@@ -89,6 +89,7 @@ export async function PUT(
         'enabledPlatforms', 'applyToComments', 'applyToMessages',
         'commentReplyMinDelay', 'commentReplyMaxDelay',
         'agentLearning', 'lastLearnedAt',
+        'enableSmartMemory', 'sessionTimeoutHours', 'summariesBeforeMerge',
     ]
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
