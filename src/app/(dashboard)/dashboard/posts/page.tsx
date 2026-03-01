@@ -9,6 +9,7 @@ import {
     Calendar, CheckCircle2, XCircle, Send, FileEdit, Loader2,
     Filter, Eye, Clock, CheckSquare, Square, CalendarClock,
     ChevronDown, BarChart2, Eye as EyeIcon, Heart, MessageCircle, Share2,
+    LayoutList, LayoutGrid, Play,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,15 +55,16 @@ interface PlatformStat {
 
 const statusConfig: Record<string, {
     label: string; color: string; textColor: string; bgColor: string; icon: typeof CheckCircle2
+    badgeBg: string; badgeText: string; badgeBorder: string
 }> = {
-    DRAFT: { label: 'Draft', color: 'bg-slate-400', textColor: 'text-slate-500', bgColor: 'bg-slate-50 dark:bg-slate-900/20', icon: FileEdit },
-    PENDING_APPROVAL: { label: 'Pending', color: 'bg-amber-400', textColor: 'text-amber-600', bgColor: 'bg-amber-50 dark:bg-amber-900/20', icon: Clock },
-    APPROVED: { label: 'Approved', color: 'bg-teal-500', textColor: 'text-teal-600', bgColor: 'bg-teal-50 dark:bg-teal-900/20', icon: CheckCircle2 },
-    REJECTED: { label: 'Rejected', color: 'bg-red-400', textColor: 'text-red-500', bgColor: 'bg-red-50 dark:bg-red-900/20', icon: XCircle },
-    SCHEDULED: { label: 'Scheduled', color: 'bg-blue-500', textColor: 'text-blue-600', bgColor: 'bg-blue-50 dark:bg-blue-900/20', icon: CalendarClock },
-    PUBLISHING: { label: 'Publishing', color: 'bg-violet-500', textColor: 'text-violet-600', bgColor: 'bg-violet-50 dark:bg-violet-900/20', icon: Send },
-    PUBLISHED: { label: 'Published', color: 'bg-emerald-500', textColor: 'text-emerald-600', bgColor: 'bg-emerald-50 dark:bg-emerald-900/20', icon: CheckCircle2 },
-    FAILED: { label: 'Failed', color: 'bg-rose-600', textColor: 'text-rose-600', bgColor: 'bg-rose-50 dark:bg-rose-900/20', icon: XCircle },
+    DRAFT: { label: 'Draft', color: 'bg-slate-400', textColor: 'text-slate-500', bgColor: 'bg-slate-50 dark:bg-slate-900/20', icon: FileEdit, badgeBg: 'bg-slate-500/20', badgeText: 'text-slate-400', badgeBorder: 'border-slate-500/30' },
+    PENDING_APPROVAL: { label: 'Pending', color: 'bg-amber-400', textColor: 'text-amber-600', bgColor: 'bg-amber-50 dark:bg-amber-900/20', icon: Clock, badgeBg: 'bg-amber-500/20', badgeText: 'text-amber-400', badgeBorder: 'border-amber-500/30' },
+    APPROVED: { label: 'Approved', color: 'bg-teal-500', textColor: 'text-teal-600', bgColor: 'bg-teal-50 dark:bg-teal-900/20', icon: CheckCircle2, badgeBg: 'bg-teal-500/20', badgeText: 'text-teal-400', badgeBorder: 'border-teal-500/30' },
+    REJECTED: { label: 'Rejected', color: 'bg-red-400', textColor: 'text-red-500', bgColor: 'bg-red-50 dark:bg-red-900/20', icon: XCircle, badgeBg: 'bg-red-500/20', badgeText: 'text-red-400', badgeBorder: 'border-red-500/30' },
+    SCHEDULED: { label: 'Scheduled', color: 'bg-blue-500', textColor: 'text-blue-600', bgColor: 'bg-blue-50 dark:bg-blue-900/20', icon: CalendarClock, badgeBg: 'bg-primary/20', badgeText: 'text-primary', badgeBorder: 'border-primary/30' },
+    PUBLISHING: { label: 'Publishing', color: 'bg-violet-500', textColor: 'text-violet-600', bgColor: 'bg-violet-50 dark:bg-violet-900/20', icon: Send, badgeBg: 'bg-violet-500/20', badgeText: 'text-violet-400', badgeBorder: 'border-violet-500/30' },
+    PUBLISHED: { label: 'Published', color: 'bg-emerald-500', textColor: 'text-emerald-600', bgColor: 'bg-emerald-50 dark:bg-emerald-900/20', icon: CheckCircle2, badgeBg: 'bg-emerald-500/20', badgeText: 'text-emerald-400', badgeBorder: 'border-emerald-500/30' },
+    FAILED: { label: 'Failed', color: 'bg-rose-600', textColor: 'text-rose-600', bgColor: 'bg-rose-50 dark:bg-rose-900/20', icon: XCircle, badgeBg: 'bg-red-500/20', badgeText: 'text-red-400', badgeBorder: 'border-red-500/30' },
 }
 
 function formatDate(d: string) {
@@ -70,9 +72,28 @@ function formatDate(d: string) {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     })
 }
+function formatTime(d: string) {
+    return new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+function formatDateLabel(d: string) {
+    const date = new Date(d)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
+    const dateOnly = new Date(date); dateOnly.setHours(0, 0, 0, 0)
+    if (dateOnly.getTime() === today.getTime()) return 'Today, ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (dateOnly.getTime() === tomorrow.getTime()) return 'Tomorrow, ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (dateOnly.getTime() === yesterday.getTime()) return 'Yesterday, ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+}
 function truncate(text: string | null, len: number) {
     if (!text) return '—'
     return text.length > len ? text.slice(0, len) + '…' : text
+}
+function getDateKey(post: Post) {
+    const d = post.scheduledAt || post.publishedAt || post.createdAt
+    const date = new Date(d); date.setHours(0, 0, 0, 0)
+    return date.toISOString()
 }
 
 // ─── Analytics mini row ─────────────────────────────
@@ -126,6 +147,155 @@ function AnalyticsRow({ postId }: { postId: string }) {
     )
 }
 
+// ─── Queue Card ──────────────────────────────────────
+
+function QueueCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate, analyticsOpen, onToggleAnalytics }: {
+    post: Post
+    selected: boolean
+    onSelect: () => void
+    onEdit: () => void
+    onDelete: () => void
+    onDuplicate: () => void
+    analyticsOpen: boolean
+    onToggleAnalytics: () => void
+}) {
+    const sc = statusConfig[post.status] || statusConfig.DRAFT
+    const platforms = [...new Set(post.platformStatuses.map(ps => ps.platform))]
+    const isPublished = post.status === 'PUBLISHED'
+    const timeSource = post.scheduledAt || post.publishedAt || post.createdAt
+    const isVideo = post.media[0]?.mediaItem.type?.startsWith('video/')
+    const mediaUrl = post.media[0]?.mediaItem.thumbnailUrl || post.media[0]?.mediaItem.url
+
+    return (
+        <div
+            className={cn(
+                'group relative bg-card/80 border rounded-xl p-4 flex gap-4 transition-all duration-200 hover:border-primary/40 hover:shadow-[0_0_20px_rgba(25,230,94,0.06)]',
+                selected ? 'border-primary/50 bg-primary/5 shadow-[0_0_16px_rgba(25,230,94,0.08)]' : 'border-border/60',
+            )}
+        >
+            {/* Checkbox */}
+            <button
+                onClick={e => { e.stopPropagation(); onSelect() }}
+                className="absolute top-3 left-3 z-10 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+                {selected
+                    ? <CheckSquare className="h-4 w-4 text-primary" />
+                    : <Square className="h-4 w-4 text-muted-foreground/60" />}
+            </button>
+
+            {/* Media Thumbnail */}
+            <div
+                className="w-40 h-36 flex-shrink-0 rounded-lg overflow-hidden relative bg-muted/50 border border-border/40 cursor-pointer"
+                onClick={onEdit}
+            >
+                {mediaUrl ? (
+                    <>
+                        <img src={mediaUrl} alt="" className="h-full w-full object-cover" />
+                        {isVideo && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <Play className="h-8 w-8 text-white/90 fill-white/90" />
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                        <PenSquare className="h-8 w-8 text-muted-foreground/20" />
+                    </div>
+                )}
+                {/* Platform icons overlay */}
+                {platforms.length > 0 && (
+                    <div className="absolute top-1.5 left-1.5 flex gap-1">
+                        {platforms.map(p => (
+                            <div key={p} className="h-5 w-5 rounded bg-background/80 backdrop-blur-sm flex items-center justify-center">
+                                <PlatformIcon platform={p} size="sm" />
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0 flex flex-col cursor-pointer" onClick={onEdit}>
+                {/* Time + Badges row */}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {timeSource && (
+                            <span className="text-base font-bold tabular-nums">{formatTime(timeSource)}</span>
+                        )}
+                        <span className={cn(
+                            'px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider border',
+                            sc.badgeBg, sc.badgeText, sc.badgeBorder
+                        )}>
+                            {sc.label}
+                        </span>
+                    </div>
+                    {/* Actions */}
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={onEdit}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                        >
+                            <Eye className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onClick={onDuplicate}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                        >
+                            <Copy className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onClick={onDelete}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Caption */}
+                <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3 flex-1 mb-3">
+                    {post.content || <span className="text-muted-foreground/50 italic">No caption</span>}
+                </p>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-2.5 border-t border-border/40 mt-auto">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{post.channel.displayName}</span>
+                        {post.scheduledAt && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-500 dark:text-blue-400">
+                                <Calendar className="h-2.5 w-2.5" />
+                                {formatDate(post.scheduledAt)}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {isPublished && (
+                            <button
+                                onClick={e => { e.stopPropagation(); onToggleAnalytics() }}
+                                className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                            >
+                                <BarChart2 className="h-3 w-3" />
+                                Stats
+                                <ChevronDown className={cn('h-2.5 w-2.5 transition-transform', analyticsOpen && 'rotate-180')} />
+                            </button>
+                        )}
+                        <span className="text-[10px] text-muted-foreground/60">
+                            {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Analytics (full width below) */}
+            {analyticsOpen && (
+                <div className="absolute left-0 right-0 bottom-0 translate-y-full z-10 px-4 py-2 border border-t-0 border-border/60 bg-card rounded-b-xl">
+                    <AnalyticsRow postId={post.id} />
+                </div>
+            )}
+        </div>
+    )
+}
+
 // ─── Page ────────────────────────────────────────────
 
 export default function PostsPage() {
@@ -140,6 +310,7 @@ export default function PostsPage() {
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
     const [total, setTotal] = useState(0)
+    const [viewMode, setViewMode] = useState<'list' | 'queue'>('queue')
 
     // Workspace context
     const { activeChannelId, channels } = useWorkspace()
@@ -172,8 +343,6 @@ export default function PostsPage() {
         () => posts.length > 0 && posts.every(p => selected.has(p.id)),
         [posts, selected]
     )
-
-    // channels come from workspace context — no need to refetch
 
     const fetchPosts = useCallback(async () => {
         setLoading(true)
@@ -257,19 +426,82 @@ export default function PostsPage() {
         } catch { toast.error('Failed to duplicate') }
     }
 
+    // Group posts by date for queue view
+    const groupedPosts = useMemo(() => {
+        if (viewMode !== 'queue') return null
+        const groups: { dateKey: string; label: string; posts: Post[] }[] = []
+        const map = new Map<string, Post[]>()
+        for (const post of posts) {
+            const key = getDateKey(post)
+            if (!map.has(key)) map.set(key, [])
+            map.get(key)!.push(post)
+        }
+        for (const [key, groupPosts] of map.entries()) {
+            const d = groupPosts[0].scheduledAt || groupPosts[0].publishedAt || groupPosts[0].createdAt
+            groups.push({ dateKey: key, label: formatDateLabel(d), posts: groupPosts })
+        }
+        return groups
+    }, [posts, viewMode])
+
+    // Count scheduled for today
+    const todayScheduledCount = useMemo(() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+        return posts.filter(p => {
+            if (!p.scheduledAt) return false
+            const d = new Date(p.scheduledAt)
+            return d >= today && d < tomorrow
+        }).length
+    }, [posts])
+
     return (
         <div className="space-y-4">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-                        <PenSquare className="h-5 w-5 sm:h-6 sm:w-6" />{t('nav.posts') || 'Posts'}
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+                            <PenSquare className="h-5 w-5 sm:h-6 sm:w-6" />{t('nav.posts') || 'Posts'}
+                        </h1>
+                        {todayScheduledCount > 0 && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 rounded-full border border-primary/20">
+                                <Calendar className="h-3 w-3 text-primary" />
+                                <span className="text-xs font-bold text-primary">{todayScheduledCount} going out today</span>
+                            </div>
+                        )}
+                    </div>
                     <p className="text-muted-foreground text-sm mt-1">{total} post{total !== 1 ? 's' : ''}</p>
                 </div>
-                <Button onClick={() => router.push('/dashboard/posts/compose')} className="cursor-pointer w-full sm:w-auto">
-                    <Plus className="h-4 w-4 mr-2" />New Post
-                </Button>
+                <div className="flex items-center gap-2">
+                    {/* View mode toggle */}
+                    <div className="flex items-center rounded-lg border border-border/60 bg-card/80 p-0.5">
+                        <button
+                            onClick={() => setViewMode('queue')}
+                            className={cn(
+                                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer',
+                                viewMode === 'queue'
+                                    ? 'bg-primary/15 text-primary shadow-sm border border-primary/20'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            )}
+                        >
+                            <LayoutGrid className="h-3.5 w-3.5" />Queue
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={cn(
+                                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer',
+                                viewMode === 'list'
+                                    ? 'bg-primary/15 text-primary shadow-sm border border-primary/20'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            )}
+                        >
+                            <LayoutList className="h-3.5 w-3.5" />List
+                        </button>
+                    </div>
+                    <Button onClick={() => router.push('/dashboard/posts/compose')} className="cursor-pointer">
+                        <Plus className="h-4 w-4 mr-2" />New Post
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -324,7 +556,7 @@ export default function PostsPage() {
                 </div>
             )}
 
-            {/* Posts List */}
+            {/* Posts Content */}
             {loading ? (
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -338,7 +570,49 @@ export default function PostsPage() {
                         <Plus className="h-4 w-4 mr-2" />Create Post
                     </Button>
                 </div>
+            ) : viewMode === 'queue' ? (
+                /* ── Queue View ── */
+                <div className="space-y-8">
+                    {/* Select all */}
+                    <div className="flex items-center justify-between">
+                        <button onClick={toggleAll}
+                            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                            {allSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
+                            Select all
+                        </button>
+                        <span className="text-xs text-muted-foreground">{posts.length} posts</span>
+                    </div>
+
+                    {groupedPosts!.map(group => (
+                        <section key={group.dateKey}>
+                            {/* Date divider */}
+                            <div className="flex items-center gap-4 mb-4">
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                                    {group.label}
+                                </h3>
+                                <div className="flex-1 h-px bg-border/60" />
+                                <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">{group.posts.length} post{group.posts.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="space-y-3">
+                                {group.posts.map(post => (
+                                    <QueueCard
+                                        key={post.id}
+                                        post={post}
+                                        selected={selected.has(post.id)}
+                                        onSelect={() => toggleSelect(post.id)}
+                                        onEdit={() => router.push(`/dashboard/posts/${post.id}`)}
+                                        onDelete={() => setDeleteTarget(post)}
+                                        onDuplicate={() => handleDuplicate(post)}
+                                        analyticsOpen={expandedAnalytics.has(post.id)}
+                                        onToggleAnalytics={() => toggleAnalytics(post.id)}
+                                    />
+                                ))}
+                            </div>
+                        </section>
+                    ))}
+                </div>
             ) : (
+                /* ── List View (original) ── */
                 <div className="rounded-xl border overflow-hidden">
                     {/* Select-all header */}
                     <div className="flex items-center gap-3 px-4 py-2 border-b bg-muted/30">
@@ -412,7 +686,6 @@ export default function PostsPage() {
                                             <div className="flex items-center gap-1">
                                                 {platforms.map(p => <PlatformIcon key={p} platform={p} size="sm" />)}
                                             </div>
-                                            {/* Analytics toggle */}
                                             {isPublished && (
                                                 <button
                                                     onClick={e => { e.stopPropagation(); toggleAnalytics(post.id) }}
