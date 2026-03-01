@@ -586,12 +586,15 @@ export default function PostsPage() {
                     {groupedPosts!.map(group => (
                         <section key={group.dateKey}>
                             {/* Date divider */}
-                            <div className="flex items-center gap-4 mb-4">
-                                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-                                    {group.label}
-                                </h3>
-                                <div className="flex-1 h-px bg-border/60" />
-                                <span className="text-[10px] text-muted-foreground/60 whitespace-nowrap">{group.posts.length} post{group.posts.length !== 1 ? 's' : ''}</span>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 whitespace-nowrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                                    <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                        {group.label}
+                                    </h3>
+                                </div>
+                                <div className="flex-1 h-px bg-emerald-500/20" />
+                                <span className="text-[10px] font-semibold text-emerald-600/70 dark:text-emerald-400/60 whitespace-nowrap">{group.posts.length} post{group.posts.length !== 1 ? 's' : ''}</span>
                             </div>
                             <div className="space-y-3">
                                 {group.posts.map(post => (

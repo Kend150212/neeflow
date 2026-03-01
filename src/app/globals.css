@@ -57,35 +57,35 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.78 0.23 150);
-  /* #19e65e — green neon */
-  --primary-foreground: oklch(0.1 0 0);
-  /* dark text on green button */
+  --primary: oklch(0.52 0.20 150);
+  /* forest green — vivid on light bg */
+  --primary-foreground: oklch(0.98 0 0);
+  /* light text on dark green button */
   --secondary: oklch(0.97 0.01 150);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.95 0.01 150);
   --muted-foreground: oklch(0.5 0.01 150);
-  --accent: oklch(0.95 0.015 150);
+  --accent: oklch(0.94 0.02 150);
   /* primary/10 hover */
-  --accent-foreground: oklch(0.78 0.23 150);
+  --accent-foreground: oklch(0.52 0.20 150);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.78 0.23 150 / 12%);
-  /* primary/10 */
-  --input: oklch(0.78 0.23 150 / 8%);
-  --ring: oklch(0.78 0.23 150 / 40%);
-  --chart-1: oklch(0.78 0.23 150);
+  --border: oklch(0.52 0.20 150 / 15%);
+  /* primary/15 */
+  --input: oklch(0.52 0.20 150 / 10%);
+  --ring: oklch(0.52 0.20 150 / 50%);
+  --chart-1: oklch(0.52 0.20 150);
   --chart-2: oklch(0.6 0.18 200);
   --chart-3: oklch(0.7 0.2 120);
   --chart-4: oklch(0.65 0.22 180);
   --chart-5: oklch(0.75 0.2 100);
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.78 0.23 150);
-  --sidebar-primary-foreground: oklch(0.1 0 0);
-  --sidebar-accent: oklch(0.78 0.23 150 / 10%);
-  --sidebar-accent-foreground: oklch(0.78 0.23 150);
-  --sidebar-border: oklch(0.78 0.23 150 / 10%);
-  --sidebar-ring: oklch(0.78 0.23 150 / 40%);
+  --sidebar-primary: oklch(0.52 0.20 150);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.52 0.20 150 / 10%);
+  --sidebar-accent-foreground: oklch(0.52 0.20 150);
+  --sidebar-border: oklch(0.52 0.20 150 / 12%);
+  --sidebar-ring: oklch(0.52 0.20 150 / 40%);
 }
 
 /* ── Dark Mode ─────────────────────────────── */
@@ -152,7 +152,7 @@
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-right: 1px solid oklch(0.78 0.23 150 / 12%);
+  border-right: 1px solid oklch(0.52 0.20 150 / 12%);
 }
 
 /* ── Neon Active Nav Glow ─────────────────── */
@@ -164,13 +164,13 @@
 }
 
 .nav-active-light {
-  background: oklch(0.78 0.23 150 / 10%);
-  color: oklch(0.78 0.23 150);
+  background: oklch(0.52 0.20 150 / 12%);
+  color: oklch(0.52 0.20 150);
 }
 
 /* ── Green Primary Button Glow ─────────────── */
 .btn-primary-glow {
-  box-shadow: 0 0 20px oklch(0.78 0.23 150 / 35%);
+  box-shadow: 0 0 20px oklch(0.52 0.20 150 / 30%);
 }
 
 /* ── AI Image Generation animations ────────── */
@@ -207,6 +207,7 @@
 .animate-ai-reveal {
   animation: ai-reveal 0.8s ease-out forwards;
 }
+
 /* Hide reCAPTCHA floating badge — branding shown inline where used */
 .grecaptcha-badge {
   visibility: hidden !important;
