@@ -2694,10 +2694,10 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm flex items-center gap-2">
                                     <Zap className="h-4 w-4 text-yellow-500" />
-                                    🧠 Agent Learning — Bot tự học từ Agent thật
+                                    🧠 {t('chatbot.learning.title')} — {t('chatbot.learning.subtitle')}
                                 </CardTitle>
                                 <CardDescription className="text-[11px]">
-                                    Bot phân tích tất cả conversations mà agent đã reply → học vocabulary, từ lóng, viết tắt, genZ, phong cách chat, cách deal với khách. Hoạt động ngay cả khi bot disabled.
+                                    {t('chatbot.learning.desc')}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
@@ -2721,7 +2721,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                         }}
                                     >
                                         {learningLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Brain className="h-4 w-4 mr-1" />}
-                                        {learningLoading ? 'Đang phân tích...' : '🧠 Analyze & Learn from Agents'}
+                                        {learningLoading ? t('chatbot.learning.analyzing') : t('chatbot.learning.analyzeBtn')}
                                     </Button>
                                     {!learningFetched && (
                                         <Button
@@ -2773,7 +2773,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 {learningData.vocabulary?.length > 0 && (
                                     <Card>
                                         <CardHeader className="pb-2">
-                                            <CardTitle className="text-xs flex items-center gap-2">📝 Vocabulary — Từ vựng thường dùng</CardTitle>
+                                            <CardTitle className="text-xs flex items-center gap-2">📝 {t('chatbot.learning.vocabularyTitle')}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="flex flex-wrap gap-1.5">
@@ -2789,8 +2789,8 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 {learningData.slangAndAbbreviations?.length > 0 && (
                                     <Card className="border-pink-200 dark:border-pink-800">
                                         <CardHeader className="pb-2">
-                                            <CardTitle className="text-xs flex items-center gap-2">🔥 Slang, Viết tắt & GenZ</CardTitle>
-                                            <CardDescription className="text-[10px]">Từ lóng, từ địa phương, viết tắt, ngôn ngữ GenZ — đa ngôn ngữ</CardDescription>
+                                            <CardTitle className="text-xs flex items-center gap-2">🔥 {t('chatbot.learning.slangTitle')}</CardTitle>
+                                            <CardDescription className="text-[10px]">{t('chatbot.learning.slangDesc')}</CardDescription>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="flex flex-wrap gap-1.5">
@@ -2807,7 +2807,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                     {learningData.greetingStyles?.length > 0 && (
                                         <Card>
                                             <CardHeader className="pb-2">
-                                                <CardTitle className="text-xs">👋 Cách chào hỏi</CardTitle>
+                                                <CardTitle className="text-xs">👋 {t('chatbot.learning.greetingTitle')}</CardTitle>
                                             </CardHeader>
                                             <CardContent>
                                                 <ul className="space-y-1">
@@ -2821,7 +2821,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                     {learningData.closingStyles?.length > 0 && (
                                         <Card>
                                             <CardHeader className="pb-2">
-                                                <CardTitle className="text-xs">🤝 Cách kết thúc</CardTitle>
+                                                <CardTitle className="text-xs">🤝 {t('chatbot.learning.closingTitle')}</CardTitle>
                                             </CardHeader>
                                             <CardContent>
                                                 <ul className="space-y-1">
@@ -2838,7 +2838,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 {learningData.dealingPatterns?.length > 0 && (
                                     <Card>
                                         <CardHeader className="pb-2">
-                                            <CardTitle className="text-xs flex items-center gap-2">🎯 Cách Deal với Khách</CardTitle>
+                                            <CardTitle className="text-xs flex items-center gap-2">🎯 {t('chatbot.learning.dealingTitle')}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="space-y-2">
@@ -2857,7 +2857,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 {learningData.keyPhrases?.length > 0 && (
                                     <Card>
                                         <CardHeader className="pb-2">
-                                            <CardTitle className="text-xs">💬 Key Phrases — Cụm từ đặc trưng</CardTitle>
+                                            <CardTitle className="text-xs">💬 {t('chatbot.learning.keyPhrasesTitle')}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="flex flex-wrap gap-1.5">
@@ -2873,7 +2873,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 {learningData.customerHandlingTechniques?.length > 0 && (
                                     <Card>
                                         <CardHeader className="pb-2">
-                                            <CardTitle className="text-xs">🛠️ Kỹ thuật xử lý khách hàng</CardTitle>
+                                            <CardTitle className="text-xs">🛠️ {t('chatbot.learning.techniquesTitle')}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <ul className="space-y-1">
@@ -2889,7 +2889,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 {learningData.toneAnalysis && (
                                     <Card>
                                         <CardHeader className="pb-2">
-                                            <CardTitle className="text-xs">🎭 Phân tích Tone & Style</CardTitle>
+                                            <CardTitle className="text-xs">🎭 {t('chatbot.learning.toneTitle')}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="grid grid-cols-2 gap-2">
@@ -2920,13 +2920,14 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 {/* Last analyzed */}
                                 {learningData.lastAnalyzedAt && (
                                     <p className="text-[10px] text-muted-foreground text-right">
-                                        ⏰ Last analyzed: {new Date(learningData.lastAnalyzedAt).toLocaleString()}
+                                        ⏰ {t('chatbot.learning.lastAnalyzed')} {new Date(learningData.lastAnalyzedAt).toLocaleString()}
                                     </p>
                                 )}
                             </div>
                         )}
                     </div>
                 )}
+
 
                 {/* ─── Bottom Save ─────────────────────── */}
                 <div className="flex justify-end pt-2">
