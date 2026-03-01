@@ -4412,51 +4412,56 @@ export default function ComposePage() {
                 <div className="px-4 pt-4 pb-2 shrink-0">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Real-time Preview</p>
                 </div>
-                <div className="flex-1 overflow-y-auto px-2 pb-4 flex flex-col items-center">
-                    {/* Phone frame — always visible */}
-                    <div className="relative mx-auto w-full max-w-[220px]">
+                <div className="flex-1 overflow-y-auto pb-4 flex flex-col px-2">
+                    {/* Platform switcher — OUTSIDE phone, above */}
+                    {uniqueSelectedPlatforms.length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap mb-2 px-1">
+                            {uniqueSelectedPlatforms.map((platform) => {
+                                const isActive = effectivePreviewPlatform === platform
+                                return (
+                                    <button
+                                        key={platform}
+                                        onClick={() => setPreviewPlatform(platform)}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer border ${isActive
+                                            ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
+                                            : 'border-border/50 bg-card text-muted-foreground hover:border-border hover:text-foreground'
+                                            }`}
+                                    >
+                                        <span
+                                            className="flex items-center justify-center h-4 w-4 rounded-full shrink-0"
+                                            style={{ backgroundColor: platformColors[platform] || '#666' }}
+                                        >
+                                            <PlatformIcon platform={platform} size="xs" />
+                                        </span>
+                                        <span className="capitalize">{platformLabels[platform] || platform}</span>
+                                        {uniqueSelectedPlatforms.length > 1 && selectedEntries.filter((e) => e.platform === platform).length > 1 && (
+                                            <span className="ml-0.5 bg-muted text-muted-foreground text-[9px] rounded-full px-1">
+                                                ×{selectedEntries.filter((e) => e.platform === platform).length}
+                                            </span>
+                                        )}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
+
+                    {/* Phone frame — full column width */}
+                    <div className="relative w-full flex-1 min-h-0">
                         {/* Phone shell */}
-                        <div className="relative rounded-[2rem] border-[3px] border-border/80 bg-card shadow-xl overflow-hidden"
-                            style={{ minHeight: '420px' }}>
+                        <div className="relative rounded-[2.5rem] border-[3px] border-border/80 bg-card shadow-xl overflow-hidden w-full h-full" style={{ minHeight: '480px' }}>
                             {/* Notch */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4 bg-border/80 rounded-b-xl z-10" />
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-border/80 rounded-b-2xl z-10" />
                             {/* Status bar */}
-                            <div className="flex items-center justify-between px-4 pt-5 pb-1">
-                                <span className="text-[8px] font-semibold text-muted-foreground">9:41</span>
-                                <div className="flex items-center gap-1">
-                                    <div className="w-3 h-1.5 rounded-[1px] border border-muted-foreground/50">
-                                        <div className="w-2 h-full bg-muted-foreground/60 rounded-[1px]" />
+                            <div className="flex items-center justify-between px-5 pt-6 pb-1">
+                                <span className="text-[9px] font-semibold text-muted-foreground">9:41</span>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3.5 h-2 rounded-[2px] border border-muted-foreground/50">
+                                        <div className="w-2.5 h-full bg-muted-foreground/60 rounded-[1px]" />
                                     </div>
                                 </div>
                             </div>
-                            {/* Screen content */}
-                            <div className="px-1.5 pb-4 flex flex-col gap-1">
-                                {/* Platform pills */}
-                                {uniqueSelectedPlatforms.length > 0 && (
-                                    <div className="flex items-center gap-1 flex-wrap px-1">
-                                        {uniqueSelectedPlatforms.map((platform) => {
-                                            const isActive = effectivePreviewPlatform === platform
-                                            return (
-                                                <button
-                                                    key={platform}
-                                                    onClick={() => setPreviewPlatform(platform)}
-                                                    title={platformLabels[platform] || platform}
-                                                    className={`relative flex items-center justify-center h-6 w-6 rounded-full transition-all cursor-pointer ring-2 ${isActive
-                                                        ? 'ring-offset-1 ring-offset-background shadow scale-110'
-                                                        : 'ring-transparent hover:scale-105'
-                                                        }`}
-                                                    style={{ backgroundColor: platformColors[platform] || '#666', ...(isActive ? { '--tw-ring-color': platformColors[platform] } as React.CSSProperties : {}) }}
-                                                >
-                                                    <PlatformIcon platform={platform} size="xs" />
-                                                </button>
-                                            )
-                                        })}
-                                        {uniqueSelectedPlatforms.length > 1 && (
-                                            <span className="text-[8px] text-muted-foreground">{uniqueSelectedPlatforms.length} platforms</span>
-                                        )}
-                                    </div>
-                                )}
-                                {/* Preview content or Neeflow placeholder */}
+                            {/* Screen content — scrollable inside phone */}
+                            <div className="px-2 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(100% - 48px)' }}>
                                 {(content.trim() || attachedMedia.length > 0) && effectivePreviewPlatform ? (() => {
                                     const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
                                     if (!entry) return null
@@ -4493,30 +4498,31 @@ export default function ComposePage() {
                                         </>
                                     )
                                 })() : (
-                                    /* Neeflow placeholder — always shown when no preview */
-                                    <div className="flex flex-col items-center justify-center py-10 gap-2">
-                                        <div className="w-10 h-10 rounded-2xl bg-primary/15 flex items-center justify-center shadow-inner">
-                                            <span className="text-primary font-bold text-sm">N</span>
+                                    /* Neeflow placeholder */
+                                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                                        <div className="w-14 h-14 rounded-3xl bg-primary/15 flex items-center justify-center shadow-inner">
+                                            <span className="text-primary font-bold text-xl">N</span>
                                         </div>
-                                        <p className="text-xs font-semibold text-foreground/80 tracking-wide">Neeflow</p>
-                                        <p className="text-[9px] text-muted-foreground text-center leading-relaxed px-2">
+                                        <p className="text-sm font-semibold text-foreground/80 tracking-wide">Neeflow</p>
+                                        <p className="text-[10px] text-muted-foreground text-center leading-relaxed px-4">
                                             {selectedEntries.length === 0 ? 'Select a platform to preview' : 'Start typing to preview your post'}
                                         </p>
                                     </div>
                                 )}
                             </div>
                             {/* Home indicator */}
-                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-border/70 rounded-full" />
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-border/70 rounded-full" />
                         </div>
                     </div>
-                    {/* Schedule badge below phone */}
+
+                    {/* Schedule badge — below phone */}
                     {scheduleDate && (
-                        <div className="w-full max-w-[220px] mt-3">
+                        <div className="mt-3 shrink-0">
                             <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 rounded-xl px-3 py-2">
-                                <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <Clock className="h-4 w-4 text-primary shrink-0" />
                                 <div className="min-w-0">
-                                    <p className="text-[10px] font-medium">Scheduled</p>
-                                    <p className="text-[9px] text-muted-foreground truncate">
+                                    <p className="text-xs font-medium">Scheduled</p>
+                                    <p className="text-[10px] text-muted-foreground truncate">
                                         {new Date(`${scheduleDate}T${scheduleTime || '00:00'}`).toLocaleString('vi-VN')}
                                     </p>
                                 </div>
