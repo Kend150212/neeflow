@@ -42,7 +42,8 @@ interface SubRow {
     id: string
     status: string
     billingInterval: string
-    currentPeriodEnd: string
+    currentPeriodEnd: string | null
+    trialEndsAt: string | null
     cancelAtPeriodEnd: boolean
     cancelAt?: string | null
     stripeCustomerId: string | null
@@ -118,7 +119,7 @@ function exportCSV(subs: SubRow[]) {
         s.billingInterval,
         fmtDate(s.user.createdAt),
         fmtDate(s.createdAt),
-        fmtDate(s.user.trialEndsAt),
+        fmtDate(s.trialEndsAt ?? s.user.trialEndsAt),
         fmtDate(s.currentPeriodEnd),
         s.stripeCouponId ?? '',
         s.cancelAtPeriodEnd ? fmtDate(s.currentPeriodEnd) : '',
@@ -297,13 +298,22 @@ function SubDrawer({
                                 </Badge>
                             } />
                             <InfoRow label="Period End" value={fmtDate(sub.currentPeriodEnd)} />
-                            {sub.user.trialEndsAt && (
-                                <InfoRow label="Trial Ends" value={
-                                    <span className={new Date(sub.user.trialEndsAt) > new Date() ? 'text-blue-400' : 'text-zinc-400'}>
-                                        {fmtDate(sub.user.trialEndsAt)}
-                                    </span>
-                                } />
-                            )}
+                            {(sub.trialEndsAt ?? sub.user.trialEndsAt) && (() => {
+                                const te = sub.trialEndsAt ?? sub.user.trialEndsAt!
+                                const daysLeft = Math.max(0, Math.ceil((new Date(te).getTime() - Date.now()) / 86400000))
+                                const active = new Date(te) > new Date()
+                                return (
+                                    <InfoRow label="Trial Ends" value={
+                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium border ${active
+                                            ? daysLeft <= 3 ? 'text-red-400 bg-red-500/10 border-red-500/25' : 'text-blue-400 bg-blue-500/10 border-blue-500/25'
+                                            : 'text-zinc-400 border-zinc-500/20'
+                                            }`}>
+                                            <Clock className="h-3 w-3" />
+                                            {active ? `${daysLeft}d remaining · ${fmtDate(te)}` : `Expired · ${fmtDate(te)}`}
+                                        </span>
+                                    } />
+                                )
+                            })()}
                             {sub.cancelAtPeriodEnd && (
                                 <InfoRow label="Cancels On" value={<span className="text-red-400">{fmtDate(sub.currentPeriodEnd)}</span>} />
                             )}
@@ -427,11 +437,16 @@ function SubDrawer({
                                         {grantingTrial ? '...' : 'Grant'}
                                     </Button>
                                 </div>
-                                {sub.user.trialEndsAt && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Current trial: <span className={new Date(sub.user.trialEndsAt) > new Date() ? 'text-blue-400' : 'text-zinc-400'}>{fmtDate(sub.user.trialEndsAt)}</span>
-                                    </p>
-                                )}
+                                {(sub.trialEndsAt ?? sub.user.trialEndsAt) && (() => {
+                                    const te = (sub.trialEndsAt ?? sub.user.trialEndsAt)!
+                                    const daysLeft = Math.max(0, Math.ceil((new Date(te).getTime() - Date.now()) / 86400000))
+                                    const active = new Date(te) > new Date()
+                                    return (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Current trial: <span className={active ? 'text-blue-400' : 'text-zinc-400'}>{fmtDate(te)}{active ? ` · ${daysLeft}d left` : ' · Expired'}</span>
+                                        </p>
+                                    )
+                                })()}
                             </ActionSection>
 
                             {/* Pause / Resume */}
@@ -1071,11 +1086,23 @@ export default function AdminBillingPage() {
                                                 {fmtDate(sub.createdAt)}
                                             </TableCell>
                                             <TableCell className="text-xs whitespace-nowrap">
-                                                {sub.user.trialEndsAt ? (
-                                                    <span className={new Date(sub.user.trialEndsAt) > new Date() ? 'text-blue-400' : 'text-zinc-400'}>
-                                                        {fmtDate(sub.user.trialEndsAt)}
-                                                    </span>
-                                                ) : <span className="text-muted-foreground">—</span>}
+                                                {(() => {
+                                                    const te = sub.trialEndsAt ?? sub.user.trialEndsAt
+                                                    if (!te) return <span className="text-muted-foreground">—</span>
+                                                    const daysLeft = Math.max(0, Math.ceil((new Date(te).getTime() - Date.now()) / 86400000))
+                                                    const active = new Date(te) > new Date()
+                                                    return (
+                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium border ${active
+                                                            ? daysLeft <= 3 ? 'text-red-400 bg-red-500/10 border-red-500/25'
+                                                                : daysLeft <= 7 ? 'text-amber-400 bg-amber-500/10 border-amber-500/25'
+                                                                    : 'text-blue-400 bg-blue-500/10 border-blue-500/25'
+                                                            : 'text-zinc-400 border-zinc-500/20'
+                                                            }`}>
+                                                            <Zap className="h-3 w-3" />
+                                                            {active ? `${daysLeft}d left` : 'Expired'}
+                                                        </span>
+                                                    )
+                                                })()}
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                                                 {fmtDate(sub.currentPeriodEnd)}

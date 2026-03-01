@@ -49,9 +49,26 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
     })
 
+    // Fix: correct epoch-0 currentPeriodEnd and expose sub.trialEndsAt
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subsFixed = subs.map((s: any) => {
+        const rawEnd = s.currentPeriodEnd
+        // Use sub.trialEndsAt (from Stripe) first, then user.trialEndsAt as effective trial date
+        const effectiveTrialEnd = s.trialEndsAt ?? s.user.trialEndsAt ?? null
+        const effectivePeriodEnd = (!rawEnd || new Date(rawEnd).getTime() <= 0)
+            ? effectiveTrialEnd
+            : rawEnd
+        return {
+            ...s,
+            currentPeriodEnd: effectivePeriodEnd,
+            // Expose unified trial end for UI
+            trialEndsAt: effectiveTrialEnd,
+        }
+    })
+
     // Reporting subs = exclude internal/test accounts
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const reportingSubs = subs.filter((s: any) => !s.isInternal)
+    const reportingSubs = subsFixed.filter((s: any) => !s.isInternal)
 
     // ─── MRR History (last 6 months) — reporting only ────────────────────────
     const now = new Date()
@@ -91,19 +108,36 @@ export async function GET() {
     }, 0)
 
     // ─── Trial Stats — reporting only ────────────────────────────────────────
+    // A "trial" account is one that has trialEndsAt set (from Stripe trial_end or user.trialEndsAt)
     const now2 = new Date()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allWithTrial = reportingSubs.filter((s: any) => s.user.trialEndsAt)
+    const allWithTrial = reportingSubs.filter((s: any) => s.trialEndsAt)
+
+    // Active trial: trialEndsAt still in the future AND status is trialing or active-with-trial
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const activeTrial = allWithTrial.filter((s: any) =>
-        s.user.trialEndsAt && new Date(s.user.trialEndsAt) > now2 && s.status === 'trialing'
-    )
+    const activeTrial = allWithTrial.filter((s: any) => {
+        const trialEnd = s.trialEndsAt ? new Date(s.trialEndsAt) : null
+        if (!trialEnd) return false
+        const trialStillActive = trialEnd > now2
+        return trialStillActive && (s.status === 'trialing' || s.status === 'active')
+    })
+
+    // Expired trial: trialEndsAt is in the past AND never converted
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const expiredTrial = allWithTrial.filter((s: any) =>
-        s.user.trialEndsAt && new Date(s.user.trialEndsAt) <= now2 && s.status !== 'active'
-    )
+    const expiredTrial = allWithTrial.filter((s: any) => {
+        const trialEnd = s.trialEndsAt ? new Date(s.trialEndsAt) : null
+        if (!trialEnd) return false
+        return trialEnd <= now2 && s.status !== 'active'
+    })
+
+    // Converted: had trial AND now active (and trial has ended or is still pending charge)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const converted = allWithTrial.filter((s: any) => s.status === 'active')
+    const converted = allWithTrial.filter((s: any) => {
+        const trialEnd = s.trialEndsAt ? new Date(s.trialEndsAt) : null
+        if (!trialEnd) return false
+        return s.status === 'active' && trialEnd <= now2
+    })
+
     const total = allWithTrial.length
     const conversionRate = total > 0 ? Math.round((converted.length / total) * 100) : 0
 
@@ -112,7 +146,7 @@ export async function GET() {
     const internalCount = subs.filter((s: any) => s.isInternal).length
 
     return NextResponse.json({
-        subs,
+        subs: subsFixed,
         mrrHistory,
         planBreakdown,
         currentMrr: Math.round(currentMrr),
