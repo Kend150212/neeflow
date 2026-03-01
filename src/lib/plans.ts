@@ -68,9 +68,20 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
     const daysLeftInTrial = getDaysLeftInTrial(trialEndsAt)
     const isInTrial = daysLeftInTrial > 0
 
-    // ── Active paid subscription ─────────────────────────────────────────────
+    // ── Active paid subscription or Stripe-managed trial ──────────────────────
     if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
         const p = sub.plan
+        const isStripeTrial = sub.status === 'trialing'
+
+        // Bug fix: during trial, Stripe may set current_period_end = 0 (epoch).
+        // Use trial_end (stored as trialEndsAt) as the effective period end instead.
+        const effectivePeriodEnd = (() => {
+            if (!sub.currentPeriodEnd) return sub.trialEndsAt ?? null
+            const ts = new Date(sub.currentPeriodEnd).getTime()
+            if (ts <= 0) return sub.trialEndsAt ?? null
+            return sub.currentPeriodEnd
+        })()
+
         return {
             planName: p.name,
             planNameVi: p.nameVi,
@@ -78,7 +89,7 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             priceAnnual: p.priceAnnual,
             billingInterval: sub.billingInterval,
             status: sub.status,
-            currentPeriodEnd: sub.currentPeriodEnd,
+            currentPeriodEnd: effectivePeriodEnd,
             cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
             maxChannels: p.maxChannels,
             maxPostsPerMonth: p.maxPostsPerMonth,
@@ -94,9 +105,11 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             hasWhiteLabel: p.hasWhiteLabel,
             hasSmartFlow: (p as any).hasSmartFlow ?? false,
             maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
-            isInTrial: false,
-            trialEndsAt,
-            daysLeftInTrial: 0,
+            isInTrial: isStripeTrial || daysLeftInTrial > 0,
+            trialEndsAt: sub.trialEndsAt ?? trialEndsAt,
+            daysLeftInTrial: isStripeTrial
+                ? getDaysLeftInTrial(sub.trialEndsAt ?? trialEndsAt)
+                : 0,
         }
     }
 

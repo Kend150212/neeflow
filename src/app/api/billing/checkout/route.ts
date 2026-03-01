@@ -137,6 +137,8 @@ export async function POST(req: NextRequest) {
             },
             ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
         },
+        // Always collect payment method so card is saved even during free trial
+        payment_method_collection: 'always',
     })
 
     return NextResponse.json({ url: checkoutSession.url })

@@ -234,8 +234,10 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stripeSub = await stripe.subscriptions.retrieve(stripeSubId) as any
-    const periodEnd = stripeSub.current_period_end ?? 0
+    const rawPeriodEnd = stripeSub.current_period_end ?? 0
     const trialEnd = stripeSub.trial_end ?? null
+    // Bug fix: Stripe often sets current_period_end = 0 during trial — use trial_end instead
+    const periodEnd = (rawPeriodEnd <= 0 && trialEnd) ? trialEnd : rawPeriodEnd
     const couponId = (stripeSub.discounts as Array<{ coupon?: { id?: string } }>)?.[0]?.coupon?.id ?? null
     const trialDays = trialEnd ? Math.ceil((trialEnd * 1000 - Date.now()) / 86400000) : 0
 
@@ -391,8 +393,10 @@ async function onSubscriptionUpdated(stripeSub: any) {
         }
     }
 
-    const periodEnd = stripeSub.current_period_end ?? 0
+    const rawPeriodEnd = stripeSub.current_period_end ?? 0
     const trialEnd = stripeSub.trial_end ?? null
+    // Bug fix: Stripe often sets current_period_end = 0 during trial — use trial_end instead
+    const periodEnd = (rawPeriodEnd <= 0 && trialEnd) ? trialEnd : rawPeriodEnd
     const couponId = (stripeSub.discounts as Array<{ coupon?: { id?: string } }>)?.[0]?.coupon?.id ?? null
 
     await db.subscription.updateMany({
