@@ -1196,6 +1196,8 @@ export default function ChannelDetailPage({
         )
         // Update state once
         setPlatforms(prev => prev.map(p => ({ ...p, isActive: active })))
+        // When disabling all, always show the list so user can see (and re-enable) accounts
+        if (!active) setHideDisabled(false)
     }
 
     // ─── Loading state ──────────────────────────────
