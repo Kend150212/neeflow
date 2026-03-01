@@ -179,6 +179,24 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [learningLoading, setLearningLoading] = useState(false)
     const [learningFetched, setLearningFetched] = useState(false)
 
+    // Normalize AI-returned learning data to safe types (AI can return strings instead of arrays)
+    const normalizeLearningData = (raw: any) => {
+        if (!raw || typeof raw !== 'object') return {}
+        const toArr = (v: any): string[] => Array.isArray(v) ? v : (typeof v === 'string' && v ? [v] : [])
+        const tone = raw.toneAnalysis && typeof raw.toneAnalysis === 'object' ? raw.toneAnalysis : {}
+        return {
+            ...raw,
+            vocabulary: toArr(raw.vocabulary),
+            slangAndAbbreviations: toArr(raw.slangAndAbbreviations),
+            greetingStyles: toArr(raw.greetingStyles),
+            closingStyles: toArr(raw.closingStyles),
+            keyPhrases: toArr(raw.keyPhrases),
+            customerHandlingTechniques: toArr(raw.customerHandlingTechniques),
+            dealingPatterns: Array.isArray(raw.dealingPatterns) ? raw.dealingPatterns : [],
+            toneAnalysis: tone ? { ...tone, languages: toArr(tone.languages) } : undefined,
+        }
+    }
+
     // Per-page bot toggle
     const [pageAccounts, setPageAccounts] = useState<{ id: string; accountName: string; platform: string; botEnabled: boolean }[]>([])
     const [pagesExpanded, setPagesExpanded] = useState(false)
@@ -2593,7 +2611,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                 const res = await fetch(`/api/admin/channels/${channelId}/bot-config/learn`, { method: 'POST' })
                                                 const data = await res.json()
                                                 if (data.agentLearning) {
-                                                    setLearningData(data.agentLearning)
+                                                    setLearningData(normalizeLearningData(data.agentLearning))
                                                     toast.success(data.message || 'Learning complete!')
                                                 } else {
                                                     toast.error(data.error || 'Learning failed')
@@ -2613,7 +2631,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                     const res = await fetch(`/api/admin/channels/${channelId}/bot-config/learn`)
                                                     const data = await res.json()
                                                     if (data.agentLearning && Object.keys(data.agentLearning).length > 0) {
-                                                        setLearningData(data.agentLearning)
+                                                        setLearningData(normalizeLearningData(data.agentLearning))
                                                     }
                                                     setLearningFetched(true)
                                                 } catch { /* ignore */ }
