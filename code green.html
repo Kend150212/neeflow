@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#19e65e",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#000000",
+                        "surface-dark": "#0d0d0d"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }</script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-gradient {
+            background: linear-gradient(180deg, rgba(25, 230, 94, 0.15) 0%, rgba(25, 230, 94, 0) 100%);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-300">
+<div class="flex h-screen overflow-hidden">
+<!-- Left Sidebar -->
+<aside class="w-64 flex-shrink-0 border-r border-white/5 bg-background-light flex flex-col dark:bg-[#0d0d0d]">
+<div class="p-6 flex items-center gap-3">
+<div class="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-background-dark font-bold">bubble_chart</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight">Neeflow</h1>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-sm font-medium">Calendar</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">
+<span class="material-symbols-outlined">memory</span>
+<span class="text-sm font-medium">AI Studio</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-sm font-medium">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200/10">
+<div class="flex items-center gap-3 px-3 py-2">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-slate-800" data-alt="Profile picture of Alex Rivers">
+<img alt="Alex Rivers" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAo0t1M0jq5nbNytDe85onjB_qJ-bgpvP74V2YlItuZT3eMNonXQaczQAuqMZw7c9pNCo7dyFjrH8HBS8AHKFJX6mo1L8268nIU8NnuqVQuMMnMwhmf2gmCg8QXmD5qTAQ-9BKmjtIqrK0sEcznsPJIBwM7PbjvmKN9FyPWVOPhvbxqJKC9OXdeC6wKtVVF_q9gIp5LIg0uqZeTWy540q0ail2ubcebHO3JjCGsgVR1wW5W7fMtCnAkjyjndMQn0lS6-G1lcZduyXg"/>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold">Alex Rivers</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">Enterprise</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- Top Bar -->
+<header class="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-background-light backdrop-blur-md dark:bg-[#0d0d0d]/80">
+<div class="max-w-md w-full">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+<input class="w-full bg-slate-100 dark:bg-[#1a1a1a] border-none rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary/50 placeholder:text-slate-500" placeholder="Search insights, metrics, or tools..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<button class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full ring-2 ring-background-dark"></span>
+</button>
+</div>
+</header>
+<!-- Dashboard Content -->
+<main class="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50/50 dark:bg-black">
+<!-- Header Section -->
+<div class="flex flex-col gap-1">
+<h2 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Fluid Engagement</h2>
+<p class="text-slate-500 dark:text-slate-400">Welcome back, Alex. Here is your performance overview for the week.</p>
+</div>
+<!-- Performance Card -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="lg:col-span-3 bg-white border border-slate-200 dark:border-white/5 rounded-xl p-8 overflow-hidden relative dark:bg-[#0d0d0d]">
+<div class="flex justify-between items-start relative z-10">
+<div class="space-y-1">
+<p class="text-sm font-medium text-slate-500 dark:text-slate-400">Overall Performance</p>
+<div class="flex items-baseline gap-4">
+<h3 class="text-5xl font-bold dark:text-white">94.2%</h3>
+<span class="flex items-center text-primary font-bold text-sm bg-primary/10 px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-sm mr-0.5">trending_up</span>
+                                        +5.4%
+                                    </span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 text-xs font-bold rounded-lg bg-primary text-background-dark">WEEKLY</button>
+<button class="px-3 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 hover:bg-primary/20 hover:text-primary transition-colors">MONTHLY</button>
+</div>
+</div>
+<!-- Chart Area -->
+<div class="mt-8 h-48 w-full relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 200">
+<defs>
+<lineargradient id="chartGradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#19e65e" stop-opacity="0.25"></stop>
+<stop offset="100%" stop-color="#19e65e" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 C100,120 200,180 300,100 C400,20 500,80 600,40 C700,0 800,120 900,20 C1000,-40 1000,200 0,200 Z" fill="url(#chartGradient)"></path>
+<path d="M0,150 C100,120 200,180 300,100 C400,20 500,80 600,40 C700,0 800,120 900,20" fill="none" stroke="#19e65e" stroke-linecap="round" stroke-width="4"></path>
+</svg>
+<div class="absolute bottom-0 left-0 right-0 flex justify-between px-2 text-[10px] font-bold text-slate-500 tracking-widest uppercase">
+<span>Mon</span>
+<span>Tue</span>
+<span>Wed</span>
+<span>Thu</span>
+<span>Fri</span>
+<span>Sat</span>
+<span>Sun</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Content Metrics Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Metric Card 1 -->
+<div class="bg-white border border-slate-200 dark:border-white/10 rounded-xl p-6 flex flex-col gap-4 dark:bg-[#0d0d0d]">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined p-2 rounded-lg bg-primary/10 text-primary">eco</span>
+<span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Eco-Awareness</span>
+</div>
+<div class="space-y-2">
+<div class="flex items-end justify-between">
+<span class="text-3xl font-bold dark:text-white">88%</span>
+<span class="text-xs text-slate-400">+2.1% from last month</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 88%"></div>
+</div>
+</div>
+</div>
+<!-- Metric Card 2 -->
+<div class="bg-white border border-slate-200 dark:border-white/10 rounded-xl p-6 flex flex-col gap-4 dark:bg-[#0d0d0d]">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined p-2 rounded-lg bg-primary/10 text-primary">speed</span>
+<span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Product Flow</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-bold dark:text-white">1.4k</span>
+<span class="text-primary text-xs font-bold">Velocity ++</span>
+</div>
+<p class="text-slate-400 text-sm leading-relaxed">System performance is exceeding predicted capacity by 12%.</p>
+</div>
+</div>
+<!-- Metric Card 3 -->
+<div class="bg-white border border-slate-200 dark:border-white/10 rounded-xl p-6 flex flex-col gap-4 dark:bg-[#0d0d0d]">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined p-2 rounded-lg bg-primary/10 text-primary">verified_user</span>
+<span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Brand Audit</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center gap-2">
+<span class="text-3xl font-bold dark:text-white">9.8</span>
+<div class="flex text-primary">
+<span class="material-symbols-outlined text-lg fill-1">star</span>
+<span class="material-symbols-outlined text-lg fill-1">star</span>
+<span class="material-symbols-outlined text-lg fill-1">star</span>
+<span class="material-symbols-outlined text-lg fill-1">star</span>
+<span class="material-symbols-outlined text-lg fill-1">star</span>
+</div>
+</div>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold">STABLE</span>
+<span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-400 text-[10px] font-bold">VERIFIED</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

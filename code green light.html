@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#19e65e",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#112116",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 border-r border-primary/10 bg-white dark:bg-background-dark flex flex-col">
+<div class="p-6 flex items-center gap-3">
+<div class="bg-primary size-10 rounded flex items-center justify-center text-white">
+<span class="material-symbols-outlined">eco</span>
+</div>
+<div>
+<h1 class="text-lg font-bold leading-none">Neeflow</h1>
+<p class="text-xs text-primary font-medium uppercase tracking-wider">Management Suite</p>
+</div>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded bg-primary/10 text-primary font-semibold" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-slate-600 dark:text-slate-400 hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span>Calendar</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-slate-600 dark:text-slate-400 hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">memory</span>
+<span>AI Studio</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-slate-600 dark:text-slate-400 hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span>Analytics</span>
+</a>
+</nav>
+<div class="p-4 border-t border-primary/10">
+<a class="flex items-center gap-3 px-4 py-3 rounded text-slate-600 dark:text-slate-400 hover:bg-primary/5 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark flex flex-col">
+<!-- Header -->
+<header class="sticky top-0 z-10 flex items-center justify-between px-8 py-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-primary/10">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="w-full bg-primary/5 border-none rounded-full pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary/20 text-sm" placeholder="Search analytics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="size-10 rounded-full bg-primary/5 flex items-center justify-center text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="size-10 rounded-full bg-primary/5 flex items-center justify-center text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-8 w-px bg-primary/10 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-semibold">Alex Rivers</p>
+<p class="text-xs text-slate-500">Admin Account</p>
+</div>
+<div class="size-10 rounded-full bg-primary/20 bg-cover bg-center" data-alt="User profile avatar portrait" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAL_kBSnixt7fV_Su-tv4_BMum4_kibmYFhVnV9HG8lZ2ezgJnqirY7YenKebvlYksA2qGcRxdNBOMdfdXlFOyrmmg01U6BofzevWyvMh4L14PWBhnG9v9wzpiE2CFo2p76xncOzNjRr3m6xiSosNxvtWLmM7q-i2OY-VLtHEgxmuDUclVlQwQ6TWilti8c8eAck00YvZsOt7xKWWdqcP1GQHMTpWVoVkiRhRVatf_hcO2nI4paY4jqjdEvoJdD3cUZ6XLnaTpvMgs')"></div>
+</div>
+</div>
+</header>
+<div class="p-8 max-w-7xl mx-auto w-full space-y-8">
+<!-- Welcome Section -->
+<div>
+<h2 class="text-4xl font-black tracking-tight text-slate-900 dark:text-white">Fluid Engagement</h2>
+<p class="text-slate-500 mt-1">Welcome back to your Neeflow dashboard. Here's what's happening today.</p>
+</div>
+<!-- Performance Card -->
+<div class="bg-white dark:bg-slate-900/50 rounded-lg border border-primary/10 p-8">
+<div class="flex flex-wrap justify-between items-start gap-4 mb-8">
+<div>
+<p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Overall Performance</p>
+<div class="flex items-baseline gap-3 mt-1">
+<h3 class="text-5xl font-black text-slate-900 dark:text-white">94.2%</h3>
+<span class="px-2 py-1 bg-primary/10 text-primary text-sm font-bold rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                                    5.4%
+                                </span>
+</div>
+</div>
+<div class="flex gap-2 bg-primary/5 p-1 rounded-lg">
+<button class="px-4 py-2 text-sm font-medium rounded bg-white dark:bg-slate-800 shadow-sm">Daily</button>
+<button class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700">Weekly</button>
+<button class="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700">Monthly</button>
+</div>
+</div>
+<!-- Chart Placeholder -->
+<div class="w-full h-72 relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 300">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#19e65e" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#19e65e" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,220 Q100,200 200,240 T400,180 T600,210 T800,120 T1000,150 V300 H0 Z" fill="url(#chartGradient)"></path>
+<path d="M0,220 Q100,200 200,240 T400,180 T600,210 T800,120 T1000,150" fill="none" stroke="#19e65e" stroke-linecap="round" stroke-width="4"></path>
+</svg>
+<div class="absolute bottom-0 left-0 right-0 flex justify-between px-2 pt-4 border-t border-primary/5 text-xs font-bold text-slate-400 uppercase tracking-widest">
+<span>Mon</span>
+<span>Tue</span>
+<span>Wed</span>
+<span>Thu</span>
+<span>Fri</span>
+<span>Sat</span>
+<span>Sun</span>
+</div>
+</div>
+</div>
+<!-- Content Metrics Grid -->
+<div>
+<h4 class="text-xl font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+                        Content Metrics
+                    </h4>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-lg border border-primary/10">
+<div class="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+<span class="material-symbols-outlined">public</span>
+</div>
+<h5 class="text-lg font-bold mb-1">Eco-Awareness</h5>
+<p class="text-slate-500 text-sm mb-4">Engagement across sustainable channels</p>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-black">88%</span>
+<div class="w-24 bg-primary/10 h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 88%"></div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-lg border border-primary/10">
+<div class="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+<span class="material-symbols-outlined">sync_alt</span>
+</div>
+<h5 class="text-lg font-bold mb-1">Product Flow</h5>
+<p class="text-slate-500 text-sm mb-4">Velocity of items in the pipeline</p>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-black">1.4k</span>
+<div class="flex gap-1 items-center text-primary font-bold text-sm">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                                    12%
+                                </div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-lg border border-primary/10">
+<div class="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<h5 class="text-lg font-bold mb-1">Brand Audit</h5>
+<p class="text-slate-500 text-sm mb-4">Internal quality score assessment</p>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-black">9.8</span>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-primary text-sm">star</span>
+<span class="material-symbols-outlined text-primary text-sm">star</span>
+<span class="material-symbols-outlined text-primary text-sm">star</span>
+<span class="material-symbols-outlined text-primary text-sm">star</span>
+<span class="material-symbols-outlined text-primary text-sm">star_half</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity Table -->
+<div class="bg-white dark:bg-slate-900/50 rounded-lg border border-primary/10 overflow-hidden">
+<div class="px-6 py-4 border-b border-primary/10 flex items-center justify-between">
+<h4 class="font-bold">Recent Engagement Logs</h4>
+<button class="text-primary text-sm font-bold hover:underline">View All</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-primary/5 text-slate-500 text-xs uppercase tracking-widest">
+<th class="px-6 py-3 font-bold">Campaign</th>
+<th class="px-6 py-3 font-bold">Category</th>
+<th class="px-6 py-3 font-bold">Status</th>
+<th class="px-6 py-3 font-bold">Date</th>
+<th class="px-6 py-3 font-bold text-right">Impact</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-primary/5">
+<tr class="hover:bg-primary/5 transition-colors">
+<td class="px-6 py-4 font-semibold text-sm">Green Energy Initiative</td>
+<td class="px-6 py-4 text-sm text-slate-500">Eco-Awareness</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-primary/20 text-primary text-xs font-bold rounded-full">Active</span>
+</td>
+<td class="px-6 py-4 text-sm text-slate-500">Oct 24, 2023</td>
+<td class="px-6 py-4 text-right font-bold text-sm">+4.2k</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors">
+<td class="px-6 py-4 font-semibold text-sm">Logistics Optimization</td>
+<td class="px-6 py-4 text-sm text-slate-500">Product Flow</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-full">Pending</span>
+</td>
+<td class="px-6 py-4 text-sm text-slate-500">Oct 22, 2023</td>
+<td class="px-6 py-4 text-right font-bold text-sm">+1.1k</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors">
+<td class="px-6 py-4 font-semibold text-sm">Q4 Quality Review</td>
+<td class="px-6 py-4 text-sm text-slate-500">Brand Audit</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-primary/20 text-primary text-xs font-bold rounded-full">Complete</span>
+</td>
+<td class="px-6 py-4 text-sm text-slate-500">Oct 20, 2023</td>
+<td class="px-6 py-4 text-right font-bold text-sm">+0.8k</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="p-8 border-t border-primary/10 text-center text-sm text-slate-500">
+                © 2024 Neeflow Management Suite. All rights reserved. Professional Grade Analytics.
+            </footer>
+</main>
+</div>
+</body></html>
