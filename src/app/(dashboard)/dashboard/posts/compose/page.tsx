@@ -946,12 +946,20 @@ export default function ComposePage() {
                     const isPlan = parts[0] === 'plan'
                     const providerName = parts.length > 1 ? parts.slice(1).join(':') : parts[0]
                     if (isPlan) {
-                        // Plan: use admin-configured allowed models directly — do NOT use user's API key
-                        // planAllowedModels state may not be set yet (same tick), so use closure value
-                        const allowed = (allowedMap || {})[providerName] || []
-                        setAvailableImageModels(
-                            allowed.map(id => ({ id, name: MODEL_DISPLAY_NAMES[id] || id, type: 'image' as const }))
-                        )
+                        // Plan: fetch models from platform API Hub key (server handles whitelist + key)
+                        setLoadingImageModels(true)
+                        fetch('/api/admin/posts/plan-models', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ provider: providerName }),
+                        }).then(r => r.json()).then(d => {
+                            const models = (d.models || []).map((m: { id: string; name?: string }) => ({
+                                id: m.id,
+                                name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id,
+                                type: 'image' as const,
+                            }))
+                            setAvailableImageModels(models)
+                        }).catch(() => { }).finally(() => setLoadingImageModels(false))
                     } else {
                         setLoadingImageModels(true)
                         fetch('/api/user/api-keys/models', {
@@ -4557,12 +4565,21 @@ export default function ComposePage() {
                                             const providerName = rest.join(':')
                                             if (providerName) {
                                                 if (source === 'plan') {
-                                                    // Plan: show only admin-approved models using planAllowedModels
-                                                    // Do NOT call /api/user/api-keys/models — that uses user's own key
-                                                    const allowed = planAllowedModels[providerName] || []
-                                                    setAvailableImageModels(
-                                                        allowed.map(id => ({ id, name: MODEL_DISPLAY_NAMES[id] || id, type: 'image' as const }))
-                                                    )
+                                                    // Plan: fetch models from platform API Hub key
+                                                    // Server handles whitelist filtering + uses platform key (not user's)
+                                                    setLoadingImageModels(true)
+                                                    fetch('/api/admin/posts/plan-models', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ provider: providerName }),
+                                                    }).then(r => r.json()).then(d => {
+                                                        const models = (d.models || []).map((m: { id: string; name?: string }) => ({
+                                                            id: m.id,
+                                                            name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id,
+                                                            type: 'image' as const,
+                                                        }))
+                                                        setAvailableImageModels(models)
+                                                    }).catch(() => { }).finally(() => setLoadingImageModels(false))
                                                 } else {
                                                     setLoadingImageModels(true)
                                                     fetch('/api/user/api-keys/models', {
