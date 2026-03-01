@@ -58,65 +58,29 @@ async function publishToFacebook(
         if (!videoId) throw new Error('Facebook Reel start did not return video_id')
         console.log(`[Facebook] Reel start: video_id=${videoId}`)
 
-        // Phase 2: Upload by URL — Facebook pulls the video directly from R2 CDN
-        const uploadUrl = startData.upload_url
-        if (uploadUrl) {
-            // Use the rupload URL if provided, but send the source URL as a parameter
-            console.log(`[Facebook] Reel: uploading via file_url (Facebook fetches from R2 directly)...`)
-            const uploadRes = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `OAuth ${accessToken}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ file_url: videoMedia.url }),
-            })
-            if (!uploadRes.ok) {
-                const errText = await uploadRes.text().catch(() => '')
-                console.warn(`[Facebook] Reel URL upload failed (${uploadRes.status}), falling back to binary upload: ${errText.slice(0, 200)}`)
-                // Fallback: binary upload
-                console.log(`[Facebook] Reel: downloading video for binary upload...`)
-                const videoRes = await fetch(videoMedia.url)
-                if (!videoRes.ok) throw new Error(`Failed to download video for Facebook Reel: ${videoRes.statusText}`)
-                const videoBuffer = await videoRes.arrayBuffer()
-                const fileSize = videoBuffer.byteLength
-                console.log(`[Facebook] Reel: uploading ${(fileSize / 1024 / 1024).toFixed(1)}MB binary...`)
-                const binaryRes = await fetch(`https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `OAuth ${accessToken}`,
-                        'offset': '0',
-                        'file_size': String(fileSize),
-                        'Content-Type': 'application/octet-stream',
-                    },
-                    body: videoBuffer,
-                })
-                if (!binaryRes.ok) throw new Error(`Facebook Reel binary upload failed: ${binaryRes.status}`)
-                console.log(`[Facebook] Reel: binary upload complete (fallback)`)
-            } else {
-                console.log(`[Facebook] Reel: URL upload accepted`)
-            }
-        } else {
-            // No upload_url in response — fallback to binary upload via rupload
-            console.log(`[Facebook] Reel: no upload_url in response, using binary upload...`)
-            const videoRes = await fetch(videoMedia.url)
-            if (!videoRes.ok) throw new Error(`Failed to download video for Facebook Reel: ${videoRes.statusText}`)
-            const videoBuffer = await videoRes.arrayBuffer()
-            const fileSize = videoBuffer.byteLength
-            console.log(`[Facebook] Reel: uploading ${(fileSize / 1024 / 1024).toFixed(1)}MB to rupload.facebook.com...`)
-            const binaryRes = await fetch(`https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `OAuth ${accessToken}`,
-                    'offset': '0',
-                    'file_size': String(fileSize),
-                    'Content-Type': 'application/octet-stream',
-                },
-                body: videoBuffer,
-            })
-            if (!binaryRes.ok) throw new Error(`Facebook Reel binary upload failed: ${binaryRes.status}`)
-            console.log(`[Facebook] Reel: binary upload complete`)
+        // Phase 2: Download video and binary upload to rupload.facebook.com
+        console.log(`[Facebook] Reel: downloading video from R2...`)
+        const videoRes = await fetch(videoMedia.url)
+        if (!videoRes.ok) throw new Error(`Failed to download video for Facebook Reel: ${videoRes.statusText}`)
+        const videoBuffer = await videoRes.arrayBuffer()
+        const fileSize = videoBuffer.byteLength
+        console.log(`[Facebook] Reel: uploading ${(fileSize / 1024 / 1024).toFixed(1)}MB to rupload.facebook.com...`)
+        const binaryRes = await fetch(`https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `OAuth ${accessToken}`,
+                'offset': '0',
+                'file_size': String(fileSize),
+                'Content-Type': 'application/octet-stream',
+            },
+            body: videoBuffer,
+        })
+        if (!binaryRes.ok) {
+            const errText = await binaryRes.text().catch(() => '')
+            throw new Error(`Facebook Reel video upload failed: ${binaryRes.status} ${errText.slice(0, 200)}`)
         }
+        console.log(`[Facebook] Reel: binary upload complete`)
+
 
         // Phase 3: FINISH — publish
         const finishRes = await fetch(reelUrl, {
