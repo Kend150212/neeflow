@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// GET /api/admin/content-pipeline — List content jobs with filtering
+// GET /api/admin/content-pipeline — List content jobs scoped to the current user's channels
 export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const userId = session.user.id
+    const isAdmin = (session.user as { role?: string }).role === 'admin'
 
     const status = req.nextUrl.searchParams.get('status')
     const channelId = req.nextUrl.searchParams.get('channelId')
@@ -14,9 +17,27 @@ export async function GET(req: NextRequest) {
     const page = parseInt(req.nextUrl.searchParams.get('page') || '1')
     const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20')
 
-    const where: Record<string, unknown> = {}
+    // ─── DATA ISOLATION ──────────────────────────────────────────────────────
+    // Channel model has no direct userId — ownership is tracked via ChannelMember.
+    // Always filter by the current user's channels unless a super-admin override is passed.
+    const channelFilter = isAdmin && req.nextUrl.searchParams.get('adminOverride')
+        ? {} // Super-admin viewing global data via explicit override
+        : { members: { some: { userId } } }  // Normal user: only their channels
+
+    const where: Record<string, unknown> = {
+        channel: channelFilter,
+    }
     if (status) where.status = status
-    if (channelId) where.channelId = channelId
+
+    if (channelId) {
+        // When filtering by a specific channel, verify user is a member
+        where.channelId = channelId
+        if (!isAdmin) {
+            // Re-apply membership check combined with specific channel
+            where.channel = { id: channelId, members: { some: { userId } } }
+        }
+    }
+
     if (from || to) {
         const dateFilter: Record<string, unknown> = {}
         if (from) dateFilter.gte = new Date(from)
@@ -57,29 +78,29 @@ export async function GET(req: NextRequest) {
         prisma.contentJob.count({ where }),
     ])
 
-    // Get overall stats
+    // Stats scoped to the same channel filter
     const stats = await prisma.contentJob.groupBy({
         by: ['status'],
         _count: { id: true },
-        ...(channelId ? { where: { channelId } } : {}),
+        where: {
+            channel: channelFilter,
+            ...(channelId ? { channelId } : {}),
+        },
     })
 
     const statsMap: Record<string, number> = {}
     stats.forEach(s => { statsMap[s.status] = s._count.id })
 
-    return NextResponse.json({
-        jobs,
-        total,
-        page,
-        limit,
-        stats: statsMap,
-    })
+    return NextResponse.json({ jobs, total, page, limit, stats: statsMap })
 }
 
-// POST /api/admin/content-pipeline — Actions: retry, cancel
+// POST /api/admin/content-pipeline — Actions: retry, cancel, approve, reject
 export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const userId = session.user.id
+    const isAdmin = (session.user as { role?: string }).role === 'admin'
 
     const body = await req.json()
     const { action, jobId, jobIds, postId, platformStatusId, newStatus } = body as {
@@ -91,7 +112,27 @@ export async function POST(req: NextRequest) {
         newStatus?: string
     }
 
+    // ─── Ownership helpers ────────────────────────────────────────────────────
+    async function isJobOwner(id: string) {
+        if (isAdmin) return true
+        const job = await prisma.contentJob.findUnique({
+            where: { id },
+            select: { channel: { select: { members: { where: { userId }, select: { id: true } } } } },
+        })
+        return (job?.channel?.members?.length ?? 0) > 0
+    }
+
+    async function isPostOwner(id: string) {
+        if (isAdmin) return true
+        const post = await prisma.post.findUnique({
+            where: { id },
+            select: { channel: { select: { members: { where: { userId }, select: { id: true } } } } },
+        })
+        return (post?.channel?.members?.length ?? 0) > 0
+    }
+
     if (action === 'retry' && jobId) {
+        if (!(await isJobOwner(jobId))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         await prisma.contentJob.update({
             where: { id: jobId },
             data: { status: 'QUEUED', errorMessage: null, processedAt: null },
@@ -100,68 +141,76 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'cancel' && jobId) {
+        if (!(await isJobOwner(jobId))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         await prisma.contentJob.update({
             where: { id: jobId },
-            data: { status: 'FAILED', errorMessage: 'Cancelled by admin' },
+            data: { status: 'FAILED', errorMessage: 'Cancelled by user' },
         })
         return NextResponse.json({ success: true })
     }
 
     if (action === 'retry_all_failed') {
+        // Get the user's channel IDs so we scope the batch update
+        const userChannels = await prisma.channelMember.findMany({
+            where: isAdmin ? {} : { userId },
+            select: { channelId: true },
+        })
+        const channelIds = userChannels.map(c => c.channelId)
         const result = await prisma.contentJob.updateMany({
-            where: { status: 'FAILED', ...(jobIds?.length ? { id: { in: jobIds } } : {}) },
+            where: {
+                status: 'FAILED',
+                ...(isAdmin ? {} : { channelId: { in: channelIds } }),
+                ...(jobIds?.length ? { id: { in: jobIds } } : {}),
+            },
             data: { status: 'QUEUED', errorMessage: null, processedAt: null },
         })
         return NextResponse.json({ success: true, count: result.count })
     }
 
-    // ─── SmartFlow: Approve post (admin stage) ──────────────
+    // ─── SmartFlow: Approve post ──────────────────────────────────────────────
     if (action === 'approve' && postId) {
+        if (!(await isPostOwner(postId))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         const post = await prisma.post.findUnique({
             where: { id: postId },
             include: { channel: { select: { pipelineApprovalMode: true } } },
         })
         if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
-
-        if (post.channel.pipelineApprovalMode === 'smartflow') {
-            // SmartFlow: admin approve → CLIENT_REVIEW (client still needs to approve)
-            await prisma.post.update({
-                where: { id: postId },
-                data: { status: 'CLIENT_REVIEW' },
-            })
-        } else {
-            // admin/client mode: approve → SCHEDULED
-            await prisma.post.update({
-                where: { id: postId },
-                data: { status: 'SCHEDULED' },
-            })
-        }
+        await prisma.post.update({
+            where: { id: postId },
+            data: {
+                status: post.channel.pipelineApprovalMode === 'smartflow' ? 'CLIENT_REVIEW' : 'SCHEDULED',
+            },
+        })
         return NextResponse.json({ success: true })
     }
 
-    // ─── SmartFlow: Client approve (2nd stage) ──────────────
+    // ─── SmartFlow: Client approve ────────────────────────────────────────────
     if (action === 'client_approve' && postId) {
-        await prisma.post.update({
-            where: { id: postId },
-            data: { status: 'SCHEDULED' },
-        })
+        if (!(await isPostOwner(postId))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        await prisma.post.update({ where: { id: postId }, data: { status: 'SCHEDULED' } })
         return NextResponse.json({ success: true })
     }
 
-    // ─── Reject post ────────────────────────────────────────
+    // ─── Reject post ──────────────────────────────────────────────────────────
     if (action === 'reject' && postId) {
-        await prisma.post.update({
-            where: { id: postId },
-            data: { status: 'REJECTED' },
-        })
+        if (!(await isPostOwner(postId))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        await prisma.post.update({ where: { id: postId }, data: { status: 'REJECTED' } })
         return NextResponse.json({ success: true })
     }
 
-    // ─── Toggle platform on/off ──────────────────────────────
+    // ─── Toggle platform on/off ───────────────────────────────────────────────
     if (action === 'toggle_platform' && platformStatusId && newStatus) {
+        if (!isAdmin) {
+            const ps = await prisma.postPlatformStatus.findUnique({
+                where: { id: platformStatusId },
+                select: { post: { select: { channel: { select: { members: { where: { userId }, select: { id: true } } } } } } },
+            })
+            const isMember = (ps?.post?.channel?.members?.length ?? 0) > 0
+            if (!isMember) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
         await prisma.postPlatformStatus.update({
             where: { id: platformStatusId },
-            data: { status: newStatus }, // 'pending' or 'skipped'
+            data: { status: newStatus },
         })
         return NextResponse.json({ success: true })
     }
