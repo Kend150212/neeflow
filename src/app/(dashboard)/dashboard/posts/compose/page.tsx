@@ -2931,16 +2931,8 @@ export default function ComposePage() {
                                     <CardTitle className="text-xs flex items-center gap-1.5">
                                         <Sparkles className="h-3.5 w-3.5" /> Platform Content
                                     </CardTitle>
-                                    <button
-                                        type="button"
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-medium hover:from-violet-700 hover:to-indigo-700 transition-all disabled:opacity-50 cursor-pointer"
-                                        disabled={customizingContent || !content.trim()}
-                                        onClick={handleCustomizeContent}
-                                    >
-                                        {customizingContent ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                        {customizingContent ? 'Customizing...' : 'AI Customize'}
-                                    </button>
                                 </div>
+
                                 {/* Platform tabs */}
                                 {(() => {
                                     const uniquePlatforms = [...new Set(
@@ -2948,10 +2940,6 @@ export default function ComposePage() {
                                             .filter((p) => selectedPlatformIds.has(p.id))
                                             .map((p) => p.platform)
                                     )]
-                                    const platformIcons: Record<string, string> = {
-                                        facebook: '📘', instagram: '📸', tiktok: '🎵',
-                                        x: '𝕏', linkedin: '💼', pinterest: '📌', youtube: '▶️',
-                                    }
                                     const platformLabels: Record<string, string> = {
                                         facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok',
                                         x: 'X', linkedin: 'LinkedIn', pinterest: 'Pinterest', youtube: 'YouTube',
@@ -2959,7 +2947,7 @@ export default function ComposePage() {
                                     if (Object.keys(contentPerPlatform).length === 0) {
                                         return (
                                             <p className="text-[10px] text-muted-foreground mt-1">
-                                                Click &quot;AI Customize&quot; to generate optimized content for each platform, or all platforms will use the master content above.
+                                                Platform-specific content will appear here when available.
                                             </p>
                                         )
                                     }
@@ -2977,7 +2965,7 @@ export default function ComposePage() {
                                                         }`}
                                                     onClick={() => setActiveContentTab(activeContentTab === platform ? null : platform)}
                                                 >
-                                                    <span>{platformIcons[platform] || '📱'}</span>
+                                                    <PlatformIcon platform={platform} size="sm" />
                                                     {platformLabels[platform] || platform}
                                                     {contentPerPlatform[platform] && <Check className="h-2.5 w-2.5" />}
                                                 </button>
@@ -3216,8 +3204,8 @@ export default function ComposePage() {
                                                 <Sparkles className="h-3.5 w-3.5 text-purple-400 group-hover:animate-pulse" />
                                             </div>
                                             <div className="text-left">
-                                                <div className="text-xs font-semibold text-purple-300 group-hover:text-purple-200 transition-colors">AI Image</div>
-                                                <div className="text-[9px] text-purple-400/60 leading-tight">Generate with AI</div>
+                                                <div className="text-xs font-semibold text-foreground group-hover:text-foreground/80 transition-colors">AI Image</div>
+                                                <div className="text-[9px] text-muted-foreground leading-tight">Generate with AI</div>
                                             </div>
                                         </div>
                                     </button>
@@ -3233,8 +3221,8 @@ export default function ComposePage() {
                                             {canvaLoading ? <Loader2 className="h-3.5 w-3.5 text-violet-400 animate-spin" /> : <Palette className="h-3.5 w-3.5 text-violet-400" />}
                                         </div>
                                         <div className="text-left">
-                                            <div className="text-xs font-semibold text-violet-300 group-hover:text-violet-200 transition-colors">Canva</div>
-                                            <div className="text-[9px] text-violet-400/60 leading-tight">Design in Canva</div>
+                                            <div className="text-xs font-semibold text-foreground group-hover:text-foreground/80 transition-colors">Canva</div>
+                                            <div className="text-[9px] text-muted-foreground leading-tight">Design in Canva</div>
                                         </div>
                                     </div>
                                 </button>
