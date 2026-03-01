@@ -566,7 +566,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     onClick={() => setPagesExpanded(prev => !prev)}
                                     className="gap-1.5 text-xs h-7 cursor-pointer"
                                 >
-                                    {pagesExpanded ? 'Thu gọn' : 'Xem tất cả'}
+                                    {pagesExpanded ? t('chatbot.collapse') : t('chatbot.viewAll')}
                                     <ChevronDown className={`h-3.5 w-3.5 transition-transform ${pagesExpanded ? 'rotate-180' : ''}`} />
                                 </Button>
                             </div>

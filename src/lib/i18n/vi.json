@@ -1074,6 +1074,8 @@
     "botDisabled": "Bot đang tắt. Bật bot để tự động trả lời tin nhắn khách hàng.",
     "perPageBotTitle": "Bot theo trang",
     "perPageBotDesc": "Bật hoặc tắt bot cho từng trang đã kết nối",
+    "collapse": "Thu gọn",
+    "viewAll": "Xem tất cả",
     "general": {
       "title": "Chung",
       "botName": "Tên Bot",
