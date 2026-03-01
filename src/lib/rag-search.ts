@@ -104,7 +104,7 @@ export async function semanticSearchKnowledge(
 ): Promise<Array<{ id: string; title: string; content: string }>> {
     // Load all entries that have embeddings
     const entries = await prisma.knowledgeBase.findMany({
-        where: { channelId, embedding: { not: null } },
+        where: { channelId, embeddedAt: { not: null } },
         select: { id: true, title: true, content: true, embedding: true },
     })
 
@@ -160,7 +160,7 @@ export async function semanticSearchProducts(
     tags: string[]; inStock: boolean; productId: string | null
 }>> {
     const products = await prisma.productCatalog.findMany({
-        where: { channelId, inStock: true, embedding: { not: null } },
+        where: { channelId, inStock: true, embeddedAt: { not: null } },
         select: {
             id: true, name: true, category: true, price: true, salePrice: true,
             description: true, features: true, tags: true, inStock: true,
