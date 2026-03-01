@@ -207,3 +207,9 @@
 .animate-ai-reveal {
   animation: ai-reveal 0.8s ease-out forwards;
 }
+/* Hide reCAPTCHA floating badge — branding shown inline where used */
+.grecaptcha-badge {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

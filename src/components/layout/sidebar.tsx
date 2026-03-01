@@ -111,7 +111,8 @@ export function Sidebar({ session }: { session: Session }) {
     // Auto-collapse sidebar on Inbox page for more space
     useEffect(() => {
         const isInbox = pathname?.includes('/dashboard/inbox')
-        setCollapsed(!!isInbox)
+        const isCompose = pathname?.includes('/dashboard/posts/compose')
+        setCollapsed(!!(isInbox || isCompose))
     }, [pathname])
     const [mobileOpen, setMobileOpen] = useState(false)
     const isAdmin = session?.user?.role === 'ADMIN' // Only system ADMIN sees Users/API Hub
