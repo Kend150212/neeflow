@@ -54,6 +54,7 @@ import {
     FileText,
     BookOpen,
     Tag,
+    Sparkles,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -280,7 +281,9 @@ export function Sidebar({ session }: { session: Session }) {
             {/* ── Plan Usage Widget ── */}
             {usage && (
                 <div className="px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">⚡ Plan Usage</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                        <Zap className="h-3 w-3 text-yellow-500" /> Plan Usage
+                    </p>
                     <div className="space-y-2">
                         {/* AI Image */}
                         {(() => {
@@ -292,7 +295,7 @@ export function Sidebar({ session }: { session: Session }) {
                                 <div>
                                     <div className="flex items-center justify-between mb-0.5">
                                         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500" />
+                                            <Sparkles className={`h-3 w-3 ${isHot ? 'text-red-400' : 'text-violet-500'}`} />
                                             AI Image
                                         </span>
                                         <span className={`text-[10px] font-semibold tabular-nums ${isHot ? 'text-red-400' : 'text-violet-400'}`}>
@@ -319,7 +322,7 @@ export function Sidebar({ session }: { session: Session }) {
                                 <div>
                                     <div className="flex items-center justify-between mb-0.5">
                                         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                            <PenSquare className={`h-3 w-3 ${isHot ? 'text-red-400' : 'text-emerald-500'}`} />
                                             Posts
                                         </span>
                                         <span className={`text-[10px] font-semibold tabular-nums ${isHot ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -339,7 +342,7 @@ export function Sidebar({ session }: { session: Session }) {
                         {/* API Keys */}
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                <Key className="h-3 w-3 text-amber-400" />
                                 API Keys
                             </span>
                             <span className="text-[10px] font-semibold text-amber-400 tabular-nums">
