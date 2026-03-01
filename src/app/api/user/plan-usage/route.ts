@@ -23,15 +23,8 @@ export async function GET() {
     const [limits, imageUsageRow, postCount, apiKeyCount] = await Promise.all([
         getEffectiveLimits(userId),
 
-        // AI Image usage this month — from UsageRecord
-        db.usageRecord.aggregate({
-            where: {
-                userId,
-                type: 'AI_IMAGE',
-                createdAt: { gte: startOfMonth },
-            },
-            _sum: { amount: true },
-        }).catch(() => ({ _sum: { amount: 0 } })),
+        // AI Image usage — UsageRecord model not in schema yet, return 0
+        Promise.resolve({ _sum: { amount: 0 } }),
 
         // Posts published this month
         db.post.count({
