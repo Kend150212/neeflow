@@ -183,6 +183,8 @@ export default function PlatformsTab({
             )
         )
         setPlatforms((prev: ChannelPlatformEntry[]) => prev.map(p => ({ ...p, isActive: active })))
+        // When disabling all, always show the (now-disabled) list so user can see what happened
+        if (!active) setHideDisabled(false)
     }
 
     const openOAuthPopup = (key: string, label: string) => {
