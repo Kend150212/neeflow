@@ -13,8 +13,8 @@ import { join } from 'path'
 
 const execAsync = promisify(exec)
 
-// Allow large file uploads (up to 60MB)
-export const maxDuration = 120 // seconds (increased for transcoding)
+// Allow large file uploads (video up to 500MB)
+export const maxDuration = 120 // seconds (transcoding)
 export const dynamic = 'force-dynamic'
 
 /**
@@ -340,10 +340,12 @@ export async function POST(req: NextRequest) {
         )
     }
 
-    // Max size: 50MB
-    const MAX_SIZE = 50 * 1024 * 1024
+    // File size limits: video up to 500MB, images up to 50MB
+    const isVideoFile = file.type.startsWith('video/')
+    const MAX_SIZE = isVideoFile ? 500 * 1024 * 1024 : 50 * 1024 * 1024
+    const MAX_LABEL = isVideoFile ? '500MB' : '50MB'
     if (file.size > MAX_SIZE) {
-        return NextResponse.json({ error: 'File too large (max 50MB)' }, { status: 400 })
+        return NextResponse.json({ error: `File too large. Maximum size: ${MAX_LABEL} for ${isVideoFile ? 'videos' : 'images'}` }, { status: 400 })
     }
 
     // Read file into buffer

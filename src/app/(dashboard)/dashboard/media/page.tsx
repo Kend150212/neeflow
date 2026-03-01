@@ -539,6 +539,7 @@ export default function MediaLibraryPage() {
                     <p className="text-white/60 text-sm">
                         {selectedChannelId ? 'File sẽ được upload vào kênh hiện tại' : 'Chọn một channel trước'}
                     </p>
+                    <p className="text-white/40 text-xs">Video tối đa 500MB · Ảnh tối đa 50MB</p>
                 </div>
             )}
 
@@ -694,6 +695,7 @@ export default function MediaLibraryPage() {
                         className="hidden"
                         onChange={(e) => handleUpload(e.target.files)}
                     />
+                    <span className="text-[10px] text-muted-foreground">Video ≤500MB · Image ≤50MB</span>
                 </div>
             </div>
 

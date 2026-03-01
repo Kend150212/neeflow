@@ -23,9 +23,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'channelId, fileName, mimeType are required' }, { status: 400 })
     }
 
-    // Max 100MB
-    if (fileSize && fileSize > 100 * 1024 * 1024) {
-        return NextResponse.json({ error: 'File too large (max 100MB)' }, { status: 400 })
+    // File size limits: video up to 500MB, images up to 50MB
+    if (fileSize) {
+        const isVideo = mimeType.startsWith('video/')
+        const limitBytes = isVideo ? 500 * 1024 * 1024 : 50 * 1024 * 1024
+        const limitLabel = isVideo ? '500MB' : '50MB'
+        if (fileSize > limitBytes) {
+            return NextResponse.json(
+                { error: `File too large. Maximum size: ${limitLabel} for ${isVideo ? 'videos' : 'images'}` },
+                { status: 400 }
+            )
+        }
     }
 
     // ─── Check storage quota ─────────────────────────────────────────
