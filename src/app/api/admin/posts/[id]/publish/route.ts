@@ -204,22 +204,39 @@ async function publishToFacebook(
             return { externalId: postId }
 
         } else if (imageMedia) {
-            // Photo Story
-            console.log(`[Facebook] Story: uploading photo story`)
-            const storyUrl = `https://graph.facebook.com/v21.0/${accountId}/photo_stories`
-            const res = await fetch(storyUrl, {
+            // Photo Story — Facebook requires 2 steps:
+            // Step 1: Upload image to /photos with published=false → get photo_id
+            // Step 2: POST photo_id to /photo_stories
+            console.log(`[Facebook] Story: step 1 — uploading image as unpublished photo`)
+            const uploadRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/photos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     url: imageMedia.url,
-                    published: true,
+                    published: false,
                     access_token: accessToken,
                 }),
             })
-            const data = await res.json()
-            console.log(`[Facebook] Story photo result:`, JSON.stringify(data).slice(0, 200))
-            if (data.error) throw new Error(data.error.message || 'Facebook Story photo error')
-            const postId = data.post_id || data.id
+            const uploadData = await uploadRes.json()
+            console.log(`[Facebook] Story photo upload:`, JSON.stringify(uploadData).slice(0, 200))
+            if (uploadData.error) throw new Error(uploadData.error.message || 'Facebook Story photo upload error')
+            const photoId = uploadData.id
+            if (!photoId) throw new Error('Facebook Story: photo upload did not return photo id')
+
+            // Step 2: Publish as story using photo_id
+            console.log(`[Facebook] Story: step 2 — publishing photo_id=${photoId} as story`)
+            const storyRes = await fetch(`https://graph.facebook.com/v21.0/${accountId}/photo_stories`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    photo_id: photoId,
+                    access_token: accessToken,
+                }),
+            })
+            const storyData = await storyRes.json()
+            console.log(`[Facebook] Story publish result:`, JSON.stringify(storyData).slice(0, 200))
+            if (storyData.error) throw new Error(storyData.error.message || 'Facebook Story publish error')
+            const postId = storyData.post_id || storyData.id || photoId
             console.log(`[Facebook] ✅ Story (photo) published: ${postId}`)
             return { externalId: postId }
 
