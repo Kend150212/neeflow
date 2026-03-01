@@ -55,7 +55,7 @@
     "queue": "Queue",
     "approvals": "Approvals",
     "media": "Media",
-    "smartflow": "SmartFlow™",
+    "clientBoard": "Client Board",
     "inbox": "Inbox",
     "email": "Email",
     "reports": "Reports",
@@ -1542,7 +1542,7 @@
       "step5": "Notification sent via Telegram after processing"
     },
     "queue": {
-      "title": "SmartFlow™ Queue",
+      "title": "Client Board",
       "subtitle": "Manage AI content pipeline",
       "empty": "No content jobs yet",
       "retryAllFailed": "Retry all failed",
@@ -1578,8 +1578,8 @@
       "media": "Media"
     },
     "quota": {
-      "upgradeTitle": "Unlock SmartFlow™",
-      "upgradeDescription": "SmartFlow automates your content pipeline — AI analyzes media, writes captions, and schedules posts. Upgrade your plan to get started.",
+      "upgradeTitle": "Unlock Client Board",
+      "upgradeDescription": "Client Board automates your content pipeline — AI analyzes media, writes captions, and schedules posts. Upgrade your plan to get started.",
       "upgradeButton": "Upgrade Plan",
       "jobsLabel": "jobs",
       "unlimited": "Unlimited",
