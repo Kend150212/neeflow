@@ -386,7 +386,7 @@ export function Sidebar({ session }: { session: Session }) {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <button className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-accent">
+                        <button className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-primary/8">
                             <Avatar className="h-8 w-8">
                                 <AvatarFallback className="bg-primary/10 text-xs font-medium">
                                     {initials}
@@ -442,44 +442,52 @@ export function Sidebar({ session }: { session: Session }) {
 
             <ScrollArea className="flex-1 py-4">
                 <nav className="space-y-1 px-2">
-                    {mainNav.map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={cn(
-                                'flex items-center justify-center rounded-lg p-2 transition-colors',
-                                'hover:bg-accent hover:text-accent-foreground',
-                                item.exact ? pathname === item.href : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                                    ? 'bg-accent text-accent-foreground'
-                                    : 'text-muted-foreground',
-                            )}
-                            title={t(item.titleKey)}
-                        >
-                            <item.icon className="h-4 w-4" />
-                        </Link>
-                    ))}
+                    {mainNav.map((item) => {
+                        const isActive = item.exact
+                            ? pathname === item.href
+                            : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    'flex items-center justify-center rounded-xl p-2.5 transition-all duration-150',
+                                    isActive
+                                        ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
+                                        : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
+                                )}
+                                title={t(item.titleKey)}
+                            >
+                                <item.icon className={cn('h-4 w-4', isActive && 'text-primary')} />
+                            </Link>
+                        )
+                    })}
                 </nav>
 
                 {isAdmin && (
                     <>
                         <Separator className="my-4" />
                         <nav className="space-y-1 px-2">
-                            {adminNav.map((item) => (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className={cn(
-                                        'flex items-center justify-center rounded-lg p-2 transition-colors',
-                                        'hover:bg-accent hover:text-accent-foreground',
-                                        item.exact ? pathname === item.href : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                                            ? 'bg-accent text-accent-foreground'
-                                            : 'text-muted-foreground',
-                                    )}
-                                    title={t(item.titleKey)}
-                                >
-                                    <item.icon className="h-4 w-4" />
-                                </Link>
-                            ))}
+                            {adminNav.map((item) => {
+                                const isActive = item.exact
+                                    ? pathname === item.href
+                                    : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                                return (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        className={cn(
+                                            'flex items-center justify-center rounded-xl p-2.5 transition-all duration-150',
+                                            isActive
+                                                ? 'bg-primary/12 text-primary border border-primary/25'
+                                                : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
+                                        )}
+                                        title={t(item.titleKey)}
+                                    >
+                                        <item.icon className={cn('h-4 w-4', isActive && 'text-primary')} />
+                                    </Link>
+                                )
+                            })}
                         </nav>
                     </>
                 )}

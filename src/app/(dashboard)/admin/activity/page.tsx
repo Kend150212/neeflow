@@ -82,6 +82,22 @@ const CHART_COLORS = [
     '#6366f1', '#06b6d4', '#84cc16', '#f43f5e', '#a855f7',
 ]
 
+// ─── Dark Tooltip ────────────────────────────────────────────────────
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color?: string }[]; label?: string }) {
+    if (!active || !payload?.length) return null
+    return (
+        <div style={{ background: 'var(--color-card, #0d0d0d)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '8px 12px', fontSize: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+            {label && <p style={{ color: 'var(--color-muted-foreground)', marginBottom: 4, fontWeight: 600 }}>{label}</p>}
+            {payload.map(e => (
+                <div key={e.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ color: e.color ?? 'var(--color-primary)' }}>{e.name}</span>
+                    <span style={{ color: 'var(--color-foreground)', fontWeight: 700 }}>{e.value}</span>
+                </div>
+            ))}
+        </div>
+    )
+}
+
 // ─── CSV Export ──────────────────────────────────────────────────────
 function exportActivityCSV(logs: LogEntry[]) {
     const header = ['Date', 'User', 'Email', 'Action', 'Details', 'IP', 'Channel ID']
@@ -212,10 +228,7 @@ export default function AdminActivityPage() {
                                             height={50}
                                         />
                                         <YAxis hide allowDecimals={false} />
-                                        <Tooltip
-                                            contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
-                                            labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
-                                        />
+                                        <Tooltip content={<ChartTooltip />} />
                                         <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                                             {data.actionCounts.map((_, i) => (
                                                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />

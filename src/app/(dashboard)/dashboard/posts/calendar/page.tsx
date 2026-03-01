@@ -268,7 +268,7 @@ function PostCardContent({
     if (compact) {
         return (
             <div className={cn(
-                'w-full text-left rounded-md border-l-2 bg-card hover:bg-accent transition-colors overflow-hidden',
+                'w-full text-left rounded-md border-l-2 bg-card hover:bg-primary/8 transition-colors overflow-hidden',
                 borderColor,
                 'flex items-center gap-1.5 px-1.5 py-1 group'
             )}>
@@ -296,7 +296,7 @@ function PostCardContent({
     // Week view: full card
     return (
         <div className={cn(
-            'w-full text-left rounded-lg border-l-[3px] bg-card hover:bg-accent transition-colors overflow-hidden shadow-sm',
+            'w-full text-left rounded-lg border-l-[3px] bg-card hover:bg-primary/8 transition-colors overflow-hidden shadow-sm',
             borderColor,
         )}>
             {dragHandle && (

@@ -37,6 +37,23 @@ import { Label } from '@/components/ui/label'
 // ─── Inline Coupon Page (embedded in Tab) ─────────────────────────────────────
 import AdminCouponsEmbed from './coupons-embed'
 
+
+// ─── Dark Chart Tooltip ───────────────────────────────────────────────────────
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number | string; color?: string }[]; label?: string }) {
+    if (!active || !payload?.length) return null
+    return (
+        <div style={{ background: 'var(--color-card, #0d0d0d)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '8px 12px', fontSize: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', minWidth: 120 }}>
+            {label && <p style={{ color: 'var(--color-muted-foreground)', marginBottom: 4, fontWeight: 600 }}>{label}</p>}
+            {payload.map(e => (
+                <div key={e.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ color: e.color ?? 'var(--color-primary)' }}>{e.name}</span>
+                    <span style={{ color: 'var(--color-foreground)', fontWeight: 700 }}>{e.value}</span>
+                </div>
+            ))}
+        </div>
+    )
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface SubRow {
     id: string
@@ -806,9 +823,7 @@ export default function AdminBillingPage() {
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                                 <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
-                                <Tooltip
-                                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
-                                    labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                                <Tooltip content={<ChartTooltip />}
                                     formatter={(v: number | undefined) => [`$${v ?? 0}`, 'MRR']}
                                 />
                                 <Area type="monotone" dataKey="mrr" stroke="#7c3aed" fill="url(#mrrGrad)" strokeWidth={2} dot={false} />
@@ -831,7 +846,7 @@ export default function AdminBillingPage() {
                                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }} />
+                                <Tooltip content={<ChartTooltip />} />
                                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: 'hsl(var(--foreground))' }} />
                             </PieChart>
                         </ResponsiveContainer>
@@ -875,7 +890,7 @@ export default function AdminBillingPage() {
                                 ]} barSize={32}>
                                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                                     <YAxis hide allowDecimals={false} />
-                                    <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                                    <Tooltip content={<ChartTooltip />} />
                                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                         {[{ fill: '#6366f1' }, { fill: '#71717a' }, { fill: '#10b981' }].map((c, i) => (
                                             <Cell key={i} fill={c.fill} />

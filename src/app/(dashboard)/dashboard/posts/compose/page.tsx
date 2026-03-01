@@ -2639,7 +2639,7 @@ export default function ComposePage() {
                                                         key={i}
                                                         onClick={() => { setAiTopic(s.topic); setShowSuggestions(false) }}
                                                         title={s.angle || s.topic}
-                                                        className="group inline-flex flex-col items-start gap-0.5 px-2.5 py-1.5 rounded-lg border bg-card hover:bg-accent/50 hover:border-primary/30 text-left transition-all cursor-pointer"
+                                                        className="group inline-flex flex-col items-start gap-0.5 px-2.5 py-1.5 rounded-lg border bg-card hover:bg-primary/6 hover:border-primary/30 text-left transition-all cursor-pointer"
                                                     >
                                                         <span className="inline-flex items-center gap-1 text-[10px]">
                                                             <span>{s.emoji}</span>
@@ -2733,7 +2733,7 @@ export default function ComposePage() {
                                                         <button
                                                             key={i}
                                                             onClick={() => { setAiTopic(article.link); setShowTrending(false); toast.success('Article URL added — click ✨ to generate!') }}
-                                                            className="w-full flex items-start gap-2 p-1.5 rounded-md hover:bg-accent/50 transition-colors text-left group cursor-pointer"
+                                                            className="w-full flex items-start gap-2 p-1.5 rounded-md hover:bg-primary/6 transition-colors text-left group cursor-pointer"
                                                         >
                                                             <Newspaper className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
                                                             <div className="min-w-0 flex-1">
@@ -4230,7 +4230,7 @@ export default function ComposePage() {
                                                             <div key={folder.id} className="group relative">
                                                                 <button
                                                                     onClick={() => navigateLibFolder(folder.id, folder.name)}
-                                                                    className="w-full flex items-center gap-1.5 p-2 rounded-md border bg-card hover:bg-accent/50 transition-colors text-left"
+                                                                    className="w-full flex items-center gap-1.5 p-2 rounded-md border bg-card hover:bg-primary/6 transition-colors text-left"
                                                                 >
                                                                     <Folder className="h-4 w-4 text-amber-500 shrink-0" />
                                                                     <div className="min-w-0">

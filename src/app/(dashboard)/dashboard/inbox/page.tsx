@@ -965,7 +965,7 @@ export default function InboxPage() {
                                         sidebarCollapsed ? 'justify-center p-1.5' : 'gap-2.5 px-2.5 py-1.5 text-xs',
                                         statusFilter === f.key
                                             ? 'bg-primary/10 text-primary font-medium'
-                                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                                            : 'text-muted-foreground hover:bg-primary/8 hover:text-foreground'
                                     )}
                                 >
                                     <f.icon className="h-3.5 w-3.5 shrink-0" />
@@ -1021,7 +1021,7 @@ export default function InboxPage() {
                                                             'w-full flex items-center gap-2 pl-7 pr-2 py-1 text-[11px] rounded-md transition-colors cursor-pointer',
                                                             selectedPlatformIds.includes(account.id)
                                                                 ? 'bg-primary/10 text-primary font-medium'
-                                                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                                                                : 'text-muted-foreground hover:bg-primary/8 hover:text-foreground'
                                                         )}
                                                     >
                                                         <span className="flex-1 text-left text-wrap break-words">{account.accountName}</span>
@@ -1334,7 +1334,7 @@ export default function InboxPage() {
                                             ? 'bg-primary/5 border-l-2 border-l-primary'
                                             : conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived'
                                                 ? 'hover:bg-amber-500/10 border-l-2 border-l-amber-500 bg-amber-500/5'
-                                                : 'hover:bg-accent/50 border-l-2 border-l-transparent'
+                                                : 'hover:bg-primary/6 border-l-2 border-l-transparent'
                                     )}
                                 >
                                     {/* Avatar */}
@@ -2093,7 +2093,7 @@ export default function InboxPage() {
 
                                                             {/* Image upload */}
                                                             <label className={cn(
-                                                                'flex items-center justify-center h-7 w-7 rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
+                                                                'flex items-center justify-center h-7 w-7 rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-primary/8 transition-colors',
                                                                 sc.mode === 'BOT' && 'opacity-50 pointer-events-none'
                                                             )} title={t('inbox.chat.uploadImage')}>
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>

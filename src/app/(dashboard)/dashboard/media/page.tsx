@@ -766,7 +766,7 @@ export default function MediaLibraryPage() {
                                     {folders.map((folder) => (
                                         <div
                                             key={folder.id}
-                                            className={`group relative rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer ${viewMode === 'grid' ? 'p-3 text-center' : 'p-2 flex items-center gap-3'}`}
+                                            className={`group relative rounded-lg border bg-card hover:bg-primary/6 transition-colors cursor-pointer ${viewMode === 'grid' ? 'p-3 text-center' : 'p-2 flex items-center gap-3'}`}
                                             onDoubleClick={() => navigateToFolder(folder.id, folder.name)}
                                         >
                                             <div
@@ -782,7 +782,7 @@ export default function MediaLibraryPage() {
                                             {/* Folder context menu */}
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <button className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-accent transition-opacity">
+                                                    <button className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-primary/8 transition-opacity">
                                                         <MoreVertical className="h-3 w-3" />
                                                     </button>
                                                 </DropdownMenuTrigger>
@@ -960,7 +960,7 @@ export default function MediaLibraryPage() {
                                                     return (
                                                         <tr
                                                             key={item.id}
-                                                            className={`border-t hover:bg-accent/30 transition-colors ${selected ? 'bg-primary/5' : ''}`}
+                                                            className={`border-t hover:bg-primary/4 transition-colors ${selected ? 'bg-primary/5' : ''}`}
                                                         >
                                                             <td className="p-2">
                                                                 <Checkbox

@@ -362,7 +362,7 @@ export default function PostsPage() {
                             <div key={post.id}
                                 className={cn('border-b last:border-b-0 transition-colors group',
                                     isSelected && 'bg-primary/5', idx % 2 !== 0 && 'bg-muted/10')}>
-                                <div className="flex items-start gap-3 px-4 py-3 hover:bg-accent/40">
+                                <div className="flex items-start gap-3 px-4 py-3 hover:bg-primary/5">
                                     {/* Checkbox */}
                                     <button onClick={e => { e.stopPropagation(); toggleSelect(post.id) }}
                                         className="mt-1 shrink-0 cursor-pointer">

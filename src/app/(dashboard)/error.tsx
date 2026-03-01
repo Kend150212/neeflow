@@ -33,7 +33,7 @@ export default function DashboardError({
                 </button>
                 <button
                     onClick={() => window.location.reload()}
-                    className="rounded-lg border border-border px-6 py-2.5 text-sm font-medium hover:bg-accent transition-colors"
+                    className="rounded-lg border border-border px-6 py-2.5 text-sm font-medium hover:bg-primary/8 transition-colors"
                 >
                     Reload Page
                 </button>
