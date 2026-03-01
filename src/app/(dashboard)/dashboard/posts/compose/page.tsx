@@ -835,6 +835,8 @@ export default function ComposePage() {
     const [pinNewBoardPrivacy, setPinNewBoardPrivacy] = useState('PUBLIC')
     const [pinShowCreateBoard, setPinShowCreateBoard] = useState(false)
     const [pinNeedsReconnect, setPinNeedsReconnect] = useState(false)
+    const [pinSandboxTokenInput, setPinSandboxTokenInput] = useState('')
+    const [pinSandboxSaving, setPinSandboxSaving] = useState(false)
     const [previewPlatform, setPreviewPlatform] = useState<string>('')
     const [mediaRatio, setMediaRatio] = useState<'16:9' | '9:16' | '1:1'>('1:1')
     const [showMediaLibrary, setShowMediaLibrary] = useState(false)
@@ -3948,45 +3950,93 @@ export default function ComposePage() {
                                                 .finally(() => setPinBoardsLoading(false))
                                         }
                                         return (
-                                            <div className="flex items-center gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-xs">
-                                                <span className="text-amber-600 flex-1">⚠️ Pinterest session expired.</span>
-                                                <button
-                                                    type="button"
-                                                    className="text-[10px] px-2 py-1 rounded border border-amber-500/40 text-amber-600 hover:bg-amber-500/10 cursor-pointer whitespace-nowrap"
-                                                    onClick={fetchBoards}
-                                                >
-                                                    ↺ Retry
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="text-[10px] px-2 py-1 rounded bg-[#E60023] text-white font-medium hover:bg-[#c0001d] cursor-pointer whitespace-nowrap"
-                                                    onClick={() => {
-                                                        if (!pinterestPlatform || !selectedChannel) return
-                                                        const w = 500, h = 700
-                                                        const left = window.screenX + (window.outerWidth - w) / 2
-                                                        const top = window.screenY + (window.outerHeight - h) / 2
-                                                        const popup = window.open(
-                                                            `/api/oauth/pinterest?channelId=${selectedChannel.id}`,
-                                                            'pinterest-oauth',
-                                                            `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
-                                                        )
-                                                        const handler = (e: MessageEvent) => {
-                                                            if (e.data?.type === 'oauth-success' && e.data?.platform === 'pinterest') {
-                                                                window.removeEventListener('message', handler)
-                                                                setTimeout(fetchBoards, 800)
+                                            <div className="flex flex-col gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-amber-600 flex-1">⚠️ Pinterest token expired. Paste a new Sandbox token or Reconnect via OAuth.</span>
+                                                    <button
+                                                        type="button"
+                                                        className="text-[10px] px-2 py-1 rounded border border-amber-500/40 text-amber-600 hover:bg-amber-500/10 cursor-pointer whitespace-nowrap"
+                                                        onClick={fetchBoards}
+                                                    >
+                                                        ↺ Retry
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="text-[10px] px-2 py-1 rounded bg-[#E60023] text-white font-medium hover:bg-[#c0001d] cursor-pointer whitespace-nowrap"
+                                                        onClick={() => {
+                                                            if (!pinterestPlatform || !selectedChannel) return
+                                                            const w = 500, h = 700
+                                                            const left = window.screenX + (window.outerWidth - w) / 2
+                                                            const top = window.screenY + (window.outerHeight - h) / 2
+                                                            const popup = window.open(
+                                                                `/api/oauth/pinterest?channelId=${selectedChannel.id}`,
+                                                                'pinterest-oauth',
+                                                                `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
+                                                            )
+                                                            const handler = (e: MessageEvent) => {
+                                                                if (e.data?.type === 'oauth-success' && e.data?.platform === 'pinterest') {
+                                                                    window.removeEventListener('message', handler)
+                                                                    setTimeout(fetchBoards, 800)
+                                                                }
                                                             }
-                                                        }
-                                                        window.addEventListener('message', handler)
-                                                        const check = setInterval(() => {
-                                                            if (popup?.closed) { clearInterval(check); window.removeEventListener('message', handler); setTimeout(fetchBoards, 800) }
-                                                        }, 1000)
-                                                    }}
-                                                >
-                                                    Reconnect
-                                                </button>
+                                                            window.addEventListener('message', handler)
+                                                            const check = setInterval(() => {
+                                                                if (popup?.closed) { clearInterval(check); window.removeEventListener('message', handler); setTimeout(fetchBoards, 800) }
+                                                            }, 1000)
+                                                        }}
+                                                    >
+                                                        Reconnect
+                                                    </button>
+                                                </div>
+                                                {/* Sandbox token paste — only useful in sandbox mode */}
+                                                <div className="flex gap-1.5 items-center">
+                                                    <input
+                                                        type="password"
+                                                        placeholder="Paste new Sandbox token here..."
+                                                        className="flex-1 h-7 rounded border border-amber-500/30 bg-transparent px-2 text-[10px] text-foreground placeholder:text-muted-foreground outline-none focus:border-amber-500"
+                                                        value={pinSandboxTokenInput}
+                                                        onChange={e => setPinSandboxTokenInput(e.target.value)}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        disabled={!pinSandboxTokenInput.trim() || pinSandboxSaving}
+                                                        className="text-[10px] px-2 py-1 rounded bg-amber-500 text-white font-medium hover:bg-amber-600 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                                                        onClick={async () => {
+                                                            if (!pinterestPlatform || !selectedChannel || !pinSandboxTokenInput.trim()) return
+                                                            setPinSandboxSaving(true)
+                                                            try {
+                                                                const res = await fetch(`/api/admin/channels/${selectedChannel.id}/pinterest-sandbox-token`, {
+                                                                    method: 'PUT',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ accountId: pinterestPlatform.accountId, sandboxToken: pinSandboxTokenInput.trim() }),
+                                                                })
+                                                                if (res.ok) {
+                                                                    setPinSandboxTokenInput('')
+                                                                    setTimeout(fetchBoards, 300)
+                                                                } else {
+                                                                    const err = await res.json()
+                                                                    alert(err.error || 'Failed to save token')
+                                                                }
+                                                            } catch {
+                                                                alert('Network error')
+                                                            } finally {
+                                                                setPinSandboxSaving(false)
+                                                            }
+                                                        }}
+                                                    >
+                                                        {pinSandboxSaving ? '...' : 'Apply'}
+                                                    </button>
+                                                </div>
+                                                <p className="text-[9px] text-muted-foreground">
+                                                    Generate a new token at{' '}
+                                                    <a href="https://developers.pinterest.com/apps/" target="_blank" rel="noopener noreferrer" className="underline text-amber-600">
+                                                        developers.pinterest.com → your app → Generate token (Sandbox)
+                                                    </a>
+                                                </p>
                                             </div>
                                         )
                                     })()}
+
 
                                     {/* Board Selection */}
                                     <div className="space-y-1.5">
