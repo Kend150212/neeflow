@@ -1166,71 +1166,177 @@ async function publishToLinkedIn(
         : `urn:li:person:${accountId}`
     console.log(`[LinkedIn] Publishing as ${isOrg ? 'organization' : 'person'}: ${authorUrn}`)
 
-    // If we have images, upload them first
-    const imageUrns: string[] = []
-    for (const media of mediaItems) {
-        if (isVideoMedia(media)) continue // LinkedIn video requires different flow
+    // Separate media into images and video (LinkedIn supports ONE video OR multiple images, not both)
+    const videoMedia = mediaItems.find(m => isVideoMedia(m))
+    const imageMediaItems = mediaItems.filter(m => !isVideoMedia(m))
 
+    // ── VIDEO UPLOAD ──────────────────────────────────────────────────
+    let videoUrn: string | null = null
+    if (videoMedia) {
         try {
-            // Step 1: Register image upload
-            const registerRes = await fetch('https://api.linkedin.com/rest/images?action=initializeUpload', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
-                    'LinkedIn-Version': getLinkedInVersion(),
-                    'X-Restli-Protocol-Version': '2.0.0',
-                },
-                body: JSON.stringify({
-                    initializeUploadRequest: {
-                        owner: authorUrn,
+            console.log(`[LinkedIn] Video upload: downloading ${videoMedia.url.substring(0, 80)}...`)
+            const videoRes = await fetch(videoMedia.url)
+            if (!videoRes.ok) {
+                console.error('[LinkedIn] Failed to download video:', videoMedia.url)
+            } else {
+                const videoBuffer = Buffer.from(await videoRes.arrayBuffer())
+                const fileSize = videoBuffer.byteLength
+                console.log(`[LinkedIn] Video size: ${(fileSize / 1024 / 1024).toFixed(1)}MB`)
+
+                // Step 1: Initialize upload — get upload URL + video URN
+                const initRes = await fetch('https://api.linkedin.com/rest/videos?action=initializeUpload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${accessToken}`,
+                        'LinkedIn-Version': getLinkedInVersion(),
+                        'X-Restli-Protocol-Version': '2.0.0',
                     },
-                }),
-            })
+                    body: JSON.stringify({
+                        initializeUploadRequest: {
+                            owner: authorUrn,
+                            fileSizeBytes: fileSize,
+                            uploadCaptions: false,
+                            uploadThumbnail: false,
+                        },
+                    }),
+                })
 
-            if (!registerRes.ok) {
-                const errText = await registerRes.text()
-                console.error('[LinkedIn] Image register failed:', errText)
-                continue
+                if (!initRes.ok) {
+                    const errText = await initRes.text()
+                    console.error('[LinkedIn] Video initializeUpload failed:', errText)
+                } else {
+                    const initData = await initRes.json()
+                    const uploadInstructions: { uploadUrl: string; lastByte: number; firstByte: number }[] =
+                        initData.value?.uploadInstructions || []
+                    const uploadToken = initData.value?.uploadToken
+                    const liVideoUrn = initData.value?.video
+
+                    if (!liVideoUrn || uploadInstructions.length === 0 || !uploadToken) {
+                        console.error('[LinkedIn] Video init missing required fields:', JSON.stringify(initData))
+                    } else {
+                        console.log(`[LinkedIn] Video URN: ${liVideoUrn}, chunks: ${uploadInstructions.length}`)
+
+                        // Step 2: Upload each chunk (usually just 1 chunk for small files)
+                        let allChunksOk = true
+                        const etags: string[] = []
+                        for (const chunk of uploadInstructions) {
+                            const chunkBuffer = videoBuffer.slice(chunk.firstByte, chunk.lastByte + 1)
+                            const chunkRes = await fetch(chunk.uploadUrl, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/octet-stream' },
+                                body: chunkBuffer,
+                            })
+                            if (!chunkRes.ok) {
+                                const errText = await chunkRes.text()
+                                console.error(`[LinkedIn] Video chunk upload failed (${chunk.firstByte}-${chunk.lastByte}):`, errText)
+                                allChunksOk = false
+                                break
+                            }
+                            const etag = chunkRes.headers.get('etag') || chunkRes.headers.get('ETag') || ''
+                            etags.push(etag)
+                        }
+
+                        // Step 3: Finalize upload
+                        if (allChunksOk) {
+                            const finalizeRes = await fetch('https://api.linkedin.com/rest/videos?action=finalizeUpload', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    Authorization: `Bearer ${accessToken}`,
+                                    'LinkedIn-Version': getLinkedInVersion(),
+                                    'X-Restli-Protocol-Version': '2.0.0',
+                                },
+                                body: JSON.stringify({
+                                    finalizeUploadRequest: {
+                                        video: liVideoUrn,
+                                        uploadToken,
+                                        uploadedPartIds: etags,
+                                    },
+                                }),
+                            })
+                            if (!finalizeRes.ok) {
+                                const errText = await finalizeRes.text()
+                                console.error('[LinkedIn] Video finalizeUpload failed:', errText)
+                            } else {
+                                videoUrn = liVideoUrn
+                                console.log('[LinkedIn] ✅ Video uploaded successfully, URN:', videoUrn)
+                            }
+                        }
+                    }
+                }
             }
-
-            const registerData = await registerRes.json()
-            const uploadUrl = registerData.value?.uploadUrl
-            const imageUrn = registerData.value?.image
-
-            if (!uploadUrl || !imageUrn) {
-                console.error('[LinkedIn] Missing uploadUrl or image URN')
-                continue
-            }
-
-            // Step 2: Download image and upload binary to LinkedIn
-            const imageRes = await fetch(media.url)
-            if (!imageRes.ok) {
-                console.error('[LinkedIn] Failed to download image:', media.url)
-                continue
-            }
-            const imageBuffer = Buffer.from(await imageRes.arrayBuffer())
-
-            const uploadRes = await fetch(uploadUrl, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': imageRes.headers.get('content-type') || 'image/jpeg',
-                },
-                body: imageBuffer,
-            })
-
-            if (!uploadRes.ok) {
-                const errText = await uploadRes.text()
-                console.error('[LinkedIn] Image upload failed:', errText)
-                continue
-            }
-
-            imageUrns.push(imageUrn)
         } catch (err) {
-            console.error('[LinkedIn] Image upload error:', err)
+            console.error('[LinkedIn] Video upload error:', err)
         }
     }
+
+    // ── IMAGE UPLOADS (only if no video — LinkedIn doesn't mix video + images) ──
+    const imageUrns: string[] = []
+    if (!videoUrn) {
+        for (const media of imageMediaItems) {
+            try {
+                // Step 1: Register image upload
+
+                const registerRes = await fetch('https://api.linkedin.com/rest/images?action=initializeUpload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${accessToken}`,
+                        'LinkedIn-Version': getLinkedInVersion(),
+                        'X-Restli-Protocol-Version': '2.0.0',
+                    },
+                    body: JSON.stringify({
+                        initializeUploadRequest: {
+                            owner: authorUrn,
+                        },
+                    }),
+                })
+
+                if (!registerRes.ok) {
+                    const errText = await registerRes.text()
+                    console.error('[LinkedIn] Image register failed:', errText)
+                    continue
+                }
+
+                const registerData = await registerRes.json()
+                const uploadUrl = registerData.value?.uploadUrl
+                const imageUrn = registerData.value?.image
+
+                if (!uploadUrl || !imageUrn) {
+                    console.error('[LinkedIn] Missing uploadUrl or image URN')
+                    continue
+                }
+
+                // Step 2: Download image and upload binary to LinkedIn
+                const imageRes = await fetch(media.url)
+                if (!imageRes.ok) {
+                    console.error('[LinkedIn] Failed to download image:', media.url)
+                    continue
+                }
+                const imageBuffer = Buffer.from(await imageRes.arrayBuffer())
+
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        'Content-Type': imageRes.headers.get('content-type') || 'image/jpeg',
+                    },
+                    body: imageBuffer,
+                })
+
+                if (!uploadRes.ok) {
+                    const errText = await uploadRes.text()
+                    console.error('[LinkedIn] Image upload failed:', errText)
+                    continue
+                }
+
+                imageUrns.push(imageUrn)
+            } catch (err) {
+                console.error('[LinkedIn] Image upload error:', err)
+            }
+        }
+    } // end if (!videoUrn)
 
     // Build LinkedIn post body using Community Management API
     const postBody: Record<string, unknown> = {
@@ -1245,8 +1351,15 @@ async function publishToLinkedIn(
         lifecycleState: 'PUBLISHED',
     }
 
-    // Add media content if we have uploaded images
-    if (imageUrns.length === 1) {
+    // Add media content: video takes priority, then images
+    if (videoUrn) {
+        postBody.content = {
+            media: {
+                id: videoUrn,
+            },
+        }
+        console.log('[LinkedIn] Post will include video:', videoUrn)
+    } else if (imageUrns.length === 1) {
         postBody.content = {
             media: {
                 id: imageUrns[0],
@@ -1283,6 +1396,8 @@ async function publishToLinkedIn(
 
     return { externalId: postUrn }
 }
+
+
 
 // ─── TikTok publisher ───────────────────────────────────────────────
 
