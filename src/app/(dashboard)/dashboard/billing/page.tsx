@@ -526,111 +526,9 @@ export default function BillingPage() {
                         </Card>
                     </div>
 
-                    {/* Usage Cards */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">
-                                    {t('billing.postsThisMonth')} ({usage.month})
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                <div className="flex items-end justify-between">
-                                    <span className="text-2xl font-bold">{usage.postsThisMonth}</span>
-                                    <span className="text-sm text-muted-foreground">
-                                        / {plan.maxPostsPerMonth === -1 ? '∞' : plan.maxPostsPerMonth}
-                                    </span>
-                                </div>
-                                {plan.maxPostsPerMonth !== -1 && <Progress value={postsPercent} className={`h-2 ${postsPercent >= 100 ? '[&>div]:bg-red-500' : postsPercent >= 80 ? '[&>div]:bg-orange-500' : ''}`} />}
-                                {plan.maxPostsPerMonth !== -1 && postsPercent >= 100 && <p className="text-xs text-red-500">Đã đạt giới hạn — nâng cấp gói để tạo thêm bài.</p>}
-                                {plan.maxPostsPerMonth === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">
-                                    {t('billing.channels')}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                <div className="flex items-end justify-between">
-                                    <span className="text-2xl font-bold">{usage.channelCount}</span>
-                                    <span className="text-sm text-muted-foreground">
-                                        / {plan.maxChannels === -1 ? '∞' : plan.maxChannels}
-                                    </span>
-                                </div>
-                                {plan.maxChannels !== -1 && <Progress value={channelsPercent} className="h-2" />}
-                                {plan.maxChannels === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* AI Images */}
+                    {/* ── Active Add-ons — right below Current Plan ── */}
                     <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <ImageIcon className="h-4 w-4" />
-                                {t('billing.aiImages')} ({usage.month})
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {aiImage.hasByokKey && (
-                                <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs">
-                                    <KeyRound className="h-3.5 w-3.5 flex-shrink-0" />
-                                    <span>{t('billing.byokActive').replace('{provider}', aiImage.byokProvider ?? '')}</span>
-                                </div>
-                            )}
-                            <div className="flex items-end justify-between">
-                                <span className="text-2xl font-bold">{usage.imagesThisMonth}</span>
-                                <span className="text-sm text-muted-foreground">
-                                    / {aiImage.maxPerMonth === -1
-                                        ? `∞ ${t('billing.unlimited').toLowerCase()}`
-                                        : aiImage.maxPerMonth === 0 ? t('billing.byokOnly') : aiImage.maxPerMonth}
-                                </span>
-                            </div>
-                            {aiImage.maxPerMonth > 0 && aiImage.maxPerMonth !== -1 && (
-                                <Progress value={imagesPercent} className={`h-2 ${imagesPercent >= 90 ? '[&>div]:bg-red-500' : imagesPercent >= 70 ? '[&>div]:bg-orange-500' : ''}`} />
-                            )}
-                            {aiImage.maxPerMonth === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
-                            {aiImage.maxPerMonth === 0 && !aiImage.hasByokKey && <p className="text-xs text-orange-500">{t('billing.noAiQuota')}</p>}
-                            {aiImage.maxPerMonth > 0 && imagesPercent >= 90 && !aiImage.hasByokKey && <p className="text-xs text-red-500">{t('billing.nearLimit')}</p>}
-                        </CardContent>
-                    </Card>
-
-                    {/* API Calls */}
-                    {plan.maxApiCallsPerMonth !== 0 && (
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                    <Code2 className="h-4 w-4" />
-                                    API Calls ({usage.month})
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div className="flex items-end justify-between">
-                                    <span className="text-2xl font-bold">{usage.apiCallsThisMonth.toLocaleString()}</span>
-                                    <span className="text-sm text-muted-foreground">
-                                        / {plan.maxApiCallsPerMonth === -1
-                                            ? `∞ ${t('billing.unlimited').toLowerCase()}`
-                                            : plan.maxApiCallsPerMonth.toLocaleString()}
-                                    </span>
-                                </div>
-                                {plan.maxApiCallsPerMonth > 0 && plan.maxApiCallsPerMonth !== -1 && (
-                                    <Progress value={apiPercent} className={`h-2 ${apiPercent >= 90 ? '[&>div]:bg-red-500' : apiPercent >= 70 ? '[&>div]:bg-orange-500' : ''}`} />
-                                )}
-                                {plan.maxApiCallsPerMonth === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
-                                {plan.maxApiCallsPerMonth > 0 && apiPercent >= 90 && <p className="text-xs text-red-500">{t('billing.nearLimit')}</p>}
-                                <p className="text-xs text-muted-foreground">
-                                    Manage your API keys in <a href="/dashboard/developer" className="text-primary underline">Developer API</a>
-                                </p>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Active Add-ons */}
-                    <Card>
-                        <CardHeader>
+                        <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Plus className="h-4 w-4" />
                                 Add-ons
@@ -682,6 +580,106 @@ export default function BillingPage() {
                             </Button>
                         </CardContent>
                     </Card>
+
+                    {/* ── Usage Row — all 4 stats in one grid ── */}
+                    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">
+                                    {t('billing.postsThisMonth')} ({usage.month})
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <div className="flex items-end justify-between">
+                                    <span className="text-2xl font-bold">{usage.postsThisMonth}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                        / {plan.maxPostsPerMonth === -1 ? '∞' : plan.maxPostsPerMonth}
+                                    </span>
+                                </div>
+                                {plan.maxPostsPerMonth !== -1 && <Progress value={postsPercent} className={`h-2 ${postsPercent >= 100 ? '[&>div]:bg-red-500' : postsPercent >= 80 ? '[&>div]:bg-orange-500' : ''}`} />}
+                                {plan.maxPostsPerMonth !== -1 && postsPercent >= 100 && <p className="text-xs text-red-500">Đã đạt giới hạn — nâng cấp gói để tạo thêm bài.</p>}
+                                {plan.maxPostsPerMonth === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">
+                                    {t('billing.channels')}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <div className="flex items-end justify-between">
+                                    <span className="text-2xl font-bold">{usage.channelCount}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                        / {plan.maxChannels === -1 ? '∞' : plan.maxChannels}
+                                    </span>
+                                </div>
+                                {plan.maxChannels !== -1 && <Progress value={channelsPercent} className="h-2" />}
+                                {plan.maxChannels === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
+                            </CardContent>
+                        </Card>
+
+                        {/* AI Images */}
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                    {t('billing.aiImages')} ({usage.month})
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                {aiImage.hasByokKey && (
+                                    <div className="flex items-center gap-1.5 p-1.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px]">
+                                        <KeyRound className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{t('billing.byokActive').replace('{provider}', aiImage.byokProvider ?? '')}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-end justify-between">
+                                    <span className="text-2xl font-bold">{usage.imagesThisMonth}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                        / {aiImage.maxPerMonth === -1
+                                            ? `∞`
+                                            : aiImage.maxPerMonth === 0 ? t('billing.byokOnly') : aiImage.maxPerMonth}
+                                    </span>
+                                </div>
+                                {aiImage.maxPerMonth > 0 && aiImage.maxPerMonth !== -1 && (
+                                    <Progress value={imagesPercent} className={`h-2 ${imagesPercent >= 90 ? '[&>div]:bg-red-500' : imagesPercent >= 70 ? '[&>div]:bg-orange-500' : ''}`} />
+                                )}
+                                {aiImage.maxPerMonth === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
+                                {aiImage.maxPerMonth === 0 && !aiImage.hasByokKey && <p className="text-xs text-orange-500">{t('billing.noAiQuota')}</p>}
+                            </CardContent>
+                        </Card>
+
+                        {/* API Calls */}
+                        {plan.maxApiCallsPerMonth !== 0 ? (
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                        <Code2 className="h-3.5 w-3.5" />
+                                        API Calls ({usage.month})
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <div className="flex items-end justify-between">
+                                        <span className="text-2xl font-bold">{usage.apiCallsThisMonth.toLocaleString()}</span>
+                                        <span className="text-sm text-muted-foreground">
+                                            / {plan.maxApiCallsPerMonth === -1 ? '∞' : plan.maxApiCallsPerMonth.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    {plan.maxApiCallsPerMonth > 0 && plan.maxApiCallsPerMonth !== -1 && (
+                                        <Progress value={apiPercent} className={`h-2 ${apiPercent >= 90 ? '[&>div]:bg-red-500' : apiPercent >= 70 ? '[&>div]:bg-orange-500' : ''}`} />
+                                    )}
+                                    {plan.maxApiCallsPerMonth === -1 && <p className="text-xs text-green-500">{t('billing.unlimited')}</p>}
+                                    {plan.maxApiCallsPerMonth > 0 && apiPercent >= 90 && <p className="text-xs text-red-500">{t('billing.nearLimit')}</p>}
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            // Placeholder so grid stays even when API disabled
+                            <div />
+                        )}
+                    </div>  {/* end usage grid */}
+
 
                     {/* Plan Features */}
                     <Card>
