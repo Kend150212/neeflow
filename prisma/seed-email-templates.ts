@@ -1,16 +1,15 @@
-import { PrismaClient } from '@prisma/client'
-
-const db = new PrismaClient()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyPrisma = any
 
 export const EMAIL_TEMPLATE_DEFAULTS = [
-    // ─── Welcome (new signup via Pay-First flow) ──────────────────────────────
-    {
-        key: 'welcome',
-        name: 'Welcome Email',
-        description: 'Sent to new users after they complete checkout on the pricing page.',
-        subject: '🎉 Welcome to {{appName}}! Your {{planName}} plan is ready',
-        variables: ['appName', 'logoUrl', 'appUrl', 'userName', 'userEmail', 'planName', 'planPrice', 'billingInterval', 'trialDays', 'setupUrl'],
-        htmlBody: `<!DOCTYPE html>
+  // ─── Welcome (new signup via Pay-First flow) ──────────────────────────────
+  {
+    key: 'welcome',
+    name: 'Welcome Email',
+    description: 'Sent to new users after they complete checkout on the pricing page.',
+    subject: '🎉 Welcome to {{appName}}! Your {{planName}} plan is ready',
+    variables: ['appName', 'logoUrl', 'appUrl', 'userName', 'userEmail', 'planName', 'planPrice', 'billingInterval', 'trialDays', 'setupUrl'],
+    htmlBody: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
@@ -99,16 +98,16 @@ export const EMAIL_TEMPLATE_DEFAULTS = [
 </table>
 </body>
 </html>`,
-    },
+  },
 
-    // ─── Payment Confirmation ─────────────────────────────────────────────────
-    {
-        key: 'payment_confirmation',
-        name: 'Payment Confirmation',
-        description: 'Sent after a successful Stripe checkout (trial start or paid invoice).',
-        subject: '✅ Payment confirmed — {{planName}} on {{appName}}',
-        variables: ['appName', 'logoUrl', 'appUrl', 'userName', 'planName', 'planPrice', 'billingInterval', 'nextBillingDate', 'trialDays', 'dashboardUrl'],
-        htmlBody: `<!DOCTYPE html>
+  // ─── Payment Confirmation ─────────────────────────────────────────────────
+  {
+    key: 'payment_confirmation',
+    name: 'Payment Confirmation',
+    description: 'Sent after a successful Stripe checkout (trial start or paid invoice).',
+    subject: '✅ Payment confirmed — {{planName}} on {{appName}}',
+    variables: ['appName', 'logoUrl', 'appUrl', 'userName', 'planName', 'planPrice', 'billingInterval', 'nextBillingDate', 'trialDays', 'dashboardUrl'],
+    htmlBody: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
@@ -165,16 +164,16 @@ export const EMAIL_TEMPLATE_DEFAULTS = [
 </table>
 </body>
 </html>`,
-    },
+  },
 
-    // ─── Invitation (team member) ─────────────────────────────────────────────
-    {
-        key: 'invitation',
-        name: 'Team Invitation',
-        description: 'Sent when an admin invites a new team member.',
-        subject: "You've been invited to join {{appName}}",
-        variables: ['appName', 'logoUrl', 'appUrl', 'toName', 'toEmail', 'role', 'setupUrl'],
-        htmlBody: `<!DOCTYPE html>
+  // ─── Invitation (team member) ─────────────────────────────────────────────
+  {
+    key: 'invitation',
+    name: 'Team Invitation',
+    description: 'Sent when an admin invites a new team member.',
+    subject: "You've been invited to join {{appName}}",
+    variables: ['appName', 'logoUrl', 'appUrl', 'toName', 'toEmail', 'role', 'setupUrl'],
+    htmlBody: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
@@ -223,16 +222,16 @@ export const EMAIL_TEMPLATE_DEFAULTS = [
 </table>
 </body>
 </html>`,
-    },
+  },
 
-    // ─── Password Reset ───────────────────────────────────────────────────────
-    {
-        key: 'password_reset',
-        name: 'Password Reset',
-        description: 'Sent when a user requests a password reset.',
-        subject: 'Reset your {{appName}} password',
-        variables: ['appName', 'logoUrl', 'appUrl', 'userName', 'resetUrl'],
-        htmlBody: `<!DOCTYPE html>
+  // ─── Password Reset ───────────────────────────────────────────────────────
+  {
+    key: 'password_reset',
+    name: 'Password Reset',
+    description: 'Sent when a user requests a password reset.',
+    subject: 'Reset your {{appName}} password',
+    variables: ['appName', 'logoUrl', 'appUrl', 'userName', 'resetUrl'],
+    htmlBody: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
@@ -268,30 +267,30 @@ export const EMAIL_TEMPLATE_DEFAULTS = [
 </table>
 </body>
 </html>`,
-    },
+  },
 ]
 
-export async function seedEmailTemplates() {
-    console.log('📧 Seeding email templates...')
-    for (const template of EMAIL_TEMPLATE_DEFAULTS) {
-        await db.emailTemplate.upsert({
-            where: { key: template.key },
-            update: {
-                name: template.name,
-                description: template.description,
-                subject: template.subject,
-                variables: template.variables,
-                // Don't overwrite htmlBody if admin has customized it
-            },
-            create: {
-                key: template.key,
-                name: template.name,
-                description: template.description,
-                subject: template.subject,
-                htmlBody: template.htmlBody,
-                variables: template.variables,
-            },
-        })
-        console.log(`  ✅ ${template.key}`)
-    }
+export async function seedEmailTemplates(db: AnyPrisma) {
+  console.log('📧 Seeding email templates...')
+  for (const template of EMAIL_TEMPLATE_DEFAULTS) {
+    await db.emailTemplate.upsert({
+      where: { key: template.key },
+      update: {
+        name: template.name,
+        description: template.description,
+        subject: template.subject,
+        variables: template.variables,
+        // Don't overwrite htmlBody if admin has customized it
+      },
+      create: {
+        key: template.key,
+        name: template.name,
+        description: template.description,
+        subject: template.subject,
+        htmlBody: template.htmlBody,
+        variables: template.variables,
+      },
+    })
+    console.log(`  ✅ ${template.key}`)
+  }
 }

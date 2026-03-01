@@ -234,7 +234,7 @@ async function main() {
 
     console.log('✅ API integrations seeded:', integrations.length)
 
-    await seedEmailTemplates()
+    await seedEmailTemplates(prisma)
 
     console.log('')
     console.log('🎉 Database seeded successfully!')
