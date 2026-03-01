@@ -365,6 +365,8 @@ model KnowledgeBase {
   sourceType String   @default("text") @map("source_type") // text, url, google_sheet, file
   sourceUrl  String?  @map("source_url")
   content    String   @db.Text
+  embedding  Json?    // Float[] vector from text-embedding-3-small or gemini text-embedding-004
+  embeddedAt DateTime? @map("embedded_at")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -386,6 +388,8 @@ model ProductCatalog {
   images      String[] // array of image URLs
   tags        String[] // search keywords
   inStock     Boolean  @default(true) @map("in_stock")
+  embedding   Json?    // Float[] vector for semantic product search
+  embeddedAt  DateTime? @map("embedded_at")
 
   // Sync metadata — for future Google Sheets / WordPress / Shopify integration
   syncSource  String?  @default("manual") @map("sync_source") // manual | csv | google_sheet | wordpress | shopify

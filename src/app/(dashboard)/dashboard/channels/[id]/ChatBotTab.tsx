@@ -183,6 +183,18 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [learningLoading, setLearningLoading] = useState(false)
     const [learningFetched, setLearningFetched] = useState(false)
 
+    // RAG embedding stats
+    const [embedStats, setEmbedStats] = useState<{ knowledge: { total: number; embedded: number }; products: { total: number; embedded: number } } | null>(null)
+    const [embedLoading, setEmbedLoading] = useState(false)
+
+    // Load embedding stats when entering training tab
+    const loadEmbedStats = async () => {
+        try {
+            const res = await fetch(`/api/admin/channels/${channelId}/bot-config/embed`)
+            if (res.ok) setEmbedStats(await res.json())
+        } catch { /* ignore */ }
+    }
+
     // Normalize AI-returned learning data to safe types (AI can return objects instead of strings)
     const normalizeLearningData = (raw: any) => {
         if (!raw || typeof raw !== 'object') return {}
@@ -866,7 +878,47 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             ))}
                         </div>
 
-                        {/* Full-width Content Panel */}
+                        {/* ─── RAG Semantic Search Status ─── */}
+                        <div className="flex items-center gap-2 px-1 py-1.5 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-200/50 dark:border-violet-800/30">
+                            <div className="flex-1 flex items-center gap-2 text-[11px]">
+                                <span className="font-medium text-violet-700 dark:text-violet-300">🔍 Semantic RAG:</span>
+                                {embedStats ? (
+                                    <span className="text-muted-foreground">
+                                        KB {embedStats.knowledge.embedded}/{embedStats.knowledge.total} ·
+                                        Products {embedStats.products.embedded}/{embedStats.products.total}
+                                        {embedStats.knowledge.embedded + embedStats.products.embedded === 0 && (
+                                            <span className="text-amber-600 ml-1">⚠ No embeddings yet</span>
+                                        )}
+                                    </span>
+                                ) : (
+                                    <button className="text-violet-500 underline text-[10px]" onClick={loadEmbedStats}>Check status</button>
+                                )}
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 text-[10px] px-2 border-violet-300 text-violet-700 hover:bg-violet-100"
+                                disabled={embedLoading}
+                                onClick={async () => {
+                                    setEmbedLoading(true)
+                                    try {
+                                        const res = await fetch(`/api/admin/channels/${channelId}/bot-config/embed`, { method: 'POST' })
+                                        const data = await res.json()
+                                        if (data.success) {
+                                            toast.success(`✅ Embedded ${data.embedded}/${data.total} entries`)
+                                            await loadEmbedStats()
+                                        } else {
+                                            toast.error(data.error || 'Embedding failed')
+                                        }
+                                    } catch { toast.error('Network error') }
+                                    setEmbedLoading(false)
+                                }}
+                            >
+                                {embedLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                                {embedLoading ? 'Embedding...' : '⚡ Re-embed All'}
+                            </Button>
+                        </div>
+
                         <div className="w-full space-y-4">
 
                             {/* ── Saved Knowledge Entries ── */}

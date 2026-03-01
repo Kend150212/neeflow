@@ -12,6 +12,7 @@ import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 import { OAUTH_PLATFORMS, CREDENTIAL_PLATFORMS } from '@/lib/platform-registry'
 import { buildPromotionContext } from '@/lib/product-context'
 import { buildMemoryContext, summarizeSession } from '@/lib/customer-memory'
+import { semanticSearchKnowledge, semanticSearchProducts } from '@/lib/rag-search'
 
 // ─── Dedup cache: prevent duplicate Messenger sends ─────────
 // Key: "recipientId" → timestamp of last bot send
@@ -172,12 +173,12 @@ export async function botAutoReply(
         }
 
         // ─── 8. Load context ──────────────────────────────────────
-        const knowledgeEntries = await prisma.knowledgeBase.findMany({
-            where: { channelId: channel.id },
-            select: { title: true, content: true, updatedAt: true },
-            orderBy: { updatedAt: 'desc' },  // newest first, so recent updates are seen first
-            take: 50,
-        })
+        // Semantic RAG search: only load the top-5 most relevant entries
+        // instead of dumping all 50 into the prompt.
+        // Falls back to latest entries if no embeddings exist yet.
+        const knowledgeEntries = await semanticSearchKnowledge(
+            channel.id, inboundContent, provider, apiKey, 5
+        )
 
         // Load recent conversation history
         const totalMsgCount = await prisma.inboxMessage.count({ where: { conversationId } })

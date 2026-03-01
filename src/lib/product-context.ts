@@ -23,32 +23,61 @@ export function extractProductKeywords(message: string): string {
 
 /**
  * Build product context for injection into bot system prompt.
- * Searches product catalog and returns formatted string + image URLs found.
+ * Uses semantic RAG search when provider/apiKey are provided, otherwise keyword search.
  */
 export async function buildProductContext(
     channelId: string,
-    customerMessage: string
+    customerMessage: string,
+    provider?: string,
+    apiKey?: string
 ): Promise<{ contextText: string; imageUrls: string[] }> {
     const keywords = extractProductKeywords(customerMessage)
     if (!keywords.trim()) return { contextText: '', imageUrls: [] }
 
-    // Load all in-stock products for this channel (cached per request, <10k is fast)
-    const products = await prisma.productCatalog.findMany({
-        where: { channelId, inStock: true },
-        select: {
-            productId: true, name: true, category: true,
-            price: true, salePrice: true, description: true,
-            features: true, images: true, tags: true,
-        },
-    })
+    let matches: Array<{
+        productId: string | null; name: string; category: string | null
+        price: number | null; salePrice: number | null; description: string | null
+        features: string[]; images: string[]; tags: string[]
+    }>
 
-    if (products.length === 0) return { contextText: '', imageUrls: [] }
+    if (provider && apiKey) {
+        // Semantic RAG search — only top-5 most relevant products
+        const { semanticSearchProducts } = await import('@/lib/rag-search')
+        const semantic = await semanticSearchProducts(channelId, customerMessage, provider, apiKey, 5)
+        // Load images field separately (not in semantic return type)
+        if (semantic.length > 0) {
+            const withImages = await prisma.productCatalog.findMany({
+                where: { id: { in: semantic.map(p => p.id) } },
+                select: {
+                    id: true, productId: true, name: true, category: true,
+                    price: true, salePrice: true, description: true,
+                    features: true, images: true, tags: true,
+                },
+            })
+            // Preserve semantic order
+            const byId = Object.fromEntries(withImages.map(p => [p.id, p]))
+            matches = semantic.map(p => byId[p.id]).filter(Boolean)
+        } else {
+            matches = []
+        }
+    } else {
+        // Keyword fallback — load all in-stock products, do text search
+        const products = await prisma.productCatalog.findMany({
+            where: { channelId, inStock: true },
+            select: {
+                productId: true, name: true, category: true,
+                price: true, salePrice: true, description: true,
+                features: true, images: true, tags: true,
+            },
+        })
+        if (products.length === 0) return { contextText: '', imageUrls: [] }
+        matches = searchProducts(products, keywords, 5)
+    }
 
-    const matches = searchProducts(products, keywords, 5)
     if (matches.length === 0) return { contextText: '', imageUrls: [] }
 
     // Format for system prompt
-    const lines: string[] = ['--- PRODUCT CATALOG (matching results) ---']
+    const lines: string[] = ['--- PRODUCT CATALOG (relevant results) ---']
     const allImages: string[] = []
 
     for (const p of matches) {
@@ -73,9 +102,10 @@ export async function buildProductContext(
 
     return {
         contextText: lines.join('\n'),
-        imageUrls: [...new Set(allImages)].slice(0, 3), // max 3 unique images
+        imageUrls: [...new Set(allImages)].slice(0, 3),
     }
 }
+
 
 function formatPrice(price: number): string {
     if (price >= 1000) return price.toLocaleString('vi-VN') + 'đ'
