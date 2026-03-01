@@ -338,7 +338,7 @@ export function Sidebar({ session }: { session: Session }) {
                                         <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${isHot ? 'bg-red-500/20' : 'bg-emerald-500/20'}`}>
                                             <PenSquare className={`h-3.5 w-3.5 ${isHot ? 'text-red-400' : 'text-emerald-400'}`} />
                                         </div>
-                                        <span className="text-xs font-semibold">Text Credits</span>
+                                        <span className="text-xs font-semibold">Posts</span>
                                     </div>
                                     <div className={`h-5 w-5 rounded-full flex items-center justify-center ${isHot ? 'bg-red-500' : 'bg-emerald-500'}`}>
                                         <Plus className="h-3 w-3 text-white" />
@@ -360,16 +360,18 @@ export function Sidebar({ session }: { session: Session }) {
                         )
                     })()}
 
-                    {/* API Keys row */}
-                    <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-amber-500/20">
-                                <Key className="h-3.5 w-3.5 text-amber-400" />
+                    {/* API Keys row — only shown when user has at least one key */}
+                    {usage.apiKeys.count > 0 && (
+                        <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="h-7 w-7 rounded-lg flex items-center justify-center bg-amber-500/20">
+                                    <Key className="h-3.5 w-3.5 text-amber-400" />
+                                </div>
+                                <span className="text-xs font-semibold">API Keys</span>
                             </div>
-                            <span className="text-xs font-semibold">API Keys</span>
+                            <span className="text-xs font-bold text-amber-400 tabular-nums">{usage.apiKeys.count} <span className="font-normal text-muted-foreground text-[10px]">keys</span></span>
                         </div>
-                        <span className="text-xs font-bold text-amber-400 tabular-nums">{usage.apiKeys.count} <span className="font-normal text-muted-foreground text-[10px]">saved</span></span>
-                    </div>
+                    )}
                 </div>
             )}
 
