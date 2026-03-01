@@ -146,7 +146,90 @@ async function publishToFacebook(
         return { externalId: postId }
     }
 
-    if (mediaItems.length > 0 && postType !== 'story') {
+    // ── Story: use /photo_stories or /video_stories endpoint ──
+    if (postType === 'story') {
+        const videoMedia = mediaItems.find(m => isVideoMedia(m))
+        const imageMedia = mediaItems.find(m => !isVideoMedia(m))
+
+        if (videoMedia) {
+            // Video Story
+            console.log(`[Facebook] Story: uploading video story`)
+            const storyUrl = `https://graph.facebook.com/v21.0/${accountId}/video_stories`
+
+            // Phase 1: START
+            const startRes = await fetch(storyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ upload_phase: 'start', access_token: accessToken }),
+            })
+            const startData = await startRes.json()
+            if (startData.error) throw new Error(startData.error.message || 'Facebook Story video start error')
+            const videoId = startData.video_id
+            if (!videoId) throw new Error('Facebook Story video start did not return video_id')
+
+            // Phase 2: Download + upload bytes
+            const videoRes = await fetch(videoMedia.url)
+            if (!videoRes.ok) throw new Error(`Failed to download story video: ${videoRes.statusText}`)
+            const videoBuffer = await videoRes.arrayBuffer()
+            const fileSize = videoBuffer.byteLength
+
+            const uploadRes = await fetch(`https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `OAuth ${accessToken}`,
+                    'offset': '0',
+                    'file_size': String(fileSize),
+                    'Content-Type': 'application/octet-stream',
+                },
+                body: videoBuffer,
+            })
+            if (!uploadRes.ok) throw new Error(`Facebook Story video upload failed: ${uploadRes.status}`)
+
+            // Phase 3: FINISH
+            const finishRes = await fetch(storyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    upload_phase: 'finish',
+                    video_id: videoId,
+                    published: true,
+                    access_token: accessToken,
+                }),
+            })
+            const finishData = await finishRes.json()
+            console.log(`[Facebook] Story video finish:`, JSON.stringify(finishData).slice(0, 200))
+            if (finishData.error) throw new Error(finishData.error.message || 'Facebook Story video finish error')
+            const postId = finishData.post_id || finishData.id || videoId
+            console.log(`[Facebook] ✅ Story (video) published: ${postId}`)
+            return { externalId: postId }
+
+        } else if (imageMedia) {
+            // Photo Story
+            console.log(`[Facebook] Story: uploading photo story`)
+            const storyUrl = `https://graph.facebook.com/v21.0/${accountId}/photo_stories`
+            const res = await fetch(storyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: imageMedia.url,
+                    published: true,
+                    access_token: accessToken,
+                }),
+            })
+            const data = await res.json()
+            console.log(`[Facebook] Story photo result:`, JSON.stringify(data).slice(0, 200))
+            if (data.error) throw new Error(data.error.message || 'Facebook Story photo error')
+            const postId = data.post_id || data.id
+            console.log(`[Facebook] ✅ Story (photo) published: ${postId}`)
+            return { externalId: postId }
+
+        } else {
+            // No media — warn and fall through to text post
+            console.warn(`[Facebook] Story selected but no media attached — posting as text feed post instead`)
+        }
+    }
+
+    if (mediaItems.length > 0) {
         const videoItems = mediaItems.filter(m => isVideoMedia(m))
         const imageItems = mediaItems.filter(m => !isVideoMedia(m))
 

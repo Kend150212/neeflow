@@ -275,22 +275,49 @@ function FacebookPreview({ content, media, accountName, accountAvatar, postType,
     content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; postType: string; mediaRatio: string; firstComment?: string
 }) {
     const fbColor = '#1877F2'
-    if (postType === 'story') {
+    if (postType === 'story' || postType === 'reel') {
+        const isReel = postType === 'reel'
         return (
-            <div className="rounded-xl overflow-hidden bg-gradient-to-b from-blue-600 to-blue-800 text-white relative" style={{ minHeight: 280 }}>
-                {media.length > 0 && (
-                    <MediaElement media={media[0]} className="absolute inset-0 w-full h-full object-cover opacity-80" />
+            <div className="rounded-xl overflow-hidden bg-black text-white relative aspect-[9/16]">
+                {media.length > 0 ? (
+                    <MediaElement media={media[0]} className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-700 to-blue-900" />
                 )}
-                <div className="relative z-10 p-4 flex flex-col justify-between h-full" style={{ minHeight: 280 }}>
-                    <div className="flex items-center gap-2">
-                        <AccountAvatar name={accountName} avatarUrl={accountAvatar} size="sm" style={{ backgroundColor: '#1877F2' }} />
-                        <span className="text-sm font-semibold">{accountName}</span>
-                        <span className="text-xs opacity-60">Story</span>
-                    </div>
-                    <p className="text-sm font-medium drop-shadow-lg mt-auto">
-                        {content.slice(0, 200)}
-                    </p>
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
+                {/* Header */}
+                <div className="relative z-10 p-3 pt-4 flex items-center gap-2">
+                    <AccountAvatar name={accountName} avatarUrl={accountAvatar} size="sm" style={{ backgroundColor: '#1877F2' }} />
+                    <span className="text-[11px] font-semibold drop-shadow">{accountName}</span>
+                    <span className="text-[10px] opacity-70 ml-auto">{isReel ? '▶ Reel' : 'Story'}</span>
                 </div>
+                {/* Progress bar (story style) */}
+                <div className="absolute top-2 left-2 right-2 h-0.5 bg-white/30 rounded-full">
+                    <div className="h-full w-1/3 bg-white rounded-full" />
+                </div>
+                {/* Bottom caption */}
+                {content && (
+                    <div className="absolute bottom-6 left-3 right-3 z-10">
+                        <p className="text-xs font-medium drop-shadow-lg line-clamp-3 leading-relaxed">
+                            {content.slice(0, 200)}
+                        </p>
+                    </div>
+                )}
+                {/* Like/Comment sidebar for Reel */}
+                {isReel && (
+                    <div className="absolute right-2 bottom-16 z-10 flex flex-col items-center gap-3">
+                        <div className="flex flex-col items-center gap-0.5">
+                            <Heart className="h-5 w-5 drop-shadow" />
+                            <span className="text-[9px]">0</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                            <MessageCircle className="h-5 w-5 drop-shadow" />
+                            <span className="text-[9px]">0</span>
+                        </div>
+                        <Share2 className="h-5 w-5 drop-shadow" />
+                    </div>
+                )}
             </div>
         )
     }
@@ -316,7 +343,7 @@ function FacebookPreview({ content, media, accountName, accountAvatar, postType,
             </div>
             {/* Media */}
             {media.length === 1 && (
-                <div className={`w-full bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'
+                <div className={`w-full bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'
                     }`}>
                     <MediaElement media={media[0]} className="w-full h-full object-cover" />
                 </div>
@@ -394,7 +421,7 @@ function InstagramPreview({ content, media, accountName, accountAvatar, mediaRat
                 <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
             </div>
             {media.length === 1 ? (
-                <div className={`w-full bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'
+                <div className={`w-full bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'
                     }`}>
                     <MediaElement media={media[0]} className="w-full h-full object-cover" />
                 </div>
@@ -402,7 +429,7 @@ function InstagramPreview({ content, media, accountName, accountAvatar, mediaRat
                 <div className="relative">
                     <div className="overflow-x-auto flex snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {media.map((m, i) => (
-                            <div key={i} className={`flex-none w-full snap-center bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'}`}>
+                            <div key={i} className={`flex-none w-full snap-center bg-muted overflow-hidden ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
                                 <MediaElement media={m} className="w-full h-full object-cover" />
                             </div>
                         ))}
@@ -419,7 +446,7 @@ function InstagramPreview({ content, media, accountName, accountAvatar, mediaRat
                     </div>
                 </div>
             ) : (
-                <div className={`w-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : 'aspect-square'
+                <div className={`w-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'
                     }`}>
                     <p className="text-white text-center font-medium px-6 text-sm leading-relaxed">
                         {content.slice(0, 150)}
@@ -535,7 +562,7 @@ function YouTubePreview({ content, media, accountName, accountAvatar, mediaRatio
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             {media.length > 0 ? (
-                <div className={`relative w-full bg-muted overflow-hidden ${mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : mediaRatio === '1:1' ? 'aspect-square' : 'aspect-video'
+                <div className={`relative w-full bg-muted overflow-hidden ${mediaRatio === '9:16' ? 'aspect-[9/16]' : mediaRatio === '1:1' ? 'aspect-square' : 'aspect-video'
                     }`}>
                     <MediaElement media={media[0]} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -546,7 +573,7 @@ function YouTubePreview({ content, media, accountName, accountAvatar, mediaRatio
                     <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1 rounded">0:00</div>
                 </div>
             ) : (
-                <div className={`w-full bg-muted flex items-center justify-center ${mediaRatio === '9:16' ? 'aspect-[9/16] max-h-[400px]' : mediaRatio === '1:1' ? 'aspect-square' : 'aspect-video'
+                <div className={`w-full bg-muted flex items-center justify-center ${mediaRatio === '9:16' ? 'aspect-[9/16]' : mediaRatio === '1:1' ? 'aspect-square' : 'aspect-video'
                     }`}>
                     <Play className="h-8 w-8 text-muted-foreground/30" />
                 </div>
@@ -878,18 +905,47 @@ export default function ComposePage() {
                 if (post.platformStatuses && ch) {
                     const selectedIds = new Set<string>()
                     const fbTypes: Record<string, 'feed' | 'story' | 'reel'> = {}
+                    let restoredFbCarousel = false
+                    let restoredFbFirstComment = ''
+                    let restoredIgPostType: 'feed' | 'reel' | 'story' = 'feed'
+                    let restoredIgShareToStory = false
+                    let restoredIgCollaborators = ''
+                    let restoredTtPostType: 'video' | 'carousel' = 'video'
+                    let restoredTtPublishMode: 'direct' | 'inbox' = 'direct'
                     for (const ps of post.platformStatuses) {
                         const match = ch.platforms.find(
                             (p) => p.platform === ps.platform && p.accountId === ps.accountId
                         )
                         if (match) {
                             selectedIds.add(match.id)
-                            if (match.platform === 'facebook') fbTypes[match.id] = 'feed'
+                            const cfg = (ps.config as Record<string, unknown>) || {}
+                            if (match.platform === 'facebook') {
+                                fbTypes[match.id] = (cfg.postType as 'feed' | 'story' | 'reel') || 'feed'
+                                if (cfg.carousel === true) restoredFbCarousel = true
+                                if (cfg.firstComment) restoredFbFirstComment = cfg.firstComment as string
+                            }
+                            if (match.platform === 'instagram') {
+                                restoredIgPostType = (cfg.postType as 'feed' | 'reel' | 'story') || 'feed'
+                                restoredIgShareToStory = cfg.shareToStory === true
+                                if (cfg.collaborators) restoredIgCollaborators = cfg.collaborators as string
+                            }
+                            if (match.platform === 'tiktok') {
+                                restoredTtPostType = (cfg.postType as 'video' | 'carousel') || 'video'
+                                restoredTtPublishMode = (cfg.publishMode as 'direct' | 'inbox') || 'direct'
+                            }
                         }
                     }
                     setSelectedPlatformIds(selectedIds)
                     setFbPostTypes(fbTypes)
+                    setFbCarousel(restoredFbCarousel)
+                    if (restoredFbFirstComment) setFbFirstComment(restoredFbFirstComment)
+                    setIgPostType(restoredIgPostType)
+                    setIgShareToStory(restoredIgShareToStory)
+                    if (restoredIgCollaborators) setIgCollaborators(restoredIgCollaborators)
+                    setTtPostType(restoredTtPostType)
+                    setTtPublishMode(restoredTtPublishMode)
                 }
+
                 savedRef.current = true // prevent auto-save of loaded data
             })
             .catch(() => toast.error('Failed to load post'))
@@ -1107,6 +1163,56 @@ export default function ComposePage() {
 
         return { errors, warnings }
     }, [attachedMedia, igPostType, mediaRatio, selectedChannel, selectedPlatformIds])
+
+    // ─── Facebook media validation ──────────────────────────
+    const fbValidation = useMemo(() => {
+        const isFbSelected = selectedChannel?.platforms?.some(p => p.platform === 'facebook' && selectedPlatformIds.has(p.id))
+        if (!isFbSelected) return { errors: [], warnings: [] }
+
+        const errors: string[] = []
+        const warnings: string[] = []
+
+        const selectedFbIds = selectedChannel?.platforms?.filter(p => p.platform === 'facebook' && selectedPlatformIds.has(p.id)).map(p => p.id) || []
+        const currentFbType = selectedFbIds.length > 0 ? (fbPostTypes[selectedFbIds[0]] || 'feed') : 'feed'
+
+        const hasVideo = attachedMedia.some(m => isVideo(m))
+        const hasImage = attachedMedia.some(m => !isVideo(m))
+        const imageCount = attachedMedia.filter(m => !isVideo(m)).length
+
+        if (currentFbType === 'reel') {
+            if (!hasVideo) {
+                errors.push('Facebook Reels require a video. Please attach an MP4 or MOV video file.')
+            }
+            if (hasImage && hasVideo) {
+                warnings.push('Mixed media: Facebook will use the video only. Images will be ignored for Reels.')
+            }
+            if (attachedMedia.length > 1 && hasVideo) {
+                warnings.push('Reels only use the first video — extra media will be ignored.')
+            }
+            if (mediaRatio === '16:9') {
+                warnings.push('Reels work best in 9:16 (vertical). Your media is landscape (16:9) — consider changing aspect ratio for better reach.')
+            }
+            if (mediaRatio === '1:1') {
+                warnings.push('Reels work best in 9:16 (vertical). Square (1:1) is supported but not ideal.')
+            }
+        } else if (currentFbType === 'story') {
+            if (attachedMedia.length === 0) {
+                warnings.push('Stories require at least one image or video.')
+            }
+            if (attachedMedia.length > 1) {
+                warnings.push('Only the first media item will be used for the Story.')
+            }
+            if (mediaRatio === '16:9') {
+                warnings.push('Stories work best in 9:16 (vertical). Your media is 16:9 (landscape) — it will be letterboxed.')
+            }
+            if (mediaRatio === '1:1') {
+                warnings.push('Stories work best in 9:16 (vertical). Square (1:1) will have black bars on top and bottom.')
+            }
+        }
+
+        return { errors, warnings }
+    }, [attachedMedia, fbPostTypes, mediaRatio, selectedChannel, selectedPlatformIds])
+
 
     // Toggle platform by unique ID
     const togglePlatform = (platformId: string) => {
@@ -2421,334 +2527,358 @@ export default function ComposePage() {
 
                 </div>
 
-            {/* ── Center: Editor ── */}
-            <div className={`lg:col-span-7 space-y-1.5 overflow-y-auto px-4 py-4 ${mobileTab === 'editor' ? 'block' : 'hidden'} lg:block`}>
-                {/* AI Generate */}
-                <Card >
-                    <CardHeader className="py-1.5 px-2.5">
-                        <CardTitle className="text-xs flex items-center gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> {t('compose.generateAI')}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-2.5 pb-2 space-y-2">
-                        <div className="flex gap-2">
-                            <Input
-                                placeholder={t('compose.topicPlaceholder')}
-                                value={aiTopic}
-                                onChange={(e) => setAiTopic(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-                            />
-                            <Button onClick={handleGenerate} disabled={generating || !aiTopic.trim()} size="sm" className="shrink-0 cursor-pointer">
-                                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                            </Button>
-                        </div>
+                {/* ── Center: Editor ── */}
+                <div className={`lg:col-span-7 space-y-1.5 overflow-y-auto px-4 py-4 ${mobileTab === 'editor' ? 'block' : 'hidden'} lg:block`}>
+                    {/* AI Generate */}
+                    <Card >
+                        <CardHeader className="py-1.5 px-2.5">
+                            <CardTitle className="text-xs flex items-center gap-1.5">
+                                <Sparkles className="h-3.5 w-3.5 text-amber-500" /> {t('compose.generateAI')}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-2.5 pb-2 space-y-2">
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder={t('compose.topicPlaceholder')}
+                                    value={aiTopic}
+                                    onChange={(e) => setAiTopic(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+                                />
+                                <Button onClick={handleGenerate} disabled={generating || !aiTopic.trim()} size="sm" className="shrink-0 cursor-pointer">
+                                    {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                </Button>
+                            </div>
 
-                        {/* URL & Business Info toggles */}
-                        <div className="flex flex-wrap gap-3">
-                            {aiTopic.startsWith('http') && (
-                                <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
+                            {/* URL & Business Info toggles */}
+                            <div className="flex flex-wrap gap-3">
+                                {aiTopic.startsWith('http') && (
+                                    <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={includeSourceLink}
+                                            onChange={(e) => setIncludeSourceLink(e.target.checked)}
+                                            className="h-3 w-3 rounded accent-primary"
+                                        />
+                                        🔗 Include source link
+                                    </label>
+                                )}
+                                <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors">
                                     <input
                                         type="checkbox"
-                                        checked={includeSourceLink}
-                                        onChange={(e) => setIncludeSourceLink(e.target.checked)}
+                                        checked={includeBusinessInfo}
+                                        onChange={(e) => setIncludeBusinessInfo(e.target.checked)}
                                         className="h-3 w-3 rounded accent-primary"
                                     />
-                                    🔗 Include source link
+                                    <Building2 className="h-3 w-3 text-blue-400" />
+                                    Include business info
                                 </label>
-                            )}
-                            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors">
-                                <input
-                                    type="checkbox"
-                                    checked={includeBusinessInfo}
-                                    onChange={(e) => setIncludeBusinessInfo(e.target.checked)}
-                                    className="h-3 w-3 rounded accent-primary"
-                                />
-                                <Building2 className="h-3 w-3 text-blue-400" />
-                                Include business info
-                            </label>
-                        </div>
-
-                        {/* Applied Context Indicator */}
-                        {appliedContext && (
-                            <div className="flex flex-wrap items-center gap-1">
-                                <span className="text-[9px] text-muted-foreground mr-0.5">AI used:</span>
-                                {appliedContext.vibe && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 text-[9px] font-medium">
-                                        🎨 Vibe
-                                    </span>
-                                )}
-                                {(appliedContext.knowledge ?? 0) > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[9px] font-medium">
-                                        📚 Knowledge ({appliedContext.knowledge})
-                                    </span>
-                                )}
-                                {(appliedContext.hashtags ?? 0) > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-medium">
-                                        # Hashtags ({appliedContext.hashtags})
-                                    </span>
-                                )}
-                                {(appliedContext.templates ?? 0) > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-400 text-[9px] font-medium">
-                                        📋 Templates ({appliedContext.templates})
-                                    </span>
-                                )}
-                                {appliedContext.businessInfo && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 text-[9px] font-medium">
-                                        🏢 Business
-                                    </span>
-                                )}
-                                {appliedContext.brandProfile && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-pink-500/10 text-pink-400 text-[9px] font-medium">
-                                        🎯 Brand
-                                    </span>
-                                )}
                             </div>
-                        )}
 
-                        {/* Suggested Topics */}
-                        <div>
-                            <button
-                                type="button"
-                                onClick={() => { setShowSuggestions(!showSuggestions); if (!showSuggestions && suggestions.length === 0) fetchSuggestions() }}
-                                className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                            >
-                                <Lightbulb className="h-3 w-3" />
-                                Suggested Topics
-                                <ChevronDown className={`h-2.5 w-2.5 transition-transform ${showSuggestions ? 'rotate-180' : ''}`} />
-                            </button>
-                            {showSuggestions && (
-                                <div className="mt-1.5">
-                                    {loadingSuggestions ? (
-                                        <div className="flex items-center gap-1.5 py-2">
-                                            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                            <span className="text-[10px] text-muted-foreground">Generating suggestions...</span>
-                                        </div>
-                                    ) : suggestions.length > 0 ? (
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {suggestions.map((s, i) => (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => { setAiTopic(s.topic); setShowSuggestions(false) }}
-                                                    title={s.angle || s.topic}
-                                                    className="group inline-flex flex-col items-start gap-0.5 px-2.5 py-1.5 rounded-lg border bg-card hover:bg-primary/6 hover:border-primary/30 text-left transition-all cursor-pointer"
-                                                >
-                                                    <span className="inline-flex items-center gap-1 text-[10px]">
-                                                        <span>{s.emoji}</span>
-                                                        <span className="font-medium group-hover:text-primary transition-colors">{s.topic}</span>
-                                                    </span>
-                                                    {s.keyword && (
-                                                        <span className="inline-flex items-center gap-1 text-[8px] text-muted-foreground">
-                                                            <Search className="h-2 w-2" />
-                                                            {s.keyword}
-                                                            {s.relatedKeywords && s.relatedKeywords.length > 0 && (
-                                                                <span className="text-muted-foreground/50">· {s.relatedKeywords.slice(0, 2).join(' · ')}</span>
-                                                            )}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            ))}
-                                            <button
-                                                onClick={fetchSuggestions}
-                                                disabled={loadingSuggestions}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer self-start"
-                                            >
-                                                <RefreshCw className="h-2.5 w-2.5" /> Refresh
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <p className="text-[10px] text-muted-foreground py-1">No suggestions yet. Click Refresh to get ideas.</p>
+                            {/* Applied Context Indicator */}
+                            {appliedContext && (
+                                <div className="flex flex-wrap items-center gap-1">
+                                    <span className="text-[9px] text-muted-foreground mr-0.5">AI used:</span>
+                                    {appliedContext.vibe && (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 text-[9px] font-medium">
+                                            🎨 Vibe
+                                        </span>
+                                    )}
+                                    {(appliedContext.knowledge ?? 0) > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[9px] font-medium">
+                                            📚 Knowledge ({appliedContext.knowledge})
+                                        </span>
+                                    )}
+                                    {(appliedContext.hashtags ?? 0) > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-medium">
+                                            # Hashtags ({appliedContext.hashtags})
+                                        </span>
+                                    )}
+                                    {(appliedContext.templates ?? 0) > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-400 text-[9px] font-medium">
+                                            📋 Templates ({appliedContext.templates})
+                                        </span>
+                                    )}
+                                    {appliedContext.businessInfo && (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 text-[9px] font-medium">
+                                            🏢 Business
+                                        </span>
+                                    )}
+                                    {appliedContext.brandProfile && (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-pink-500/10 text-pink-400 text-[9px] font-medium">
+                                            🎯 Brand
+                                        </span>
                                     )}
                                 </div>
                             )}
-                        </div>
 
-                        {/* Trending News */}
-                        <div>
-                            <button
-                                type="button"
-                                onClick={() => { setShowTrending(!showTrending); if (!showTrending && trendingArticles.length === 0) fetchTrending() }}
-                                className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                            >
-                                <Newspaper className="h-3 w-3" />
-                                Trending News
-                                <ChevronDown className={`h-2.5 w-2.5 transition-transform ${showTrending ? 'rotate-180' : ''}`} />
-                            </button>
-                            {showTrending && (
-                                <div className="mt-1.5 space-y-1.5">
-                                    {/* Category selector */}
-                                    <div className="flex items-center gap-1.5">
-                                        <select
-                                            value={trendingCategory}
-                                            onChange={(e) => { setTrendingCategory(e.target.value); fetchTrending(e.target.value) }}
-                                            className="h-6 text-[10px] rounded border bg-muted/50 px-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
-                                        >
-                                            <option value="general">General</option>
-                                            <option value="technology">Technology</option>
-                                            <option value="business">Business</option>
-                                            <option value="health">Health</option>
-                                            <option value="science">Science</option>
-                                            <option value="entertainment">Entertainment</option>
-                                            <option value="sports">Sports</option>
-                                        </select>
-                                        {trendingKeywords && (
-                                            <span className="text-[9px] text-muted-foreground truncate">Keywords: {trendingKeywords}</span>
-                                        )}
-                                        <button
-                                            onClick={() => fetchTrending()}
-                                            disabled={loadingTrending}
-                                            className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                                        >
-                                            <RefreshCw className={`h-2.5 w-2.5 ${loadingTrending ? 'animate-spin' : ''}`} />
-                                        </button>
-                                    </div>
-
-                                    {/* Articles list */}
-                                    {loadingTrending ? (
-                                        <div className="flex items-center gap-1.5 py-3">
-                                            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                            <span className="text-[10px] text-muted-foreground">Fetching news...</span>
-                                        </div>
-                                    ) : trendingArticles.length > 0 ? (
-                                        <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
-                                            {trendingArticles.map((article, i) => {
-                                                const timeAgo = article.publishedAt
-                                                    ? (() => {
-                                                        const diff = Date.now() - new Date(article.publishedAt).getTime()
-                                                        const hours = Math.floor(diff / 3600000)
-                                                        if (hours < 1) return `${Math.floor(diff / 60000)}m ago`
-                                                        if (hours < 24) return `${hours}h ago`
-                                                        return `${Math.floor(hours / 24)}d ago`
-                                                    })()
-                                                    : ''
-                                                return (
-                                                    <button
-                                                        key={i}
-                                                        onClick={() => { setAiTopic(article.link); setShowTrending(false); toast.success('Article URL added — click ✨ to generate!') }}
-                                                        className="w-full flex items-start gap-2 p-1.5 rounded-md hover:bg-primary/6 transition-colors text-left group cursor-pointer"
-                                                    >
-                                                        <Newspaper className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="text-[10px] font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">{article.title}</p>
-                                                            <p className="text-[9px] text-muted-foreground mt-0.5">
-                                                                {article.source}{article.source && timeAgo ? ' • ' : ''}{timeAgo}
-                                                            </p>
-                                                        </div>
-                                                        <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 shrink-0" />
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <p className="text-[10px] text-muted-foreground py-2">No articles found. Try a different category.</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                    </CardContent>
-                </Card>
-
-
-
-                {/* Content Editor */}
-                <Card >
-                    <CardHeader className="py-1.5 px-2.5">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-xs">Content</CardTitle>
-                            <span className={`text-[10px] ${charCount > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
-                                {charCount > 0 ? `${charCount}` : ''}
-                            </span>
-                        </div>
-                        {/* Content Toolbar */}
-                        <div className="flex items-center gap-0 pt-0.5 border-b pb-1 -mx-0.5 flex-wrap">
-                            {/* Bold */}
-                            <button
-                                type="button"
-                                title="Bold text"
-                                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                                onClick={() => {
-                                    const ta = textareaRef.current
-                                    if (!ta) return
-                                    const start = ta.selectionStart
-                                    const end = ta.selectionEnd
-                                    const selected = content.substring(start, end)
-                                    const newContent = content.substring(0, start) + `**${selected || 'bold'}**` + content.substring(end)
-                                    setContent(newContent)
-                                    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, start + 2 + (selected || 'bold').length) }, 0)
-                                }}
-                            >
-                                <Bold className="h-4 w-4" />
-                            </button>
-                            {/* Hashtag */}
-                            <button
-                                type="button"
-                                title="Insert hashtag"
-                                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                                onClick={() => {
-                                    const ta = textareaRef.current
-                                    if (ta) {
-                                        const pos = ta.selectionStart
-                                        const before = content.substring(0, pos)
-                                        const after = content.substring(pos)
-                                        const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
-                                        setContent(before + prefix + '#' + after)
-                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + 1, pos + prefix.length + 1) }, 0)
-                                    } else {
-                                        setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + '#')
-                                    }
-                                }}
-                            >
-                                <Hash className="h-4 w-4" />
-                            </button>
-                            {/* @Mention */}
-                            <button
-                                type="button"
-                                title="Insert mention"
-                                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                                onClick={() => {
-                                    const ta = textareaRef.current
-                                    if (ta) {
-                                        const pos = ta.selectionStart
-                                        const before = content.substring(0, pos)
-                                        const after = content.substring(pos)
-                                        const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
-                                        setContent(before + prefix + '@' + after)
-                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + 1, pos + prefix.length + 1) }, 0)
-                                    } else {
-                                        setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + '@')
-                                    }
-                                }}
-                            >
-                                <AtSign className="h-4 w-4" />
-                            </button>
-                            {/* Link */}
-                            <div className="relative">
+                            {/* Suggested Topics */}
+                            <div>
                                 <button
                                     type="button"
-                                    title="Insert link"
-                                    className={`h-7 w-7 rounded flex items-center justify-center transition-colors cursor-pointer ${showLinkInput ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                                    onClick={() => { setShowSuggestions(!showSuggestions); if (!showSuggestions && suggestions.length === 0) fetchSuggestions() }}
+                                    className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                >
+                                    <Lightbulb className="h-3 w-3" />
+                                    Suggested Topics
+                                    <ChevronDown className={`h-2.5 w-2.5 transition-transform ${showSuggestions ? 'rotate-180' : ''}`} />
+                                </button>
+                                {showSuggestions && (
+                                    <div className="mt-1.5">
+                                        {loadingSuggestions ? (
+                                            <div className="flex items-center gap-1.5 py-2">
+                                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                                <span className="text-[10px] text-muted-foreground">Generating suggestions...</span>
+                                            </div>
+                                        ) : suggestions.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {suggestions.map((s, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => { setAiTopic(s.topic); setShowSuggestions(false) }}
+                                                        title={s.angle || s.topic}
+                                                        className="group inline-flex flex-col items-start gap-0.5 px-2.5 py-1.5 rounded-lg border bg-card hover:bg-primary/6 hover:border-primary/30 text-left transition-all cursor-pointer"
+                                                    >
+                                                        <span className="inline-flex items-center gap-1 text-[10px]">
+                                                            <span>{s.emoji}</span>
+                                                            <span className="font-medium group-hover:text-primary transition-colors">{s.topic}</span>
+                                                        </span>
+                                                        {s.keyword && (
+                                                            <span className="inline-flex items-center gap-1 text-[8px] text-muted-foreground">
+                                                                <Search className="h-2 w-2" />
+                                                                {s.keyword}
+                                                                {s.relatedKeywords && s.relatedKeywords.length > 0 && (
+                                                                    <span className="text-muted-foreground/50">· {s.relatedKeywords.slice(0, 2).join(' · ')}</span>
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                                <button
+                                                    onClick={fetchSuggestions}
+                                                    disabled={loadingSuggestions}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer self-start"
+                                                >
+                                                    <RefreshCw className="h-2.5 w-2.5" /> Refresh
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-[10px] text-muted-foreground py-1">No suggestions yet. Click Refresh to get ideas.</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Trending News */}
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowTrending(!showTrending); if (!showTrending && trendingArticles.length === 0) fetchTrending() }}
+                                    className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                >
+                                    <Newspaper className="h-3 w-3" />
+                                    Trending News
+                                    <ChevronDown className={`h-2.5 w-2.5 transition-transform ${showTrending ? 'rotate-180' : ''}`} />
+                                </button>
+                                {showTrending && (
+                                    <div className="mt-1.5 space-y-1.5">
+                                        {/* Category selector */}
+                                        <div className="flex items-center gap-1.5">
+                                            <select
+                                                value={trendingCategory}
+                                                onChange={(e) => { setTrendingCategory(e.target.value); fetchTrending(e.target.value) }}
+                                                className="h-6 text-[10px] rounded border bg-muted/50 px-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                                            >
+                                                <option value="general">General</option>
+                                                <option value="technology">Technology</option>
+                                                <option value="business">Business</option>
+                                                <option value="health">Health</option>
+                                                <option value="science">Science</option>
+                                                <option value="entertainment">Entertainment</option>
+                                                <option value="sports">Sports</option>
+                                            </select>
+                                            {trendingKeywords && (
+                                                <span className="text-[9px] text-muted-foreground truncate">Keywords: {trendingKeywords}</span>
+                                            )}
+                                            <button
+                                                onClick={() => fetchTrending()}
+                                                disabled={loadingTrending}
+                                                className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                            >
+                                                <RefreshCw className={`h-2.5 w-2.5 ${loadingTrending ? 'animate-spin' : ''}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* Articles list */}
+                                        {loadingTrending ? (
+                                            <div className="flex items-center gap-1.5 py-3">
+                                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                                <span className="text-[10px] text-muted-foreground">Fetching news...</span>
+                                            </div>
+                                        ) : trendingArticles.length > 0 ? (
+                                            <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
+                                                {trendingArticles.map((article, i) => {
+                                                    const timeAgo = article.publishedAt
+                                                        ? (() => {
+                                                            const diff = Date.now() - new Date(article.publishedAt).getTime()
+                                                            const hours = Math.floor(diff / 3600000)
+                                                            if (hours < 1) return `${Math.floor(diff / 60000)}m ago`
+                                                            if (hours < 24) return `${hours}h ago`
+                                                            return `${Math.floor(hours / 24)}d ago`
+                                                        })()
+                                                        : ''
+                                                    return (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => { setAiTopic(article.link); setShowTrending(false); toast.success('Article URL added — click ✨ to generate!') }}
+                                                            className="w-full flex items-start gap-2 p-1.5 rounded-md hover:bg-primary/6 transition-colors text-left group cursor-pointer"
+                                                        >
+                                                            <Newspaper className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-[10px] font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">{article.title}</p>
+                                                                <p className="text-[9px] text-muted-foreground mt-0.5">
+                                                                    {article.source}{article.source && timeAgo ? ' • ' : ''}{timeAgo}
+                                                                </p>
+                                                            </div>
+                                                            <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 shrink-0" />
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-[10px] text-muted-foreground py-2">No articles found. Try a different category.</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                        </CardContent>
+                    </Card>
+
+
+
+                    {/* Content Editor */}
+                    <Card >
+                        <CardHeader className="py-1.5 px-2.5">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-xs">Content</CardTitle>
+                                <span className={`text-[10px] ${charCount > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                                    {charCount > 0 ? `${charCount}` : ''}
+                                </span>
+                            </div>
+                            {/* Content Toolbar */}
+                            <div className="flex items-center gap-0 pt-0.5 border-b pb-1 -mx-0.5 flex-wrap">
+                                {/* Bold */}
+                                <button
+                                    type="button"
+                                    title="Bold text"
+                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                                     onClick={() => {
-                                        setShowLinkInput(!showLinkInput)
-                                        setLinkInputValue('')
+                                        const ta = textareaRef.current
+                                        if (!ta) return
+                                        const start = ta.selectionStart
+                                        const end = ta.selectionEnd
+                                        const selected = content.substring(start, end)
+                                        const newContent = content.substring(0, start) + `**${selected || 'bold'}**` + content.substring(end)
+                                        setContent(newContent)
+                                        setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, start + 2 + (selected || 'bold').length) }, 0)
                                     }}
                                 >
-                                    <Link2 className="h-4 w-4" />
+                                    <Bold className="h-4 w-4" />
                                 </button>
-                                {showLinkInput && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowLinkInput(false)} />
-                                        <div className="absolute top-9 left-0 z-50 bg-popover border rounded-xl shadow-xl p-3 w-[280px]">
-                                            <p className="text-[10px] text-muted-foreground font-medium mb-1.5">Paste or type a URL</p>
-                                            <div className="flex gap-1.5">
-                                                <Input
-                                                    value={linkInputValue}
-                                                    onChange={(e) => setLinkInputValue(e.target.value)}
-                                                    placeholder="https://example.com"
-                                                    className="text-xs h-8"
-                                                    autoFocus
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && linkInputValue.trim()) {
-                                                            e.preventDefault()
+                                {/* Hashtag */}
+                                <button
+                                    type="button"
+                                    title="Insert hashtag"
+                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        const ta = textareaRef.current
+                                        if (ta) {
+                                            const pos = ta.selectionStart
+                                            const before = content.substring(0, pos)
+                                            const after = content.substring(pos)
+                                            const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
+                                            setContent(before + prefix + '#' + after)
+                                            setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + 1, pos + prefix.length + 1) }, 0)
+                                        } else {
+                                            setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + '#')
+                                        }
+                                    }}
+                                >
+                                    <Hash className="h-4 w-4" />
+                                </button>
+                                {/* @Mention */}
+                                <button
+                                    type="button"
+                                    title="Insert mention"
+                                    className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        const ta = textareaRef.current
+                                        if (ta) {
+                                            const pos = ta.selectionStart
+                                            const before = content.substring(0, pos)
+                                            const after = content.substring(pos)
+                                            const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
+                                            setContent(before + prefix + '@' + after)
+                                            setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + 1, pos + prefix.length + 1) }, 0)
+                                        } else {
+                                            setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + '@')
+                                        }
+                                    }}
+                                >
+                                    <AtSign className="h-4 w-4" />
+                                </button>
+                                {/* Link */}
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        title="Insert link"
+                                        className={`h-7 w-7 rounded flex items-center justify-center transition-colors cursor-pointer ${showLinkInput ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                                        onClick={() => {
+                                            setShowLinkInput(!showLinkInput)
+                                            setLinkInputValue('')
+                                        }}
+                                    >
+                                        <Link2 className="h-4 w-4" />
+                                    </button>
+                                    {showLinkInput && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowLinkInput(false)} />
+                                            <div className="absolute top-9 left-0 z-50 bg-popover border rounded-xl shadow-xl p-3 w-[280px]">
+                                                <p className="text-[10px] text-muted-foreground font-medium mb-1.5">Paste or type a URL</p>
+                                                <div className="flex gap-1.5">
+                                                    <Input
+                                                        value={linkInputValue}
+                                                        onChange={(e) => setLinkInputValue(e.target.value)}
+                                                        placeholder="https://example.com"
+                                                        className="text-xs h-8"
+                                                        autoFocus
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && linkInputValue.trim()) {
+                                                                e.preventDefault()
+                                                                const ta = textareaRef.current
+                                                                const url = linkInputValue.trim().startsWith('http') ? linkInputValue.trim() : `https://${linkInputValue.trim()}`
+                                                                if (ta) {
+                                                                    const pos = ta.selectionStart
+                                                                    const before = content.substring(0, pos)
+                                                                    const after = content.substring(pos)
+                                                                    const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
+                                                                    setContent(before + prefix + url + after)
+                                                                    setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + url.length, pos + prefix.length + url.length) }, 0)
+                                                                } else {
+                                                                    setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + url)
+                                                                }
+                                                                setShowLinkInput(false)
+                                                                setLinkInputValue('')
+                                                            } else if (e.key === 'Escape') {
+                                                                setShowLinkInput(false)
+                                                            }
+                                                        }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="h-8 px-2.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50"
+                                                        disabled={!linkInputValue.trim()}
+                                                        onClick={() => {
                                                             const ta = textareaRef.current
                                                             const url = linkInputValue.trim().startsWith('http') ? linkInputValue.trim() : `https://${linkInputValue.trim()}`
                                                             if (ta) {
@@ -2763,2245 +2893,2232 @@ export default function ComposePage() {
                                                             }
                                                             setShowLinkInput(false)
                                                             setLinkInputValue('')
-                                                        } else if (e.key === 'Escape') {
-                                                            setShowLinkInput(false)
-                                                        }
-                                                    }}
-                                                />
-                                                <button
-                                                    type="button"
-                                                    className="h-8 px-2.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50"
-                                                    disabled={!linkInputValue.trim()}
-                                                    onClick={() => {
-                                                        const ta = textareaRef.current
-                                                        const url = linkInputValue.trim().startsWith('http') ? linkInputValue.trim() : `https://${linkInputValue.trim()}`
-                                                        if (ta) {
-                                                            const pos = ta.selectionStart
-                                                            const before = content.substring(0, pos)
-                                                            const after = content.substring(pos)
-                                                            const prefix = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n') ? ' ' : ''
-                                                            setContent(before + prefix + url + after)
-                                                            setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + prefix.length + url.length, pos + prefix.length + url.length) }, 0)
-                                                        } else {
-                                                            setContent(prev => prev + (prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : '') + url)
-                                                        }
-                                                        setShowLinkInput(false)
-                                                        setLinkInputValue('')
-                                                    }}
-                                                >
-                                                    Insert
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                            <div className="w-px h-5 bg-border mx-1" />
-                            {/* Emoji Picker */}
-                            <div className="relative">
-                                <button
-                                    type="button"
-                                    title="Emoji"
-                                    className={`h-7 w-7 rounded flex items-center justify-center transition-colors cursor-pointer ${showEmojiPicker ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                >
-                                    <Smile className="h-4 w-4" />
-                                </button>
-                                {showEmojiPicker && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
-                                        <div className="absolute top-9 left-0 z-50 bg-popover border rounded-xl shadow-xl p-2 w-[260px]">
-                                            <div className="grid grid-cols-8 gap-1">
-                                                {['😀', '😂', '🤣', '😍', '🥰', '😎', '🤩', '🥳', '😤', '🔥', '💯', '❤️', '👏', '🙌', '💪', '✨', '🎉', '🎊', '👍', '👎', '🤔', '😱', '😢', '🤝', '💡', '📌', '🚀', '📢', '💰', '🛒', '🎯', '📈', '⭐', '🏆', '💎', '🌟', '❗', '✅', '📣', '🔔', '🎁', '💝', '🌈', '☀️', '🌙', '💫', '🍀', '🦋'].map(emoji => (
-                                                    <button
-                                                        key={emoji}
-                                                        type="button"
-                                                        className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted transition-colors cursor-pointer text-base"
-                                                        onClick={() => {
-                                                            const ta = textareaRef.current
-                                                            if (!ta) { setContent(prev => prev + emoji); setShowEmojiPicker(false); return }
-                                                            const pos = ta.selectionStart
-                                                            const newContent = content.substring(0, pos) + emoji + content.substring(pos)
-                                                            setContent(newContent)
-                                                            setShowEmojiPicker(false)
-                                                            setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + emoji.length, pos + emoji.length) }, 0)
                                                         }}
                                                     >
-                                                        {emoji}
+                                                        Insert
                                                     </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <textarea
-                            ref={textareaRef}
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            placeholder="Write your post content here..."
-                            className="w-full min-h-[120px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                            rows={5}
-                        />
-                    </CardContent>
-                </Card>
-
-                {/* Per-Platform Content Customization */}
-                {selectedPlatformIds.size > 0 && (
-                    <Card>
-                        <CardHeader className="py-1.5 px-2.5">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-xs flex items-center gap-1.5">
-                                    <Sparkles className="h-3.5 w-3.5" /> Platform Content
-                                </CardTitle>
-                            </div>
-
-                            {/* Platform tabs */}
-                            {(() => {
-                                const uniquePlatforms = [...new Set(
-                                    activePlatforms
-                                        .filter((p) => selectedPlatformIds.has(p.id))
-                                        .map((p) => p.platform)
-                                )]
-                                const platformLabels: Record<string, string> = {
-                                    facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok',
-                                    x: 'X', linkedin: 'LinkedIn', pinterest: 'Pinterest', youtube: 'YouTube',
-                                }
-                                if (Object.keys(contentPerPlatform).length === 0) {
-                                    return (
-                                        <p className="text-[10px] text-muted-foreground mt-1">
-                                            Platform-specific content will appear here when available.
-                                        </p>
-                                    )
-                                }
-                                return (
-                                    <div className="flex flex-wrap gap-1 mt-1.5">
-                                        {uniquePlatforms.map((platform) => (
-                                            <button
-                                                key={platform}
-                                                type="button"
-                                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${activeContentTab === platform
-                                                    ? 'bg-primary text-primary-foreground shadow-sm'
-                                                    : contentPerPlatform[platform]
-                                                        ? 'bg-muted text-foreground hover:bg-muted/80'
-                                                        : 'bg-muted/50 text-muted-foreground hover:bg-muted/80'
-                                                    }`}
-                                                onClick={() => setActiveContentTab(activeContentTab === platform ? null : platform)}
-                                            >
-                                                <PlatformIcon platform={platform} size="sm" />
-                                                {platformLabels[platform] || platform}
-                                                {contentPerPlatform[platform] && <Check className="h-2.5 w-2.5" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )
-                            })()}
-                        </CardHeader>
-                        {activeContentTab && contentPerPlatform[activeContentTab] && (
-                            <CardContent>
-                                <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[10px] text-muted-foreground font-medium">
-                                            {activeContentTab.charAt(0).toUpperCase() + activeContentTab.slice(1)} version
-                                        </span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] text-muted-foreground">
-                                                {contentPerPlatform[activeContentTab]?.length || 0}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                                                onClick={() => {
-                                                    const updated = { ...contentPerPlatform }
-                                                    delete updated[activeContentTab!]
-                                                    setContentPerPlatform(updated)
-                                                    if (Object.keys(updated).length === 0) setActiveContentTab(null)
-                                                }}
-                                            >
-                                                ↺ Reset to Master
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <textarea
-                                        value={contentPerPlatform[activeContentTab] || ''}
-                                        onChange={(e) => setContentPerPlatform({
-                                            ...contentPerPlatform,
-                                            [activeContentTab]: e.target.value,
-                                        })}
-                                        className="w-full min-h-[100px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                                        rows={4}
-                                    />
-                                </div>
-                            </CardContent>
-                        )}
-                    </Card>
-                )}
-
-                {/* Media */}
-                <Card
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={`transition-all ${dragging ? 'ring-2 ring-primary border-primary' : ''}`}
-                >
-                    <CardHeader className="py-1.5 px-2.5">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-xs flex items-center gap-1.5">
-                                <ImageIcon className="h-3.5 w-3.5" /> Media
-                                {uploading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                            </CardTitle>
-                            <div className="flex items-center gap-1">
-                                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 text-blue-400" onClick={openLibrary} disabled={!selectedChannel}>
-                                    <FolderOpen className="h-3 w-3 mr-0.5" />
-                                    Library
-                                </Button>
-                                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400" onClick={openGooglePicker} disabled={loadingDrivePicker}>
-                                    {loadingDrivePicker ? <Loader2 className="h-3 w-3 mr-0.5 animate-spin" /> : <HardDrive className="h-3 w-3 mr-0.5" />}
-                                    Drive
-                                </Button>
-                                <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-400" onClick={() => fileInputRef.current?.click()} disabled={uploading || !selectedChannel}>
-                                    <Upload className="h-3 w-3 mr-0.5" />
-                                    Upload
-                                </Button>
-                            </div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                accept={ACCEPTED_FILE_TYPES}
-                                className="hidden"
-                                onChange={(e) => { handleFileUpload(e.target.files); if (e.target) e.target.value = '' }}
-                            />
-                        </div>
-                        {/* Aspect Ratio Selector */}
-                        <div className="flex items-center gap-1 mt-1">
-                            <span className="text-[10px] text-muted-foreground">Ratio:</span>
-                            {(['16:9', '1:1', '9:16'] as const).map((ratio) => (
-                                <button
-                                    key={ratio}
-                                    onClick={() => setMediaRatio(ratio)}
-                                    className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${mediaRatio === ratio
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                        }`}
-                                >
-                                    {ratio === '16:9' && <RectangleHorizontal className="h-2.5 w-2.5" />}
-                                    {ratio === '1:1' && <Square className="h-2.5 w-2.5" />}
-                                    {ratio === '9:16' && <RectangleVertical className="h-2.5 w-2.5" />}
-                                    {ratio}
-                                </button>
-                            ))}
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-1.5 px-2.5 pb-2">
-                        {(attachedMedia.length > 0 || aiImageBgGenerating) && (
-                            <div className={`grid gap-2 ${mediaRatio === '9:16' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
-                                }`}>
-                                {attachedMedia.map((media, index) => (
-                                    <div
-                                        key={media.id}
-                                        className={`relative group rounded-lg overflow-hidden bg-muted ${mediaRatio === '16:9' ? 'aspect-video'
-                                            : mediaRatio === '9:16' ? 'aspect-[9/16]'
-                                                : 'aspect-square'
-                                            } ${aiImageJustCompleted && index === attachedMedia.length - 1 ? 'animate-ai-reveal' : ''}`}
-                                    >
-                                        {isVideo(media) ? (
-                                            <div className="relative h-full w-full bg-muted">
-                                                <img
-                                                    src={media.thumbnailUrl || media.url}
-                                                    alt={media.originalName || ''}
-                                                    className="h-full w-full object-cover"
-                                                />
-                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                    <div className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center">
-                                                        <Play className="h-4 w-4 text-white ml-0.5" />
-                                                    </div>
-                                                </div>
-                                                <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white px-1 rounded">{media.originalName}</span>
-                                            </div>
-                                        ) : (
-                                            <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover cursor-pointer" onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)} />
-                                        )}
-                                        <button
-                                            onClick={() => removeMedia(media.id)}
-                                            className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                        {/* Zoom button */}
-                                        {!isVideo(media) && (
-                                            <button
-                                                onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)}
-                                                title="View full size"
-                                                className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/80"
-                                            >
-                                                <ZoomIn className="h-3 w-3" />
-                                            </button>
-                                        )}
-                                        {/* Edit in Canva — only for images */}
-                                        {!isVideo(media) && (
-                                            <button
-                                                onClick={() => openCanvaDesign(media.url, media.id)}
-                                                title="Edit in Canva"
-                                                className="absolute top-1 left-1 h-5 w-5 rounded-full bg-violet-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                            >
-                                                <Palette className="h-3 w-3" />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                {/* AI Image Generating Placeholder — inside grid as a cell */}
-                                {aiImageBgGenerating && (
-                                    <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-                                            <div className="relative">
-                                                <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" style={{ animationDuration: '2s' }} />
-                                                <div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
-                                                    <img src="/logo.png" alt="" className="h-5 w-5 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
                                                 </div>
                                             </div>
-                                            <p className="text-[9px] font-medium text-purple-300 animate-pulse">Creating magic...</p>
-                                        </div>
-                                        <div className="absolute top-1.5 right-1.5">
-                                            <Sparkles className="h-2.5 w-2.5 text-purple-400/40 animate-pulse" />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {/* Drop zone — always visible */}
-                        <div
-                            onClick={() => fileInputRef.current?.click()}
-                            className={`border border-dashed rounded-md text-center cursor-pointer transition-all ${dragging
-                                ? 'border-primary bg-primary/5 py-2 px-3'
-                                : attachedMedia.length > 0
-                                    ? 'py-1.5 px-2 hover:border-primary/30'
-                                    : 'py-2 px-3 hover:border-primary/30'
-                                }`}
-                        >
-                            {dragging ? (
-                                <p className="text-xs font-medium text-primary">Drop files here</p>
-                            ) : (
-                                <p className="text-[11px] text-muted-foreground">{attachedMedia.length > 0 ? '+ Add more' : 'Click or drag to upload'}</p>
-                            )}
-                        </div>
-                        {/* ── CTA Action Bar — AI Image & Canva ── */}
-                        <div className="flex gap-2 mt-2">
-                            {imageQuota.limit === 0 && byokProviders.length === 0 ? (
-                                <a
-                                    href="/dashboard/billing"
-                                    className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-amber-600/20 via-orange-500/15 to-yellow-500/20 border border-amber-500/30 hover:border-amber-400/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] no-underline"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-amber-600/10 to-yellow-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                    <div className="relative flex items-center gap-2">
-                                        <div className="flex-shrink-0 h-7 w-7 rounded-md bg-amber-500/20 flex items-center justify-center">
-                                            <Sparkles className="h-3.5 w-3.5 text-amber-400 group-hover:animate-pulse" />
-                                        </div>
-                                        <div className="text-left">
-                                            <div className="text-xs font-semibold text-amber-300 group-hover:text-amber-200 transition-colors">Upgrade to Create Image</div>
-                                            <div className="text-[9px] text-amber-400/60 leading-tight">Unlock AI image generation</div>
-                                        </div>
-                                    </div>
-                                </a>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        setShowImagePicker(true)
-                                        setAiGeneratedPreview(null)
-                                        if (content.trim()) {
-                                            setUseContentAsPrompt(true)
-                                            setAiImagePrompt(content.substring(0, 500))
-                                        } else if (aiTopic.trim() && !aiImagePrompt) {
-                                            setUseContentAsPrompt(false)
-                                            setAiImagePrompt(aiTopic)
-                                        } else {
-                                            setUseContentAsPrompt(false)
-                                        }
-                                    }}
-                                    className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-purple-600/20 via-purple-500/15 to-fuchsia-500/20 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                    <div className="relative flex items-center gap-2">
-                                        <div className="flex-shrink-0 h-7 w-7 rounded-md bg-purple-500/20 flex items-center justify-center">
-                                            <Sparkles className="h-3.5 w-3.5 text-purple-400 group-hover:animate-pulse" />
-                                        </div>
-                                        <div className="text-left">
-                                            <div className="text-xs font-semibold text-foreground group-hover:text-foreground/80 transition-colors">AI Image</div>
-                                            <div className="text-[9px] text-muted-foreground leading-tight">Generate with AI</div>
-                                        </div>
-                                    </div>
-                                </button>
-                            )}
-                            <button
-                                onClick={() => openCanvaDesign()}
-                                disabled={canvaLoading}
-                                className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-violet-600/20 via-violet-500/15 to-indigo-500/20 border border-violet-500/30 hover:border-violet-400/50 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 to-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <div className="relative flex items-center gap-2">
-                                    <div className="flex-shrink-0 h-7 w-7 rounded-md bg-violet-500/20 flex items-center justify-center">
-                                        {canvaLoading ? <Loader2 className="h-3.5 w-3.5 text-violet-400 animate-spin" /> : <Palette className="h-3.5 w-3.5 text-violet-400" />}
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="text-xs font-semibold text-foreground group-hover:text-foreground/80 transition-colors">Canva</div>
-                                        <div className="text-[9px] text-muted-foreground leading-tight">Design in Canva</div>
-                                    </div>
+                                        </>
+                                    )}
                                 </div>
-                            </button>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Facebook Settings — only when Facebook platform is selected */}
-                {selectedChannel?.platforms?.some(p => p.platform === 'facebook' && selectedPlatformIds.has(p.id)) && (
-                    <Card>
-                        <CardHeader className="py-1.5 px-2.5">
-                            <button
-                                type="button"
-                                className="flex items-center justify-between w-full cursor-pointer"
-                                onClick={() => setFbSettingsOpen(!fbSettingsOpen)}
-                            >
-                                <CardTitle className="text-xs flex items-center gap-1.5">
-                                    <PlatformIcon platform="facebook" size="sm" />
-                                    Facebook Settings
-                                </CardTitle>
-                                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${fbSettingsOpen ? '' : '-rotate-90'}`} />
-                            </button>
-                        </CardHeader>
-                        {fbSettingsOpen && (
-                            <CardContent className="space-y-2 px-2.5 pb-2">
-                                {/* Post Type */}
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] text-muted-foreground">Post Type</Label>
-                                    <div className="grid grid-cols-3 gap-1">
-                                        {[
-                                            { value: 'feed' as const, label: 'Feed', icon: LayoutGrid },
-                                            { value: 'reel' as const, label: 'Reel', icon: Film },
-                                            { value: 'story' as const, label: 'Story', icon: CircleDot },
-                                        ].map(opt => {
-                                            const selectedFbIds = selectedChannel?.platforms?.filter(p => p.platform === 'facebook' && selectedPlatformIds.has(p.id)).map(p => p.id) || []
-                                            const currentType = selectedFbIds.length > 0 ? (fbPostTypes[selectedFbIds[0]] || 'feed') : 'feed'
-                                            const isActive = currentType === opt.value
-                                            return (
-                                                <button
-                                                    key={opt.value}
-                                                    type="button"
-                                                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
-                                                        ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                                                        : 'border-border hover:border-blue-300 text-muted-foreground hover:text-foreground'
-                                                        }`}
-                                                    onClick={() => {
-                                                        const newTypes = { ...fbPostTypes }
-                                                        selectedFbIds.forEach(id => { newTypes[id] = opt.value })
-                                                        setFbPostTypes(newTypes)
-                                                    }}
-                                                >
-                                                    <opt.icon className="h-3.5 w-3.5" />
-                                                    {opt.label}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Carousel Toggle */}
-                                <div className="flex items-center justify-between py-1 border-t">
-                                    <div className="flex items-center gap-1.5">
-                                        <Layers className="h-3.5 w-3.5 text-blue-500" />
-                                        <div>
-                                            <p className="text-xs font-medium">Carousel</p>
-                                            <p className="text-[10px] text-muted-foreground">Post images as a swipeable carousel</p>
-                                        </div>
-                                    </div>
+                                <div className="w-px h-5 bg-border mx-1" />
+                                {/* Emoji Picker */}
+                                <div className="relative">
                                     <button
                                         type="button"
-                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${fbCarousel ? 'bg-blue-500' : 'bg-muted'}`}
-                                        onClick={() => setFbCarousel(!fbCarousel)}
+                                        title="Emoji"
+                                        className={`h-7 w-7 rounded flex items-center justify-center transition-colors cursor-pointer ${showEmojiPicker ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                                     >
-                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${fbCarousel ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        <Smile className="h-4 w-4" />
                                     </button>
-                                </div>
-
-                                {/* First Comment */}
-                                <div className="space-y-2 border-t pt-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <MessageSquare className="h-4 w-4 text-blue-500" />
-                                            <div>
-                                                <p className="text-sm font-medium">First Comment</p>
-                                                <p className="text-[10px] text-muted-foreground">Auto-comment after posting (great for hashtags)</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="flex items-center gap-1 text-[10px] font-medium text-amber-600 hover:text-amber-500 transition-colors disabled:opacity-50 cursor-pointer"
-                                            disabled={generatingMeta || !content.trim()}
-                                            onClick={() => handleGenerateMetadata(['facebook'])}
-                                        >
-                                            {generatingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                            AI Generate
-                                        </button>
-                                    </div>
-                                    <textarea
-                                        value={fbFirstComment}
-                                        onChange={(e) => setFbFirstComment(e.target.value)}
-                                        placeholder="Add your first comment here... #hashtag #marketing"
-                                        className="w-full min-h-[60px] resize-y rounded-lg border bg-transparent px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                                        rows={2}
-                                    />
-                                </div>
-                            </CardContent>
-                        )}
-                    </Card>
-                )}
-
-                {/* Instagram Settings — only when Instagram platform is selected */}
-                {selectedChannel?.platforms?.some(p => p.platform === 'instagram' && selectedPlatformIds.has(p.id)) && (
-                    <Card>
-                        <CardHeader className="py-1.5 px-2.5">
-                            <button
-                                type="button"
-                                className="flex items-center justify-between w-full cursor-pointer"
-                                onClick={() => setIgSettingsOpen(!igSettingsOpen)}
-                            >
-                                <CardTitle className="text-xs flex items-center gap-1.5">
-                                    <PlatformIcon platform="instagram" size="sm" />
-                                    Instagram Settings
-                                    {igValidation.errors.length > 0 && (
-                                        <Badge variant="destructive" className="ml-2 text-[9px] px-1.5 py-0">{igValidation.errors.length} error{igValidation.errors.length > 1 ? 's' : ''}</Badge>
-                                    )}
-                                    {igValidation.errors.length === 0 && igValidation.warnings.length > 0 && (
-                                        <Badge className="ml-2 text-[9px] px-1.5 py-0 bg-amber-500/20 text-amber-600 border-amber-500/30">{igValidation.warnings.length} warning{igValidation.warnings.length > 1 ? 's' : ''}</Badge>
-                                    )}
-                                </CardTitle>
-                                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${igSettingsOpen ? '' : '-rotate-90'}`} />
-                            </button>
-                        </CardHeader>
-                        {igSettingsOpen && (
-                            <CardContent className="space-y-2 px-2.5 pb-2">
-                                {/* Validation Errors */}
-                                {igValidation.errors.length > 0 && (
-                                    <div className="space-y-1">
-                                        {igValidation.errors.map((err, i) => (
-                                            <div key={i} className="flex items-start gap-1.5 p-1.5 rounded-md bg-red-500/10 border border-red-500/20">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" /></svg>
-                                                <p className="text-[10px] text-red-600 dark:text-red-400">{err}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {/* Validation Warnings */}
-                                {igValidation.warnings.length > 0 && (
-                                    <div className="space-y-1">
-                                        {igValidation.warnings.map((warn, i) => (
-                                            <div key={i} className="flex items-start gap-1.5 p-1.5 rounded-md bg-amber-500/10 border border-amber-500/20">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
-                                                <p className="text-[10px] text-amber-600 dark:text-amber-400">{warn}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Post Type */}
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] text-muted-foreground">Post Type</Label>
-                                    <div className="grid grid-cols-3 gap-1">
-                                        {[
-                                            { value: 'feed' as const, label: 'Feed', icon: LayoutGrid },
-                                            { value: 'reel' as const, label: 'Reel', icon: Film },
-                                            { value: 'story' as const, label: 'Story', icon: CircleDot },
-                                        ].map(opt => {
-                                            const isActive = igPostType === opt.value
-                                            return (
-                                                <button
-                                                    key={opt.value}
-                                                    type="button"
-                                                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
-                                                        ? 'border-pink-500 bg-pink-500/10 text-pink-600 dark:text-pink-400'
-                                                        : 'border-border hover:border-pink-300 text-muted-foreground hover:text-foreground'
-                                                        }`}
-                                                    onClick={() => setIgPostType(opt.value)}
-                                                >
-                                                    <opt.icon className="h-3.5 w-3.5" />
-                                                    {opt.label}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Also Share to Story */}
-                                {igPostType === 'feed' && (
-                                    <div className="flex items-center justify-between py-1 border-t">
-                                        <div className="flex items-center gap-1.5">
-                                            <Camera className="h-3.5 w-3.5 text-pink-500" />
-                                            <div>
-                                                <p className="text-xs font-medium">Also Share to Story</p>
-                                                <p className="text-[10px] text-muted-foreground">Automatically share your feed post to Stories</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${igShareToStory ? 'bg-pink-500' : 'bg-muted'}`}
-                                            onClick={() => setIgShareToStory(!igShareToStory)}
-                                        >
-                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${igShareToStory ? 'translate-x-6' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Collaborators */}
-                                <div className="space-y-2 border-t pt-3">
-                                    <div className="flex items-center gap-2">
-                                        <Users className="h-4 w-4 text-pink-500" />
-                                        <div>
-                                            <p className="text-sm font-medium">Collaborators</p>
-                                            <p className="text-[10px] text-muted-foreground">Invite up to 3 collaborators (public profiles only)</p>
-                                        </div>
-                                    </div>
-                                    <Input
-                                        value={igCollaborators}
-                                        onChange={(e) => setIgCollaborators(e.target.value)}
-                                        placeholder="@username1, @username2, @username3"
-                                        className="text-xs"
-                                    />
-                                </div>
-                            </CardContent>
-                        )}
-                    </Card>
-                )}
-
-                {/* YouTube Settings — only when YouTube platform is selected */}
-                {selectedChannel?.platforms?.some(p => p.platform === 'youtube' && selectedPlatformIds.has(p.id)) && (
-                    <Card>
-                        <CardHeader className="py-1.5 px-2.5">
-                            <button
-                                type="button"
-                                className="flex items-center justify-between w-full cursor-pointer"
-                                onClick={() => setYtSettingsOpen(!ytSettingsOpen)}
-                            >
-                                <CardTitle className="text-xs flex items-center gap-1.5">
-                                    <PlatformIcon platform="youtube" size="sm" />
-                                    YouTube Settings
-                                </CardTitle>
-                                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${ytSettingsOpen ? '' : '-rotate-90'}`} />
-                            </button>
-                        </CardHeader>
-                        {ytSettingsOpen && (
-                            <CardContent className="space-y-2 px-2.5 pb-2">
-                                {/* Post Type */}
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] text-muted-foreground">Post Type</Label>
-                                    <div className="grid grid-cols-2 gap-1">
-                                        {[
-                                            { value: 'video' as const, label: 'Video', icon: Video },
-                                            { value: 'shorts' as const, label: 'Shorts', icon: Scissors },
-                                        ].map(opt => {
-                                            const isActive = ytPostType === opt.value
-                                            return (
-                                                <button
-                                                    key={opt.value}
-                                                    type="button"
-                                                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
-                                                        ? 'border-red-500 bg-red-500/10 text-red-600 dark:text-red-400'
-                                                        : 'border-border hover:border-red-300 text-muted-foreground hover:text-foreground'
-                                                        }`}
-                                                    onClick={() => setYtPostType(opt.value)}
-                                                >
-                                                    <opt.icon className="h-3.5 w-3.5" />
-                                                    {opt.label}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Video Title — 3 AI options */}
-                                <div className="space-y-1.5 border-t pt-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-[10px] text-muted-foreground">Video Title</Label>
-                                        <button
-                                            type="button"
-                                            className="flex items-center gap-1 text-[10px] font-medium text-amber-600 hover:text-amber-500 transition-colors disabled:opacity-50 cursor-pointer"
-                                            disabled={generatingMeta || !content.trim()}
-                                            onClick={() => handleGenerateMetadata(['youtube'])}
-                                        >
-                                            {generatingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                            ✨ AI Generate 3 Titles
-                                        </button>
-                                    </div>
-                                    <Input
-                                        value={ytVideoTitle}
-                                        onChange={(e) => setYtVideoTitle(e.target.value)}
-                                        placeholder="Enter video title..."
-                                        className="text-sm"
-                                    />
-                                    {/* 3 title options from AI */}
-                                    {ytTitleOptions.length > 1 && (
-                                        <div className="space-y-1">
-                                            <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">AI Options — click to use</p>
-                                            {ytTitleOptions.map((title, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    className={`w-full text-left px-2.5 py-1.5 rounded-md border text-xs transition-all cursor-pointer flex items-start gap-2 ${ytSelectedTitleIdx === idx
-                                                        ? 'border-red-500 bg-red-500/10 text-foreground'
-                                                        : 'border-border hover:border-red-300 text-muted-foreground hover:text-foreground'
-                                                        }`}
-                                                    onClick={() => {
-                                                        setYtSelectedTitleIdx(idx)
-                                                        setYtVideoTitle(title)
-                                                    }}
-                                                >
-                                                    <span className={`shrink-0 mt-0.5 h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center ${ytSelectedTitleIdx === idx ? 'border-red-500' : 'border-muted-foreground/30'
-                                                        }`}>
-                                                        {ytSelectedTitleIdx === idx && <span className="h-1.5 w-1.5 rounded-full bg-red-500" />}
-                                                    </span>
-                                                    <span className="leading-snug">{title}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Category & Tags */}
-                                <div className="grid grid-cols-2 gap-3 border-t pt-3">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">Category</Label>
-                                        <Select value={ytCategory} onValueChange={setYtCategory}>
-                                            <SelectTrigger className="text-xs">
-                                                <SelectValue placeholder="Select Category" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {[
-                                                    'Film & Animation', 'Autos & Vehicles', 'Music', 'Pets & Animals',
-                                                    'Sports', 'Travel & Events', 'Gaming', 'People & Blogs',
-                                                    'Comedy', 'Entertainment', 'News & Politics', 'Howto & Style',
-                                                    'Education', 'Science & Technology', 'Nonprofits & Activism'
-                                                ].map(cat => (
-                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-muted-foreground">Privacy</Label>
-                                        <Select value={ytPrivacy} onValueChange={(v) => setYtPrivacy(v as 'public' | 'unlisted' | 'private')}>
-                                            <SelectTrigger className="text-xs">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="public">
-                                                    <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Public</span>
-                                                </SelectItem>
-                                                <SelectItem value="unlisted">
-                                                    <span className="flex items-center gap-1.5"><EyeOff className="h-3 w-3" /> Unlisted</span>
-                                                </SelectItem>
-                                                <SelectItem value="private">
-                                                    <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Private</span>
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                {/* Video Tags */}
-                                <div className="space-y-2 border-t pt-3">
-                                    <div className="flex items-center gap-2">
-                                        <Tag className="h-4 w-4 text-red-500" />
-                                        <Label className="text-xs text-muted-foreground">Video Tags</Label>
-                                    </div>
-                                    <Input
-                                        value={ytTags}
-                                        onChange={(e) => setYtTags(e.target.value)}
-                                        placeholder="tag1, tag2, tag3..."
-                                        className="text-xs"
-                                    />
-                                </div>
-
-                                {/* Thumbnail Style + Prompts */}
-                                <div className="space-y-2 border-t pt-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <ImageIcon className="h-4 w-4 text-red-500" />
-                                            <Label className="text-xs text-muted-foreground">Thumbnail</Label>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="flex items-center gap-1 text-[10px] font-medium text-purple-600 hover:text-purple-500 transition-colors cursor-pointer"
-                                            onClick={() => setStyleModalOpen(true)}
-                                        >
-                                            <Palette className="h-3 w-3" />
-                                            {THUMBNAIL_STYLES.find(s => s.id === thumbnailStyleId)?.name || 'Select Style'}
-                                        </button>
-                                    </div>
-                                    {/* Selected style preview */}
-                                    {(() => {
-                                        const style = THUMBNAIL_STYLES.find(s => s.id === thumbnailStyleId)
-                                        if (!style) return null
-                                        return (
-                                            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border/50">
-                                                <Image
-                                                    src={style.preview}
-                                                    alt={style.name}
-                                                    width={64}
-                                                    height={36}
-                                                    className="rounded object-cover"
-                                                />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[11px] font-medium truncate">{style.name}</p>
-                                                    <p className="text-[9px] text-muted-foreground truncate">{style.description}</p>
+                                    {showEmojiPicker && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
+                                            <div className="absolute top-9 left-0 z-50 bg-popover border rounded-xl shadow-xl p-2 w-[260px]">
+                                                <div className="grid grid-cols-8 gap-1">
+                                                    {['😀', '😂', '🤣', '😍', '🥰', '😎', '🤩', '🥳', '😤', '🔥', '💯', '❤️', '👏', '🙌', '💪', '✨', '🎉', '🎊', '👍', '👎', '🤔', '😱', '😢', '🤝', '💡', '📌', '🚀', '📢', '💰', '🛒', '🎯', '📈', '⭐', '🏆', '💎', '🌟', '❗', '✅', '📣', '🔔', '🎁', '💝', '🌈', '☀️', '🌙', '💫', '🍀', '🦋'].map(emoji => (
+                                                        <button
+                                                            key={emoji}
+                                                            type="button"
+                                                            className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted transition-colors cursor-pointer text-base"
+                                                            onClick={() => {
+                                                                const ta = textareaRef.current
+                                                                if (!ta) { setContent(prev => prev + emoji); setShowEmojiPicker(false); return }
+                                                                const pos = ta.selectionStart
+                                                                const newContent = content.substring(0, pos) + emoji + content.substring(pos)
+                                                                setContent(newContent)
+                                                                setShowEmojiPicker(false)
+                                                                setTimeout(() => { ta.focus(); ta.setSelectionRange(pos + emoji.length, pos + emoji.length) }, 0)
+                                                            }}
+                                                        >
+                                                            {emoji}
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                                <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
                                             </div>
-                                        )
-                                    })()}
-                                    {/* Active thumbnail prompt */}
-                                    <textarea
-                                        value={ytThumbnailPrompt}
-                                        onChange={(e) => setYtThumbnailPrompt(e.target.value)}
-                                        placeholder="AI will generate a thumbnail prompt based on your content & selected style..."
-                                        className="w-full min-h-[60px] resize-y rounded-lg border bg-transparent px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                                        rows={3}
-                                    />
-                                    {/* 3 thumbnail prompt options */}
-                                    {ytThumbnailPrompts.length > 1 && (
-                                        <div className="space-y-1">
-                                            <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Prompt options</p>
-                                            <div className="grid grid-cols-3 gap-1">
-                                                {ytThumbnailPrompts.map((_, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        type="button"
-                                                        className={`py-1 px-2 rounded border text-[10px] font-medium transition-all cursor-pointer ${ytSelectedThumbIdx === idx
-                                                            ? 'border-red-500 bg-red-500/10 text-red-600'
-                                                            : 'border-border hover:border-red-300 text-muted-foreground hover:text-foreground'
-                                                            }`}
-                                                        onClick={() => {
-                                                            setYtSelectedThumbIdx(idx)
-                                                            setYtThumbnailPrompt(ytThumbnailPrompts[idx])
-                                                        }}
-                                                    >
-                                                        Prompt {idx + 1}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
+                                        </>
                                     )}
                                 </div>
-
-                                {/* Toggles */}
-                                <div className="border-t pt-3 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <Bell className="h-4 w-4 text-red-500" />
-                                            <p className="text-sm font-medium">Notify Subscribers</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ytNotifySubscribers ? 'bg-red-500' : 'bg-muted'}`}
-                                            onClick={() => setYtNotifySubscribers(!ytNotifySubscribers)}
-                                        >
-                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ytNotifySubscribers ? 'translate-x-6' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <ShieldCheck className="h-4 w-4 text-red-500" />
-                                            <div>
-                                                <p className="text-sm font-medium">Made for Kids</p>
-                                                <p className="text-[10px] text-muted-foreground">Required by COPPA regulations</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ytMadeForKids ? 'bg-red-500' : 'bg-muted'}`}
-                                            onClick={() => setYtMadeForKids(!ytMadeForKids)}
-                                        >
-                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ytMadeForKids ? 'translate-x-6' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        )}
-                    </Card>
-                )}
-
-                {/* TikTok Settings — only when TikTok platform is selected */}
-                {selectedChannel?.platforms?.some(p => p.platform === 'tiktok' && selectedPlatformIds.has(p.id)) && (
-                    <Card>
-                        <CardHeader className="py-1.5 px-2.5">
-                            <button
-                                type="button"
-                                className="flex items-center justify-between w-full cursor-pointer"
-                                onClick={() => setTtSettingsOpen(!ttSettingsOpen)}
-                            >
-                                <CardTitle className="text-xs flex items-center gap-1.5">
-                                    <PlatformIcon platform="tiktok" size="sm" />
-                                    TikTok Settings
-                                </CardTitle>
-                                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${ttSettingsOpen ? '' : '-rotate-90'}`} />
-                            </button>
-                        </CardHeader>
-                        {ttSettingsOpen && (
-                            <CardContent className="space-y-2 px-2.5 pb-2">
-                                {/* Publish As */}
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] text-muted-foreground">Publish As</Label>
-                                    <div className="grid grid-cols-2 gap-1">
-                                        {[
-                                            { value: 'direct' as const, label: 'Direct Publishing', icon: Send },
-                                            { value: 'inbox' as const, label: 'App Notification', icon: Bell },
-                                        ].map(opt => {
-                                            const isActive = ttPublishMode === opt.value
-                                            return (
-                                                <button
-                                                    key={opt.value}
-                                                    type="button"
-                                                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
-                                                        ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-                                                        : 'border-border hover:border-cyan-300 text-muted-foreground hover:text-foreground'
-                                                        }`}
-                                                    onClick={() => setTtPublishMode(opt.value)}
-                                                >
-                                                    <opt.icon className="h-3.5 w-3.5" />
-                                                    {opt.label}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Post Type */}
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] text-muted-foreground">Post Type</Label>
-                                    <div className="grid grid-cols-2 gap-1">
-                                        {[
-                                            { value: 'video' as const, label: 'Video', icon: Video },
-                                            { value: 'carousel' as const, label: 'Image Carousel', icon: Layers },
-                                        ].map(opt => {
-                                            const isActive = ttPostType === opt.value
-                                            return (
-                                                <button
-                                                    key={opt.value}
-                                                    type="button"
-                                                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
-                                                        ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-                                                        : 'border-border hover:border-cyan-300 text-muted-foreground hover:text-foreground'
-                                                        }`}
-                                                    onClick={() => setTtPostType(opt.value)}
-                                                >
-                                                    <opt.icon className="h-3.5 w-3.5" />
-                                                    {opt.label}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Visibility */}
-                                <div className="space-y-1 border-t pt-1.5">
-                                    <Label className="text-[10px] text-muted-foreground">Who can see</Label>
-                                    <Select value={ttVisibility} onValueChange={(v) => setTtVisibility(v as typeof ttVisibility)}>
-                                        <SelectTrigger className="text-xs h-7">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="PUBLIC_TO_EVERYONE">
-                                                <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Public To Everyone</span>
-                                            </SelectItem>
-                                            <SelectItem value="MUTUAL_FOLLOW_FRIENDS">
-                                                <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Mutual Follow Friends</span>
-                                            </SelectItem>
-                                            <SelectItem value="SELF_ONLY">
-                                                <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Self Only</span>
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Allow User to */}
-                                <div className="border-t pt-1.5 space-y-1">
-                                    <Label className="text-[10px] text-muted-foreground">Allow User to</Label>
-                                    <div className="space-y-1">
-                                        {[
-                                            { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment },
-                                            { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet },
-                                            { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch },
-                                        ].map(opt => (
-                                            <div key={opt.label} className="flex items-center justify-between">
-                                                <p className="text-xs font-medium">{opt.label}</p>
-                                                <button
-                                                    type="button"
-                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${opt.value ? 'bg-cyan-500' : 'bg-muted'}`}
-                                                    onClick={() => opt.setter(!opt.value)}
-                                                >
-                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${opt.value ? 'translate-x-6' : 'translate-x-1'}`} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Branded Content & AI-Generated */}
-                                <div className="border-t pt-1.5 space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5">
-                                            <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" />
-                                            <p className="text-xs font-medium">Branded content</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ttBrandedContent ? 'bg-cyan-500' : 'bg-muted'}`}
-                                            onClick={() => setTtBrandedContent(!ttBrandedContent)}
-                                        >
-                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ttBrandedContent ? 'translate-x-6' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5">
-                                            <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
-                                            <p className="text-xs font-medium">AI-generated</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ttAiGenerated ? 'bg-cyan-500' : 'bg-muted'}`}
-                                            onClick={() => setTtAiGenerated(!ttAiGenerated)}
-                                        >
-                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ttAiGenerated ? 'translate-x-6' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        )}
-                    </Card>
-                )}
-
-                {/* Pinterest Settings — only when Pinterest platform is selected */}
-                {activePlatforms.some(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest') && (
-                    <Card className="overflow-hidden border-[#E60023]/30">
-                        <CardHeader
-                            className="py-2 px-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => {
-                                setPinSettingsOpen(!pinSettingsOpen)
-                                // Fetch boards when opening settings for the first time
-                                if (!pinSettingsOpen && pinBoards.length === 0 && !pinBoardsLoading) {
-                                    const pinterestPlatform = activePlatforms.find(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
-                                    if (pinterestPlatform && selectedChannel) {
-                                        setPinBoardsLoading(true)
-                                        fetch(`/api/admin/channels/${selectedChannel.id}/pinterest-boards?accountId=${pinterestPlatform.accountId}`)
-                                            .then(r => r.json())
-                                            .then(data => {
-                                                if (data.needsReconnect) { setPinNeedsReconnect(true); return }
-                                                if (data.boards) { setPinNeedsReconnect(false); setPinBoards(data.boards) }
-                                            })
-                                            .catch(() => { })
-                                            .finally(() => setPinBoardsLoading(false))
-                                    }
-                                }
-                            }}
-                        >
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-xs font-medium flex items-center gap-2">
-                                    <div className="h-4 w-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold" style={{ backgroundColor: '#E60023' }}>P</div>
-                                    Pinterest Settings
-                                </CardTitle>
-                                <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${pinSettingsOpen ? 'rotate-90' : ''}`} />
                             </div>
                         </CardHeader>
-                        {pinSettingsOpen && (
-                            <CardContent className="px-3 pb-3 pt-0 space-y-2">
-                                {/* Reconnect banner — shown when token is expired */}
-                                {pinNeedsReconnect && (() => {
-                                    const pinterestPlatform = activePlatforms.find(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
-                                    const fetchBoards = () => {
-                                        if (!pinterestPlatform || !selectedChannel) return
-                                        setPinBoardsLoading(true)
-                                        fetch(`/api/admin/channels/${selectedChannel.id}/pinterest-boards?accountId=${pinterestPlatform.accountId}`)
-                                            .then(r => r.json())
-                                            .then(data => {
-                                                if (data.needsReconnect) return
-                                                if (data.boards) { setPinNeedsReconnect(false); setPinBoards(data.boards) }
-                                            })
-                                            .catch(() => { })
-                                            .finally(() => setPinBoardsLoading(false))
+                        <CardContent>
+                            <textarea
+                                ref={textareaRef}
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                placeholder="Write your post content here..."
+                                className="w-full min-h-[120px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                                rows={5}
+                            />
+                        </CardContent>
+                    </Card>
+
+                    {/* Per-Platform Content Customization */}
+                    {selectedPlatformIds.size > 0 && (
+                        <Card>
+                            <CardHeader className="py-1.5 px-2.5">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-xs flex items-center gap-1.5">
+                                        <Sparkles className="h-3.5 w-3.5" /> Platform Content
+                                    </CardTitle>
+                                </div>
+
+                                {/* Platform tabs */}
+                                {(() => {
+                                    const uniquePlatforms = [...new Set(
+                                        activePlatforms
+                                            .filter((p) => selectedPlatformIds.has(p.id))
+                                            .map((p) => p.platform)
+                                    )]
+                                    const platformLabels: Record<string, string> = {
+                                        facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok',
+                                        x: 'X', linkedin: 'LinkedIn', pinterest: 'Pinterest', youtube: 'YouTube',
+                                    }
+                                    if (Object.keys(contentPerPlatform).length === 0) {
+                                        return (
+                                            <p className="text-[10px] text-muted-foreground mt-1">
+                                                Platform-specific content will appear here when available.
+                                            </p>
+                                        )
                                     }
                                     return (
-                                        <div className="flex items-center gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-xs">
-                                            <span className="text-amber-600 flex-1">⚠️ Pinterest session expired.</span>
-                                            <button
-                                                type="button"
-                                                className="text-[10px] px-2 py-1 rounded border border-amber-500/40 text-amber-600 hover:bg-amber-500/10 cursor-pointer whitespace-nowrap"
-                                                onClick={fetchBoards}
-                                            >
-                                                ↺ Retry
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="text-[10px] px-2 py-1 rounded bg-[#E60023] text-white font-medium hover:bg-[#c0001d] cursor-pointer whitespace-nowrap"
-                                                onClick={() => {
-                                                    if (!pinterestPlatform || !selectedChannel) return
-                                                    const w = 500, h = 700
-                                                    const left = window.screenX + (window.outerWidth - w) / 2
-                                                    const top = window.screenY + (window.outerHeight - h) / 2
-                                                    const popup = window.open(
-                                                        `/api/oauth/pinterest?channelId=${selectedChannel.id}`,
-                                                        'pinterest-oauth',
-                                                        `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
-                                                    )
-                                                    const handler = (e: MessageEvent) => {
-                                                        if (e.data?.type === 'oauth-success' && e.data?.platform === 'pinterest') {
-                                                            window.removeEventListener('message', handler)
-                                                            setTimeout(fetchBoards, 800)
-                                                        }
-                                                    }
-                                                    window.addEventListener('message', handler)
-                                                    const check = setInterval(() => {
-                                                        if (popup?.closed) { clearInterval(check); window.removeEventListener('message', handler); setTimeout(fetchBoards, 800) }
-                                                    }, 1000)
-                                                }}
-                                            >
-                                                Reconnect
-                                            </button>
+                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                            {uniquePlatforms.map((platform) => (
+                                                <button
+                                                    key={platform}
+                                                    type="button"
+                                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${activeContentTab === platform
+                                                        ? 'bg-primary text-primary-foreground shadow-sm'
+                                                        : contentPerPlatform[platform]
+                                                            ? 'bg-muted text-foreground hover:bg-muted/80'
+                                                            : 'bg-muted/50 text-muted-foreground hover:bg-muted/80'
+                                                        }`}
+                                                    onClick={() => setActiveContentTab(activeContentTab === platform ? null : platform)}
+                                                >
+                                                    <PlatformIcon platform={platform} size="sm" />
+                                                    {platformLabels[platform] || platform}
+                                                    {contentPerPlatform[platform] && <Check className="h-2.5 w-2.5" />}
+                                                </button>
+                                            ))}
                                         </div>
                                     )
                                 })()}
-
-                                {/* Board Selection */}
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] text-muted-foreground">Board</Label>
-                                    <Select
-                                        value={pinShowCreateBoard ? '__create__' : pinBoardId}
-                                        onValueChange={v => {
-                                            if (v === '__create__') {
-                                                setPinShowCreateBoard(true)
-                                                setPinNewBoardName('')
-                                            } else {
-                                                setPinShowCreateBoard(false)
-                                                setPinBoardId(v)
-                                            }
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-8 text-xs">
-                                            <SelectValue placeholder={pinBoardsLoading ? 'Loading boards...' : 'Select a board'} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {pinBoards.map(b => (
-                                                <SelectItem key={b.id} value={b.id} className="text-xs">{b.name}</SelectItem>
-                                            ))}
-                                            {pinBoards.length === 0 && !pinBoardsLoading && (
-                                                <SelectItem value="_none" disabled className="text-xs text-muted-foreground">No boards found</SelectItem>
-                                            )}
-                                            <SelectItem value="__create__" className="text-xs text-[#E60023] font-medium border-t mt-1 pt-1">
-                                                ＋ Create new board...
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-
-                                    {/* Inline create form — shown when "Create new board" is selected */}
-                                    {pinShowCreateBoard && (
-                                        <div className="space-y-2 p-2 rounded-md border border-[#E60023]/30 bg-[#E60023]/5">
-                                            <input
-                                                type="text"
-                                                placeholder="Board name..."
-                                                value={pinNewBoardName}
-                                                onChange={e => setPinNewBoardName(e.target.value)}
-                                                onKeyDown={e => e.key === 'Escape' && setPinShowCreateBoard(false)}
-                                                className="w-full h-7 px-2 text-xs rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-[#E60023]/50"
-                                                autoFocus
-                                            />
+                            </CardHeader>
+                            {activeContentTab && contentPerPlatform[activeContentTab] && (
+                                <CardContent>
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-muted-foreground font-medium">
+                                                {activeContentTab.charAt(0).toUpperCase() + activeContentTab.slice(1)} version
+                                            </span>
                                             <div className="flex items-center gap-2">
-                                                <select
-                                                    value={pinNewBoardPrivacy}
-                                                    onChange={e => setPinNewBoardPrivacy(e.target.value)}
-                                                    className="flex-1 h-7 px-2 text-xs rounded-md border bg-background focus:outline-none"
-                                                >
-                                                    <option value="PUBLIC">🌐 Public</option>
-                                                    <option value="PROTECTED">🔒 Secret</option>
-                                                </select>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {contentPerPlatform[activeContentTab]?.length || 0}
+                                                </span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setPinShowCreateBoard(false); setPinBoardId(pinBoards[0]?.id || '') }}
-                                                    className="h-7 px-2 text-xs rounded-md border text-muted-foreground hover:bg-muted cursor-pointer"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    disabled={!pinNewBoardName.trim() || pinCreatingBoard}
-                                                    className="h-7 px-3 text-xs rounded-md bg-[#E60023] text-white font-medium disabled:opacity-50 cursor-pointer hover:bg-[#c0001d] transition-colors"
-                                                    onClick={async () => {
-                                                        const pinterestPlatform = activePlatforms.find(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
-                                                        if (!pinterestPlatform || !selectedChannel) return
-                                                        setPinCreatingBoard(true)
-                                                        try {
-                                                            const res = await fetch(`/api/admin/channels/${selectedChannel.id}/pinterest-boards`, {
-                                                                method: 'POST',
-                                                                headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({
-                                                                    accountId: pinterestPlatform.accountId,
-                                                                    name: pinNewBoardName.trim(),
-                                                                    privacy: pinNewBoardPrivacy,
-                                                                }),
-                                                            })
-                                                            const data = await res.json()
-                                                            if (data.needsReconnect) {
-                                                                setPinNeedsReconnect(true)
-                                                                setPinShowCreateBoard(false)
-                                                                return
-                                                            }
-                                                            if (!res.ok) throw new Error(data.error || 'Failed')
-                                                            const newBoard = data.board
-                                                            setPinBoards(prev => [...prev, { id: newBoard.id, name: newBoard.name }])
-                                                            setPinBoardId(newBoard.id)
-                                                            setPinShowCreateBoard(false)
-                                                            setPinNewBoardName('')
-                                                        } catch (err) {
-                                                            const msg = err instanceof Error ? err.message : 'Unknown error'
-                                                            toast.error('Failed to create board: ' + msg)
-                                                        } finally {
-                                                            setPinCreatingBoard(false)
-                                                        }
+                                                    className="text-[10px] text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                                                    onClick={() => {
+                                                        const updated = { ...contentPerPlatform }
+                                                        delete updated[activeContentTab!]
+                                                        setContentPerPlatform(updated)
+                                                        if (Object.keys(updated).length === 0) setActiveContentTab(null)
                                                     }}
                                                 >
-                                                    {pinCreatingBoard ? '...' : 'Create'}
+                                                    ↺ Reset to Master
                                                 </button>
+                                            </div>
+                                        </div>
+                                        <textarea
+                                            value={contentPerPlatform[activeContentTab] || ''}
+                                            onChange={(e) => setContentPerPlatform({
+                                                ...contentPerPlatform,
+                                                [activeContentTab]: e.target.value,
+                                            })}
+                                            className="w-full min-h-[100px] resize-y rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                                            rows={4}
+                                        />
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+                    )}
+
+                    {/* Media */}
+                    <Card
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`transition-all ${dragging ? 'ring-2 ring-primary border-primary' : ''}`}
+                    >
+                        <CardHeader className="py-1.5 px-2.5">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-xs flex items-center gap-1.5">
+                                    <ImageIcon className="h-3.5 w-3.5" /> Media
+                                    {uploading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                                </CardTitle>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20 text-blue-400" onClick={openLibrary} disabled={!selectedChannel}>
+                                        <FolderOpen className="h-3 w-3 mr-0.5" />
+                                        Library
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400" onClick={openGooglePicker} disabled={loadingDrivePicker}>
+                                        {loadingDrivePicker ? <Loader2 className="h-3 w-3 mr-0.5 animate-spin" /> : <HardDrive className="h-3 w-3 mr-0.5" />}
+                                        Drive
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 cursor-pointer bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-400" onClick={() => fileInputRef.current?.click()} disabled={uploading || !selectedChannel}>
+                                        <Upload className="h-3 w-3 mr-0.5" />
+                                        Upload
+                                    </Button>
+                                </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    multiple
+                                    accept={ACCEPTED_FILE_TYPES}
+                                    className="hidden"
+                                    onChange={(e) => { handleFileUpload(e.target.files); if (e.target) e.target.value = '' }}
+                                />
+                            </div>
+                            {/* Aspect Ratio Selector */}
+                            <div className="flex items-center gap-1 mt-1">
+                                <span className="text-[10px] text-muted-foreground">Ratio:</span>
+                                {(['16:9', '1:1', '9:16'] as const).map((ratio) => (
+                                    <button
+                                        key={ratio}
+                                        onClick={() => setMediaRatio(ratio)}
+                                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${mediaRatio === ratio
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                            }`}
+                                    >
+                                        {ratio === '16:9' && <RectangleHorizontal className="h-2.5 w-2.5" />}
+                                        {ratio === '1:1' && <Square className="h-2.5 w-2.5" />}
+                                        {ratio === '9:16' && <RectangleVertical className="h-2.5 w-2.5" />}
+                                        {ratio}
+                                    </button>
+                                ))}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-1.5 px-2.5 pb-2">
+                            {(attachedMedia.length > 0 || aiImageBgGenerating) && (
+                                <div className={`grid gap-2 ${mediaRatio === '9:16' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
+                                    }`}>
+                                    {attachedMedia.map((media, index) => (
+                                        <div
+                                            key={media.id}
+                                            className={`relative group rounded-lg overflow-hidden bg-muted ${mediaRatio === '16:9' ? 'aspect-video'
+                                                : mediaRatio === '9:16' ? 'aspect-[9/16]'
+                                                    : 'aspect-square'
+                                                } ${aiImageJustCompleted && index === attachedMedia.length - 1 ? 'animate-ai-reveal' : ''}`}
+                                        >
+                                            {isVideo(media) ? (
+                                                <div className="relative h-full w-full bg-muted">
+                                                    <img
+                                                        src={media.thumbnailUrl || media.url}
+                                                        alt={media.originalName || ''}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <div className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center">
+                                                            <Play className="h-4 w-4 text-white ml-0.5" />
+                                                        </div>
+                                                    </div>
+                                                    <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white px-1 rounded">{media.originalName}</span>
+                                                </div>
+                                            ) : (
+                                                <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover cursor-pointer" onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)} />
+                                            )}
+                                            <button
+                                                onClick={() => removeMedia(media.id)}
+                                                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                            {/* Zoom button */}
+                                            {!isVideo(media) && (
+                                                <button
+                                                    onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)}
+                                                    title="View full size"
+                                                    className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/80"
+                                                >
+                                                    <ZoomIn className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                            {/* Edit in Canva — only for images */}
+                                            {!isVideo(media) && (
+                                                <button
+                                                    onClick={() => openCanvaDesign(media.url, media.id)}
+                                                    title="Edit in Canva"
+                                                    className="absolute top-1 left-1 h-5 w-5 rounded-full bg-violet-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                                >
+                                                    <Palette className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {/* AI Image Generating Placeholder — inside grid as a cell */}
+                                    {aiImageBgGenerating && (
+                                        <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" style={{ animationDuration: '2s' }} />
+                                                    <div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
+                                                        <img src="/logo.png" alt="" className="h-5 w-5 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
+                                                    </div>
+                                                </div>
+                                                <p className="text-[9px] font-medium text-purple-300 animate-pulse">Creating magic...</p>
+                                            </div>
+                                            <div className="absolute top-1.5 right-1.5">
+                                                <Sparkles className="h-2.5 w-2.5 text-purple-400/40 animate-pulse" />
                                             </div>
                                         </div>
                                     )}
                                 </div>
-                                {/* Pin Title + AI Button */}
-                                <div>
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-[10px] text-muted-foreground">Pin Title</Label>
-                                        <button
-                                            type="button"
-                                            className="flex items-center gap-1 text-[10px] font-medium text-amber-600 hover:text-amber-500 transition-colors disabled:opacity-50 cursor-pointer"
-                                            disabled={generatingMeta || !content.trim()}
-                                            onClick={() => handleGenerateMetadata(['pinterest'])}
-                                        >
-                                            {generatingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                            AI Fill
-                                        </button>
-                                    </div>
-                                    <Input
-                                        className="h-8 text-xs"
-                                        placeholder="Enter pin title (max 100 chars)"
-                                        maxLength={100}
-                                        value={pinTitle}
-                                        onChange={e => setPinTitle(e.target.value)}
-                                    />
-                                </div>
-                                {/* Destination Link */}
-                                <div>
-                                    <Label className="text-[10px] text-muted-foreground">Destination Link</Label>
-                                    <Input
-                                        className="h-8 text-xs"
-                                        placeholder="https://example.com"
-                                        value={pinLink}
-                                        onChange={e => setPinLink(e.target.value)}
-                                    />
-                                </div>
-                            </CardContent>
-                        )}
-                    </Card>
-                )}
-
-                {/* Media Library Modal */}
-                {showMediaLibrary && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-                        <Card className="w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
-                            <CardHeader className="pb-2 border-b space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm flex items-center gap-2">
-                                        <FolderOpen className="h-4 w-4" />
-                                        Media Library — {selectedChannel?.displayName}
-                                        {attachedMedia.length > 0 && (
-                                            <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
-                                                {attachedMedia.length} selected
-                                            </span>
-                                        )}
-                                    </CardTitle>
-                                    <div className="flex items-center gap-1">
-                                        <Button variant="ghost" size="sm" onClick={() => setLibShowNewFolder(true)} className="cursor-pointer h-7 px-2 text-[10px]" title="New Folder">
-                                            <FolderPlus className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" onClick={() => libFileInputRef.current?.click()} disabled={libUploading} className="cursor-pointer h-7 px-2 text-[10px]" title="Upload">
-                                            {libUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                                        </Button>
-                                        <input ref={libFileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => { handleLibUpload(e.target.files); if (e.target) e.target.value = '' }} />
-                                        <Button variant="ghost" size="sm" onClick={() => setShowMediaLibrary(false)} className="cursor-pointer h-7 px-2">
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                                {/* Search bar */}
-                                <div className="relative">
-                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search by filename..."
-                                        value={libSearch}
-                                        onChange={(e) => {
-                                            setLibSearch(e.target.value)
-                                            fetchLibrary(libFolderId, e.target.value)
-                                        }}
-                                        className="w-full h-7 pl-7 pr-3 text-xs rounded-md border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                                    />
-                                </div>
-                                {/* Breadcrumbs */}
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                    {libBreadcrumbs.map((bc, i) => (
-                                        <span key={i} className="flex items-center gap-0.5">
-                                            {i > 0 && <ChevronRight className="h-2.5 w-2.5" />}
-                                            <button
-                                                onClick={() => navigateLibBreadcrumb(i)}
-                                                className={`hover:text-foreground transition-colors ${i === libBreadcrumbs.length - 1 ? 'text-foreground font-medium' : ''}`}
-                                            >
-                                                {bc.name}
-                                            </button>
-                                        </span>
-                                    ))}
-                                </div>
-                                <CardDescription className="text-[10px]">Click to add media. Hover for actions. Drag & drop files to upload.</CardDescription>
-                            </CardHeader>
-
-                            {/* Content area with drag-drop */}
-                            <CardContent
-                                className={`overflow-y-auto flex-1 py-3 relative transition-colors ${libDragging ? 'bg-primary/5' : ''}`}
-                                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setLibDragging(true) }}
-                                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setLibDragging(false) }}
-                                onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setLibDragging(false); if (e.dataTransfer.files?.length) handleLibUpload(e.dataTransfer.files) }}
+                            )}
+                            {/* Drop zone — always visible */}
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`border border-dashed rounded-md text-center cursor-pointer transition-all ${dragging
+                                    ? 'border-primary bg-primary/5 py-2 px-3'
+                                    : attachedMedia.length > 0
+                                        ? 'py-1.5 px-2 hover:border-primary/30'
+                                        : 'py-2 px-3 hover:border-primary/30'
+                                    }`}
                             >
-                                {/* Drag overlay */}
-                                {libDragging && (
-                                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg pointer-events-none">
-                                        <div className="text-center">
-                                            <Upload className="h-8 w-8 text-primary mx-auto mb-2" />
-                                            <p className="text-sm font-medium text-primary">Drop files here to upload</p>
-                                            {libFolderId && <p className="text-xs text-muted-foreground">Into current folder</p>}
+                                {dragging ? (
+                                    <p className="text-xs font-medium text-primary">Drop files here</p>
+                                ) : (
+                                    <p className="text-[11px] text-muted-foreground">{attachedMedia.length > 0 ? '+ Add more' : 'Click or drag to upload'}</p>
+                                )}
+                            </div>
+                            {/* ── CTA Action Bar — AI Image & Canva ── */}
+                            <div className="flex gap-2 mt-2">
+                                {imageQuota.limit === 0 && byokProviders.length === 0 ? (
+                                    <a
+                                        href="/dashboard/billing"
+                                        className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-amber-600/20 via-orange-500/15 to-yellow-500/20 border border-amber-500/30 hover:border-amber-400/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] no-underline"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-amber-600/10 to-yellow-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                        <div className="relative flex items-center gap-2">
+                                            <div className="flex-shrink-0 h-7 w-7 rounded-md bg-amber-500/20 flex items-center justify-center">
+                                                <Sparkles className="h-3.5 w-3.5 text-amber-400 group-hover:animate-pulse" />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-xs font-semibold text-amber-300 group-hover:text-amber-200 transition-colors">Upgrade to Create Image</div>
+                                                <div className="text-[9px] text-amber-400/60 leading-tight">Unlock AI image generation</div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setShowImagePicker(true)
+                                            setAiGeneratedPreview(null)
+                                            if (content.trim()) {
+                                                setUseContentAsPrompt(true)
+                                                setAiImagePrompt(content.substring(0, 500))
+                                            } else if (aiTopic.trim() && !aiImagePrompt) {
+                                                setUseContentAsPrompt(false)
+                                                setAiImagePrompt(aiTopic)
+                                            } else {
+                                                setUseContentAsPrompt(false)
+                                            }
+                                        }}
+                                        className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-purple-600/20 via-purple-500/15 to-fuchsia-500/20 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                        <div className="relative flex items-center gap-2">
+                                            <div className="flex-shrink-0 h-7 w-7 rounded-md bg-purple-500/20 flex items-center justify-center">
+                                                <Sparkles className="h-3.5 w-3.5 text-purple-400 group-hover:animate-pulse" />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-xs font-semibold text-foreground group-hover:text-foreground/80 transition-colors">AI Image</div>
+                                                <div className="text-[9px] text-muted-foreground leading-tight">Generate with AI</div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => openCanvaDesign()}
+                                    disabled={canvaLoading}
+                                    className="flex-1 group relative overflow-hidden rounded-lg px-3 py-2.5 cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-violet-600/20 via-violet-500/15 to-indigo-500/20 border border-violet-500/30 hover:border-violet-400/50 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 to-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <div className="relative flex items-center gap-2">
+                                        <div className="flex-shrink-0 h-7 w-7 rounded-md bg-violet-500/20 flex items-center justify-center">
+                                            {canvaLoading ? <Loader2 className="h-3.5 w-3.5 text-violet-400 animate-spin" /> : <Palette className="h-3.5 w-3.5 text-violet-400" />}
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-xs font-semibold text-foreground group-hover:text-foreground/80 transition-colors">Canva</div>
+                                            <div className="text-[9px] text-muted-foreground leading-tight">Design in Canva</div>
                                         </div>
                                     </div>
-                                )}
+                                </button>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                                {/* Create folder inline */}
-                                {libShowNewFolder && (
-                                    <div className="mb-3 flex items-center gap-2 p-2 rounded-md border bg-muted/30">
-                                        <FolderPlus className="h-4 w-4 text-amber-500 shrink-0" />
-                                        <input
-                                            type="text"
-                                            placeholder="Folder name..."
-                                            value={libNewFolderName}
-                                            onChange={(e) => setLibNewFolderName(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleLibCreateFolder()}
-                                            className="flex-1 h-6 text-xs bg-transparent border-none focus:outline-none"
-                                            autoFocus
+                    {/* Facebook Settings — only when Facebook platform is selected */}
+                    {selectedChannel?.platforms?.some(p => p.platform === 'facebook' && selectedPlatformIds.has(p.id)) && (
+                        <Card>
+                            <CardHeader className="py-1.5 px-2.5">
+                                <button
+                                    type="button"
+                                    className="flex items-center justify-between w-full cursor-pointer"
+                                    onClick={() => setFbSettingsOpen(!fbSettingsOpen)}
+                                >
+                                    <CardTitle className="text-xs flex items-center gap-1.5">
+                                        <PlatformIcon platform="facebook" size="sm" />
+                                        Facebook Settings
+                                        {fbValidation.errors.length > 0 && (
+                                            <Badge variant="destructive" className="ml-2 text-[9px] px-1.5 py-0">{fbValidation.errors.length} error{fbValidation.errors.length > 1 ? 's' : ''}</Badge>
+                                        )}
+                                        {fbValidation.errors.length === 0 && fbValidation.warnings.length > 0 && (
+                                            <Badge className="ml-2 text-[9px] px-1.5 py-0 bg-amber-500/20 text-amber-600 border-amber-500/30">{fbValidation.warnings.length} warning{fbValidation.warnings.length > 1 ? 's' : ''}</Badge>
+                                        )}
+                                    </CardTitle>
+                                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${fbSettingsOpen ? '' : '-rotate-90'}`} />
+                                </button>
+                            </CardHeader>
+                            {fbSettingsOpen && (
+                                <CardContent className="space-y-2 px-2.5 pb-2">
+                                    {/* Validation Errors */}
+                                    {fbValidation.errors.length > 0 && (
+                                        <div className="space-y-1">
+                                            {fbValidation.errors.map((err, i) => (
+                                                <div key={i} className="flex items-start gap-1.5 p-1.5 rounded-md bg-red-500/10 border border-red-500/20">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" /></svg>
+                                                    <p className="text-[10px] text-red-600 dark:text-red-400">{err}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {/* Validation Warnings */}
+                                    {fbValidation.warnings.length > 0 && (
+                                        <div className="space-y-1">
+                                            {fbValidation.warnings.map((warn, i) => (
+                                                <div key={i} className="flex items-start gap-1.5 p-1.5 rounded-md bg-amber-500/10 border border-amber-500/20">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+                                                    <p className="text-[10px] text-amber-600 dark:text-amber-400">{warn}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Post Type */}
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Post Type</Label>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {[
+                                                { value: 'feed' as const, label: 'Feed', icon: LayoutGrid },
+                                                { value: 'reel' as const, label: 'Reel', icon: Film },
+                                                { value: 'story' as const, label: 'Story', icon: CircleDot },
+                                            ].map(opt => {
+                                                const selectedFbIds = selectedChannel?.platforms?.filter(p => p.platform === 'facebook' && selectedPlatformIds.has(p.id)).map(p => p.id) || []
+                                                const currentType = selectedFbIds.length > 0 ? (fbPostTypes[selectedFbIds[0]] || 'feed') : 'feed'
+                                                const isActive = currentType === opt.value
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
+                                                            ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                                            : 'border-border hover:border-blue-300 text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        onClick={() => {
+                                                            const newTypes = { ...fbPostTypes }
+                                                            selectedFbIds.forEach(id => { newTypes[id] = opt.value })
+                                                            setFbPostTypes(newTypes)
+                                                        }}
+                                                    >
+                                                        <opt.icon className="h-3.5 w-3.5" />
+                                                        {opt.label}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* First Comment */}
+                                    <div className="space-y-2 border-t pt-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <MessageSquare className="h-4 w-4 text-blue-500" />
+                                                <div>
+                                                    <p className="text-sm font-medium">First Comment</p>
+                                                    <p className="text-[10px] text-muted-foreground">Auto-comment after posting (great for hashtags)</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="flex items-center gap-1 text-[10px] font-medium text-amber-600 hover:text-amber-500 transition-colors disabled:opacity-50 cursor-pointer"
+                                                disabled={generatingMeta || !content.trim()}
+                                                onClick={() => handleGenerateMetadata(['facebook'])}
+                                            >
+                                                {generatingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                                AI Generate
+                                            </button>
+                                        </div>
+                                        <textarea
+                                            value={fbFirstComment}
+                                            onChange={(e) => setFbFirstComment(e.target.value)}
+                                            placeholder="Add your first comment here... #hashtag #marketing"
+                                            className="w-full min-h-[60px] resize-y rounded-lg border bg-transparent px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                                            rows={2}
                                         />
-                                        <Button size="sm" className="h-6 px-2 text-[10px] cursor-pointer" onClick={handleLibCreateFolder} disabled={!libNewFolderName.trim()}>Create</Button>
-                                        <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] cursor-pointer" onClick={() => { setLibShowNewFolder(false); setLibNewFolderName('') }}>Cancel</Button>
                                     </div>
-                                )}
+                                </CardContent>
+                            )}
+                        </Card>
+                    )}
 
-                                {loadingLibrary ? (
-                                    <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    {/* Instagram Settings — only when Instagram platform is selected */}
+                    {selectedChannel?.platforms?.some(p => p.platform === 'instagram' && selectedPlatformIds.has(p.id)) && (
+                        <Card>
+                            <CardHeader className="py-1.5 px-2.5">
+                                <button
+                                    type="button"
+                                    className="flex items-center justify-between w-full cursor-pointer"
+                                    onClick={() => setIgSettingsOpen(!igSettingsOpen)}
+                                >
+                                    <CardTitle className="text-xs flex items-center gap-1.5">
+                                        <PlatformIcon platform="instagram" size="sm" />
+                                        Instagram Settings
+                                        {igValidation.errors.length > 0 && (
+                                            <Badge variant="destructive" className="ml-2 text-[9px] px-1.5 py-0">{igValidation.errors.length} error{igValidation.errors.length > 1 ? 's' : ''}</Badge>
+                                        )}
+                                        {igValidation.errors.length === 0 && igValidation.warnings.length > 0 && (
+                                            <Badge className="ml-2 text-[9px] px-1.5 py-0 bg-amber-500/20 text-amber-600 border-amber-500/30">{igValidation.warnings.length} warning{igValidation.warnings.length > 1 ? 's' : ''}</Badge>
+                                        )}
+                                    </CardTitle>
+                                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${igSettingsOpen ? '' : '-rotate-90'}`} />
+                                </button>
+                            </CardHeader>
+                            {igSettingsOpen && (
+                                <CardContent className="space-y-2 px-2.5 pb-2">
+                                    {/* Validation Errors */}
+                                    {igValidation.errors.length > 0 && (
+                                        <div className="space-y-1">
+                                            {igValidation.errors.map((err, i) => (
+                                                <div key={i} className="flex items-start gap-1.5 p-1.5 rounded-md bg-red-500/10 border border-red-500/20">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" /></svg>
+                                                    <p className="text-[10px] text-red-600 dark:text-red-400">{err}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {/* Validation Warnings */}
+                                    {igValidation.warnings.length > 0 && (
+                                        <div className="space-y-1">
+                                            {igValidation.warnings.map((warn, i) => (
+                                                <div key={i} className="flex items-start gap-1.5 p-1.5 rounded-md bg-amber-500/10 border border-amber-500/20">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+                                                    <p className="text-[10px] text-amber-600 dark:text-amber-400">{warn}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Post Type */}
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Post Type</Label>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {[
+                                                { value: 'feed' as const, label: 'Feed', icon: LayoutGrid },
+                                                { value: 'reel' as const, label: 'Reel', icon: Film },
+                                                { value: 'story' as const, label: 'Story', icon: CircleDot },
+                                            ].map(opt => {
+                                                const isActive = igPostType === opt.value
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
+                                                            ? 'border-pink-500 bg-pink-500/10 text-pink-600 dark:text-pink-400'
+                                                            : 'border-border hover:border-pink-300 text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        onClick={() => setIgPostType(opt.value)}
+                                                    >
+                                                        <opt.icon className="h-3.5 w-3.5" />
+                                                        {opt.label}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
-                                ) : (
-                                    <>
-                                        {/* Folders */}
-                                        {libFolders.length > 0 && (
-                                            <div className="mb-3">
-                                                <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Folders</p>
-                                                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
-                                                    {libFolders.map((folder) => (
-                                                        <div key={folder.id} className="group relative">
-                                                            <button
-                                                                onClick={() => navigateLibFolder(folder.id, folder.name)}
-                                                                className="w-full flex items-center gap-1.5 p-2 rounded-md border bg-card hover:bg-primary/6 transition-colors text-left"
-                                                            >
-                                                                <Folder className="h-4 w-4 text-amber-500 shrink-0" />
-                                                                <div className="min-w-0">
-                                                                    <p className="text-[10px] font-medium truncate">{folder.name}</p>
-                                                                    <p className="text-[9px] text-muted-foreground">{folder._count.media} files</p>
-                                                                </div>
-                                                            </button>
-                                                            {/* Delete folder button */}
-                                                            <button
-                                                                onClick={async (e) => {
-                                                                    e.stopPropagation()
-                                                                    if (!confirm(`Delete folder "${folder.name}"? Contents will be moved to parent.`)) return
-                                                                    try {
-                                                                        const res = await fetch(`/api/admin/media/folders/${folder.id}`, { method: 'DELETE' })
-                                                                        if (!res.ok) throw new Error()
-                                                                        toast.success('Folder deleted')
-                                                                        fetchLibrary()
-                                                                    } catch {
-                                                                        toast.error('Failed to delete folder')
-                                                                    }
-                                                                }}
-                                                                className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
-                                                            >
-                                                                <X className="h-2.5 w-2.5" />
-                                                            </button>
-                                                        </div>
+
+                                    {/* Also Share to Story */}
+                                    {igPostType === 'feed' && (
+                                        <div className="flex items-center justify-between py-1 border-t">
+                                            <div className="flex items-center gap-1.5">
+                                                <Camera className="h-3.5 w-3.5 text-pink-500" />
+                                                <div>
+                                                    <p className="text-xs font-medium">Also Share to Story</p>
+                                                    <p className="text-[10px] text-muted-foreground">Automatically share your feed post to Stories</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${igShareToStory ? 'bg-pink-500' : 'bg-muted'}`}
+                                                onClick={() => setIgShareToStory(!igShareToStory)}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${igShareToStory ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Collaborators */}
+                                    <div className="space-y-2 border-t pt-3">
+                                        <div className="flex items-center gap-2">
+                                            <Users className="h-4 w-4 text-pink-500" />
+                                            <div>
+                                                <p className="text-sm font-medium">Collaborators</p>
+                                                <p className="text-[10px] text-muted-foreground">Invite up to 3 collaborators (public profiles only)</p>
+                                            </div>
+                                        </div>
+                                        <Input
+                                            value={igCollaborators}
+                                            onChange={(e) => setIgCollaborators(e.target.value)}
+                                            placeholder="@username1, @username2, @username3"
+                                            className="text-xs"
+                                        />
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+                    )}
+
+                    {/* YouTube Settings — only when YouTube platform is selected */}
+                    {selectedChannel?.platforms?.some(p => p.platform === 'youtube' && selectedPlatformIds.has(p.id)) && (
+                        <Card>
+                            <CardHeader className="py-1.5 px-2.5">
+                                <button
+                                    type="button"
+                                    className="flex items-center justify-between w-full cursor-pointer"
+                                    onClick={() => setYtSettingsOpen(!ytSettingsOpen)}
+                                >
+                                    <CardTitle className="text-xs flex items-center gap-1.5">
+                                        <PlatformIcon platform="youtube" size="sm" />
+                                        YouTube Settings
+                                    </CardTitle>
+                                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${ytSettingsOpen ? '' : '-rotate-90'}`} />
+                                </button>
+                            </CardHeader>
+                            {ytSettingsOpen && (
+                                <CardContent className="space-y-2 px-2.5 pb-2">
+                                    {/* Post Type */}
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Post Type</Label>
+                                        <div className="grid grid-cols-2 gap-1">
+                                            {[
+                                                { value: 'video' as const, label: 'Video', icon: Video },
+                                                { value: 'shorts' as const, label: 'Shorts', icon: Scissors },
+                                            ].map(opt => {
+                                                const isActive = ytPostType === opt.value
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
+                                                            ? 'border-red-500 bg-red-500/10 text-red-600 dark:text-red-400'
+                                                            : 'border-border hover:border-red-300 text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        onClick={() => setYtPostType(opt.value)}
+                                                    >
+                                                        <opt.icon className="h-3.5 w-3.5" />
+                                                        {opt.label}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Video Title — 3 AI options */}
+                                    <div className="space-y-1.5 border-t pt-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] text-muted-foreground">Video Title</Label>
+                                            <button
+                                                type="button"
+                                                className="flex items-center gap-1 text-[10px] font-medium text-amber-600 hover:text-amber-500 transition-colors disabled:opacity-50 cursor-pointer"
+                                                disabled={generatingMeta || !content.trim()}
+                                                onClick={() => handleGenerateMetadata(['youtube'])}
+                                            >
+                                                {generatingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                                ✨ AI Generate 3 Titles
+                                            </button>
+                                        </div>
+                                        <Input
+                                            value={ytVideoTitle}
+                                            onChange={(e) => setYtVideoTitle(e.target.value)}
+                                            placeholder="Enter video title..."
+                                            className="text-sm"
+                                        />
+                                        {/* 3 title options from AI */}
+                                        {ytTitleOptions.length > 1 && (
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">AI Options — click to use</p>
+                                                {ytTitleOptions.map((title, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        className={`w-full text-left px-2.5 py-1.5 rounded-md border text-xs transition-all cursor-pointer flex items-start gap-2 ${ytSelectedTitleIdx === idx
+                                                            ? 'border-red-500 bg-red-500/10 text-foreground'
+                                                            : 'border-border hover:border-red-300 text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        onClick={() => {
+                                                            setYtSelectedTitleIdx(idx)
+                                                            setYtVideoTitle(title)
+                                                        }}
+                                                    >
+                                                        <span className={`shrink-0 mt-0.5 h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center ${ytSelectedTitleIdx === idx ? 'border-red-500' : 'border-muted-foreground/30'
+                                                            }`}>
+                                                            {ytSelectedTitleIdx === idx && <span className="h-1.5 w-1.5 rounded-full bg-red-500" />}
+                                                        </span>
+                                                        <span className="leading-snug">{title}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Category & Tags */}
+                                    <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-muted-foreground">Category</Label>
+                                            <Select value={ytCategory} onValueChange={setYtCategory}>
+                                                <SelectTrigger className="text-xs">
+                                                    <SelectValue placeholder="Select Category" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {[
+                                                        'Film & Animation', 'Autos & Vehicles', 'Music', 'Pets & Animals',
+                                                        'Sports', 'Travel & Events', 'Gaming', 'People & Blogs',
+                                                        'Comedy', 'Entertainment', 'News & Politics', 'Howto & Style',
+                                                        'Education', 'Science & Technology', 'Nonprofits & Activism'
+                                                    ].map(cat => (
+                                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-muted-foreground">Privacy</Label>
+                                            <Select value={ytPrivacy} onValueChange={(v) => setYtPrivacy(v as 'public' | 'unlisted' | 'private')}>
+                                                <SelectTrigger className="text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="public">
+                                                        <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Public</span>
+                                                    </SelectItem>
+                                                    <SelectItem value="unlisted">
+                                                        <span className="flex items-center gap-1.5"><EyeOff className="h-3 w-3" /> Unlisted</span>
+                                                    </SelectItem>
+                                                    <SelectItem value="private">
+                                                        <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Private</span>
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    {/* Video Tags */}
+                                    <div className="space-y-2 border-t pt-3">
+                                        <div className="flex items-center gap-2">
+                                            <Tag className="h-4 w-4 text-red-500" />
+                                            <Label className="text-xs text-muted-foreground">Video Tags</Label>
+                                        </div>
+                                        <Input
+                                            value={ytTags}
+                                            onChange={(e) => setYtTags(e.target.value)}
+                                            placeholder="tag1, tag2, tag3..."
+                                            className="text-xs"
+                                        />
+                                    </div>
+
+                                    {/* Thumbnail Style + Prompts */}
+                                    <div className="space-y-2 border-t pt-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <ImageIcon className="h-4 w-4 text-red-500" />
+                                                <Label className="text-xs text-muted-foreground">Thumbnail</Label>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="flex items-center gap-1 text-[10px] font-medium text-purple-600 hover:text-purple-500 transition-colors cursor-pointer"
+                                                onClick={() => setStyleModalOpen(true)}
+                                            >
+                                                <Palette className="h-3 w-3" />
+                                                {THUMBNAIL_STYLES.find(s => s.id === thumbnailStyleId)?.name || 'Select Style'}
+                                            </button>
+                                        </div>
+                                        {/* Selected style preview */}
+                                        {(() => {
+                                            const style = THUMBNAIL_STYLES.find(s => s.id === thumbnailStyleId)
+                                            if (!style) return null
+                                            return (
+                                                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border/50">
+                                                    <Image
+                                                        src={style.preview}
+                                                        alt={style.name}
+                                                        width={64}
+                                                        height={36}
+                                                        className="rounded object-cover"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[11px] font-medium truncate">{style.name}</p>
+                                                        <p className="text-[9px] text-muted-foreground truncate">{style.description}</p>
+                                                    </div>
+                                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                                </div>
+                                            )
+                                        })()}
+                                        {/* Active thumbnail prompt */}
+                                        <textarea
+                                            value={ytThumbnailPrompt}
+                                            onChange={(e) => setYtThumbnailPrompt(e.target.value)}
+                                            placeholder="AI will generate a thumbnail prompt based on your content & selected style..."
+                                            className="w-full min-h-[60px] resize-y rounded-lg border bg-transparent px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                                            rows={3}
+                                        />
+                                        {/* 3 thumbnail prompt options */}
+                                        {ytThumbnailPrompts.length > 1 && (
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Prompt options</p>
+                                                <div className="grid grid-cols-3 gap-1">
+                                                    {ytThumbnailPrompts.map((_, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            className={`py-1 px-2 rounded border text-[10px] font-medium transition-all cursor-pointer ${ytSelectedThumbIdx === idx
+                                                                ? 'border-red-500 bg-red-500/10 text-red-600'
+                                                                : 'border-border hover:border-red-300 text-muted-foreground hover:text-foreground'
+                                                                }`}
+                                                            onClick={() => {
+                                                                setYtSelectedThumbIdx(idx)
+                                                                setYtThumbnailPrompt(ytThumbnailPrompts[idx])
+                                                            }}
+                                                        >
+                                                            Prompt {idx + 1}
+                                                        </button>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
+                                    </div>
 
-                                        {/* Media grid */}
-                                        {libraryMedia.length === 0 && libFolders.length === 0 ? (
-                                            <div className="text-center py-12">
-                                                <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                                                <p className="text-sm text-muted-foreground">No media found{libSearch ? ` for "${libSearch}"` : ''}.</p>
-                                                <p className="text-xs text-muted-foreground mt-1">Drag & drop files here or click the upload button.</p>
+                                    {/* Toggles */}
+                                    <div className="border-t pt-3 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Bell className="h-4 w-4 text-red-500" />
+                                                <p className="text-sm font-medium">Notify Subscribers</p>
                                             </div>
-                                        ) : libraryMedia.length > 0 && (
-                                            <>
-                                                {libFolders.length > 0 && <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Files</p>}
-                                                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                                                    {libraryMedia.map((media) => {
-                                                        const isAttached = attachedMedia.some((m) => m.id === media.id)
-                                                        return (
-                                                            <div
-                                                                key={media.id}
-                                                                className={`relative rounded-lg overflow-hidden bg-muted aspect-square group transition-all ${isAttached ? 'ring-2 ring-primary opacity-60' : 'hover:ring-2 hover:ring-primary/50'
-                                                                    }`}
-                                                            >
-                                                                {/* Media content — click to add */}
-                                                                <div
-                                                                    className="h-full w-full cursor-pointer"
-                                                                    onClick={() => !isAttached && addFromLibrary(media)}
+                                            <button
+                                                type="button"
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ytNotifySubscribers ? 'bg-red-500' : 'bg-muted'}`}
+                                                onClick={() => setYtNotifySubscribers(!ytNotifySubscribers)}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ytNotifySubscribers ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <ShieldCheck className="h-4 w-4 text-red-500" />
+                                                <div>
+                                                    <p className="text-sm font-medium">Made for Kids</p>
+                                                    <p className="text-[10px] text-muted-foreground">Required by COPPA regulations</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ytMadeForKids ? 'bg-red-500' : 'bg-muted'}`}
+                                                onClick={() => setYtMadeForKids(!ytMadeForKids)}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ytMadeForKids ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+                    )}
+
+                    {/* TikTok Settings — only when TikTok platform is selected */}
+                    {selectedChannel?.platforms?.some(p => p.platform === 'tiktok' && selectedPlatformIds.has(p.id)) && (
+                        <Card>
+                            <CardHeader className="py-1.5 px-2.5">
+                                <button
+                                    type="button"
+                                    className="flex items-center justify-between w-full cursor-pointer"
+                                    onClick={() => setTtSettingsOpen(!ttSettingsOpen)}
+                                >
+                                    <CardTitle className="text-xs flex items-center gap-1.5">
+                                        <PlatformIcon platform="tiktok" size="sm" />
+                                        TikTok Settings
+                                    </CardTitle>
+                                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${ttSettingsOpen ? '' : '-rotate-90'}`} />
+                                </button>
+                            </CardHeader>
+                            {ttSettingsOpen && (
+                                <CardContent className="space-y-2 px-2.5 pb-2">
+                                    {/* Publish As */}
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Publish As</Label>
+                                        <div className="grid grid-cols-2 gap-1">
+                                            {[
+                                                { value: 'direct' as const, label: 'Direct Publishing', icon: Send },
+                                                { value: 'inbox' as const, label: 'App Notification', icon: Bell },
+                                            ].map(opt => {
+                                                const isActive = ttPublishMode === opt.value
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
+                                                            ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+                                                            : 'border-border hover:border-cyan-300 text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        onClick={() => setTtPublishMode(opt.value)}
+                                                    >
+                                                        <opt.icon className="h-3.5 w-3.5" />
+                                                        {opt.label}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Post Type */}
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Post Type</Label>
+                                        <div className="grid grid-cols-2 gap-1">
+                                            {[
+                                                { value: 'video' as const, label: 'Video', icon: Video },
+                                                { value: 'carousel' as const, label: 'Image Carousel', icon: Layers },
+                                            ].map(opt => {
+                                                const isActive = ttPostType === opt.value
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
+                                                            ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+                                                            : 'border-border hover:border-cyan-300 text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        onClick={() => setTtPostType(opt.value)}
+                                                    >
+                                                        <opt.icon className="h-3.5 w-3.5" />
+                                                        {opt.label}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Visibility */}
+                                    <div className="space-y-1 border-t pt-1.5">
+                                        <Label className="text-[10px] text-muted-foreground">Who can see</Label>
+                                        <Select value={ttVisibility} onValueChange={(v) => setTtVisibility(v as typeof ttVisibility)}>
+                                            <SelectTrigger className="text-xs h-7">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="PUBLIC_TO_EVERYONE">
+                                                    <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Public To Everyone</span>
+                                                </SelectItem>
+                                                <SelectItem value="MUTUAL_FOLLOW_FRIENDS">
+                                                    <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Mutual Follow Friends</span>
+                                                </SelectItem>
+                                                <SelectItem value="SELF_ONLY">
+                                                    <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Self Only</span>
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Allow User to */}
+                                    <div className="border-t pt-1.5 space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground">Allow User to</Label>
+                                        <div className="space-y-1">
+                                            {[
+                                                { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment },
+                                                { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet },
+                                                { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch },
+                                            ].map(opt => (
+                                                <div key={opt.label} className="flex items-center justify-between">
+                                                    <p className="text-xs font-medium">{opt.label}</p>
+                                                    <button
+                                                        type="button"
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${opt.value ? 'bg-cyan-500' : 'bg-muted'}`}
+                                                        onClick={() => opt.setter(!opt.value)}
+                                                    >
+                                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${opt.value ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Branded Content & AI-Generated */}
+                                    <div className="border-t pt-1.5 space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" />
+                                                <p className="text-xs font-medium">Branded content</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ttBrandedContent ? 'bg-cyan-500' : 'bg-muted'}`}
+                                                onClick={() => setTtBrandedContent(!ttBrandedContent)}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ttBrandedContent ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
+                                                <p className="text-xs font-medium">AI-generated</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ttAiGenerated ? 'bg-cyan-500' : 'bg-muted'}`}
+                                                onClick={() => setTtAiGenerated(!ttAiGenerated)}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ttAiGenerated ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+                    )}
+
+                    {/* Pinterest Settings — only when Pinterest platform is selected */}
+                    {activePlatforms.some(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest') && (
+                        <Card className="overflow-hidden border-[#E60023]/30">
+                            <CardHeader
+                                className="py-2 px-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => {
+                                    setPinSettingsOpen(!pinSettingsOpen)
+                                    // Fetch boards when opening settings for the first time
+                                    if (!pinSettingsOpen && pinBoards.length === 0 && !pinBoardsLoading) {
+                                        const pinterestPlatform = activePlatforms.find(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
+                                        if (pinterestPlatform && selectedChannel) {
+                                            setPinBoardsLoading(true)
+                                            fetch(`/api/admin/channels/${selectedChannel.id}/pinterest-boards?accountId=${pinterestPlatform.accountId}`)
+                                                .then(r => r.json())
+                                                .then(data => {
+                                                    if (data.needsReconnect) { setPinNeedsReconnect(true); return }
+                                                    if (data.boards) { setPinNeedsReconnect(false); setPinBoards(data.boards) }
+                                                })
+                                                .catch(() => { })
+                                                .finally(() => setPinBoardsLoading(false))
+                                        }
+                                    }
+                                }}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-xs font-medium flex items-center gap-2">
+                                        <div className="h-4 w-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold" style={{ backgroundColor: '#E60023' }}>P</div>
+                                        Pinterest Settings
+                                    </CardTitle>
+                                    <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${pinSettingsOpen ? 'rotate-90' : ''}`} />
+                                </div>
+                            </CardHeader>
+                            {pinSettingsOpen && (
+                                <CardContent className="px-3 pb-3 pt-0 space-y-2">
+                                    {/* Reconnect banner — shown when token is expired */}
+                                    {pinNeedsReconnect && (() => {
+                                        const pinterestPlatform = activePlatforms.find(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
+                                        const fetchBoards = () => {
+                                            if (!pinterestPlatform || !selectedChannel) return
+                                            setPinBoardsLoading(true)
+                                            fetch(`/api/admin/channels/${selectedChannel.id}/pinterest-boards?accountId=${pinterestPlatform.accountId}`)
+                                                .then(r => r.json())
+                                                .then(data => {
+                                                    if (data.needsReconnect) return
+                                                    if (data.boards) { setPinNeedsReconnect(false); setPinBoards(data.boards) }
+                                                })
+                                                .catch(() => { })
+                                                .finally(() => setPinBoardsLoading(false))
+                                        }
+                                        return (
+                                            <div className="flex items-center gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-xs">
+                                                <span className="text-amber-600 flex-1">⚠️ Pinterest session expired.</span>
+                                                <button
+                                                    type="button"
+                                                    className="text-[10px] px-2 py-1 rounded border border-amber-500/40 text-amber-600 hover:bg-amber-500/10 cursor-pointer whitespace-nowrap"
+                                                    onClick={fetchBoards}
+                                                >
+                                                    ↺ Retry
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="text-[10px] px-2 py-1 rounded bg-[#E60023] text-white font-medium hover:bg-[#c0001d] cursor-pointer whitespace-nowrap"
+                                                    onClick={() => {
+                                                        if (!pinterestPlatform || !selectedChannel) return
+                                                        const w = 500, h = 700
+                                                        const left = window.screenX + (window.outerWidth - w) / 2
+                                                        const top = window.screenY + (window.outerHeight - h) / 2
+                                                        const popup = window.open(
+                                                            `/api/oauth/pinterest?channelId=${selectedChannel.id}`,
+                                                            'pinterest-oauth',
+                                                            `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
+                                                        )
+                                                        const handler = (e: MessageEvent) => {
+                                                            if (e.data?.type === 'oauth-success' && e.data?.platform === 'pinterest') {
+                                                                window.removeEventListener('message', handler)
+                                                                setTimeout(fetchBoards, 800)
+                                                            }
+                                                        }
+                                                        window.addEventListener('message', handler)
+                                                        const check = setInterval(() => {
+                                                            if (popup?.closed) { clearInterval(check); window.removeEventListener('message', handler); setTimeout(fetchBoards, 800) }
+                                                        }, 1000)
+                                                    }}
+                                                >
+                                                    Reconnect
+                                                </button>
+                                            </div>
+                                        )
+                                    })()}
+
+                                    {/* Board Selection */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] text-muted-foreground">Board</Label>
+                                        <Select
+                                            value={pinShowCreateBoard ? '__create__' : pinBoardId}
+                                            onValueChange={v => {
+                                                if (v === '__create__') {
+                                                    setPinShowCreateBoard(true)
+                                                    setPinNewBoardName('')
+                                                } else {
+                                                    setPinShowCreateBoard(false)
+                                                    setPinBoardId(v)
+                                                }
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue placeholder={pinBoardsLoading ? 'Loading boards...' : 'Select a board'} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {pinBoards.map(b => (
+                                                    <SelectItem key={b.id} value={b.id} className="text-xs">{b.name}</SelectItem>
+                                                ))}
+                                                {pinBoards.length === 0 && !pinBoardsLoading && (
+                                                    <SelectItem value="_none" disabled className="text-xs text-muted-foreground">No boards found</SelectItem>
+                                                )}
+                                                <SelectItem value="__create__" className="text-xs text-[#E60023] font-medium border-t mt-1 pt-1">
+                                                    ＋ Create new board...
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+
+                                        {/* Inline create form — shown when "Create new board" is selected */}
+                                        {pinShowCreateBoard && (
+                                            <div className="space-y-2 p-2 rounded-md border border-[#E60023]/30 bg-[#E60023]/5">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Board name..."
+                                                    value={pinNewBoardName}
+                                                    onChange={e => setPinNewBoardName(e.target.value)}
+                                                    onKeyDown={e => e.key === 'Escape' && setPinShowCreateBoard(false)}
+                                                    className="w-full h-7 px-2 text-xs rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-[#E60023]/50"
+                                                    autoFocus
+                                                />
+                                                <div className="flex items-center gap-2">
+                                                    <select
+                                                        value={pinNewBoardPrivacy}
+                                                        onChange={e => setPinNewBoardPrivacy(e.target.value)}
+                                                        className="flex-1 h-7 px-2 text-xs rounded-md border bg-background focus:outline-none"
+                                                    >
+                                                        <option value="PUBLIC">🌐 Public</option>
+                                                        <option value="PROTECTED">🔒 Secret</option>
+                                                    </select>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setPinShowCreateBoard(false); setPinBoardId(pinBoards[0]?.id || '') }}
+                                                        className="h-7 px-2 text-xs rounded-md border text-muted-foreground hover:bg-muted cursor-pointer"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        disabled={!pinNewBoardName.trim() || pinCreatingBoard}
+                                                        className="h-7 px-3 text-xs rounded-md bg-[#E60023] text-white font-medium disabled:opacity-50 cursor-pointer hover:bg-[#c0001d] transition-colors"
+                                                        onClick={async () => {
+                                                            const pinterestPlatform = activePlatforms.find(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
+                                                            if (!pinterestPlatform || !selectedChannel) return
+                                                            setPinCreatingBoard(true)
+                                                            try {
+                                                                const res = await fetch(`/api/admin/channels/${selectedChannel.id}/pinterest-boards`, {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({
+                                                                        accountId: pinterestPlatform.accountId,
+                                                                        name: pinNewBoardName.trim(),
+                                                                        privacy: pinNewBoardPrivacy,
+                                                                    }),
+                                                                })
+                                                                const data = await res.json()
+                                                                if (data.needsReconnect) {
+                                                                    setPinNeedsReconnect(true)
+                                                                    setPinShowCreateBoard(false)
+                                                                    return
+                                                                }
+                                                                if (!res.ok) throw new Error(data.error || 'Failed')
+                                                                const newBoard = data.board
+                                                                setPinBoards(prev => [...prev, { id: newBoard.id, name: newBoard.name }])
+                                                                setPinBoardId(newBoard.id)
+                                                                setPinShowCreateBoard(false)
+                                                                setPinNewBoardName('')
+                                                            } catch (err) {
+                                                                const msg = err instanceof Error ? err.message : 'Unknown error'
+                                                                toast.error('Failed to create board: ' + msg)
+                                                            } finally {
+                                                                setPinCreatingBoard(false)
+                                                            }
+                                                        }}
+                                                    >
+                                                        {pinCreatingBoard ? '...' : 'Create'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Pin Title + AI Button */}
+                                    <div>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] text-muted-foreground">Pin Title</Label>
+                                            <button
+                                                type="button"
+                                                className="flex items-center gap-1 text-[10px] font-medium text-amber-600 hover:text-amber-500 transition-colors disabled:opacity-50 cursor-pointer"
+                                                disabled={generatingMeta || !content.trim()}
+                                                onClick={() => handleGenerateMetadata(['pinterest'])}
+                                            >
+                                                {generatingMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                                AI Fill
+                                            </button>
+                                        </div>
+                                        <Input
+                                            className="h-8 text-xs"
+                                            placeholder="Enter pin title (max 100 chars)"
+                                            maxLength={100}
+                                            value={pinTitle}
+                                            onChange={e => setPinTitle(e.target.value)}
+                                        />
+                                    </div>
+                                    {/* Destination Link */}
+                                    <div>
+                                        <Label className="text-[10px] text-muted-foreground">Destination Link</Label>
+                                        <Input
+                                            className="h-8 text-xs"
+                                            placeholder="https://example.com"
+                                            value={pinLink}
+                                            onChange={e => setPinLink(e.target.value)}
+                                        />
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+                    )}
+
+                    {/* Media Library Modal */}
+                    {showMediaLibrary && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                            <Card className="w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+                                <CardHeader className="pb-2 border-b space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-sm flex items-center gap-2">
+                                            <FolderOpen className="h-4 w-4" />
+                                            Media Library — {selectedChannel?.displayName}
+                                            {attachedMedia.length > 0 && (
+                                                <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                                                    {attachedMedia.length} selected
+                                                </span>
+                                            )}
+                                        </CardTitle>
+                                        <div className="flex items-center gap-1">
+                                            <Button variant="ghost" size="sm" onClick={() => setLibShowNewFolder(true)} className="cursor-pointer h-7 px-2 text-[10px]" title="New Folder">
+                                                <FolderPlus className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="sm" onClick={() => libFileInputRef.current?.click()} disabled={libUploading} className="cursor-pointer h-7 px-2 text-[10px]" title="Upload">
+                                                {libUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                                            </Button>
+                                            <input ref={libFileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => { handleLibUpload(e.target.files); if (e.target) e.target.value = '' }} />
+                                            <Button variant="ghost" size="sm" onClick={() => setShowMediaLibrary(false)} className="cursor-pointer h-7 px-2">
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    {/* Search bar */}
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search by filename..."
+                                            value={libSearch}
+                                            onChange={(e) => {
+                                                setLibSearch(e.target.value)
+                                                fetchLibrary(libFolderId, e.target.value)
+                                            }}
+                                            className="w-full h-7 pl-7 pr-3 text-xs rounded-md border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                                        />
+                                    </div>
+                                    {/* Breadcrumbs */}
+                                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                        {libBreadcrumbs.map((bc, i) => (
+                                            <span key={i} className="flex items-center gap-0.5">
+                                                {i > 0 && <ChevronRight className="h-2.5 w-2.5" />}
+                                                <button
+                                                    onClick={() => navigateLibBreadcrumb(i)}
+                                                    className={`hover:text-foreground transition-colors ${i === libBreadcrumbs.length - 1 ? 'text-foreground font-medium' : ''}`}
+                                                >
+                                                    {bc.name}
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <CardDescription className="text-[10px]">Click to add media. Hover for actions. Drag & drop files to upload.</CardDescription>
+                                </CardHeader>
+
+                                {/* Content area with drag-drop */}
+                                <CardContent
+                                    className={`overflow-y-auto flex-1 py-3 relative transition-colors ${libDragging ? 'bg-primary/5' : ''}`}
+                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setLibDragging(true) }}
+                                    onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setLibDragging(false) }}
+                                    onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setLibDragging(false); if (e.dataTransfer.files?.length) handleLibUpload(e.dataTransfer.files) }}
+                                >
+                                    {/* Drag overlay */}
+                                    {libDragging && (
+                                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-lg pointer-events-none">
+                                            <div className="text-center">
+                                                <Upload className="h-8 w-8 text-primary mx-auto mb-2" />
+                                                <p className="text-sm font-medium text-primary">Drop files here to upload</p>
+                                                {libFolderId && <p className="text-xs text-muted-foreground">Into current folder</p>}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Create folder inline */}
+                                    {libShowNewFolder && (
+                                        <div className="mb-3 flex items-center gap-2 p-2 rounded-md border bg-muted/30">
+                                            <FolderPlus className="h-4 w-4 text-amber-500 shrink-0" />
+                                            <input
+                                                type="text"
+                                                placeholder="Folder name..."
+                                                value={libNewFolderName}
+                                                onChange={(e) => setLibNewFolderName(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleLibCreateFolder()}
+                                                className="flex-1 h-6 text-xs bg-transparent border-none focus:outline-none"
+                                                autoFocus
+                                            />
+                                            <Button size="sm" className="h-6 px-2 text-[10px] cursor-pointer" onClick={handleLibCreateFolder} disabled={!libNewFolderName.trim()}>Create</Button>
+                                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] cursor-pointer" onClick={() => { setLibShowNewFolder(false); setLibNewFolderName('') }}>Cancel</Button>
+                                        </div>
+                                    )}
+
+                                    {loadingLibrary ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Folders */}
+                                            {libFolders.length > 0 && (
+                                                <div className="mb-3">
+                                                    <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Folders</p>
+                                                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                                                        {libFolders.map((folder) => (
+                                                            <div key={folder.id} className="group relative">
+                                                                <button
+                                                                    onClick={() => navigateLibFolder(folder.id, folder.name)}
+                                                                    className="w-full flex items-center gap-1.5 p-2 rounded-md border bg-card hover:bg-primary/6 transition-colors text-left"
                                                                 >
-                                                                    {isVideo(media) ? (
-                                                                        <div className="relative h-full w-full bg-muted">
-                                                                            <img
-                                                                                src={media.thumbnailUrl || media.url}
-                                                                                alt={media.originalName || ''}
-                                                                                className="h-full w-full object-cover"
-                                                                            />
-                                                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                                                <div className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center">
-                                                                                    <Play className="h-3 w-3 text-white ml-0.5" />
+                                                                    <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-[10px] font-medium truncate">{folder.name}</p>
+                                                                        <p className="text-[9px] text-muted-foreground">{folder._count.media} files</p>
+                                                                    </div>
+                                                                </button>
+                                                                {/* Delete folder button */}
+                                                                <button
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation()
+                                                                        if (!confirm(`Delete folder "${folder.name}"? Contents will be moved to parent.`)) return
+                                                                        try {
+                                                                            const res = await fetch(`/api/admin/media/folders/${folder.id}`, { method: 'DELETE' })
+                                                                            if (!res.ok) throw new Error()
+                                                                            toast.success('Folder deleted')
+                                                                            fetchLibrary()
+                                                                        } catch {
+                                                                            toast.error('Failed to delete folder')
+                                                                        }
+                                                                    }}
+                                                                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
+                                                                >
+                                                                    <X className="h-2.5 w-2.5" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Media grid */}
+                                            {libraryMedia.length === 0 && libFolders.length === 0 ? (
+                                                <div className="text-center py-12">
+                                                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                                                    <p className="text-sm text-muted-foreground">No media found{libSearch ? ` for "${libSearch}"` : ''}.</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">Drag & drop files here or click the upload button.</p>
+                                                </div>
+                                            ) : libraryMedia.length > 0 && (
+                                                <>
+                                                    {libFolders.length > 0 && <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Files</p>}
+                                                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                                                        {libraryMedia.map((media) => {
+                                                            const isAttached = attachedMedia.some((m) => m.id === media.id)
+                                                            return (
+                                                                <div
+                                                                    key={media.id}
+                                                                    className={`relative rounded-lg overflow-hidden bg-muted aspect-square group transition-all ${isAttached ? 'ring-2 ring-primary opacity-60' : 'hover:ring-2 hover:ring-primary/50'
+                                                                        }`}
+                                                                >
+                                                                    {/* Media content — click to add */}
+                                                                    <div
+                                                                        className="h-full w-full cursor-pointer"
+                                                                        onClick={() => !isAttached && addFromLibrary(media)}
+                                                                    >
+                                                                        {isVideo(media) ? (
+                                                                            <div className="relative h-full w-full bg-muted">
+                                                                                <img
+                                                                                    src={media.thumbnailUrl || media.url}
+                                                                                    alt={media.originalName || ''}
+                                                                                    className="h-full w-full object-cover"
+                                                                                />
+                                                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                                                    <div className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center">
+                                                                                        <Play className="h-3 w-3 text-white ml-0.5" />
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover" />
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Attached check overlay */}
-                                                                {isAttached && (
-                                                                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center pointer-events-none">
-                                                                        <Check className="h-5 w-5 text-primary" />
+                                                                        ) : (
+                                                                            <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover" />
+                                                                        )}
                                                                     </div>
-                                                                )}
 
-                                                                {/* Action buttons — top right on hover */}
-                                                                <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                                                    {/* Rename */}
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation()
-                                                                            setLibRenameItem(media)
-                                                                            setLibRenameName(media.originalName || '')
-                                                                        }}
-                                                                        className="h-5 w-5 rounded-full bg-foreground/80 text-background flex items-center justify-center cursor-pointer"
-                                                                        title="Rename"
-                                                                    >
-                                                                        <Pencil className="h-2.5 w-2.5" />
-                                                                    </button>
-                                                                    {/* Delete */}
-                                                                    <button
-                                                                        onClick={async (e) => {
-                                                                            e.stopPropagation()
-                                                                            if (!confirm(`Delete "${media.originalName}"? This cannot be undone.`)) return
-                                                                            try {
-                                                                                const res = await fetch(`/api/admin/media/${media.id}`, { method: 'DELETE' })
-                                                                                if (!res.ok) throw new Error()
-                                                                                setLibraryMedia((prev) => prev.filter((m) => m.id !== media.id))
-                                                                                setAttachedMedia((prev) => prev.filter((m) => m.id !== media.id))
-                                                                                toast.success('Media deleted')
-                                                                            } catch {
-                                                                                toast.error('Failed to delete media')
-                                                                            }
-                                                                        }}
-                                                                        className="h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center cursor-pointer"
-                                                                        title="Delete"
-                                                                    >
-                                                                        <Trash2 className="h-2.5 w-2.5" />
-                                                                    </button>
+                                                                    {/* Attached check overlay */}
+                                                                    {isAttached && (
+                                                                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center pointer-events-none">
+                                                                            <Check className="h-5 w-5 text-primary" />
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Action buttons — top right on hover */}
+                                                                    <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                                        {/* Rename */}
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                setLibRenameItem(media)
+                                                                                setLibRenameName(media.originalName || '')
+                                                                            }}
+                                                                            className="h-5 w-5 rounded-full bg-foreground/80 text-background flex items-center justify-center cursor-pointer"
+                                                                            title="Rename"
+                                                                        >
+                                                                            <Pencil className="h-2.5 w-2.5" />
+                                                                        </button>
+                                                                        {/* Delete */}
+                                                                        <button
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation()
+                                                                                if (!confirm(`Delete "${media.originalName}"? This cannot be undone.`)) return
+                                                                                try {
+                                                                                    const res = await fetch(`/api/admin/media/${media.id}`, { method: 'DELETE' })
+                                                                                    if (!res.ok) throw new Error()
+                                                                                    setLibraryMedia((prev) => prev.filter((m) => m.id !== media.id))
+                                                                                    setAttachedMedia((prev) => prev.filter((m) => m.id !== media.id))
+                                                                                    toast.success('Media deleted')
+                                                                                } catch {
+                                                                                    toast.error('Failed to delete media')
+                                                                                }
+                                                                            }}
+                                                                            className="h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center cursor-pointer"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Trash2 className="h-2.5 w-2.5" />
+                                                                        </button>
+                                                                    </div>
+
+                                                                    {/* Filename */}
+                                                                    <span className="absolute bottom-0 inset-x-0 text-[8px] bg-black/60 text-white px-1 py-0.5 truncate">
+                                                                        {media.originalName}
+                                                                    </span>
                                                                 </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </CardContent>
 
-                                                                {/* Filename */}
-                                                                <span className="absolute bottom-0 inset-x-0 text-[8px] bg-black/60 text-white px-1 py-0.5 truncate">
-                                                                    {media.originalName}
-                                                                </span>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                            </CardContent>
-
-                            {/* Footer */}
-                            <div className="border-t px-4 py-3 flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">
-                                    {libraryMedia.length} file{libraryMedia.length !== 1 ? 's' : ''}{libFolders.length > 0 ? `, ${libFolders.length} folder${libFolders.length !== 1 ? 's' : ''}` : ''}
-                                </span>
-                                <Button
-                                    size="sm"
-                                    onClick={() => setShowMediaLibrary(false)}
-                                    className="cursor-pointer"
-                                >
-                                    <Check className="h-4 w-4 mr-1" />
-                                    Done
-                                </Button>
-                            </div>
-                        </Card>
-                    </div>
-                )}
-
-                {/* Rename Media Dialog */}
-                {libRenameItem && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
-                        <Card className="w-full max-w-sm">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm">Rename Media</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <input
-                                    type="text"
-                                    value={libRenameName}
-                                    onChange={(e) => setLibRenameName(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleLibRename()}
-                                    className="w-full h-8 px-3 text-xs rounded-md border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                                    autoFocus
-                                />
-                                <div className="flex justify-end gap-2">
-                                    <Button size="sm" variant="ghost" onClick={() => setLibRenameItem(null)} className="cursor-pointer">Cancel</Button>
-                                    <Button size="sm" onClick={handleLibRename} disabled={!libRenameName.trim()} className="cursor-pointer">Rename</Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                )}
-            </div>
-
-            {/* ── Right: Realistic Previews ── */}
-            <div className={`lg:col-span-3 flex flex-col overflow-hidden ${mobileTab === 'preview' ? 'flex' : 'hidden'} lg:flex`}>
-                {/* Panel header */}
-                <div className="px-4 pt-4 pb-2 shrink-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Real-time Preview</p>
-                </div>
-                <div className="flex-1 overflow-y-auto pb-4 flex flex-col px-2">
-                    {/* Platform switcher — OUTSIDE phone, above */}
-                    {uniqueSelectedPlatforms.length > 0 && (
-                        <div className="flex items-center gap-2 flex-wrap mb-2 px-1">
-                            {uniqueSelectedPlatforms.map((platform) => {
-                                const isActive = effectivePreviewPlatform === platform
-                                return (
-                                    <button
-                                        key={platform}
-                                        onClick={() => setPreviewPlatform(platform)}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer border ${isActive
-                                            ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
-                                            : 'border-border/50 bg-card text-muted-foreground hover:border-border hover:text-foreground'
-                                            }`}
+                                {/* Footer */}
+                                <div className="border-t px-4 py-3 flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">
+                                        {libraryMedia.length} file{libraryMedia.length !== 1 ? 's' : ''}{libFolders.length > 0 ? `, ${libFolders.length} folder${libFolders.length !== 1 ? 's' : ''}` : ''}
+                                    </span>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setShowMediaLibrary(false)}
+                                        className="cursor-pointer"
                                     >
-                                        <span
-                                            className="flex items-center justify-center h-4 w-4 rounded-full shrink-0"
-                                            style={{ backgroundColor: platformColors[platform] || '#666' }}
-                                        >
-                                            <PlatformIcon platform={platform} size="xs" />
-                                        </span>
-                                        <span className="capitalize">{platformLabels[platform] || platform}</span>
-                                        {uniqueSelectedPlatforms.length > 1 && selectedEntries.filter((e) => e.platform === platform).length > 1 && (
-                                            <span className="ml-0.5 bg-muted text-muted-foreground text-[9px] rounded-full px-1">
-                                                ×{selectedEntries.filter((e) => e.platform === platform).length}
-                                            </span>
-                                        )}
-                                    </button>
-                                )
-                            })}
+                                        <Check className="h-4 w-4 mr-1" />
+                                        Done
+                                    </Button>
+                                </div>
+                            </Card>
                         </div>
                     )}
 
-                    {/* Phone frame — correct aspect ratio, full column width */}
-                    <div className="relative w-full" style={{ aspectRatio: '9 / 19.5' }}>
-                        {/* Phone shell */}
-                        <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-border/80 bg-card shadow-xl overflow-hidden">
-                            {/* Notch */}
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-border/80 rounded-b-2xl z-10" />
-                            {/* Status bar */}
-                            <div className="flex items-center justify-between px-5 pt-6 pb-1">
-                                <span className="text-[9px] font-semibold text-muted-foreground">9:41</span>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-3.5 h-2 rounded-[2px] border border-muted-foreground/50">
-                                        <div className="w-2.5 h-full bg-muted-foreground/60 rounded-[1px]" />
+                    {/* Rename Media Dialog */}
+                    {libRenameItem && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+                            <Card className="w-full max-w-sm">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm">Rename Media</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <input
+                                        type="text"
+                                        value={libRenameName}
+                                        onChange={(e) => setLibRenameName(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleLibRename()}
+                                        className="w-full h-8 px-3 text-xs rounded-md border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                                        autoFocus
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <Button size="sm" variant="ghost" onClick={() => setLibRenameItem(null)} className="cursor-pointer">Cancel</Button>
+                                        <Button size="sm" onClick={handleLibRename} disabled={!libRenameName.trim()} className="cursor-pointer">Rename</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Right: Realistic Previews ── */}
+                <div className={`lg:col-span-3 flex flex-col overflow-hidden ${mobileTab === 'preview' ? 'flex' : 'hidden'} lg:flex`}>
+                    {/* Panel header */}
+                    <div className="px-4 pt-4 pb-2 shrink-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Real-time Preview</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto pb-4 flex flex-col px-2">
+                        {/* Platform switcher — OUTSIDE phone, above */}
+                        {uniqueSelectedPlatforms.length > 0 && (
+                            <div className="flex items-center gap-2 flex-wrap mb-2 px-1">
+                                {uniqueSelectedPlatforms.map((platform) => {
+                                    const isActive = effectivePreviewPlatform === platform
+                                    return (
+                                        <button
+                                            key={platform}
+                                            onClick={() => setPreviewPlatform(platform)}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer border ${isActive
+                                                ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
+                                                : 'border-border/50 bg-card text-muted-foreground hover:border-border hover:text-foreground'
+                                                }`}
+                                        >
+                                            <span
+                                                className="flex items-center justify-center h-4 w-4 rounded-full shrink-0"
+                                                style={{ backgroundColor: platformColors[platform] || '#666' }}
+                                            >
+                                                <PlatformIcon platform={platform} size="xs" />
+                                            </span>
+                                            <span className="capitalize">{platformLabels[platform] || platform}</span>
+                                            {uniqueSelectedPlatforms.length > 1 && selectedEntries.filter((e) => e.platform === platform).length > 1 && (
+                                                <span className="ml-0.5 bg-muted text-muted-foreground text-[9px] rounded-full px-1">
+                                                    ×{selectedEntries.filter((e) => e.platform === platform).length}
+                                                </span>
+                                            )}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        )}
+
+                        {/* Phone frame — correct aspect ratio, full column width */}
+                        <div className="relative w-full" style={{ aspectRatio: '9 / 19.5' }}>
+                            {/* Phone shell */}
+                            <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-border/80 bg-card shadow-xl overflow-hidden">
+                                {/* Notch */}
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-border/80 rounded-b-2xl z-10" />
+                                {/* Status bar */}
+                                <div className="flex items-center justify-between px-5 pt-6 pb-1">
+                                    <span className="text-[9px] font-semibold text-muted-foreground">9:41</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-3.5 h-2 rounded-[2px] border border-muted-foreground/50">
+                                            <div className="w-2.5 h-full bg-muted-foreground/60 rounded-[1px]" />
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Screen content — scrollable inside phone */}
+                                <div className="px-2 pb-6 overflow-y-auto absolute inset-0 top-[44px]">
+                                    {(content.trim() || attachedMedia.length > 0) && effectivePreviewPlatform ? (() => {
+                                        const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
+                                        if (!entry) return null
+                                        const name = entry.accountName
+                                        const accountAvatar = getPlatformAvatar(entry)
+                                        const accountsCount = selectedEntries.filter((e) => e.platform === effectivePreviewPlatform).length
+                                        const previewContent = contentPerPlatform[effectivePreviewPlatform]?.trim() || content
+                                        return (
+                                            <>
+                                                {(() => {
+                                                    switch (effectivePreviewPlatform) {
+                                                        case 'facebook':
+                                                            return <FacebookPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} postType={fbPostTypes[entry.id] || 'feed'} mediaRatio={mediaRatio} firstComment={fbFirstComment || undefined} />
+                                                        case 'instagram':
+                                                            return <InstagramPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                        case 'tiktok':
+                                                            return <TikTokPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                        case 'x':
+                                                        case 'twitter':
+                                                            return <XPreview content={previewContent} accountName={name} accountAvatar={accountAvatar} />
+                                                        case 'youtube':
+                                                            return <YouTubePreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                        case 'linkedin':
+                                                            return <LinkedInPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                        default:
+                                                            return <GenericPreview content={previewContent} media={attachedMedia} accountName={name} platform={effectivePreviewPlatform} mediaRatio={mediaRatio} />
+                                                    }
+                                                })()}
+                                                {accountsCount > 1 && (
+                                                    <p className="text-[9px] text-muted-foreground text-center mt-1">
+                                                        +{accountsCount - 1} more {platformLabels[effectivePreviewPlatform] || effectivePreviewPlatform} accounts
+                                                    </p>
+                                                )}
+                                            </>
+                                        )
+                                    })() : (
+                                        /* Neeflow placeholder */
+                                        <div className="flex flex-col items-center justify-center py-16 gap-3">
+                                            <div className="w-14 h-14 rounded-3xl bg-primary/15 flex items-center justify-center shadow-inner">
+                                                <span className="text-primary font-bold text-xl">N</span>
+                                            </div>
+                                            <p className="text-sm font-semibold text-foreground/80 tracking-wide">Neeflow</p>
+                                            <p className="text-[10px] text-muted-foreground text-center leading-relaxed px-4">
+                                                {selectedEntries.length === 0 ? 'Select a platform to preview' : 'Start typing to preview your post'}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Home indicator */}
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-border/70 rounded-full" />
+                            </div>
+                        </div>
+
+                        {/* Schedule badge — below phone */}
+                        {scheduleDate && (
+                            <div className="mt-3 shrink-0">
+                                <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 rounded-xl px-3 py-2">
+                                    <Clock className="h-4 w-4 text-primary shrink-0" />
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-medium">Scheduled</p>
+                                        <p className="text-[10px] text-muted-foreground truncate">
+                                            {new Date(`${scheduleDate}T${scheduleTime || '00:00'}`).toLocaleString('vi-VN')}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
-                            {/* Screen content — scrollable inside phone */}
-                            <div className="px-2 pb-6 overflow-y-auto absolute inset-0 top-[44px]">
-                                {(content.trim() || attachedMedia.length > 0) && effectivePreviewPlatform ? (() => {
-                                    const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
-                                    if (!entry) return null
-                                    const name = entry.accountName
-                                    const accountAvatar = getPlatformAvatar(entry)
-                                    const accountsCount = selectedEntries.filter((e) => e.platform === effectivePreviewPlatform).length
-                                    const previewContent = contentPerPlatform[effectivePreviewPlatform]?.trim() || content
-                                    return (
-                                        <>
-                                            {(() => {
-                                                switch (effectivePreviewPlatform) {
-                                                    case 'facebook':
-                                                        return <FacebookPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} postType={fbPostTypes[entry.id] || 'feed'} mediaRatio={mediaRatio} firstComment={fbFirstComment || undefined} />
-                                                    case 'instagram':
-                                                        return <InstagramPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
-                                                    case 'tiktok':
-                                                        return <TikTokPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
-                                                    case 'x':
-                                                    case 'twitter':
-                                                        return <XPreview content={previewContent} accountName={name} accountAvatar={accountAvatar} />
-                                                    case 'youtube':
-                                                        return <YouTubePreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
-                                                    case 'linkedin':
-                                                        return <LinkedInPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
-                                                    default:
-                                                        return <GenericPreview content={previewContent} media={attachedMedia} accountName={name} platform={effectivePreviewPlatform} mediaRatio={mediaRatio} />
+                        )}
+
+                        {/* ── Schedule section (full) — below phone ── */}
+                        <div className="mt-3 shrink-0 border border-border/60 rounded-xl overflow-hidden">
+                            {/* Header */}
+                            <div className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-muted-foreground border-b border-border/60">
+                                <Calendar className="h-3.5 w-3.5" />
+                                {t('compose.schedule')}
+                            </div>
+                            {/* Body */}
+                            <div className="px-3 py-2 space-y-2">
+                                {/* AI Best Time button */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full text-xs cursor-pointer gap-2"
+                                    disabled={!selectedChannel || generating || aiScheduleLoading}
+                                    onClick={async () => {
+                                        if (!selectedChannel) return
+                                        const platforms = activePlatforms
+                                            .filter((p) => selectedPlatformIds.has(p.id))
+                                            .map((p) => p.platform)
+                                        if (platforms.length === 0) {
+                                            toast.error('Select at least one platform')
+                                            return
+                                        }
+                                        setAiScheduleLoading(true)
+                                        try {
+                                            const res = await fetch('/api/admin/posts/suggest-schedule', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    channelId: selectedChannel.id,
+                                                    platforms,
+                                                    content: content.slice(0, 200),
+                                                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                                }),
+                                            })
+                                            const data = await res.json()
+                                            if (!res.ok) {
+                                                toast.error(data.error || 'Failed to get suggestions')
+                                                return
+                                            }
+                                            setAiScheduleSuggestions(data.suggestions || [])
+                                            toast.success('AI schedule suggestions ready!')
+                                        } catch {
+                                            toast.error('Failed to get AI suggestions')
+                                        } finally {
+                                            setAiScheduleLoading(false)
+                                        }
+                                    }}
+                                >
+                                    {aiScheduleLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-amber-500" />}
+                                    {aiScheduleLoading ? 'Analyzing...' : '✨ AI Best Time'}
+                                </Button>
+
+                                {/* AI Suggestions list */}
+                                {aiScheduleSuggestions.length > 0 && (
+                                    <div className="grid grid-cols-1 gap-1.5">
+                                        {aiScheduleSuggestions.map((s: { date: string; time: string; label: string; reason: string; score?: number }, i: number) => {
+                                            const isSelected = scheduleDate === s.date && scheduleTime === s.time
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => { setScheduleDate(s.date); setScheduleTime(s.time) }}
+                                                    className={`text-left px-2.5 py-2 rounded-md text-xs transition-colors cursor-pointer ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-medium">{s.label}</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {s.score && (
+                                                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${isSelected ? 'bg-primary-foreground/20' : s.score >= 90 ? 'bg-green-100 text-green-700' : s.score >= 75 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                    {s.score}%
+                                                                </span>
+                                                            )}
+                                                            <span className="opacity-70">{s.date} {s.time}</span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="opacity-60 mt-0.5 text-[10px]">{s.reason}</p>
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Date */}
+                                <div>
+                                    <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleDate')}</Label>
+                                    <Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-0.5 h-7 text-xs" />
+                                </div>
+                                {/* Time */}
+                                <div>
+                                    <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleTime')}</Label>
+                                    <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-0.5 h-7 text-xs" />
+                                </div>
+                                {/* Timezone */}
+                                <div className="flex items-center justify-between">
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] text-muted-foreground">
+                                        🌐 {(selectedChannel as any)?.timezone || 'UTC'}
+                                    </span>
+                                    {scheduleDate && (
+                                        <Button variant="ghost" size="sm" onClick={() => { setScheduleDate(''); setScheduleTime(''); setAiScheduleSuggestions([]) }} className="text-xs cursor-pointer h-6 px-2">
+                                            <X className="h-3 w-3 mr-1" /> Clear
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Image Lightbox ── */}
+            {lightboxUrl && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm cursor-pointer animate-in fade-in duration-200"
+                    onClick={() => setLightboxUrl(null)}
+                    onKeyDown={(e) => e.key === 'Escape' && setLightboxUrl(null)}
+                    tabIndex={0}
+                    role="dialog"
+                >
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setLightboxUrl(null) }}
+                        className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer z-10"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                    <img
+                        src={lightboxUrl}
+                        alt="Full size preview"
+                        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )
+            }
+
+            {/* ── Generate Image Dialog ── */}
+            <Dialog open={showImagePicker} onOpenChange={(open) => {
+                setShowImagePicker(open)
+            }} >
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-purple-500" />
+                            Generate Image
+                        </DialogTitle>
+                    </DialogHeader>
+
+
+
+                    {/* Tab Content */}
+                    <div className="mt-4 min-h-[300px]">
+
+                        {/* AI Generate */}
+                        {imagePickerTab === 'ai' && (
+                            <div className="space-y-4">
+                                {/* Provider / Model selector */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {/* Provider dropdown with SVG logos */}
+                                    {(() => {
+                                        // overrideImageProvider stores prefixed value like 'byok:gemini' or 'plan:gemini'
+                                        const currentSelectValue = overrideImageProvider || '__auto__'
+                                        // Extract bare provider name for display and API calls
+                                        const rawProvider = (() => {
+                                            if (!currentSelectValue || currentSelectValue === '__auto__') return selectedChannel?.defaultImageProvider || ''
+                                            const parts = currentSelectValue.split(':')
+                                            return parts.length > 1 ? parts.slice(1).join(':') : parts[0]
+                                        })()
+                                        const handleProviderChange = (selectVal: string) => {
+                                            if (selectVal === '__auto__') {
+                                                setOverrideImageProvider('')
+                                                return
+                                            }
+                                            // Store full prefixed value: "byok:gemini" or "plan:gemini"
+                                            setOverrideImageProvider(selectVal)
+                                            setOverrideImageModel('')
+                                            setAvailableImageModels([])
+                                            // Parse source and provider name
+                                            const [source, ...rest] = selectVal.split(':')
+                                            const providerName = rest.join(':')
+                                            if (providerName) {
+                                                if (source === 'plan') {
+                                                    // Plan: fetch models from platform API Hub key
+                                                    // Server handles whitelist filtering + uses platform key (not user's)
+                                                    setLoadingImageModels(true)
+                                                    fetch('/api/admin/posts/plan-models', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ provider: providerName }),
+                                                    }).then(r => r.json()).then(d => {
+                                                        const models = (d.models || []).map((m: { id: string; name?: string }) => ({
+                                                            id: m.id,
+                                                            name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id,
+                                                            type: 'image' as const,
+                                                        }))
+                                                        setAvailableImageModels(models)
+                                                    }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                                                } else {
+                                                    setLoadingImageModels(true)
+                                                    fetch('/api/user/api-keys/models', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ provider: providerName }),
+                                                    }).then(r => r.json()).then(d => {
+                                                        setAvailableImageModels(
+                                                            (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                                                        )
+                                                    }).catch(() => { }).finally(() => setLoadingImageModels(false))
                                                 }
-                                            })()}
-                                            {accountsCount > 1 && (
-                                                <p className="text-[9px] text-muted-foreground text-center mt-1">
-                                                    +{accountsCount - 1} more {platformLabels[effectivePreviewPlatform] || effectivePreviewPlatform} accounts
-                                                </p>
-                                            )}
-                                        </>
-                                    )
-                                })() : (
-                                    /* Neeflow placeholder */
-                                    <div className="flex flex-col items-center justify-center py-16 gap-3">
-                                        <div className="w-14 h-14 rounded-3xl bg-primary/15 flex items-center justify-center shadow-inner">
-                                            <span className="text-primary font-bold text-xl">N</span>
+                                            }
+                                        }
+                                        return (
+                                            <Select value={currentSelectValue} onValueChange={handleProviderChange}>
+                                                <SelectTrigger className="h-7 text-[11px] w-auto min-w-[160px] gap-1.5">
+                                                    <SelectValue>
+                                                        {rawProvider ? (
+                                                            byokProviders.find(p => p.provider === rawProvider)?.name ||
+                                                            planProviders.find(p => p.provider === rawProvider)?.name ||
+                                                            rawProvider
+                                                        ) : 'Auto-detect provider'}
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__auto__" className="text-[11px]">
+                                                        Auto-detect provider
+                                                    </SelectItem>
+                                                    {byokProviders.length > 0 && (
+                                                        <>
+                                                            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys (unlimited)</div>
+                                                            {byokProviders.map(p => (
+                                                                <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-[11px]">
+                                                                    {p.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </>
+                                                    )}
+                                                    {planProviders.length > 0 && imageQuota.limit !== 0 && (
+                                                        <>
+                                                            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
+                                                            {planProviders.map(p => (
+                                                                <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-[11px]">
+                                                                    {p.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </>
+                                                    )}
+                                                    {planProviders.length > 0 && imageQuota.limit === 0 && (
+                                                        <div className="px-2 py-1.5 text-[10px] text-amber-400">
+                                                            <a href="/dashboard/billing" className="flex items-center gap-1 hover:underline">
+                                                                <Sparkles className="h-3 w-3" /> Upgrade plan to unlock AI images
+                                                            </a>
+                                                        </div>
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        )
+                                    })()}
+                                    {/* Model dropdown */}
+                                    <select
+                                        value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
+                                        onChange={(e) => setOverrideImageModel(e.target.value)}
+                                        disabled={loadingImageModels}
+                                        className="h-7 text-[11px] rounded-md border bg-muted/50 px-2 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                                    >
+                                        <option value="">Default model</option>
+                                        {availableImageModels.map(m => (
+                                            <option key={m.id} value={m.id}>{m.name}</option>
+                                        ))}
+                                    </select>
+                                    {loadingImageModels && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                    {/* Quota badge */}
+                                    {imageQuota.limit > 0 && (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${imageQuota.used >= imageQuota.limit ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                            {imageQuota.used}/{imageQuota.limit} used
+                                        </span>
+                                    )}
+                                    {imageQuota.limit === -1 && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-500/20 text-emerald-400">∞ unlimited</span>
+                                    )}
+                                </div>
+                                {/* No providers warning */}
+                                {byokProviders.length === 0 && planProviders.length === 0 && (
+                                    <p className="text-[10px] text-amber-400 bg-amber-500/10 rounded-md px-2 py-1.5">
+                                        ⚠️ No image providers available. Add an API key in <strong>API Hub</strong> or upgrade your plan.
+                                    </p>
+                                )}
+
+                                {/* Aspect Ratio selector */}
+                                <div>
+                                    <label className="text-[10px] text-muted-foreground font-medium mb-1.5 block">Aspect Ratio</label>
+                                    <div className="flex gap-1.5">
+                                        {[
+                                            { value: '1:1' as const, label: '1:1', icon: <span className="w-4 h-4 border border-current rounded-[2px]" /> },
+                                            { value: '16:9' as const, label: '16:9', icon: <span className="w-5 h-3 border border-current rounded-[2px]" /> },
+                                            { value: '9:16' as const, label: '9:16', icon: <span className="w-3 h-5 border border-current rounded-[2px]" /> },
+                                            { value: '4:3' as const, label: '4:3', icon: <span className="w-4.5 h-3.5 border border-current rounded-[2px]" style={{ width: '18px', height: '14px' }} /> },
+                                            { value: '3:4' as const, label: '3:4', icon: <span className="border border-current rounded-[2px]" style={{ width: '14px', height: '18px' }} /> },
+                                            { value: '4:5' as const, label: '4:5', icon: <span className="border border-current rounded-[2px]" style={{ width: '16px', height: '20px' }} /> },
+                                        ].map(ratio => (
+                                            <button
+                                                key={ratio.value}
+                                                type="button"
+                                                onClick={() => setImageAspectRatio(ratio.value)}
+                                                className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-md border text-[10px] font-medium transition-all cursor-pointer ${imageAspectRatio === ratio.value
+                                                    ? 'border-primary bg-primary/10 text-primary'
+                                                    : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+                                                    }`}
+                                            >
+                                                {ratio.icon}
+                                                {ratio.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Option: Use content as prompt or custom */}
+                                {content.trim() && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setUseContentAsPrompt(true); setAiImagePrompt(content.substring(0, 500)) }}
+                                            className={`flex-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${useContentAsPrompt
+                                                ? 'border-primary bg-primary/10 text-primary'
+                                                : 'border-border bg-card text-muted-foreground hover:border-primary/50'
+                                                }`}
+                                        >
+                                            <Sparkles className="h-4 w-4 mx-auto mb-1" />
+                                            Auto from Content
+                                            <p className="text-[10px] mt-0.5 font-normal opacity-70">Generate based on post content</p>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setUseContentAsPrompt(false); setAiImagePrompt('') }}
+                                            className={`flex-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${!useContentAsPrompt
+                                                ? 'border-primary bg-primary/10 text-primary'
+                                                : 'border-border bg-card text-muted-foreground hover:border-primary/50'
+                                                }`}
+                                        >
+                                            <Pencil className="h-4 w-4 mx-auto mb-1" />
+                                            Custom Prompt
+                                            <p className="text-[10px] mt-0.5 font-normal opacity-70">Type your own image description</p>
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <Label>{useContentAsPrompt && content.trim() ? 'Generated from your post content' : 'Image prompt'}</Label>
+                                    {useContentAsPrompt && content.trim() ? (
+                                        <div className="rounded-lg border bg-muted/50 p-3">
+                                            <p className="text-xs text-muted-foreground line-clamp-4">{content.substring(0, 300)}{content.length > 300 ? '...' : ''}</p>
+                                            <p className="text-[10px] text-muted-foreground/70 mt-2">AI will generate an image that matches this content</p>
                                         </div>
-                                        <p className="text-sm font-semibold text-foreground/80 tracking-wide">Neeflow</p>
-                                        <p className="text-[10px] text-muted-foreground text-center leading-relaxed px-4">
-                                            {selectedEntries.length === 0 ? 'Select a platform to preview' : 'Start typing to preview your post'}
+                                    ) : (
+                                        <Input
+                                            placeholder="Describe the image you want to generate..."
+                                            value={aiImagePrompt}
+                                            onChange={(e) => setAiImagePrompt(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && aiImagePrompt.trim() && handleAiImageGenerate()}
+                                        />
+                                    )}
+                                    {visualIdea && !useContentAsPrompt && (
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                            💡 AI suggestion: <span className="italic">{visualIdea}</span>
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Generate Button */}
+                                <Button
+                                    onClick={handleAiImageGenerate}
+                                    disabled={generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel}
+                                    className="w-full cursor-pointer"
+                                >
+                                    {generatingImage ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating...</>
+                                    ) : (
+                                        <><Sparkles className="h-4 w-4 mr-2" /> Generate Image</>
+                                    )}
+                                </Button>
+
+                                {generatingImage && (
+                                    <div className="flex flex-col items-center justify-center py-8 gap-3">
+                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                        <p className="text-sm text-muted-foreground">Creating your image...</p>
+                                    </div>
+                                )}
+
+                                {aiGeneratedPreview && !generatingImage && (
+                                    <div className="space-y-3">
+                                        <div className="relative rounded-lg overflow-hidden bg-muted aspect-video">
+                                            <img src={aiGeneratedPreview} alt="AI Generated" className="w-full h-full object-contain" />
+                                        </div>
+                                        {lastUsedImageModel && (
+                                            <div className="flex items-center gap-1.5">
+                                                <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
+                                                    <Check className="h-3 w-3 mr-1" />
+                                                    Generated with {lastUsedImageModel}
+                                                </Badge>
+                                            </div>
+                                        )}
+                                        <div className="flex gap-2">
+                                            <Button size="sm" variant="outline" className="flex-1 cursor-pointer" onClick={handleAiImageGenerate} disabled={generatingImage}>
+                                                <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Regenerate
+                                            </Button>
+                                            <Button size="sm" className="flex-1 cursor-pointer" onClick={() => setShowImagePicker(false)}>
+                                                <Check className="h-3.5 w-3.5 mr-1.5" /> Done
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-emerald-500 flex items-center gap-1">
+                                            <Check className="h-3 w-3" /> Image saved to media library and attached to post
                                         </p>
                                     </div>
                                 )}
                             </div>
-                            {/* Home indicator */}
-                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-border/70 rounded-full" />
-                        </div>
-                    </div>
-
-                    {/* Schedule badge — below phone */}
-                    {scheduleDate && (
-                        <div className="mt-3 shrink-0">
-                            <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 rounded-xl px-3 py-2">
-                                <Clock className="h-4 w-4 text-primary shrink-0" />
-                                <div className="min-w-0">
-                                    <p className="text-xs font-medium">Scheduled</p>
-                                    <p className="text-[10px] text-muted-foreground truncate">
-                                        {new Date(`${scheduleDate}T${scheduleTime || '00:00'}`).toLocaleString('vi-VN')}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Schedule section (full) — below phone ── */}
-                    <div className="mt-3 shrink-0 border border-border/60 rounded-xl overflow-hidden">
-                        {/* Header */}
-                        <div className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-muted-foreground border-b border-border/60">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {t('compose.schedule')}
-                        </div>
-                        {/* Body */}
-                        <div className="px-3 py-2 space-y-2">
-                            {/* AI Best Time button */}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full text-xs cursor-pointer gap-2"
-                                disabled={!selectedChannel || generating || aiScheduleLoading}
-                                onClick={async () => {
-                                    if (!selectedChannel) return
-                                    const platforms = activePlatforms
-                                        .filter((p) => selectedPlatformIds.has(p.id))
-                                        .map((p) => p.platform)
-                                    if (platforms.length === 0) {
-                                        toast.error('Select at least one platform')
-                                        return
-                                    }
-                                    setAiScheduleLoading(true)
-                                    try {
-                                        const res = await fetch('/api/admin/posts/suggest-schedule', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                channelId: selectedChannel.id,
-                                                platforms,
-                                                content: content.slice(0, 200),
-                                                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                                            }),
-                                        })
-                                        const data = await res.json()
-                                        if (!res.ok) {
-                                            toast.error(data.error || 'Failed to get suggestions')
-                                            return
-                                        }
-                                        setAiScheduleSuggestions(data.suggestions || [])
-                                        toast.success('AI schedule suggestions ready!')
-                                    } catch {
-                                        toast.error('Failed to get AI suggestions')
-                                    } finally {
-                                        setAiScheduleLoading(false)
-                                    }
-                                }}
-                            >
-                                {aiScheduleLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-amber-500" />}
-                                {aiScheduleLoading ? 'Analyzing...' : '✨ AI Best Time'}
-                            </Button>
-
-                            {/* AI Suggestions list */}
-                            {aiScheduleSuggestions.length > 0 && (
-                                <div className="grid grid-cols-1 gap-1.5">
-                                    {aiScheduleSuggestions.map((s: { date: string; time: string; label: string; reason: string; score?: number }, i: number) => {
-                                        const isSelected = scheduleDate === s.date && scheduleTime === s.time
-                                        return (
-                                            <button
-                                                key={i}
-                                                onClick={() => { setScheduleDate(s.date); setScheduleTime(s.time) }}
-                                                className={`text-left px-2.5 py-2 rounded-md text-xs transition-colors cursor-pointer ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-medium">{s.label}</span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        {s.score && (
-                                                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${isSelected ? 'bg-primary-foreground/20' : s.score >= 90 ? 'bg-green-100 text-green-700' : s.score >= 75 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                {s.score}%
-                                                            </span>
-                                                        )}
-                                                        <span className="opacity-70">{s.date} {s.time}</span>
-                                                    </div>
-                                                </div>
-                                                <p className="opacity-60 mt-0.5 text-[10px]">{s.reason}</p>
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            )}
-
-                            {/* Date */}
-                            <div>
-                                <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleDate')}</Label>
-                                <Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-0.5 h-7 text-xs" />
-                            </div>
-                            {/* Time */}
-                            <div>
-                                <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleTime')}</Label>
-                                <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-0.5 h-7 text-xs" />
-                            </div>
-                            {/* Timezone */}
-                            <div className="flex items-center justify-between">
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] text-muted-foreground">
-                                    🌐 {(selectedChannel as any)?.timezone || 'UTC'}
-                                </span>
-                                {scheduleDate && (
-                                    <Button variant="ghost" size="sm" onClick={() => { setScheduleDate(''); setScheduleTime(''); setAiScheduleSuggestions([]) }} className="text-xs cursor-pointer h-6 px-2">
-                                        <X className="h-3 w-3 mr-1" /> Clear
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {/* ── Image Lightbox ── */}
-        {lightboxUrl && (
-            <div
-                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm cursor-pointer animate-in fade-in duration-200"
-                onClick={() => setLightboxUrl(null)}
-                onKeyDown={(e) => e.key === 'Escape' && setLightboxUrl(null)}
-                tabIndex={0}
-                role="dialog"
-            >
-                <button
-                    onClick={(e) => { e.stopPropagation(); setLightboxUrl(null) }}
-                    className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer z-10"
-                >
-                    <X className="h-5 w-5" />
-                </button>
-                <img
-                    src={lightboxUrl}
-                    alt="Full size preview"
-                    className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
-                    onClick={(e) => e.stopPropagation()}
-                />
-            </div>
-        )
-    }
-
-    {/* ── Generate Image Dialog ── */ }
-    <Dialog open={showImagePicker} onOpenChange={(open) => {
-        setShowImagePicker(open)
-    }} >
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-purple-500" />
-                    Generate Image
-                </DialogTitle>
-            </DialogHeader>
-
-
-
-            {/* Tab Content */}
-            <div className="mt-4 min-h-[300px]">
-
-                {/* AI Generate */}
-                {imagePickerTab === 'ai' && (
-                    <div className="space-y-4">
-                        {/* Provider / Model selector */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {/* Provider dropdown with SVG logos */}
-                            {(() => {
-                                // overrideImageProvider stores prefixed value like 'byok:gemini' or 'plan:gemini'
-                                const currentSelectValue = overrideImageProvider || '__auto__'
-                                // Extract bare provider name for display and API calls
-                                const rawProvider = (() => {
-                                    if (!currentSelectValue || currentSelectValue === '__auto__') return selectedChannel?.defaultImageProvider || ''
-                                    const parts = currentSelectValue.split(':')
-                                    return parts.length > 1 ? parts.slice(1).join(':') : parts[0]
-                                })()
-                                const handleProviderChange = (selectVal: string) => {
-                                    if (selectVal === '__auto__') {
-                                        setOverrideImageProvider('')
-                                        return
-                                    }
-                                    // Store full prefixed value: "byok:gemini" or "plan:gemini"
-                                    setOverrideImageProvider(selectVal)
-                                    setOverrideImageModel('')
-                                    setAvailableImageModels([])
-                                    // Parse source and provider name
-                                    const [source, ...rest] = selectVal.split(':')
-                                    const providerName = rest.join(':')
-                                    if (providerName) {
-                                        if (source === 'plan') {
-                                            // Plan: fetch models from platform API Hub key
-                                            // Server handles whitelist filtering + uses platform key (not user's)
-                                            setLoadingImageModels(true)
-                                            fetch('/api/admin/posts/plan-models', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ provider: providerName }),
-                                            }).then(r => r.json()).then(d => {
-                                                const models = (d.models || []).map((m: { id: string; name?: string }) => ({
-                                                    id: m.id,
-                                                    name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id,
-                                                    type: 'image' as const,
-                                                }))
-                                                setAvailableImageModels(models)
-                                            }).catch(() => { }).finally(() => setLoadingImageModels(false))
-                                        } else {
-                                            setLoadingImageModels(true)
-                                            fetch('/api/user/api-keys/models', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ provider: providerName }),
-                                            }).then(r => r.json()).then(d => {
-                                                setAvailableImageModels(
-                                                    (d.models || []).filter((m: { type?: string }) => m.type === 'image')
-                                                )
-                                            }).catch(() => { }).finally(() => setLoadingImageModels(false))
-                                        }
-                                    }
-                                }
-                                return (
-                                    <Select value={currentSelectValue} onValueChange={handleProviderChange}>
-                                        <SelectTrigger className="h-7 text-[11px] w-auto min-w-[160px] gap-1.5">
-                                            <SelectValue>
-                                                {rawProvider ? (
-                                                    byokProviders.find(p => p.provider === rawProvider)?.name ||
-                                                    planProviders.find(p => p.provider === rawProvider)?.name ||
-                                                    rawProvider
-                                                ) : 'Auto-detect provider'}
-                                            </SelectValue>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="__auto__" className="text-[11px]">
-                                                Auto-detect provider
-                                            </SelectItem>
-                                            {byokProviders.length > 0 && (
-                                                <>
-                                                    <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys (unlimited)</div>
-                                                    {byokProviders.map(p => (
-                                                        <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-[11px]">
-                                                            {p.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </>
-                                            )}
-                                            {planProviders.length > 0 && imageQuota.limit !== 0 && (
-                                                <>
-                                                    <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
-                                                    {planProviders.map(p => (
-                                                        <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-[11px]">
-                                                            {p.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </>
-                                            )}
-                                            {planProviders.length > 0 && imageQuota.limit === 0 && (
-                                                <div className="px-2 py-1.5 text-[10px] text-amber-400">
-                                                    <a href="/dashboard/billing" className="flex items-center gap-1 hover:underline">
-                                                        <Sparkles className="h-3 w-3" /> Upgrade plan to unlock AI images
-                                                    </a>
-                                                </div>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                )
-                            })()}
-                            {/* Model dropdown */}
-                            <select
-                                value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
-                                onChange={(e) => setOverrideImageModel(e.target.value)}
-                                disabled={loadingImageModels}
-                                className="h-7 text-[11px] rounded-md border bg-muted/50 px-2 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                            >
-                                <option value="">Default model</option>
-                                {availableImageModels.map(m => (
-                                    <option key={m.id} value={m.id}>{m.name}</option>
-                                ))}
-                            </select>
-                            {loadingImageModels && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                            {/* Quota badge */}
-                            {imageQuota.limit > 0 && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${imageQuota.used >= imageQuota.limit ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                    {imageQuota.used}/{imageQuota.limit} used
-                                </span>
-                            )}
-                            {imageQuota.limit === -1 && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-500/20 text-emerald-400">∞ unlimited</span>
-                            )}
-                        </div>
-                        {/* No providers warning */}
-                        {byokProviders.length === 0 && planProviders.length === 0 && (
-                            <p className="text-[10px] text-amber-400 bg-amber-500/10 rounded-md px-2 py-1.5">
-                                ⚠️ No image providers available. Add an API key in <strong>API Hub</strong> or upgrade your plan.
-                            </p>
                         )}
 
-                        {/* Aspect Ratio selector */}
-                        <div>
-                            <label className="text-[10px] text-muted-foreground font-medium mb-1.5 block">Aspect Ratio</label>
-                            <div className="flex gap-1.5">
-                                {[
-                                    { value: '1:1' as const, label: '1:1', icon: <span className="w-4 h-4 border border-current rounded-[2px]" /> },
-                                    { value: '16:9' as const, label: '16:9', icon: <span className="w-5 h-3 border border-current rounded-[2px]" /> },
-                                    { value: '9:16' as const, label: '9:16', icon: <span className="w-3 h-5 border border-current rounded-[2px]" /> },
-                                    { value: '4:3' as const, label: '4:3', icon: <span className="w-4.5 h-3.5 border border-current rounded-[2px]" style={{ width: '18px', height: '14px' }} /> },
-                                    { value: '3:4' as const, label: '3:4', icon: <span className="border border-current rounded-[2px]" style={{ width: '14px', height: '18px' }} /> },
-                                    { value: '4:5' as const, label: '4:5', icon: <span className="border border-current rounded-[2px]" style={{ width: '16px', height: '20px' }} /> },
-                                ].map(ratio => (
-                                    <button
-                                        key={ratio.value}
-                                        type="button"
-                                        onClick={() => setImageAspectRatio(ratio.value)}
-                                        className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-md border text-[10px] font-medium transition-all cursor-pointer ${imageAspectRatio === ratio.value
-                                            ? 'border-primary bg-primary/10 text-primary'
-                                            : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
-                                            }`}
-                                    >
-                                        {ratio.icon}
-                                        {ratio.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Option: Use content as prompt or custom */}
-                        {content.trim() && (
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => { setUseContentAsPrompt(true); setAiImagePrompt(content.substring(0, 500)) }}
-                                    className={`flex-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${useContentAsPrompt
-                                        ? 'border-primary bg-primary/10 text-primary'
-                                        : 'border-border bg-card text-muted-foreground hover:border-primary/50'
-                                        }`}
-                                >
-                                    <Sparkles className="h-4 w-4 mx-auto mb-1" />
-                                    Auto from Content
-                                    <p className="text-[10px] mt-0.5 font-normal opacity-70">Generate based on post content</p>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setUseContentAsPrompt(false); setAiImagePrompt('') }}
-                                    className={`flex-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${!useContentAsPrompt
-                                        ? 'border-primary bg-primary/10 text-primary'
-                                        : 'border-border bg-card text-muted-foreground hover:border-primary/50'
-                                        }`}
-                                >
-                                    <Pencil className="h-4 w-4 mx-auto mb-1" />
-                                    Custom Prompt
-                                    <p className="text-[10px] mt-0.5 font-normal opacity-70">Type your own image description</p>
-                                </button>
-                            </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <Label>{useContentAsPrompt && content.trim() ? 'Generated from your post content' : 'Image prompt'}</Label>
-                            {useContentAsPrompt && content.trim() ? (
-                                <div className="rounded-lg border bg-muted/50 p-3">
-                                    <p className="text-xs text-muted-foreground line-clamp-4">{content.substring(0, 300)}{content.length > 300 ? '...' : ''}</p>
-                                    <p className="text-[10px] text-muted-foreground/70 mt-2">AI will generate an image that matches this content</p>
-                                </div>
-                            ) : (
-                                <Input
-                                    placeholder="Describe the image you want to generate..."
-                                    value={aiImagePrompt}
-                                    onChange={(e) => setAiImagePrompt(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && aiImagePrompt.trim() && handleAiImageGenerate()}
-                                />
-                            )}
-                            {visualIdea && !useContentAsPrompt && (
-                                <p className="text-[10px] text-muted-foreground mt-1">
-                                    💡 AI suggestion: <span className="italic">{visualIdea}</span>
+                        {/* 📰 Article */}
+                        {imagePickerTab === 'article' && (
+                            <div className="space-y-4">
+                                <p className="text-sm text-muted-foreground">
+                                    If you pasted an article URL as your topic, we&apos;ll download the article&apos;s featured image.
                                 </p>
-                            )}
-                        </div>
-
-                        {/* Generate Button */}
-                        <Button
-                            onClick={handleAiImageGenerate}
-                            disabled={generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel}
-                            className="w-full cursor-pointer"
-                        >
-                            {generatingImage ? (
-                                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating...</>
-                            ) : (
-                                <><Sparkles className="h-4 w-4 mr-2" /> Generate Image</>
-                            )}
-                        </Button>
-
-                        {generatingImage && (
-                            <div className="flex flex-col items-center justify-center py-8 gap-3">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                <p className="text-sm text-muted-foreground">Creating your image...</p>
-                            </div>
-                        )}
-
-                        {aiGeneratedPreview && !generatingImage && (
-                            <div className="space-y-3">
-                                <div className="relative rounded-lg overflow-hidden bg-muted aspect-video">
-                                    <img src={aiGeneratedPreview} alt="AI Generated" className="w-full h-full object-contain" />
-                                </div>
-                                {lastUsedImageModel && (
-                                    <div className="flex items-center gap-1.5">
-                                        <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
-                                            <Check className="h-3 w-3 mr-1" />
-                                            Generated with {lastUsedImageModel}
-                                        </Badge>
-                                    </div>
-                                )}
-                                <div className="flex gap-2">
-                                    <Button size="sm" variant="outline" className="flex-1 cursor-pointer" onClick={handleAiImageGenerate} disabled={generatingImage}>
-                                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Regenerate
-                                    </Button>
-                                    <Button size="sm" className="flex-1 cursor-pointer" onClick={() => setShowImagePicker(false)}>
-                                        <Check className="h-3.5 w-3.5 mr-1.5" /> Done
-                                    </Button>
-                                </div>
-                                <p className="text-xs text-emerald-500 flex items-center gap-1">
-                                    <Check className="h-3 w-3" /> Image saved to media library and attached to post
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* 📰 Article */}
-                {imagePickerTab === 'article' && (
-                    <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            If you pasted an article URL as your topic, we&apos;ll download the article&apos;s featured image.
-                        </p>
-                        {aiTopic.startsWith('http') ? (
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-xs bg-muted rounded-md p-2">
-                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                                    <span className="truncate">{aiTopic}</span>
-                                </div>
-                                <Button
-                                    size="sm"
-                                    className="cursor-pointer"
-                                    disabled={downloadingStock !== null}
-                                    onClick={async () => {
-                                        if (!selectedChannel) return
-                                        setDownloadingStock(-1)
-                                        try {
-                                            const res = await fetch('/api/admin/posts/stock-images', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                    action: 'download',
-                                                    channelId: selectedChannel.id,
-                                                    photoUrl: aiTopic,
-                                                    alt: 'Article image',
-                                                }),
-                                            })
-                                            const data = await res.json()
-                                            if (!res.ok) throw new Error(data.error)
-                                            addFromLibrary(data.mediaItem)
-                                            toast.success('Article image downloaded and attached!')
-                                            setShowImagePicker(false)
-                                        } catch (err) {
-                                            toast.error(err instanceof Error ? err.message : 'Failed to download image')
-                                        } finally {
-                                            setDownloadingStock(null)
-                                        }
-                                    }}
-                                >
-                                    {downloadingStock === -1 ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <ImageIcon className="h-4 w-4 mr-1.5" />}
-                                    Extract &amp; Download Article Image
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="text-center py-12">
-                                <Newspaper className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                                <p className="text-sm text-muted-foreground">No article URL detected.</p>
-                                <p className="text-xs text-muted-foreground mt-1">Paste an article URL in the AI topic input first.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Done Button — always visible at bottom */}
-            <div className="pt-3 border-t mt-4">
-                <Button variant="outline" className="w-full cursor-pointer" onClick={() => setShowImagePicker(false)}>
-                    <Check className="h-4 w-4 mr-2" /> Done
-                </Button>
-            </div>
-        </DialogContent>
-    </Dialog>
-
-    {/* ── Thumbnail Style Selector Modal ── */ }
-    <Dialog open={styleModalOpen} onOpenChange={setStyleModalOpen} >
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-            <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                    <Palette className="h-5 w-5 text-purple-500" />
-                    Choose Thumbnail Style
-                </DialogTitle>
-            </DialogHeader>
-            {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Search styles..."
-                    value={styleSearch}
-                    onChange={(e) => setStyleSearch(e.target.value)}
-                    className="pl-9"
-                />
-            </div>
-            {/* Style Grid */}
-            <div className="flex-1 overflow-y-auto -mx-1 px-1">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-2">
-                    {THUMBNAIL_STYLES
-                        .filter(s => {
-                            if (!styleSearch.trim()) return true
-                            const q = styleSearch.toLowerCase()
-                            return s.name.toLowerCase().includes(q)
-                                || s.description.toLowerCase().includes(q)
-                                || s.tags.some(t => t.toLowerCase().includes(q))
-                        })
-                        .map(style => {
-                            const isSelected = thumbnailStyleId === style.id
-                            return (
-                                <button
-                                    key={style.id}
-                                    type="button"
-                                    className={`group relative rounded-xl border-2 overflow-hidden transition-all cursor-pointer hover:shadow-lg ${isSelected
-                                        ? 'border-purple-500 ring-2 ring-purple-500/30 shadow-md'
-                                        : 'border-border hover:border-purple-300'
-                                        }`}
-                                    onClick={() => {
-                                        setThumbnailStyleId(style.id)
-                                        localStorage.setItem('asocial_yt_thumbnail_style', style.id)
-                                        setStyleModalOpen(false)
-                                        setStyleSearch('')
-                                    }}
-                                >
-                                    {/* Preview image */}
-                                    <div className="aspect-video relative bg-muted">
-                                        <Image
-                                            src={style.preview}
-                                            alt={style.name}
-                                            fill
-                                            className="object-cover"
-                                            sizes="(max-width: 640px) 50vw, 33vw"
-                                        />
-                                        {isSelected && (
-                                            <div className="absolute top-1.5 right-1.5 bg-purple-500 text-white rounded-full p-0.5">
-                                                <Check className="h-3 w-3" />
-                                            </div>
-                                        )}
-                                        {/* Default badge */}
-                                        {isSelected && (
-                                            <div className="absolute bottom-1.5 left-1.5 bg-purple-500/90 backdrop-blur text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                                                Default
-                                            </div>
-                                        )}
-                                    </div>
-                                    {/* Info */}
-                                    <div className="p-2">
-                                        <p className="text-xs font-semibold truncate">{style.name}</p>
-                                        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight mt-0.5">{style.description}</p>
-                                        <div className="flex flex-wrap gap-1 mt-1.5">
-                                            {style.tags.slice(0, 3).map(tag => (
-                                                <span key={tag} className="text-[8px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
-                                                    {tag}
-                                                </span>
-                                            ))}
+                                {aiTopic.startsWith('http') ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 text-xs bg-muted rounded-md p-2">
+                                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                            <span className="truncate">{aiTopic}</span>
                                         </div>
+                                        <Button
+                                            size="sm"
+                                            className="cursor-pointer"
+                                            disabled={downloadingStock !== null}
+                                            onClick={async () => {
+                                                if (!selectedChannel) return
+                                                setDownloadingStock(-1)
+                                                try {
+                                                    const res = await fetch('/api/admin/posts/stock-images', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            action: 'download',
+                                                            channelId: selectedChannel.id,
+                                                            photoUrl: aiTopic,
+                                                            alt: 'Article image',
+                                                        }),
+                                                    })
+                                                    const data = await res.json()
+                                                    if (!res.ok) throw new Error(data.error)
+                                                    addFromLibrary(data.mediaItem)
+                                                    toast.success('Article image downloaded and attached!')
+                                                    setShowImagePicker(false)
+                                                } catch (err) {
+                                                    toast.error(err instanceof Error ? err.message : 'Failed to download image')
+                                                } finally {
+                                                    setDownloadingStock(null)
+                                                }
+                                            }}
+                                        >
+                                            {downloadingStock === -1 ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <ImageIcon className="h-4 w-4 mr-1.5" />}
+                                            Extract &amp; Download Article Image
+                                        </Button>
                                     </div>
-                                </button>
-                            )
-                        })}
-                </div>
-            </div>
-        </DialogContent>
-    </Dialog>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <Newspaper className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                                        <p className="text-sm text-muted-foreground">No article URL detected.</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Paste an article URL in the AI topic input first.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
 
-    {/* Delete Post Confirmation */ }
-    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} >
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Delete Post?</AlertDialogTitle>
-                <AlertDialogDescription>This action cannot be undone. The post and all associated media links will be permanently deleted.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeletePost} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer">Delete</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
-    </div>
+                    {/* Done Button — always visible at bottom */}
+                    <div className="pt-3 border-t mt-4">
+                        <Button variant="outline" className="w-full cursor-pointer" onClick={() => setShowImagePicker(false)}>
+                            <Check className="h-4 w-4 mr-2" /> Done
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Thumbnail Style Selector Modal ── */}
+            <Dialog open={styleModalOpen} onOpenChange={setStyleModalOpen} >
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Palette className="h-5 w-5 text-purple-500" />
+                            Choose Thumbnail Style
+                        </DialogTitle>
+                    </DialogHeader>
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search styles..."
+                            value={styleSearch}
+                            onChange={(e) => setStyleSearch(e.target.value)}
+                            className="pl-9"
+                        />
+                    </div>
+                    {/* Style Grid */}
+                    <div className="flex-1 overflow-y-auto -mx-1 px-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-2">
+                            {THUMBNAIL_STYLES
+                                .filter(s => {
+                                    if (!styleSearch.trim()) return true
+                                    const q = styleSearch.toLowerCase()
+                                    return s.name.toLowerCase().includes(q)
+                                        || s.description.toLowerCase().includes(q)
+                                        || s.tags.some(t => t.toLowerCase().includes(q))
+                                })
+                                .map(style => {
+                                    const isSelected = thumbnailStyleId === style.id
+                                    return (
+                                        <button
+                                            key={style.id}
+                                            type="button"
+                                            className={`group relative rounded-xl border-2 overflow-hidden transition-all cursor-pointer hover:shadow-lg ${isSelected
+                                                ? 'border-purple-500 ring-2 ring-purple-500/30 shadow-md'
+                                                : 'border-border hover:border-purple-300'
+                                                }`}
+                                            onClick={() => {
+                                                setThumbnailStyleId(style.id)
+                                                localStorage.setItem('asocial_yt_thumbnail_style', style.id)
+                                                setStyleModalOpen(false)
+                                                setStyleSearch('')
+                                            }}
+                                        >
+                                            {/* Preview image */}
+                                            <div className="aspect-video relative bg-muted">
+                                                <Image
+                                                    src={style.preview}
+                                                    alt={style.name}
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="(max-width: 640px) 50vw, 33vw"
+                                                />
+                                                {isSelected && (
+                                                    <div className="absolute top-1.5 right-1.5 bg-purple-500 text-white rounded-full p-0.5">
+                                                        <Check className="h-3 w-3" />
+                                                    </div>
+                                                )}
+                                                {/* Default badge */}
+                                                {isSelected && (
+                                                    <div className="absolute bottom-1.5 left-1.5 bg-purple-500/90 backdrop-blur text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                                                        Default
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* Info */}
+                                            <div className="p-2">
+                                                <p className="text-xs font-semibold truncate">{style.name}</p>
+                                                <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight mt-0.5">{style.description}</p>
+                                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                                    {style.tags.slice(0, 3).map(tag => (
+                                                        <span key={tag} className="text-[8px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    )
+                                })}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Post Confirmation */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Post?</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone. The post and all associated media links will be permanently deleted.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeletePost} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
     )
 }
