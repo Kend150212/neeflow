@@ -1255,6 +1255,10 @@ export default function ChannelDetailPage({
                         <Settings className="h-3.5 w-3.5" />
                         <span className="hidden lg:inline">{t('channels.tabs.general')}</span>
                     </TabsTrigger>
+                    <TabsTrigger value="platforms" className="gap-1.5 text-xs">
+                        <Globe className="h-3.5 w-3.5" />
+                        <span className="hidden lg:inline">Accounts</span>
+                    </TabsTrigger>
                     <TabsTrigger value="ai" className="gap-1.5 text-xs">
                         <Bot className="h-3.5 w-3.5" />
                         <span className="hidden lg:inline">AI Setup</span>
@@ -1266,10 +1270,6 @@ export default function ChannelDetailPage({
                     <TabsTrigger value="auto-content" className="gap-1.5 text-xs">
                         <Zap className="h-3.5 w-3.5" />
                         <span className="hidden lg:inline">SmartFlow</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="platforms" className="gap-1.5 text-xs">
-                        <Globe className="h-3.5 w-3.5" />
-                        <span className="hidden lg:inline">{t('channels.tabs.platforms')}</span>
                     </TabsTrigger>
                     <TabsTrigger value="vibe" className="gap-1.5 text-xs">
                         <Palette className="h-3.5 w-3.5" />
