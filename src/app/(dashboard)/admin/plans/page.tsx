@@ -39,6 +39,7 @@ type Plan = {
     hasPrioritySupport: boolean
     hasWhiteLabel: boolean
     hasSmartFlow: boolean
+    hasBotUsageAnalytics: boolean
     maxSmartFlowJobsPerMonth: number
     allowedImageModels: { provider: string; models: string[] }[] | null
     isActive: boolean
@@ -58,7 +59,7 @@ const EMPTY_PLAN: Omit<Plan, 'id' | '_count'> = {
     maxAiImagesPerMonth: 0, maxAiTextPerMonth: 20, maxStorageMB: 512,
     maxApiCallsPerMonth: 0,
     hasAutoSchedule: false, hasWebhooks: false, hasAdvancedReports: false,
-    hasPrioritySupport: false, hasWhiteLabel: false, hasSmartFlow: false,
+    hasPrioritySupport: false, hasWhiteLabel: false, hasSmartFlow: false, hasBotUsageAnalytics: false,
     maxSmartFlowJobsPerMonth: 0,
     allowedImageModels: null,
     isActive: true, isPublic: true, sortOrder: 0,
@@ -525,6 +526,7 @@ export default function AdminPlansPage() {
                                         {plan.hasPrioritySupport && <Badge variant="secondary" className="text-xs px-1">Priority</Badge>}
                                         {plan.hasWhiteLabel && <Badge variant="secondary" className="text-xs px-1">White-label</Badge>}
                                         {plan.hasSmartFlow && <Badge variant="secondary" className="text-xs px-1">SmartFlow™</Badge>}
+                                        {(plan as any).hasBotUsageAnalytics && <Badge variant="secondary" className="text-xs px-1">📊 Usage Analytics</Badge>}
                                         {plan.trialEnabled && (
                                             <Badge className="text-xs px-1 bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-400">
                                                 🎁 {plan.trialDays}d trial
@@ -810,6 +812,7 @@ export default function AdminPlansPage() {
                                 {toggle('hasPrioritySupport', 'Priority Support')}
                                 {toggle('hasWhiteLabel', 'White Label')}
                                 {toggle('hasSmartFlow', 'SmartFlow™')}
+                                {toggle('hasBotUsageAnalytics', '📊 Bot Usage Analytics')}
                             </div>
                         </div>
 
