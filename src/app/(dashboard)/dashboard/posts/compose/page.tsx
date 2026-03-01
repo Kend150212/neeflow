@@ -192,6 +192,28 @@ const platformColors: Record<string, string> = {
     linkedin: '#0A66C2', pinterest: '#E60023',
 }
 
+// ─── AI Image model display names ────────────────────────────────────────────
+// Used to show friendly names when building the plan model list from admin config
+const MODEL_DISPLAY_NAMES: Record<string, string> = {
+    // Google Gemini image models
+    'gemini-2.0-flash-exp': 'Gemini 2.0 Flash (Image) Experimental',
+    'gemini-2.0-flash-preview-image-generation': 'Gemini 2.0 Flash (Image) Experimental',
+    'gemini-3.1-flash-image-preview': 'Nano Banana 2',
+    'gemini-3-pro-image-preview': 'Nano Banana Pro',
+    'gemini-2.5-flash-image': 'Nano Banana',
+    'imagen-3.0-generate-002': 'Imagen 4',
+    'imagen-3.0-generate-001': 'Imagen 3',
+    // OpenAI image models
+    'dall-e-3': 'DALL·E 3',
+    'dall-e-2': 'DALL·E 2',
+    'gpt-image-1': 'GPT Image 1',
+    // Runware models
+    'runware:100@1': 'FLUX.1 [Dev]',
+    'runware:101@1': 'FLUX.1 [Schnell]',
+    'civitai:133005@1': 'Juggernaut XL',
+    'runware:5@1': 'Stable Diffusion XL',
+}
+
 // Supported file types for upload
 const ACCEPTED_FILE_TYPES = [
     // Images
@@ -877,7 +899,8 @@ export default function ComposePage() {
                     }
                 }
                 setPlanAllowedModels(allowedMap)
-                return [...(data.byok || []), ...(data.plan || [])]
+                // Return tuple so next .then() can access allowedMap from closure
+                return { allProviders: [...(data.byok || []), ...(data.plan || [])], allowedMap }
             })
             .catch(() => {
                 // Fallback: use same APIs as channel setup page
@@ -904,10 +927,10 @@ export default function ComposePage() {
                             source: 'plan' as const,
                         }))
                     setPlanProviders(planList)
-                    return [...byok, ...planList]
+                    return { allProviders: [...byok, ...planList], allowedMap: {} as Record<string, string[]> }
                 })
             })
-            .then((allProviders) => {
+            .then(({ allProviders, allowedMap }: { allProviders: { provider: string; name: string; source: string }[]; allowedMap: Record<string, string[]> }) => {
                 // Auto-select first available provider (use prefixed value so keySource is sent correctly)
                 let currentProvider = overrideImageProvider || ''
                 if (!currentProvider && allProviders.length > 0) {
@@ -917,19 +940,30 @@ export default function ComposePage() {
                     setOverrideImageProvider(currentProvider)
                 }
                 // Fetch models for selected provider
+                // NOTE: params come from closure — allowedMap is passed via .then chain below
                 if (currentProvider) {
-                    // Strip source prefix ('plan:gemini' → 'gemini') for model API
-                    const providerForModels = currentProvider.includes(':') ? currentProvider.split(':').slice(1).join(':') : currentProvider
-                    setLoadingImageModels(true)
-                    fetch('/api/user/api-keys/models', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ provider: providerForModels }),
-                    }).then(r => r.json()).then(d => {
+                    const parts = currentProvider.split(':')
+                    const isPlan = parts[0] === 'plan'
+                    const providerName = parts.length > 1 ? parts.slice(1).join(':') : parts[0]
+                    if (isPlan) {
+                        // Plan: use admin-configured allowed models directly — do NOT use user's API key
+                        // planAllowedModels state may not be set yet (same tick), so use closure value
+                        const allowed = (allowedMap || {})[providerName] || []
                         setAvailableImageModels(
-                            (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                            allowed.map(id => ({ id, name: MODEL_DISPLAY_NAMES[id] || id, type: 'image' as const }))
                         )
-                    }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                    } else {
+                        setLoadingImageModels(true)
+                        fetch('/api/user/api-keys/models', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ provider: providerName }),
+                        }).then(r => r.json()).then(d => {
+                            setAvailableImageModels(
+                                (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                            )
+                        }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                    }
                 }
             })
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4522,21 +4556,25 @@ export default function ComposePage() {
                                             const [source, ...rest] = selectVal.split(':')
                                             const providerName = rest.join(':')
                                             if (providerName) {
-                                                setLoadingImageModels(true)
-                                                fetch('/api/user/api-keys/models', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ provider: providerName }),
-                                                }).then(r => r.json()).then(d => {
-                                                    // Filter by plan whitelist only when Plan source selected
-                                                    const isPlan = source === 'plan'
-                                                    const allowed = planAllowedModels[providerName]
-                                                    let models = (d.models || []).filter((m: { type?: string }) => m.type === 'image')
-                                                    if (isPlan && allowed && allowed.length > 0) {
-                                                        models = models.filter((m: { id: string }) => allowed.includes(m.id))
-                                                    }
-                                                    setAvailableImageModels(models)
-                                                }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                                                if (source === 'plan') {
+                                                    // Plan: show only admin-approved models using planAllowedModels
+                                                    // Do NOT call /api/user/api-keys/models — that uses user's own key
+                                                    const allowed = planAllowedModels[providerName] || []
+                                                    setAvailableImageModels(
+                                                        allowed.map(id => ({ id, name: MODEL_DISPLAY_NAMES[id] || id, type: 'image' as const }))
+                                                    )
+                                                } else {
+                                                    setLoadingImageModels(true)
+                                                    fetch('/api/user/api-keys/models', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ provider: providerName }),
+                                                    }).then(r => r.json()).then(d => {
+                                                        setAvailableImageModels(
+                                                            (d.models || []).filter((m: { type?: string }) => m.type === 'image')
+                                                        )
+                                                    }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                                                }
                                             }
                                         }
                                         return (
