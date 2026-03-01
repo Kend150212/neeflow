@@ -508,79 +508,27 @@ export function Sidebar({ session }: { session: Session }) {
 
     return (
         <>
-            {/* ── Mobile: collapsed icon strip (always visible) ── */}
-            <aside className="md:hidden flex h-screen w-[52px] flex-col border-r bg-card shrink-0">
-                {/* Hamburger to expand */}
-                <div className="flex h-16 items-center justify-center">
-                    <button onClick={() => setMobileOpen(true)} aria-label="Open menu">
-                        <Menu className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                </div>
-                <Separator />
-                {/* Icon-only nav */}
-                <ScrollArea className="flex-1 py-4">
-                    <nav className="space-y-1 px-2">
-                        {mainNav.map((item) => (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                    'flex items-center justify-center rounded-lg p-2 transition-colors',
-                                    'hover:bg-accent hover:text-accent-foreground',
-                                    item.exact ? pathname === item.href : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                                        ? 'bg-accent text-accent-foreground'
-                                        : 'text-muted-foreground',
-                                )}
-                                title={t(item.titleKey)}
-                            >
-                                <item.icon className="h-4 w-4" />
-                            </Link>
-                        ))}
-                    </nav>
-                    {isAdmin && (
-                        <>
-                            <Separator className="my-4" />
-                            <nav className="space-y-1 px-2">
-                                {adminNav.map((item) => (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        className={cn(
-                                            'flex items-center justify-center rounded-lg p-2 transition-colors',
-                                            'hover:bg-accent hover:text-accent-foreground',
-                                            item.exact ? pathname === item.href : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                                                ? 'bg-accent text-accent-foreground'
-                                                : 'text-muted-foreground',
-                                        )}
-                                        title={t(item.titleKey)}
-                                    >
-                                        <item.icon className="h-4 w-4" />
-                                    </Link>
-                                ))}
-                            </nav>
-                        </>
-                    )}
-                </ScrollArea>
-                <Separator />
-                {/* Compact footer */}
-                <div className="flex flex-col items-center gap-2 p-2">
-                    <ThemeToggle />
-                    <Avatar className="h-7 w-7">
-                        <AvatarFallback className="bg-primary/10 text-[10px] font-medium">
-                            {initials}
-                        </AvatarFallback>
-                    </Avatar>
-                </div>
-            </aside>
+            {/* ── Mobile: Floating hamburger FAB (hidden on desktop) ── */}
+            <div className="md:hidden fixed top-3 left-3 z-40">
+                <button
+                    onClick={() => setMobileOpen(true)}
+                    aria-label={t('nav.openMenu')}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-card border border-border/60 shadow-md text-muted-foreground hover:text-foreground hover:bg-accent transition-all active:scale-95"
+                >
+                    <Menu className="h-5 w-5" />
+                </button>
+            </div>
 
-            {/* ── Mobile: expanded overlay (when user taps hamburger) ── */}
+            {/* ── Mobile: full-screen slide-in overlay ── */}
             {mobileOpen && (
                 <div className="md:hidden fixed inset-0 z-50 flex">
+                    {/* Backdrop */}
                     <div
-                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={() => setMobileOpen(false)}
                     />
-                    <aside className="relative z-10 flex h-full w-[280px] flex-col bg-card border-r animate-in slide-in-from-left duration-200">
+                    {/* Slide-in panel */}
+                    <aside className="relative z-10 flex h-full w-[300px] flex-col bg-card border-r shadow-2xl animate-in slide-in-from-left duration-250">
                         {expandedContent(() => setMobileOpen(false))}
                     </aside>
                 </div>

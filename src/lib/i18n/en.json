@@ -73,7 +73,9 @@
     "developerApi": "Developer API",
     "branding": "Branding",
     "legal": "Legal Pages",
-    "guide": "Setup Guide"
+    "guide": "Setup Guide",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "auth": {
     "signIn": "Sign In",

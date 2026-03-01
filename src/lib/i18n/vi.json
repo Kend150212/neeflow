@@ -73,7 +73,9 @@
     "developerApi": "API Nhà phát triển",
     "branding": "Thương hiệu",
     "legal": "Trang pháp lý",
-    "guide": "Hướng dẫn cài đặt"
+    "guide": "Hướng dẫn cài đặt",
+    "openMenu": "Mở menu",
+    "closeMenu": "Đóng menu"
   },
   "auth": {
     "signIn": "Đăng nhập",
