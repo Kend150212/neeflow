@@ -55,7 +55,7 @@
     "queue": "Hàng đợi",
     "approvals": "Phê duyệt",
     "media": "Phương tiện",
-    "smartflow": "SmartFlow™",
+    "clientBoard": "Client Board",
     "inbox": "Hộp thư",
     "email": "Email",
     "reports": "Báo cáo",
@@ -1481,7 +1481,7 @@
     }
   },
   "smartflow": {
-    "title": "SmartFlow™",
+    "title": "Client Board",
     "subtitle": "Upload ảnh/video → AI viết caption → Lên lịch & đăng",
     "enable": "Bật SmartFlow",
     "configSaved": "Đã lưu cấu hình",
@@ -1542,7 +1542,7 @@
       "step5": "Thông báo gửi về Telegram sau khi xử lý xong"
     },
     "queue": {
-      "title": "Hàng đợi SmartFlow™",
+      "title": "Client Board",
       "subtitle": "Quản lý AI content pipeline",
       "empty": "Chưa có content job nào",
       "retryAllFailed": "Retry tất cả lỗi",
@@ -1578,8 +1578,8 @@
       "media": "Tệp phương tiện"
     },
     "quota": {
-      "upgradeTitle": "Mở khóa SmartFlow™",
-      "upgradeDescription": "SmartFlow tự động hóa quy trình nội dung — AI phân tích media, viết caption và lên lịch đăng bài. Nâng cấp gói để bắt đầu.",
+      "upgradeTitle": "Mở khóa Client Board",
+      "upgradeDescription": "Client Board tự động hóa quy trình nội dung — AI phân tích media, viết caption và lên lịch đăng bài. Nâng cấp gói để bắt đầu.",
       "upgradeButton": "Nâng cấp gói",
       "jobsLabel": "bài",
       "unlimited": "Không giới hạn",
