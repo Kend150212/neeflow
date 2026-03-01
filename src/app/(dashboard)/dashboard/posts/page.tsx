@@ -228,24 +228,37 @@ function QueueCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate, an
                         )}>
                             {sc.label}
                         </span>
+                        {/* Platform icons — shown after status badge */}
+                        {platforms.length > 0 && (
+                            <div className="flex items-center gap-1">
+                                {platforms.map(p => (
+                                    <div key={p} className="h-5 w-5 rounded-md bg-muted/60 flex items-center justify-center">
+                                        <PlatformIcon platform={p} size="sm" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    {/* Actions */}
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                    {/* Actions — always visible */}
+                    <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                         <button
                             onClick={onEdit}
                             className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                            title="View / Edit"
                         >
                             <Eye className="h-3.5 w-3.5" />
                         </button>
                         <button
                             onClick={onDuplicate}
                             className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                            title="Duplicate"
                         >
                             <Copy className="h-3.5 w-3.5" />
                         </button>
                         <button
                             onClick={onDelete}
                             className="p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                            title="Delete"
                         >
                             <Trash2 className="h-3.5 w-3.5" />
                         </button>
