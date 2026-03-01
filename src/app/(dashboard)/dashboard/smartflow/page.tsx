@@ -356,20 +356,20 @@ export default function SmartFlowPage() {
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
-            <div className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                            <Zap className="h-5 w-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-bold">{t('smartflow.queue.title')}</h1>
-                            <p className="text-sm text-muted-foreground">{t('smartflow.queue.subtitle')}</p>
-                        </div>
+            <div className="flex-1 max-w-[1800px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-4">
+
+                {/* ── Header ── */}
+                <div className="flex items-start justify-between shrink-0">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                            <Zap className="h-6 w-6 text-amber-500" />
+                            {t('smartflow.queue.title')}
+                        </h1>
+                        <p className="text-sm text-muted-foreground mt-0.5">{t('smartflow.queue.subtitle')}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 bg-muted/50 rounded-xl p-1">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {/* Date preset */}
+                        <div className="flex items-center gap-0.5 bg-muted/50 rounded-xl p-1 border border-border">
                             {([
                                 { key: 'today' as const, label: t('smartflow.queue.dateToday') },
                                 { key: 'week' as const, label: t('smartflow.queue.dateWeek') },
@@ -379,8 +379,8 @@ export default function SmartFlowPage() {
                                 <button
                                     key={p.key}
                                     onClick={() => setDatePreset(p.key)}
-                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${datePreset === p.key
-                                        ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${datePreset === p.key
+                                        ? 'bg-primary/20 text-primary shadow-sm'
                                         : 'text-muted-foreground hover:text-foreground'
                                         }`}
                                 >
@@ -388,16 +388,11 @@ export default function SmartFlowPage() {
                                 </button>
                             ))}
                         </div>
-                        <span className="text-[10px] px-2 py-1 rounded-full bg-muted/50 text-muted-foreground border border-border">
-                            {detectedMode.toUpperCase()}
-                        </span>
-                        {/* SmartFlow Quota Badge */}
-                        {smartFlowQuota && smartFlowQuota.maxPerMonth !== -1 && (
+
+                        {/* Quota badge */}
+                        {smartFlowQuota && smartFlowQuota.maxPerMonth > 0 && smartFlowQuota.maxPerMonth !== -1 && (
                             <span className={`text-[10px] px-2.5 py-1 rounded-full border font-medium ${quotaBgColor} ${quotaColor}`}>
-                                {smartFlowQuota.maxPerMonth === 0
-                                    ? t('smartflow.quota.byokOnly')
-                                    : `${smartFlowQuota.usedThisMonth} / ${smartFlowQuota.maxPerMonth} ${t('smartflow.quota.jobsLabel')}`
-                                }
+                                {smartFlowQuota.usedThisMonth} / {smartFlowQuota.maxPerMonth} {t('smartflow.quota.jobsLabel')}
                             </span>
                         )}
                         {smartFlowQuota && smartFlowQuota.maxPerMonth === -1 && (
@@ -405,19 +400,28 @@ export default function SmartFlowPage() {
                                 {t('smartflow.quota.unlimited')}
                             </span>
                         )}
+
+                        {/* Mode badge */}
+                        <span className="text-[10px] px-2 py-1 rounded-full bg-muted/50 text-muted-foreground border border-border">
+                            {detectedMode.toUpperCase()}
+                        </span>
+
+                        {/* Retry all failed */}
                         {failedJobs.length > 0 && (
                             <button
                                 onClick={() => handleAction('retry_all_failed')}
                                 disabled={actionLoading === 'all'}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-all"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-all cursor-pointer"
                             >
                                 <RotateCcw className="h-3 w-3" />
                                 {t('smartflow.queue.retryAllFailed')} ({failedJobs.length})
                             </button>
                         )}
+
+                        {/* Refresh */}
                         <button
                             onClick={fetchJobs}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 border border-border text-muted-foreground rounded-lg text-xs hover:bg-muted transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 border border-border text-muted-foreground rounded-lg text-xs hover:bg-muted transition-all cursor-pointer"
                         >
                             <RefreshCw className="h-3 w-3" />
                             {t('smartflow.queue.refresh')}
@@ -425,26 +429,20 @@ export default function SmartFlowPage() {
                     </div>
                 </div>
 
-                {/* Quota Warning Banner */}
+                {/* ── Quota Warning ── */}
                 {smartFlowQuota && smartFlowQuota.maxPerMonth > 0 && quotaPercent >= 80 && (
-                    <div className={`mb-4 px-4 py-3 rounded-xl border text-sm flex items-center gap-2 shrink-0 ${quotaPercent >= 100
-                            ? 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
-                            : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
+                    <div className={`px-4 py-3 rounded-xl border text-sm flex items-center gap-2 shrink-0 ${quotaPercent >= 100
+                        ? 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
+                        : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
                         }`}>
                         <AlertTriangle className="h-4 w-4 shrink-0" />
                         <span>
                             {quotaPercent >= 100
-                                ? smartFlowQuota.hasByokKey
-                                    ? t('smartflow.quota.exhaustedByok')
-                                    : t('smartflow.quota.exhaustedNoKey')
-                                : t('smartflow.quota.nearingLimit')
-                            }
+                                ? smartFlowQuota.hasByokKey ? t('smartflow.quota.exhaustedByok') : t('smartflow.quota.exhaustedNoKey')
+                                : t('smartflow.quota.nearingLimit')}
                         </span>
                         {quotaPercent >= 100 && !smartFlowQuota.hasByokKey && (
-                            <button
-                                onClick={() => router.push('/dashboard/api-keys')}
-                                className="ml-auto text-xs font-semibold underline underline-offset-2 hover:no-underline shrink-0"
-                            >
+                            <button onClick={() => router.push('/dashboard/api-keys')} className="ml-auto text-xs font-semibold underline underline-offset-2 hover:no-underline shrink-0 cursor-pointer">
                                 {t('smartflow.quota.addApiKey')}
                             </button>
                         )}
@@ -456,27 +454,49 @@ export default function SmartFlowPage() {
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <div className="flex-1 flex flex-col gap-4 min-h-0">
-                        {/* Kanban Board — full height */}
-                        <div className={`grid ${gridClass} gap-4 flex-1`}>
+                    <div className="flex-1 overflow-x-auto">
+                        {/* ── Kanban Board ── */}
+                        <div className="flex gap-4 h-full min-h-[calc(100vh-220px)] pb-4" style={{ minWidth: `${activeColumns.length * 300 + (failedJobs.length > 0 ? 300 : 0)}px` }}>
+
+                            {/* Status columns */}
                             {activeColumns.map(col => {
                                 const colJobs = jobs.filter(col.filter)
                                 return (
-                                    <div key={col.key} className={`rounded-2xl border ${col.borderColor} bg-gradient-to-b ${col.gradient} flex flex-col`}>
-                                        <div className={`${col.headerBg} rounded-t-2xl px-4 py-3 flex items-center justify-between border-b ${col.borderColor} shrink-0`}>
+                                    <div key={col.key} className="flex flex-col w-72 shrink-0">
+                                        {/* Column header */}
+                                        <div className="flex items-center justify-between px-1 mb-3">
                                             <div className="flex items-center gap-2">
-                                                {col.icon}
-                                                <span className="text-sm font-semibold">{t(col.labelKey)}</span>
+                                                <span className={`inline-flex items-center gap-1 text-xs font-bold uppercase tracking-widest ${col.key === 'scheduled' ? 'text-emerald-500' :
+                                                    col.key === 'pending' ? 'text-amber-500' :
+                                                        col.key === 'client_review' ? 'text-purple-500' :
+                                                            'text-blue-400'
+                                                    }`}>
+                                                    <span className={`w-2 h-2 rounded-full ${col.key === 'scheduled' ? 'bg-emerald-500' :
+                                                        col.key === 'pending' ? 'bg-amber-500' :
+                                                            col.key === 'client_review' ? 'bg-purple-500' :
+                                                                'bg-blue-400'
+                                                        }`} />
+                                                    {t(col.labelKey)}
+                                                </span>
                                             </div>
-                                            <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded-full">
+                                            <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
                                                 {colJobs.length}
                                             </span>
                                         </div>
 
-                                        <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+                                        {/* Column separator line */}
+                                        <div className={`h-0.5 rounded-full mb-3 ${col.key === 'scheduled' ? 'bg-emerald-500/30' :
+                                            col.key === 'pending' ? 'bg-amber-500/30' :
+                                                col.key === 'client_review' ? 'bg-purple-500/30' :
+                                                    'bg-blue-400/30'
+                                            }`} />
+
+                                        {/* Cards */}
+                                        <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
                                             {colJobs.length === 0 ? (
-                                                <div className="flex items-center justify-center h-full min-h-[120px] text-muted-foreground/30">
-                                                    <Zap className="h-5 w-5" />
+                                                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/30 gap-2">
+                                                    <Zap className="h-6 w-6" />
+                                                    <p className="text-xs">{col.key === 'scheduled' ? '✅ All clear' : '—'}</p>
                                                 </div>
                                             ) : colJobs.map(job => (
                                                 <JobCard
@@ -495,37 +515,38 @@ export default function SmartFlowPage() {
                                     </div>
                                 )
                             })}
-                        </div>
 
-                        {/* Failed jobs */}
-                        {failedJobs.length > 0 && (
-                            <div className="rounded-2xl border border-red-500/30 bg-gradient-to-b from-red-500/10 to-red-600/5 shrink-0">
-                                <div className="bg-red-500/10 rounded-t-2xl px-4 py-3 flex items-center justify-between border-b border-red-500/30">
-                                    <div className="flex items-center gap-2">
-                                        <AlertTriangle className="h-4 w-4 text-red-400" />
-                                        <span className="text-sm font-semibold text-red-400">{t('smartflow.queue.statusFailed')}</span>
+                            {/* Failed column — always last */}
+                            {failedJobs.length > 0 && (
+                                <div className="flex flex-col w-72 shrink-0">
+                                    <div className="flex items-center justify-between px-1 mb-3">
+                                        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-red-400">
+                                            <span className="w-2 h-2 rounded-full bg-red-500" />
+                                            {t('smartflow.queue.statusFailed')}
+                                        </span>
+                                        <span className="text-xs font-bold bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">
+                                            {failedJobs.length}
+                                        </span>
                                     </div>
-                                    <span className="text-xs font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
-                                        {failedJobs.length}
-                                    </span>
+                                    <div className="h-0.5 rounded-full bg-red-500/30 mb-3" />
+                                    <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
+                                        {failedJobs.map(job => (
+                                            <JobCard
+                                                key={job.id}
+                                                job={job}
+                                                columnKey="failed"
+                                                actionLoading={actionLoading}
+                                                detectedMode={detectedMode}
+                                                t={t}
+                                                onAction={handleAction}
+                                                onTogglePlatform={handleTogglePlatform}
+                                                onEdit={(postId) => router.push(`/dashboard/posts/${postId}`)}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className={`p-2 grid ${gridClass} gap-2`}>
-                                    {failedJobs.map(job => (
-                                        <JobCard
-                                            key={job.id}
-                                            job={job}
-                                            columnKey="failed"
-                                            actionLoading={actionLoading}
-                                            detectedMode={detectedMode}
-                                            t={t}
-                                            onAction={handleAction}
-                                            onTogglePlatform={handleTogglePlatform}
-                                            onEdit={(postId) => router.push(`/dashboard/posts/${postId}`)}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
@@ -533,7 +554,7 @@ export default function SmartFlowPage() {
     )
 }
 
-// ─── Job Card ───────────────────────────────────────────
+// ─── Job Card ───────────────────────────────────────────────────────────────
 function JobCard({
     job, columnKey, actionLoading, detectedMode, t,
     onAction, onTogglePlatform, onEdit,
@@ -549,183 +570,229 @@ function JobCard({
 }) {
     const isImage = job.mediaItem.type === 'image' || job.mediaItem.type === 'photo'
     const hasApprovalStatus = job.post?.status === 'PENDING_APPROVAL' || job.post?.status === 'CLIENT_REVIEW'
+    const isScheduled = columnKey === 'scheduled'
+    const isFailed = columnKey === 'failed'
+
+    // Priority badge based on job status / timing
+    const getPriorityBadge = () => {
+        if (isFailed) return { label: 'FAILED', cls: 'bg-red-500/15 text-red-400 border-red-500/30' }
+        if (job.post?.status === 'PENDING_APPROVAL') return { label: 'URGENT', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30' }
+        if (job.post?.status === 'CLIENT_REVIEW') return { label: 'REVIEW', cls: 'bg-purple-500/15 text-purple-400 border-purple-500/30' }
+        if (isScheduled) return null
+        if (job.post?.scheduledAt) {
+            const diff = new Date(job.post.scheduledAt).getTime() - Date.now()
+            if (diff < 3600000) return { label: 'DUE SOON', cls: 'bg-orange-500/15 text-orange-400 border-orange-500/30' }
+        }
+        return { label: 'QUEUED', cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30' }
+    }
+    const badge = getPriorityBadge()
+
+    // Icon for content type
+    const TypeIcon = job.mediaItem.type === 'video' ? Video : null
 
     return (
-        <div className="bg-muted/30 border border-border rounded-xl p-3 hover:bg-muted/50 transition-all group">
-            {/* Media thumbnail + title */}
-            <div className="flex items-center gap-2.5 mb-2">
-                <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden shrink-0">
-                    {job.mediaItem.type === 'video' ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/30">
-                            <Video className="w-4 h-4 text-muted-foreground/50" />
-                        </div>
-                    ) : (
-                        <img
-                            src={job.mediaItem.thumbnailUrl || job.mediaItem.url}
-                            alt=""
-                            className="w-full h-full object-cover"
-                        />
+        <div className="group bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 transition-all duration-200">
+
+            {/* ── Media / content area ── */}
+            {job.mediaItem.type === 'video' ? (
+                <div className="w-full h-32 flex items-center justify-center bg-gradient-to-br from-indigo-900/30 to-purple-900/30 relative">
+                    <Video className="w-8 h-8 text-muted-foreground/40" />
+                    {badge && (
+                        <span className={`absolute top-2.5 right-2.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${badge.cls}`}>
+                            {badge.label}
+                        </span>
                     )}
                 </div>
-                <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{job.mediaItem.originalName || t('smartflow.queue.media')}</p>
-                    <p className="text-[10px] text-muted-foreground">{job.channel.displayName}</p>
+            ) : job.mediaItem.thumbnailUrl || job.mediaItem.url ? (
+                <div className="relative w-full h-36 overflow-hidden bg-muted">
+                    <img
+                        src={job.mediaItem.thumbnailUrl || job.mediaItem.url}
+                        alt=""
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {/* Gradient overlay for text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                    {badge && (
+                        <span className={`absolute top-2.5 right-2.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${badge.cls} backdrop-blur-sm`}>
+                            {badge.label}
+                        </span>
+                    )}
+                    {/* Platform icon overlays */}
+                    {job.post?.platformStatuses && job.post.platformStatuses.length > 0 && (
+                        <div className="absolute bottom-2 left-2 flex gap-1">
+                            {job.post.platformStatuses.slice(0, 4).map(ps => {
+                                const pKey = ps.platform.toLowerCase()
+                                const pCfg = PLATFORM_ICONS[pKey]
+                                if (!pCfg) return null
+                                const Icon = pCfg.icon
+                                const isActive = ps.status !== 'skipped'
+                                return (
+                                    <button
+                                        key={ps.id}
+                                        onClick={() => onTogglePlatform(ps)}
+                                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${isActive
+                                            ? `${pCfg.activeColor} bg-black/50 shadow-sm`
+                                            : `${pCfg.color} bg-black/30 opacity-40`
+                                            } hover:scale-110 cursor-pointer`}
+                                        title={`${ps.platform} — ${isActive ? 'Active' : 'Skipped'}`}
+                                    >
+                                        <Icon className="w-3 h-3" />
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
                 </div>
-                {/* Edit button → navigate to post page */}
-                {job.post && (
-                    <button
-                        onClick={() => onEdit(job.post!.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
-                        title={t('smartflow.queue.editPost')}
-                    >
-                        <ExternalLink className="w-3 h-3" />
-                    </button>
-                )}
-            </div>
-
-            {/* Caption */}
-            {job.post?.content && (
-                <p className="text-[11px] text-muted-foreground line-clamp-3 mb-2 leading-relaxed">{job.post.content}</p>
+            ) : (
+                <div className="w-full h-16 flex items-center justify-center bg-muted/30 relative">
+                    {badge && (
+                        <span className={`absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${badge.cls}`}>
+                            {badge.label}
+                        </span>
+                    )}
+                </div>
             )}
 
-            {/* Client Feedback */}
-            {job.post?.approvals && job.post.approvals.length > 0 && job.post.approvals.some(a => a.comment) && (
-                <div className="mb-2 space-y-1">
-                    {job.post.approvals.filter(a => a.comment).slice(0, 2).map((a, i) => (
-                        <div key={i} className="flex items-start gap-1.5 bg-muted/30 rounded-lg px-2 py-1.5">
-                            <div className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px] font-bold ${a.action === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                                {a.action === 'APPROVED' ? '✓' : '✗'}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <p className="text-[9px] text-muted-foreground font-medium">
-                                    {a.user?.name || a.user?.email?.split('@')[0] || 'Client'}
-                                </p>
+            {/* ── Card body ── */}
+            <div className="p-3">
+                {/* Title: post content preview or file name */}
+                <div className="flex items-start justify-between gap-1 mb-1.5">
+                    <h3 className="text-[12px] font-semibold leading-snug line-clamp-2 flex-1">
+                        {job.post?.content
+                            ? job.post.content.split('\n')[0].slice(0, 80) || job.mediaItem.originalName
+                            : job.mediaItem.originalName || t('smartflow.queue.media')}
+                    </h3>
+                    {/* Edit link */}
+                    {job.post && (
+                        <button
+                            onClick={() => onEdit(job.post!.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground shrink-0"
+                            title={t('smartflow.queue.editPost')}
+                        >
+                            <ExternalLink className="w-3 h-3" />
+                        </button>
+                    )}
+                </div>
+
+                {/* Channel + scheduled time */}
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] text-muted-foreground">{job.channel.displayName}</span>
+                    {job.post?.scheduledAt && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-primary/70 ml-auto">
+                            <CalendarCheck className="h-2.5 w-2.5" />
+                            {new Date(job.post.scheduledAt).toLocaleDateString('vi-VN', {
+                                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                            })}
+                        </span>
+                    )}
+                </div>
+
+                {/* Content body (if image card without preview, show caption) */}
+                {job.post?.content && !job.mediaItem.thumbnailUrl && !job.mediaItem.url && (
+                    <p className="text-[11px] text-muted-foreground line-clamp-3 mb-2 leading-relaxed">
+                        {job.post.content}
+                    </p>
+                )}
+
+                {/* Platform toggles when no image (text-only posts) */}
+                {(!job.mediaItem.thumbnailUrl && !job.mediaItem.url) && job.post?.platformStatuses && job.post.platformStatuses.length > 0 && (
+                    <div className="flex items-center gap-1.5 mb-2">
+                        {job.post.platformStatuses.map(ps => {
+                            const pKey = ps.platform.toLowerCase()
+                            const pCfg = PLATFORM_ICONS[pKey]
+                            if (!pCfg) return null
+                            const Icon = pCfg.icon
+                            const isActive = ps.status !== 'skipped'
+                            const isTikTokImage = isImage && IMAGE_INCOMPATIBLE_PLATFORMS.includes(pKey)
+                            return (
+                                <button
+                                    key={ps.id}
+                                    onClick={() => onTogglePlatform(ps)}
+                                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer ${isActive ? `${pCfg.activeColor} bg-muted shadow-sm` : `${pCfg.color} bg-muted/30 opacity-40`
+                                        } hover:scale-110`}
+                                    title={`${ps.platform} — ${isActive ? t('smartflow.queue.platformActive') : t('smartflow.queue.platformInactive')}${isTikTokImage ? ` (${t('smartflow.queue.staticImage')})` : ''}`}
+                                >
+                                    <Icon className="w-3 h-3" />
+                                </button>
+                            )
+                        })}
+                    </div>
+                )}
+
+                {/* Client feedback */}
+                {job.post?.approvals && job.post.approvals.some(a => a.comment) && (
+                    <div className="mb-2 space-y-1">
+                        {job.post.approvals.filter(a => a.comment).slice(0, 2).map((a, i) => (
+                            <div key={i} className="flex items-start gap-1.5 bg-muted/30 rounded-lg px-2 py-1.5">
+                                <div className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px] font-bold ${a.action === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                                    }`}>
+                                    {a.action === 'APPROVED' ? '✓' : '✗'}
+                                </div>
                                 <p className="text-[10px] text-muted-foreground/80 leading-snug line-clamp-2">{a.comment}</p>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
+                )}
+
+                {/* Error message */}
+                {job.errorMessage && (
+                    <div className="flex items-start gap-1 mb-2 text-[10px] text-red-400/80">
+                        <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{job.errorMessage}</span>
+                    </div>
+                )}
+
+                {/* ── Action buttons ── */}
+                <div className={`flex gap-1.5 ${hasApprovalStatus ? '' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                    {job.post?.status === 'PENDING_APPROVAL' && (
+                        <button
+                            onClick={() => onAction('approve', undefined, job.post!.id)}
+                            disabled={actionLoading === job.post.id}
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-medium transition-all cursor-pointer"
+                        >
+                            {actionLoading === job.post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsUp className="h-3 w-3" />}
+                            {t('smartflow.queue.approve')}
+                        </button>
+                    )}
+                    {job.post?.status === 'CLIENT_REVIEW' && (
+                        <button
+                            onClick={() => onAction('client_approve', undefined, job.post!.id)}
+                            disabled={actionLoading === job.post.id}
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-medium transition-all cursor-pointer"
+                        >
+                            {actionLoading === job.post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsUp className="h-3 w-3" />}
+                            {t('smartflow.queue.approve')}
+                        </button>
+                    )}
+                    {job.post && hasApprovalStatus && (
+                        <button
+                            onClick={() => onAction('reject', undefined, job.post!.id)}
+                            disabled={actionLoading === job.post.id}
+                            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-[10px] transition-all cursor-pointer"
+                        >
+                            <ThumbsDown className="h-3 w-3" />
+                        </button>
+                    )}
+                    {job.status === 'FAILED' && (
+                        <button
+                            onClick={() => onAction('retry', job.id)}
+                            disabled={actionLoading === job.id}
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-[10px] font-medium transition-all cursor-pointer"
+                        >
+                            {actionLoading === job.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                            {t('smartflow.queue.retry')}
+                        </button>
+                    )}
+                    {(job.status === 'QUEUED' || job.status === 'PROCESSING') && (
+                        <button
+                            onClick={() => onAction('cancel', job.id)}
+                            disabled={actionLoading === job.id}
+                            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-[10px] transition-all cursor-pointer"
+                        >
+                            <XCircle className="h-3 w-3" />
+                        </button>
+                    )}
                 </div>
-            )}
-
-            {/* Error message */}
-            {job.errorMessage && (
-                <p className="text-[10px] text-red-400/80 line-clamp-2 mb-2 flex items-start gap-1">
-                    <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
-                    {job.errorMessage}
-                </p>
-            )}
-
-            {/* Platform SVG badges — interactive toggle */}
-            {job.post?.platformStatuses && job.post.platformStatuses.length > 0 && (
-                <div className="flex items-center gap-1.5 mb-2">
-                    {job.post.platformStatuses.map(ps => {
-                        const pKey = ps.platform.toLowerCase()
-                        const pCfg = PLATFORM_ICONS[pKey]
-                        if (!pCfg) return null
-                        const Icon = pCfg.icon
-                        const isActive = ps.status !== 'skipped'
-                        // TikTok default off for images
-                        const isTikTokImage = isImage && IMAGE_INCOMPATIBLE_PLATFORMS.includes(pKey)
-
-                        return (
-                            <button
-                                key={ps.id}
-                                onClick={() => onTogglePlatform(ps)}
-                                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 ${isActive
-                                    ? `${pCfg.activeColor} bg-muted shadow-sm`
-                                    : `${pCfg.color} bg-muted/30 opacity-40`
-                                    } hover:scale-110`}
-                                title={`${ps.platform} — ${isActive ? t('smartflow.queue.platformActive') : t('smartflow.queue.platformInactive')}${isTikTokImage ? ` (${t('smartflow.queue.staticImage')})` : ''}`}
-                            >
-                                <Icon className="w-3.5 h-3.5" />
-                            </button>
-                        )
-                    })}
-
-                    {/* Media dimensions */}
-                    {(() => {
-                        const meta = job.post?.metadata as Record<string, Record<string, number>> | null
-                        if (!meta?.mediaDimensions) return null
-                        return (
-                            <span className="text-[9px] text-muted-foreground/50 ml-auto">
-                                {String(meta.mediaDimensions.width)}×{String(meta.mediaDimensions.height)}
-                            </span>
-                        )
-                    })()}
-                </div>
-            )}
-
-            {/* Meta info */}
-            <div className="flex items-center gap-2 text-[9px] text-muted-foreground mb-2">
-                <span>📤 {job.uploadedBy?.split('@')[0] || '?'}</span>
-                {job.post?.scheduledAt && (
-                    <span className="text-blue-500/60 dark:text-blue-400/40">
-                        🗓 {new Date(job.post.scheduledAt).toLocaleDateString('vi-VN', {
-                            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-                        })}
-                    </span>
-                )}
-            </div>
-
-            {/* Action buttons — always visible for posts with approval status */}
-            <div className={`flex gap-1.5 ${hasApprovalStatus ? '' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                {/* Approve — always show for approval-status posts regardless of channel config */}
-                {job.post && job.post.status === 'PENDING_APPROVAL' && (
-                    <button
-                        onClick={() => onAction('approve', undefined, job.post!.id)}
-                        disabled={actionLoading === job.post.id}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-medium transition-all"
-                    >
-                        {actionLoading === job.post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsUp className="h-3 w-3" />}
-                        {t('smartflow.queue.approve')}
-                    </button>
-                )}
-
-                {/* Client Approve */}
-                {job.post && job.post.status === 'CLIENT_REVIEW' && (
-                    <button
-                        onClick={() => onAction('client_approve', undefined, job.post!.id)}
-                        disabled={actionLoading === job.post.id}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-medium transition-all"
-                    >
-                        {actionLoading === job.post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsUp className="h-3 w-3" />}
-                        {t('smartflow.queue.approve')}
-                    </button>
-                )}
-
-                {/* Reject — always show for approval-status posts */}
-                {job.post && hasApprovalStatus && (
-                    <button
-                        onClick={() => onAction('reject', undefined, job.post!.id)}
-                        disabled={actionLoading === job.post.id}
-                        className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-[10px] transition-all"
-                    >
-                        <ThumbsDown className="h-3 w-3" />
-                    </button>
-                )}
-
-                {/* Retry failed */}
-                {job.status === 'FAILED' && (
-                    <button
-                        onClick={() => onAction('retry', job.id)}
-                        disabled={actionLoading === job.id}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 text-[10px] font-medium transition-all"
-                    >
-                        {actionLoading === job.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                        {t('smartflow.queue.retry')}
-                    </button>
-                )}
-
-                {/* Cancel */}
-                {(job.status === 'QUEUED' || job.status === 'PROCESSING') && (
-                    <button
-                        onClick={() => onAction('cancel', job.id)}
-                        disabled={actionLoading === job.id}
-                        className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-[10px] transition-all"
-                    >
-                        <XCircle className="h-3 w-3" />
-                    </button>
-                )}
             </div>
         </div>
     )

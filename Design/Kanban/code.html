@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | Content Kanban</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#19e65e",
+                        "background-light": "#f6f8f6",
+                        "background-dark": "#080d09",
+                        "card-dark": "#111c13",
+                        "border-dark": "#1d2e22",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1d2e22;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #19e65e;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex flex-col h-screen">
+<header class="flex items-center justify-between border-b border-border-dark px-6 py-3 bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-background-dark">
+<span class="material-symbols-outlined font-bold">account_tree</span>
+</div>
+<h2 class="text-slate-100 text-xl font-black leading-tight tracking-tight">Neeflow</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-primary text-sm font-semibold border-b-2 border-primary pb-1" href="#">Dashboard</a>
+<a class="text-slate-400 hover:text-slate-100 text-sm font-medium transition-colors" href="#">Content</a>
+<a class="text-slate-400 hover:text-slate-100 text-sm font-medium transition-colors" href="#">Analytics</a>
+<a class="text-slate-400 hover:text-slate-100 text-sm font-medium transition-colors" href="#">Team</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<label class="hidden sm:flex items-center relative w-64">
+<span class="material-symbols-outlined absolute left-3 text-slate-400 text-lg">search</span>
+<input class="w-full h-10 pl-10 pr-4 bg-card-dark border border-border-dark rounded-lg text-sm text-slate-100 placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Search tasks..." type="text"/>
+</label>
+<div class="flex items-center gap-2 border-l border-border-dark pl-4 ml-2">
+<button class="size-10 flex items-center justify-center rounded-lg bg-card-dark text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="size-10 flex items-center justify-center rounded-lg bg-card-dark text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="size-10 rounded-full border-2 border-primary/20 p-0.5 ml-2">
+<img class="w-full h-full rounded-full object-cover" data-alt="User profile avatar with professional look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYeDy8b20CxYFPn9KSm2F4fjBJ1qyrXAz-SRTeYEtAW9LG4wHimLEzn92NetGCfQA7_GnXI1IHZswVBng5g-6eSZnW1FaOQpUcnxuLt6HFE1N3c7Cb4FoOB6wyqGh8yEFyigMyr03Bl0e0LPdPQcDu1-PsesJm2MGX21_ofycaFC2sYysaHofYM8yx-Q-f4vxFbqK9ExnTUe-Ji8kYwtI8g18zBPutG3-JJ7WjxE6xFcJrxlU-jpEGCCee2MOM3QTr_7QjVMSnbBM"/>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col p-6 overflow-hidden">
+<div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+<div>
+<h1 class="text-3xl font-black text-slate-100 tracking-tight">Content Kanban</h1>
+<p class="text-slate-400 text-sm mt-1">Orchestrate your social media presence across all channels</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-bold hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+                        Filter
+                    </button>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-primary text-background-dark rounded-lg text-sm font-black shadow-lg shadow-primary/20 hover:translate-y-[-1px] active:translate-y-[1px] transition-all">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+                        Create Post
+                    </button>
+</div>
+</div>
+<div class="flex gap-4 overflow-x-auto pb-6 flex-1 custom-scrollbar">
+<div class="flex-shrink-0 w-80 flex flex-col">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-slate-500"></span>
+<h3 class="font-bold text-slate-300 uppercase tracking-widest text-xs">Backlog</h3>
+<span class="bg-card-dark px-2 py-0.5 rounded text-[10px] text-slate-400 font-bold border border-border-dark">12</span>
+</div>
+<button class="text-slate-500 hover:text-primary"><span class="material-symbols-outlined text-sm">more_horiz</span></button>
+</div>
+<div class="flex flex-col gap-3 h-full overflow-y-auto custom-scrollbar pr-1">
+<div class="bg-card-dark border border-border-dark p-4 rounded-xl hover:border-primary/40 transition-all group cursor-pointer shadow-sm">
+<div class="flex justify-between items-start mb-3">
+<span class="material-symbols-outlined text-primary text-xl">camera_alt</span>
+<span class="px-2 py-1 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">LOW</span>
+</div>
+<h4 class="text-slate-200 font-semibold text-sm leading-snug group-hover:text-primary transition-colors">Summer Collection Product Photography Teaser</h4>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex -space-x-2">
+<img class="size-6 rounded-full border border-background-dark object-cover" data-alt="Team member portrait for task assignment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwr9AsMI0PiYI3HJ_5NWpaAFUtexY3cqJhb9C-QRNFc43YP3xMF0_b4RZ0bmakfA0oBD5clzIhCMx98O0UWbTq1WgvuYmmCaRG6qIi_JfFKrm0-6Idp0rNDg_7wyCOJvgDQtgL1cnFKQ4C5jyitsmQ4d5a5qojxRtJ45503DvQ9XIqi1LRoRJG5PxMMqJpNKMPuSmAtsguZ-YIt1uH9WlSn5uNeeplfj-LO70D5S5cVeusS94SkoQuLyKLbPUwnvesUNwDzhW8Sko"/>
+</div>
+<div class="flex items-center gap-2 text-slate-500 text-[10px] font-medium">
+<span class="material-symbols-outlined text-sm">chat_bubble_outline</span>
+<span>3</span>
+</div>
+</div>
+</div>
+<div class="bg-card-dark border border-border-dark p-4 rounded-xl hover:border-primary/40 transition-all group cursor-pointer shadow-sm">
+<div class="flex justify-between items-start mb-3">
+<span class="material-symbols-outlined text-[#ff0050] text-xl">movie</span>
+<span class="px-2 py-1 rounded text-[10px] font-bold bg-orange-500/10 text-orange-500 border border-orange-500/20">MEDIUM</span>
+</div>
+<h4 class="text-slate-200 font-semibold text-sm leading-snug group-hover:text-primary transition-colors">Behind the Scenes: Office Tour TikTok</h4>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex -space-x-2">
+<img class="size-6 rounded-full border border-background-dark object-cover" data-alt="Assignee avatar smiling portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1KIzE3tnPcxC2PTiAZw9OBq_5HJ5fKG32oJQ4DoZ0csCQe_U518AIcAmVt1BHCzHUNQdSeH006Dhp3olxIxITE8FGI1ywRFn-ClvVT4VzRz_bOuvTPfbaaWOy83mTYhUByx7OLK71RX14ODWiPgEBaOG7KcbRsfJ7lVkqf1cnHqNhYQyZ3j-BTA-aB1H0pESTEbeDQ5TMJfgbfdr3pEbHJG3KbUEMX46o7XMsNfXnQ43g4r0hf5-nCMrCdWXwkoDas512MvgWcGk"/>
+</div>
+<div class="flex items-center gap-2 text-slate-500 text-[10px] font-medium">
+<span class="material-symbols-outlined text-sm">link</span>
+<span>1</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-shrink-0 w-80 flex flex-col">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-blue-500"></span>
+<h3 class="font-bold text-slate-300 uppercase tracking-widest text-xs">In Progress</h3>
+<span class="bg-card-dark px-2 py-0.5 rounded text-[10px] text-slate-400 font-bold border border-border-dark">5</span>
+</div>
+<button class="text-slate-500 hover:text-primary"><span class="material-symbols-outlined text-sm">more_horiz</span></button>
+</div>
+<div class="flex flex-col gap-3 h-full overflow-y-auto custom-scrollbar pr-1">
+<div class="bg-card-dark border border-primary/30 p-4 rounded-xl hover:border-primary transition-all group cursor-pointer shadow-sm relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary/40"></div>
+<div class="flex justify-between items-start mb-3">
+<span class="material-symbols-outlined text-[#1DA1F2] text-xl">alternate_email</span>
+<span class="px-2 py-1 rounded text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/20">URGENT</span>
+</div>
+<h4 class="text-slate-200 font-semibold text-sm leading-snug group-hover:text-primary transition-colors">Weekly Product Feature: Q&amp;A Thread</h4>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex -space-x-2">
+<img class="size-6 rounded-full border border-background-dark object-cover" data-alt="Assignee headshot with professional background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBr_FAgO_cT-SW4kNBuVKq0OSZn9UPxMuNFz5EHnvl0tN7x4vkZBi8JNQvA7ffNlVZhXn4AGQnOCqNkOPzT3bqa41b2n140kfkCL8fpgQKfNmqTE5yHasJ8zm-mtaupLaUQkvN4q1uYHMnmwjh8SFItg3dMVGMhX_XmpC4_3r7yHhn9WG7ZhLQmDJ2-vYmBFruLmTvY842EsLKgG_0ABiglNfraV87dA71GDXnw2eqG0fCZYeBcN1GUlmXq-NzzkVZp_keseHD4alQ"/>
+</div>
+<div class="flex items-center gap-2 text-slate-500 text-[10px] font-medium">
+<span class="material-symbols-outlined text-sm text-primary">schedule</span>
+<span class="text-primary">Due Today</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-shrink-0 w-80 flex flex-col">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-yellow-500"></span>
+<h3 class="font-bold text-slate-300 uppercase tracking-widest text-xs">Review</h3>
+<span class="bg-card-dark px-2 py-0.5 rounded text-[10px] text-slate-400 font-bold border border-border-dark">3</span>
+</div>
+<button class="text-slate-500 hover:text-primary"><span class="material-symbols-outlined text-sm">more_horiz</span></button>
+</div>
+<div class="flex flex-col gap-3 h-full overflow-y-auto custom-scrollbar pr-1">
+<div class="bg-card-dark border border-border-dark p-4 rounded-xl hover:border-primary/40 transition-all group cursor-pointer shadow-sm">
+<div class="flex justify-between items-start mb-3">
+<span class="material-symbols-outlined text-[#E4405F] text-xl">photo_library</span>
+<span class="px-2 py-1 rounded text-[10px] font-bold bg-orange-500/10 text-orange-500 border border-orange-500/20">MEDIUM</span>
+</div>
+<div class="mb-3 rounded-lg overflow-hidden h-32 relative">
+<img class="w-full h-full object-cover" data-alt="Abstract colorful neon waves pattern" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDs-vBPVEpenQe7Jpsm4zPkgTa1Gr_DQxVRV7gcUgnxa2gDxA3_rB6MlWcpDk9-Ey7lDEM_EAp9USQPca3GuMrlsKSgqRffysidLLAmKJsFC2aR3VndLu-WJ4Ihc_5e4C4LR-rYTHxeby58klvjCperilPu9b0SrOS0mUSQwaEFwzrXNidlez-4VBE9BXNZ4iEYr2Xwbvlt465EvRqdcjkRlGf-Mki2av7tUWTfNc64HCB7Nyi99mldeHP3LX6s7yej2HHSBzsmgcY"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white text-3xl">visibility</span>
+</div>
+</div>
+<h4 class="text-slate-200 font-semibold text-sm leading-snug group-hover:text-primary transition-colors">Influencer Collab Post Layout</h4>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex -space-x-2">
+<img class="size-6 rounded-full border border-background-dark object-cover" data-alt="Assignee woman profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwba6tqHg1GG6nwXeU0W_MTHowpNYFpDs_wb63xvDGJI-KCyzY3R-usQB6oQI--x7asA9laWoqOzWzFd_vxKmPm4cBimV7iCZYJisQgLRG_UCKQGQrCnOXYdqb6HlbecEYKa6JUfWKrMbuvHflBMFjlhf4flzEEihRkz8MinjVnXabPLRpKgUuLBOpTUPJ1efSpC8voXj5h3ZuGcYVCUGyfULR2Zutu3rQjxRDgOuxJDxxHkzHdEpW56PRLnp9dLHSjZjMlFDGkYI"/>
+<img class="size-6 rounded-full border border-background-dark object-cover" data-alt="Assignee man profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF4FqdB41M9q7ovjuLfV_m7etLmCoNQkQ8Ytuy5S7sdBetlsX5p5si7ZwmIl0MhAIu1OdRek55v--Rnb8XtFJSmm5L1eePX36YHcB4wh4C5PXxdULqxgMyUOopyxCRQfwS2t69c8ue5d7nmFikPfAonFmRgaKxYkr31xvLNFmUKY44Avobvebuit9hdHCTc5QrV8fEI57i7Gr7evxkyPg_WvfpV5Y6PvY_yszPEixG-5MrWUsOUWnuZo8att_xctdmtzvANBxoDv8"/>
+</div>
+<div class="flex items-center gap-2 text-slate-500 text-[10px] font-medium">
+<span class="material-symbols-outlined text-sm">thumb_up</span>
+<span>2/3</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-shrink-0 w-80 flex flex-col">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-primary"></span>
+<h3 class="font-bold text-slate-300 uppercase tracking-widest text-xs">Scheduled</h3>
+<span class="bg-card-dark px-2 py-0.5 rounded text-[10px] text-slate-400 font-bold border border-border-dark">8</span>
+</div>
+<button class="text-slate-500 hover:text-primary"><span class="material-symbols-outlined text-sm">more_horiz</span></button>
+</div>
+<div class="flex flex-col gap-3 h-full overflow-y-auto custom-scrollbar pr-1">
+<div class="bg-card-dark/50 border border-primary/20 p-4 rounded-xl shadow-sm border-dashed">
+<div class="flex justify-between items-start mb-3">
+<span class="material-symbols-outlined text-[#0077B5] text-xl">work</span>
+<span class="px-2 py-1 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">LOW</span>
+</div>
+<h4 class="text-slate-400 font-semibold text-sm leading-snug italic">Monthly Industry Insights Report</h4>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary text-[10px] font-black uppercase tracking-wider">
+<span class="material-symbols-outlined text-sm">event_available</span>
+<span>Oct 24, 09:00 AM</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-shrink-0 w-80 flex flex-col">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="size-2 rounded-full bg-slate-700"></span>
+<h3 class="font-bold text-slate-300 uppercase tracking-widest text-xs">Published</h3>
+<span class="bg-card-dark px-2 py-0.5 rounded text-[10px] text-slate-400 font-bold border border-border-dark">142</span>
+</div>
+<button class="text-slate-500 hover:text-primary"><span class="material-symbols-outlined text-sm">more_horiz</span></button>
+</div>
+<div class="flex flex-col gap-3 h-full overflow-y-auto custom-scrollbar pr-1 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all">
+<div class="bg-card-dark border border-border-dark p-4 rounded-xl cursor-pointer shadow-sm">
+<div class="flex justify-between items-start mb-3">
+<span class="material-symbols-outlined text-primary text-xl">play_circle</span>
+<span class="px-2 py-1 rounded text-[10px] font-bold bg-slate-800 text-slate-500 border border-slate-700">DONE</span>
+</div>
+<h4 class="text-slate-300 font-semibold text-sm leading-snug">New Feature Launch Trailer</h4>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex items-center gap-2 text-slate-500 text-[10px] font-medium">
+<span class="material-symbols-outlined text-sm text-primary">analytics</span>
+<span class="text-slate-200">24.5k Views</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
