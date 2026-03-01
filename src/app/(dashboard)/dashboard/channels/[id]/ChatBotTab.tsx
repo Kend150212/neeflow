@@ -372,12 +372,14 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 const pagesRes = await fetch(`/api/admin/channels/${channelId}/platforms`)
                 if (pagesRes.ok) {
                     const pagesData = await pagesRes.json()
-                    setPageAccounts((pagesData || []).map((p: any) => ({
-                        id: p.id,
-                        accountName: p.accountName,
-                        platform: p.platform,
-                        botEnabled: (p.config as any)?.botEnabled === true,
-                    })))
+                    setPageAccounts((pagesData || [])
+                        .filter((p: any) => p.isActive !== false)  // only show active/enabled accounts
+                        .map((p: any) => ({
+                            id: p.id,
+                            accountName: p.accountName,
+                            platform: p.platform,
+                            botEnabled: (p.config as any)?.botEnabled === true,
+                        })))
                 }
             } catch { /* ignore */ }
 
@@ -564,7 +566,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     onClick={() => setPagesExpanded(prev => !prev)}
                                     className="gap-1.5 text-xs h-7 cursor-pointer"
                                 >
-                                    {pagesExpanded ? (t('chatbot.collapse') || 'Thu gọn') : (t('chatbot.viewAll') || 'Xem tất cả')}
+                                    {pagesExpanded ? 'Thu gọn' : 'Xem tất cả'}
                                     <ChevronDown className={`h-3.5 w-3.5 transition-transform ${pagesExpanded ? 'rotate-180' : ''}`} />
                                 </Button>
                             </div>
