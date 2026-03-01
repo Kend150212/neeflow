@@ -39,17 +39,11 @@ async function publishToFacebook(
         const videoMedia = mediaItems.find(m => isVideoMedia(m))
         if (!videoMedia) throw new Error('Reels require a video attachment')
 
-        // Download video bytes from R2
-        console.log(`[Facebook] Reel: downloading video from ${videoMedia.url.substring(0, 80)}...`)
-        const videoRes = await fetch(videoMedia.url)
-        if (!videoRes.ok) throw new Error(`Failed to download video for Facebook Reel: ${videoRes.statusText}`)
-        const videoBuffer = await videoRes.arrayBuffer()
-        const fileSize = videoBuffer.byteLength
-        console.log(`[Facebook] Reel: downloaded ${(fileSize / 1024 / 1024).toFixed(1)}MB`)
-
         const reelUrl = `https://graph.facebook.com/v21.0/${accountId}/video_reels`
 
-        // Phase 1: START — get a video_id
+        // Phase 1: START — get a video_id and upload_url
+        // Use file_url so Facebook's servers pull directly from R2 (no server-side download needed)
+        console.log(`[Facebook] Reel: initiating URL-based upload for ${videoMedia.url.substring(0, 80)}...`)
         const startRes = await fetch(reelUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -64,24 +58,65 @@ async function publishToFacebook(
         if (!videoId) throw new Error('Facebook Reel start did not return video_id')
         console.log(`[Facebook] Reel start: video_id=${videoId}`)
 
-        // Phase 2: Upload video bytes directly
-        console.log(`[Facebook] Reel: uploading ${(fileSize / 1024 / 1024).toFixed(1)}MB to rupload.facebook.com...`)
-        const uploadRes = await fetch(`https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `OAuth ${accessToken}`,
-                'offset': '0',
-                'file_size': String(fileSize),
-                'Content-Type': 'application/octet-stream',
-            },
-            body: videoBuffer,
-        })
-        if (!uploadRes.ok) {
-            const errText = await uploadRes.text().catch(() => '')
-            console.error(`[Facebook] Reel upload failed: ${uploadRes.status}`, errText)
-            throw new Error(`Facebook Reel video upload failed: ${uploadRes.status}`)
+        // Phase 2: Upload by URL — Facebook pulls the video directly from R2 CDN
+        const uploadUrl = startData.upload_url
+        if (uploadUrl) {
+            // Use the rupload URL if provided, but send the source URL as a parameter
+            console.log(`[Facebook] Reel: uploading via file_url (Facebook fetches from R2 directly)...`)
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `OAuth ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file_url: videoMedia.url }),
+            })
+            if (!uploadRes.ok) {
+                const errText = await uploadRes.text().catch(() => '')
+                console.warn(`[Facebook] Reel URL upload failed (${uploadRes.status}), falling back to binary upload: ${errText.slice(0, 200)}`)
+                // Fallback: binary upload
+                console.log(`[Facebook] Reel: downloading video for binary upload...`)
+                const videoRes = await fetch(videoMedia.url)
+                if (!videoRes.ok) throw new Error(`Failed to download video for Facebook Reel: ${videoRes.statusText}`)
+                const videoBuffer = await videoRes.arrayBuffer()
+                const fileSize = videoBuffer.byteLength
+                console.log(`[Facebook] Reel: uploading ${(fileSize / 1024 / 1024).toFixed(1)}MB binary...`)
+                const binaryRes = await fetch(`https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `OAuth ${accessToken}`,
+                        'offset': '0',
+                        'file_size': String(fileSize),
+                        'Content-Type': 'application/octet-stream',
+                    },
+                    body: videoBuffer,
+                })
+                if (!binaryRes.ok) throw new Error(`Facebook Reel binary upload failed: ${binaryRes.status}`)
+                console.log(`[Facebook] Reel: binary upload complete (fallback)`)
+            } else {
+                console.log(`[Facebook] Reel: URL upload accepted`)
+            }
+        } else {
+            // No upload_url in response — fallback to binary upload via rupload
+            console.log(`[Facebook] Reel: no upload_url in response, using binary upload...`)
+            const videoRes = await fetch(videoMedia.url)
+            if (!videoRes.ok) throw new Error(`Failed to download video for Facebook Reel: ${videoRes.statusText}`)
+            const videoBuffer = await videoRes.arrayBuffer()
+            const fileSize = videoBuffer.byteLength
+            console.log(`[Facebook] Reel: uploading ${(fileSize / 1024 / 1024).toFixed(1)}MB to rupload.facebook.com...`)
+            const binaryRes = await fetch(`https://rupload.facebook.com/video-upload/v21.0/${videoId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `OAuth ${accessToken}`,
+                    'offset': '0',
+                    'file_size': String(fileSize),
+                    'Content-Type': 'application/octet-stream',
+                },
+                body: videoBuffer,
+            })
+            if (!binaryRes.ok) throw new Error(`Facebook Reel binary upload failed: ${binaryRes.status}`)
+            console.log(`[Facebook] Reel: binary upload complete`)
         }
-        console.log(`[Facebook] Reel: binary upload complete`)
 
         // Phase 3: FINISH — publish
         const finishRes = await fetch(reelUrl, {
@@ -1984,7 +2019,8 @@ export async function POST(
         return contentPerPlatform[platform]?.trim() || post?.content || ''
     }
 
-    for (const ps of pendingStatuses) {
+    // Publish to all platforms in PARALLEL (not sequential) for maximum speed
+    const publishTasks = pendingStatuses.map(async (ps) => {
         try {
             // Find the platform connection
             const platformConn = post.channel.platforms.find(
@@ -1996,8 +2032,7 @@ export async function POST(
                     where: { id: ps.id },
                     data: { status: 'failed', errorMsg: 'Platform connection not found or inactive' },
                 })
-                results.push({ platform: ps.platform, accountId: ps.accountId, success: false, error: 'Connection not found' })
-                continue
+                return { platform: ps.platform, accountId: ps.accountId, success: false, error: 'Connection not found' }
             }
 
             if (!platformConn.accessToken) {
@@ -2005,8 +2040,7 @@ export async function POST(
                     where: { id: ps.id },
                     data: { status: 'failed', errorMsg: 'No access token. Please reconnect this account.' },
                 })
-                results.push({ platform: ps.platform, accountId: ps.accountId, success: false, error: 'No access token' })
-                continue
+                return { platform: ps.platform, accountId: ps.accountId, success: false, error: 'No access token' }
             }
 
             let publishResult: { externalId: string }
@@ -2128,7 +2162,7 @@ export async function POST(
             })
 
             console.log(`[Publish] ✅ ${ps.platform} (${ps.accountId}): published successfully → ${publishResult.externalId}`)
-            results.push({ platform: ps.platform, accountId: ps.accountId, success: true, externalId: publishResult.externalId })
+            return { platform: ps.platform, accountId: ps.accountId, success: true as const, externalId: publishResult.externalId }
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error'
             console.error(`[Publish] ❌ ${ps.platform} (${ps.accountId}): ${errorMsg}`)
@@ -2136,9 +2170,12 @@ export async function POST(
                 where: { id: ps.id },
                 data: { status: 'failed', errorMsg },
             })
-            results.push({ platform: ps.platform, accountId: ps.accountId, success: false, error: errorMsg })
+            return { platform: ps.platform, accountId: ps.accountId, success: false as const, error: errorMsg }
         }
-    }
+    })
+
+    const results = await Promise.all(publishTasks)
+
 
     // Determine final post status
     const allPublished = results.length > 0 && results.every((r) => r.success)
