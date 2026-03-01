@@ -4445,10 +4445,10 @@ export default function ComposePage() {
                         </div>
                     )}
 
-                    {/* Phone frame — full column width */}
-                    <div className="relative w-full flex-1 min-h-0">
+                    {/* Phone frame — correct aspect ratio, full column width */}
+                    <div className="relative w-full" style={{ aspectRatio: '9 / 19.5' }}>
                         {/* Phone shell */}
-                        <div className="relative rounded-[2.5rem] border-[3px] border-border/80 bg-card shadow-xl overflow-hidden w-full h-full" style={{ minHeight: '480px' }}>
+                        <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-border/80 bg-card shadow-xl overflow-hidden">
                             {/* Notch */}
                             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-border/80 rounded-b-2xl z-10" />
                             {/* Status bar */}
@@ -4461,7 +4461,7 @@ export default function ComposePage() {
                                 </div>
                             </div>
                             {/* Screen content — scrollable inside phone */}
-                            <div className="px-2 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(100% - 48px)' }}>
+                            <div className="px-2 pb-6 overflow-y-auto absolute inset-0 top-[44px]">
                                 {(content.trim() || attachedMedia.length > 0) && effectivePreviewPlatform ? (() => {
                                     const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
                                     if (!entry) return null
