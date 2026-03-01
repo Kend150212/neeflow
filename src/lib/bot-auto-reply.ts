@@ -7,7 +7,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
-import { callAI, getDefaultModel } from '@/lib/ai-caller'
+import { callAI, callAIWithUsage, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 import { OAUTH_PLATFORMS, CREDENTIAL_PLATFORMS } from '@/lib/platform-registry'
 import { buildPromotionContext } from '@/lib/product-context'
@@ -505,8 +505,21 @@ ${contextSection}
 
 Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
 
-        const rawReply = await callAI(provider, apiKey, model, systemPrompt, userPrompt)
-        let cleanReply = rawReply.trim()
+        const aiResult = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
+        let cleanReply = aiResult.text.trim()
+
+            // Fire-and-forget: log token usage for analytics (non-blocking)
+            ; (prisma as any).botTokenUsage.create({
+                data: {
+                    channelId: channel.id,
+                    provider,
+                    model: aiResult.model || model,
+                    promptTokens: aiResult.promptTokens,
+                    completionTokens: aiResult.completionTokens,
+                    totalTokens: aiResult.totalTokens,
+                    conversationId,
+                },
+            }).catch(() => { /* non-blocking — ignore errors */ })
 
         // AI sometimes wraps reply in JSON — extract text if so
         if (cleanReply.startsWith('{') || cleanReply.startsWith('[') || cleanReply.startsWith('```')) {

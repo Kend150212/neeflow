@@ -20,6 +20,7 @@ export const FREE_PLAN_DEFAULTS = {
     hasPrioritySupport: false,
     hasWhiteLabel: false,
     hasSmartFlow: false,
+    hasBotUsageAnalytics: false,
     maxSmartFlowJobsPerMonth: 0,
 }
 
@@ -104,6 +105,7 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             hasPrioritySupport: p.hasPrioritySupport,
             hasWhiteLabel: p.hasWhiteLabel,
             hasSmartFlow: (p as any).hasSmartFlow ?? false,
+            hasBotUsageAnalytics: (p as any).hasBotUsageAnalytics ?? false,
             maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
             isInTrial: isStripeTrial
                 || daysLeftInTrial > 0
@@ -149,6 +151,7 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
                 hasPrioritySupport: trialPlan.hasPrioritySupport,
                 hasWhiteLabel: trialPlan.hasWhiteLabel,
                 hasSmartFlow: (trialPlan as any).hasSmartFlow ?? true,
+                hasBotUsageAnalytics: (trialPlan as any).hasBotUsageAnalytics ?? true,
                 maxSmartFlowJobsPerMonth: (trialPlan as any).maxSmartFlowJobsPerMonth ?? 10,
                 isInTrial: true,
                 trialEndsAt,
@@ -183,6 +186,7 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             hasPrioritySupport: p.hasPrioritySupport,
             hasWhiteLabel: p.hasWhiteLabel,
             hasSmartFlow: (p as any).hasSmartFlow ?? false,
+            hasBotUsageAnalytics: (p as any).hasBotUsageAnalytics ?? false,
             maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
             isInTrial: false,
             trialEndsAt,

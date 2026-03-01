@@ -293,6 +293,7 @@ model Channel {
   productCatalog       ProductCatalog[]
   promotions           Promotion[]
   customerMemories     CustomerMemory[]
+  botTokenUsage        BotTokenUsage[]
 
 
   @@map("channels")
@@ -760,6 +761,8 @@ model Plan {
   hasWhiteLabel      Boolean @default(false) @map("has_white_label")
   // SmartFlow content pipeline — image analysis + caption generation
   hasSmartFlow        Boolean @default(false) @map("has_smart_flow")
+  // Bot token usage analytics tab
+  hasBotUsageAnalytics Boolean @default(false) @map("has_bot_usage_analytics")
 
   // AI Image Generation quota (-1 = unlimited, 0 = BYOK only)
   maxAiImagesPerMonth Int @default(0) @map("max_ai_images_per_month")
@@ -1153,4 +1156,25 @@ model EmailTemplate {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("email_templates")
+}
+
+// ─── Bot Token Usage Analytics ─────────────────────────────────────────────
+// Records token usage per bot reply for usage tracking in the ChatBot Usage tab.
+// Only visible to channels whose user's plan has hasBotUsageAnalytics = true.
+model BotTokenUsage {
+  id               String   @id @default(cuid())
+  channelId        String   @map("channel_id")
+  provider         String   // openai, gemini, openrouter, synthetic
+  model            String   // gpt-4o-mini, gemini-2.0-flash, etc.
+  promptTokens     Int      @map("prompt_tokens")
+  completionTokens Int      @map("completion_tokens")
+  totalTokens      Int      @map("total_tokens")
+  conversationId   String?  @map("conversation_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, createdAt])
+  @@index([channelId, model, createdAt])
+  @@map("bot_token_usage")
 }

@@ -28,6 +28,7 @@ export type EffectiveLimits = {
     hasPrioritySupport: boolean
     hasWhiteLabel: boolean
     hasSmartFlow: boolean
+    hasBotUsageAnalytics: boolean
 }
 
 // Fields that can be boosted by addons
@@ -49,6 +50,7 @@ const FEATURE_FIELDS = [
     'hasPrioritySupport',
     'hasWhiteLabel',
     'hasSmartFlow',
+    'hasBotUsageAnalytics',
 ] as const
 
 /**
@@ -83,6 +85,7 @@ export async function getEffectiveLimits(userId: string): Promise<EffectiveLimit
         hasPrioritySupport: plan?.hasPrioritySupport ?? FREE_PLAN_DEFAULTS.hasPrioritySupport,
         hasWhiteLabel: plan?.hasWhiteLabel ?? FREE_PLAN_DEFAULTS.hasWhiteLabel,
         hasSmartFlow: plan?.hasSmartFlow ?? FREE_PLAN_DEFAULTS.hasSmartFlow,
+        hasBotUsageAnalytics: plan?.hasBotUsageAnalytics ?? FREE_PLAN_DEFAULTS.hasBotUsageAnalytics,
     }
 
     // No active add-ons → return base

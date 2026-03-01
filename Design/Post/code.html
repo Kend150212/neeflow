@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow Content Queue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff9d", /* Neon Mint Green Accent */
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#0a0a0a", /* Ultra Dark Mode Black */
+                        "surface-dark": "#161616",
+                        "accent-dark": "#242424",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-nav {
+            border-left: 3px solid #00ff9d;
+            background: linear-gradient(90deg, rgba(0, 255, 157, 0.1) 0%, rgba(0, 255, 157, 0) 100%);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 flex flex-col bg-background-light dark:bg-surface-dark border-r border-slate-200 dark:border-white/5">
+<div class="p-6 flex items-center gap-3">
+<div class="size-10 bg-primary rounded-xl flex items-center justify-center text-background-dark">
+<span class="material-symbols-outlined font-bold">blur_on</span>
+</div>
+<div>
+<h1 class="text-xl font-bold tracking-tight">Neeflow</h1>
+<p class="text-xs text-slate-500 dark:text-primary/70 uppercase tracking-widest font-semibold">Ultra Dark</p>
+</div>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<div class="px-3 py-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Main</div>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-accent-dark rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 active-nav text-primary bg-primary/5 rounded-lg" href="#">
+<span class="material-symbols-outlined">layers</span>
+<span class="text-sm font-medium">Content Queue</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-accent-dark rounded-lg" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="text-sm font-medium">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-accent-dark rounded-lg" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="text-sm font-medium">Accounts</span>
+</a>
+<div class="pt-6 px-3 py-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Filters</div>
+<div class="space-y-1">
+<label class="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-accent-dark rounded-lg">
+<input checked="" class="rounded border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary" type="checkbox"/>
+<span class="material-symbols-outlined text-sm">public</span>
+                    All Platforms
+                </label>
+<label class="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-accent-dark rounded-lg">
+<input checked="" class="rounded border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary" type="checkbox"/>
+<span class="material-symbols-outlined text-sm">camera_alt</span>
+                    Instagram
+                </label>
+<label class="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-accent-dark rounded-lg">
+<input checked="" class="rounded border-slate-300 dark:border-slate-700 bg-transparent text-primary focus:ring-primary" type="checkbox"/>
+<span class="material-symbols-outlined text-sm">movie</span>
+                    TikTok
+                </label>
+</div>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-white/5">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-accent-dark rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-y-auto">
+<!-- Header -->
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-8 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<h2 class="text-2xl font-bold">Content Queue</h2>
+<div class="h-6 w-px bg-slate-300 dark:bg-slate-700"></div>
+<div class="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full">
+<span class="material-symbols-outlined text-primary text-sm">event</span>
+<span class="text-xs font-bold text-primary">3 posts going out today</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="pl-10 pr-4 py-2 bg-slate-100 dark:bg-surface-dark border-none rounded-xl text-sm focus:ring-2 focus:ring-primary w-64" placeholder="Search queue..." type="text"/>
+</div>
+<button class="flex items-center gap-2 bg-primary text-background-dark px-4 py-2 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-lg">add</span>
+                    Create Post
+                </button>
+<button class="p-2 rounded-xl bg-slate-100 dark:bg-surface-dark text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="size-10 rounded-full bg-slate-200 dark:bg-accent-dark border border-slate-300 dark:border-primary/30 overflow-hidden">
+<img alt="User avatar" class="size-full object-cover" data-alt="User profile avatar image" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFlLYXDOvMn7vUSm3APtRlRv4pQQ5jC1K9EB5m0ocH_F5WFBPnclhff-64LQ8Q3oZNnUKLroFd9V7cPpvweBM8_lcKzFFZhuQ6Pow-zeRpHpshT_kk37cSY6tob1M9-cCXMMAXckTW3wbZWBvGc3W0W-kttzzVSywROBqgFBw9wBPFzd-X5qhIOyKShgeUee7nYsi_a72jn1YQHfhAAlwRMZc2IgdQwjCyaWXmkXJLnqvYy4Si7fCHPNAalwI7-P4ObLKso-eDzyg"/>
+</div>
+</div>
+</header>
+<!-- Queue Feed -->
+<div class="p-8 max-w-5xl mx-auto w-full space-y-8">
+<!-- Date Section -->
+<section>
+<div class="flex items-center gap-4 mb-6">
+<h3 class="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">Today, Oct 24</h3>
+<div class="flex-1 h-px bg-slate-200 dark:bg-white/5"></div>
+</div>
+<div class="space-y-4">
+<!-- Queue Item 1 -->
+<div class="group bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 rounded-xl p-5 hover:border-primary/50 transition-colors flex gap-6">
+<div class="w-48 h-48 flex-shrink-0 rounded-lg overflow-hidden relative border dark:border-white/5 bg-slate-100 dark:bg-accent-dark">
+<img alt="Tech setup" class="size-full object-cover" data-alt="Cyberpunk style tech setup image preview" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDk7BJliDBjREhz_9E2D13GoNCl-mXAYDiV_iT9yDsuJ_5oY_TW141g5FN7PkbrAmUFO46eqHSyY78T4e_PoGjG4QdbqM-w7wtMxHvW4l4oiD8hPFQsWpsKunETiO-JY6m8LfjNV__ZMPDpr3JuW-8pwTOtqJCrc7-VK8TSWIw2Cu7rt7s0qqHbQEiprHV2W7zpcMlSArS_KZdFXJ11b0HQRh45oaoTw36Qips3PJDnU8m5R3eRjh2ObANaqhOed6PUBGb9dX6tC84"/>
+<div class="absolute top-2 left-2 flex gap-1">
+<div class="size-6 bg-background-dark/80 backdrop-blur rounded flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm">camera_alt</span>
+</div>
+<div class="size-6 bg-background-dark/80 backdrop-blur rounded flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm">movie</span>
+</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<span class="text-lg font-bold">14:30 PM</span>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-primary/20 text-primary text-[10px] font-bold rounded uppercase tracking-wider border border-primary/30">Scheduled</span>
+<span class="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] font-bold rounded uppercase tracking-wider border border-blue-500/30">AI Optimized</span>
+</div>
+</div>
+<div class="flex gap-1">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">edit</span></button>
+<button class="p-2 text-slate-400 hover:text-red-400 transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-4 line-clamp-3">
+                                🚀 The future of workspace design is here. Minimalist, dark-themed, and highly efficient. We've been working on this new UI kit for months and it's finally ready for beta testing. #DesignSystem #UIUX #DarkTheme #Productivity
+                            </p>
+<div class="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5">
+<div class="flex items-center gap-4">
+<div class="flex -space-x-2">
+<div class="size-6 rounded-full border-2 border-surface-dark bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs">camera_alt</span>
+</div>
+<div class="size-6 rounded-full border-2 border-surface-dark bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs">movie</span>
+</div>
+</div>
+<span class="text-xs text-slate-500">Instagram &amp; TikTok Queue</span>
+</div>
+<div class="text-xs font-medium text-slate-400">Created 2h ago</div>
+</div>
+</div>
+</div>
+<!-- Queue Item 2 -->
+<div class="group bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 rounded-xl p-5 hover:border-primary/50 transition-colors flex gap-6">
+<div class="w-48 h-48 flex-shrink-0 rounded-lg overflow-hidden relative border dark:border-white/5 bg-slate-100 dark:bg-accent-dark">
+<img alt="Abstract gradient" class="size-full object-cover" data-alt="Abstract vibrant neon mint green gradient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDJc6LeY9NZa1IaQ6xu2fYeiaa3cg_WhUFFNF6z-b6AooJokGNdrG0LCQG-oj9mer-K2tbbqzza_rVi_InvprtKSVrMBelDuBYGMJme3ELv26GUMFnpowLd3dNIf8gUJVQHl8Eew-rO4CnHg2BPDvGSL2rrw3yslKkxvcNhgHOyoG1Y9cccL0qUj5dbQb4-eLBxw7nRSHcjl9nlMo54JUuXjNP_8N0SPwIzxJiavkNiaguAKALGkwQWoPc1tWDYbHZT4JFvk9ABA0"/>
+<div class="absolute top-2 left-2">
+<div class="size-6 bg-background-dark/80 backdrop-blur rounded flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm">work</span>
+</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<span class="text-lg font-bold">18:00 PM</span>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded uppercase tracking-wider border border-amber-500/30">Ready</span>
+</div>
+</div>
+<div class="flex gap-1">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">edit</span></button>
+<button class="p-2 text-slate-400 hover:text-red-400 transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-4 line-clamp-3">
+                                Why most agencies fail to scale in 2024. It comes down to content systems. Without a predictable way to generate and schedule high-quality assets, you're just playing a guessing game. 🧵
+                            </p>
+<div class="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5">
+<div class="flex items-center gap-4">
+<div class="size-6 rounded-full border-2 border-surface-dark bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs">work</span>
+</div>
+<span class="text-xs text-slate-500">LinkedIn Account (Corporate)</span>
+</div>
+<div class="text-xs font-medium text-slate-400">Created 1 day ago</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Date Section -->
+<section>
+<div class="flex items-center gap-4 mb-6">
+<h3 class="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">Tomorrow, Oct 25</h3>
+<div class="flex-1 h-px bg-slate-200 dark:bg-white/5"></div>
+</div>
+<div class="space-y-4">
+<!-- Queue Item 3 -->
+<div class="group bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 rounded-xl p-5 hover:border-primary/50 transition-colors flex gap-6">
+<div class="w-48 h-48 flex-shrink-0 rounded-lg overflow-hidden relative border dark:border-white/5 bg-slate-100 dark:bg-accent-dark">
+<div class="size-full flex items-center justify-center bg-accent-dark">
+<span class="material-symbols-outlined text-4xl text-slate-700">play_circle</span>
+</div>
+<div class="absolute top-2 left-2">
+<div class="size-6 bg-background-dark/80 backdrop-blur rounded flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm">movie</span>
+</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<span class="text-lg font-bold">10:15 AM</span>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-primary/20 text-primary text-[10px] font-bold rounded uppercase tracking-wider border border-primary/30">Scheduled</span>
+</div>
+</div>
+<div class="flex gap-1">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">edit</span></button>
+<button class="p-2 text-slate-400 hover:text-red-400 transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</div>
+<p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-4 line-clamp-3">
+                                [Short Form Video] 5 Content ideas for your next SaaS launch. We break down the exact hooks that generated 10k+ views in under 48 hours. #SaaSMarketing #Shorts
+                            </p>
+<div class="mt-auto flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5">
+<div class="flex items-center gap-4">
+<div class="size-6 rounded-full border-2 border-surface-dark bg-slate-800 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs">movie</span>
+</div>
+<span class="text-xs text-slate-500">YouTube &amp; TikTok</span>
+</div>
+<div class="text-xs font-medium text-slate-400">Created 3h ago</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Account Sidebar / Stats -->
+<aside class="w-80 hidden xl:flex flex-col bg-background-light dark:bg-surface-dark border-l border-slate-200 dark:border-white/5 p-6">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-6">Connected Accounts</h3>
+<div class="space-y-4">
+<div class="p-4 bg-slate-100 dark:bg-accent-dark rounded-xl border border-slate-200 dark:border-white/5">
+<div class="flex items-center gap-3 mb-4">
+<img alt="Account 1" class="size-8 rounded-full" data-alt="Small account profile circle icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAambbdFDBlot91Bbdm9fyYAq6aXpPzXn4L96Jwt_ruV81zJogWMYc4fiPudz2kgLVGEVZyGZKwIFPoa2eUDWjUPMrqgbVN5QcSVVJX06idGIxfmLPYtewiReHvq4WTSIExmSHPzzeT0CRPGTXcgz1CyqBiONf0CMgqs9Zf65ou4GxZCa2o6ZFkEQzBOjNMzp5Ib754UJXj9I5J1wv0zMToy0EYISTT7x5vLdMrLc8GKa4aaByh9YTKVSqec75AdsZvHeSpdXKIwco"/>
+<div>
+<p class="text-sm font-bold">@neeflow_design</p>
+<p class="text-[10px] text-slate-500">Instagram Professional</p>
+</div>
+<div class="ml-auto size-2 rounded-full bg-primary"></div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-white/5 p-2 rounded-lg text-center">
+<p class="text-[10px] text-slate-500">Posts</p>
+<p class="text-xs font-bold">128</p>
+</div>
+<div class="bg-white/5 p-2 rounded-lg text-center">
+<p class="text-[10px] text-slate-500">Reach</p>
+<p class="text-xs font-bold text-primary">+12.4%</p>
+</div>
+</div>
+</div>
+<div class="p-4 bg-slate-100 dark:bg-accent-dark rounded-xl border border-slate-200 dark:border-white/5 opacity-60">
+<div class="flex items-center gap-3 mb-4">
+<img alt="Account 2" class="size-8 rounded-full" data-alt="Small account profile circle icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBujLlqDJ9wpcWu_CphIp9G8uBU0cSPuvmYo1gXrGkhPuDs_2Xm6UZSTUZ6t56bBkLb3Vdif1DT-1iIS0JWrhvWGFNK6MQQVShN2RyPiDcdvZDd4ui8XIV1PgJH2dflhQBuDxZjgbDdn4Rt6MjodCaJptfTUBVDoC0fJZUzMpuFYPcRONiqhCCEfGbtmhGZ1nlj6FHfSZfyxiZONI9sOCGctlL_1V1wzDgI4Pb8wYBE5gFwDXWw70Ef2815HuQKlU_R2DGiinVLcE4"/>
+<div>
+<p class="text-sm font-bold">Neeflow Tech</p>
+<p class="text-[10px] text-slate-500">LinkedIn Page</p>
+</div>
+<div class="ml-auto size-2 rounded-full bg-slate-600"></div>
+</div>
+</div>
+<button class="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-500 hover:text-primary hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="text-xs font-bold uppercase">Connect New</span>
+</button>
+</div>
+<div class="mt-8">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500 mb-4">Queue Capacity</h3>
+<div class="w-full bg-slate-200 dark:bg-accent-dark h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-2/3"></div>
+</div>
+<p class="text-[10px] text-slate-500 mt-2">12 of 20 scheduled slots used this week.</p>
+</div>
+</aside>
+</div>
+</body></html>

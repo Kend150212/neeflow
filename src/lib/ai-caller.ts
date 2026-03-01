@@ -1,6 +1,9 @@
 /**
  * Shared AI caller utility — supports OpenAI, Gemini, OpenRouter, Synthetic,
  * and any OpenAI-compatible provider.
+ *
+ * callAI()          → returns string (backward-compatible)
+ * callAIWithUsage() → returns { text, promptTokens, completionTokens, model }
  */
 
 // Providers that use the OpenAI-compatible /v1/chat/completions API
@@ -10,9 +13,38 @@ const OPENAI_COMPATIBLE_PROVIDERS: Record<string, string> = {
     synthetic: 'https://api.synthetic.new/openai/v1',
 }
 
+export type AIUsageResult = {
+    text: string
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+    model: string
+}
+
 /**
- * Call an AI provider to generate text from system + user prompts.
- * Returns the raw string response.
+ * Call an AI provider and return text + token usage.
+ */
+export async function callAIWithUsage(
+    provider: string,
+    apiKey: string,
+    model: string,
+    systemPrompt: string,
+    userPrompt: string,
+    baseUrl?: string | null,
+): Promise<AIUsageResult> {
+    if (provider === 'gemini') {
+        return callGeminiWithUsage(apiKey, model, systemPrompt, userPrompt)
+    }
+
+    const base = baseUrl || OPENAI_COMPATIBLE_PROVIDERS[provider]
+    if (!base) {
+        throw new Error(`Unsupported AI provider: ${provider}`)
+    }
+    return callOpenAICompatibleWithUsage(base, apiKey, model, systemPrompt, userPrompt)
+}
+
+/**
+ * Backward-compatible wrapper — returns just the text string.
  */
 export async function callAI(
     provider: string,
@@ -22,26 +54,18 @@ export async function callAI(
     userPrompt: string,
     baseUrl?: string | null,
 ): Promise<string> {
-    if (provider === 'gemini') {
-        return callGemini(apiKey, model, systemPrompt, userPrompt)
-    }
-
-    // All other providers use OpenAI-compatible API
-    const base = baseUrl || OPENAI_COMPATIBLE_PROVIDERS[provider]
-    if (!base) {
-        throw new Error(`Unsupported AI provider: ${provider}`)
-    }
-    return callOpenAICompatible(base, apiKey, model, systemPrompt, userPrompt)
+    const result = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt, baseUrl)
+    return result.text
 }
 
 // ─── OpenAI-Compatible (OpenAI, OpenRouter, Synthetic, etc.) ────────
-async function callOpenAICompatible(
+async function callOpenAICompatibleWithUsage(
     baseUrl: string,
     apiKey: string,
     model: string,
     system: string,
     user: string,
-): Promise<string> {
+): Promise<AIUsageResult> {
     const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -65,16 +89,25 @@ async function callOpenAICompatible(
     }
 
     const data = await res.json()
-    return data.choices[0].message.content
+    const text = data.choices[0].message.content
+    const usage = data.usage || {}
+
+    return {
+        text,
+        promptTokens: usage.prompt_tokens ?? 0,
+        completionTokens: usage.completion_tokens ?? 0,
+        totalTokens: usage.total_tokens ?? (usage.prompt_tokens ?? 0) + (usage.completion_tokens ?? 0),
+        model: data.model || model,
+    }
 }
 
 // ─── Google Gemini ──────────────────────────────────────────────────
-async function callGemini(
+async function callGeminiWithUsage(
     apiKey: string,
     model: string,
     system: string,
     user: string,
-): Promise<string> {
+): Promise<AIUsageResult> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
     const res = await fetch(url, {
@@ -95,7 +128,16 @@ async function callGemini(
     }
 
     const data = await res.json()
-    return data.candidates[0].content.parts[0].text
+    const text = data.candidates[0].content.parts[0].text
+    const meta = data.usageMetadata || {}
+
+    return {
+        text,
+        promptTokens: meta.promptTokenCount ?? 0,
+        completionTokens: meta.candidatesTokenCount ?? 0,
+        totalTokens: meta.totalTokenCount ?? (meta.promptTokenCount ?? 0) + (meta.candidatesTokenCount ?? 0),
+        model,
+    }
 }
 
 /**

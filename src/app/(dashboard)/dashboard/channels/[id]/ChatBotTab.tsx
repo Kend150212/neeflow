@@ -86,6 +86,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [config, setConfig] = useState<BotConfigData | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [planLimits, setPlanLimits] = useState<Record<string, any> | null>(null)
 
     // Training inputs
     const [newTrainingText, setNewTrainingText] = useState('')
@@ -116,7 +117,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>([])
 
     // Tab navigation
-    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'hours' | 'scope' | 'chattest' | 'learning'>('general')
+    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'hours' | 'scope' | 'chattest' | 'learning' | 'usage'>('general')
 
 
     const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products' | 'promotions' | 'forbidden'>('saved')
@@ -193,6 +194,20 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
             const res = await fetch(`/api/admin/channels/${channelId}/bot-config/embed`)
             if (res.ok) setEmbedStats(await res.json())
         } catch { /* ignore */ }
+    }
+
+    // Bot Usage Analytics state
+    const [usageData, setUsageData] = useState<any>(null)
+    const [usageLoading, setUsageLoading] = useState(false)
+    const [usagePeriod, setUsagePeriod] = useState<'today' | '7d' | '30d' | 'year'>('30d')
+
+    const loadUsageData = async (period: string) => {
+        setUsageLoading(true)
+        try {
+            const res = await fetch(`/api/admin/channels/${channelId}/bot-config/usage?period=${period}`)
+            if (res.ok) setUsageData(await res.json())
+        } catch { /* ignore */ }
+        setUsageLoading(false)
     }
 
     // Normalize AI-returned learning data to safe types (AI can return objects instead of strings)
@@ -462,6 +477,12 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                 }
             } catch { /* ignore */ }
 
+            // Fetch plan limits for feature gating
+            try {
+                const planRes = await fetch('/api/user/plan')
+                if (planRes.ok) setPlanLimits(await planRes.json())
+            } catch { /* ignore */ }
+
             setLoading(false)
         }
         fetchConfig()
@@ -705,6 +726,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
 
                         { key: 'learning' as const, icon: Zap, label: '🧠 Learning', color: 'text-yellow-500' },
+                        ...(planLimits?.hasBotUsageAnalytics ? [{ key: 'usage' as const, icon: BarChart3, label: '📊 Usage', color: 'text-violet-500' }] : []),
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -2979,6 +3001,132 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                         )}
                     </div>
                 )}
+
+                {/* ─── USAGE ANALYTICS TAB ─────────────────────── */}
+                {botTab === 'usage' && planLimits?.hasBotUsageAnalytics && (() => {
+                    if (!usageData && !usageLoading) loadUsageData(usagePeriod)
+                    const periods = [
+                        { key: 'today' as const, label: 'Hôm nay' },
+                        { key: '7d' as const, label: '7 ngày' },
+                        { key: '30d' as const, label: '30 ngày' },
+                        { key: 'year' as const, label: 'Năm nay' },
+                    ]
+                    const maxBarTokens = usageData?.byDate?.reduce((m: number, d: any) => Math.max(m, d.tokens), 0) || 1
+                    const maxModelTokens = usageData?.byModel?.reduce((m: number, d: any) => Math.max(m, d.tokens), 0) || 1
+                    const fmtNum = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+                    const modelColors = ['bg-violet-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500']
+                    return (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div>
+                                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                                        <BarChart3 className="h-4 w-4 text-violet-500" />
+                                        📊 Bot Usage Analytics
+                                    </h3>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">Token sử dụng mỗi lần bot trả lời</p>
+                                </div>
+                                <div className="flex gap-1">
+                                    {periods.map(p => (
+                                        <button key={p.key}
+                                            onClick={() => { setUsagePeriod(p.key); loadUsageData(p.key) }}
+                                            className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors ${usagePeriod === p.key ? 'bg-violet-500 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                                        >{p.label}</button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {usageLoading && (
+                                <div className="flex items-center justify-center py-12 text-muted-foreground text-sm gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Đang tải...
+                                </div>
+                            )}
+                            {!usageLoading && !usageData && (
+                                <div className="text-center py-10 text-muted-foreground text-sm">Không có dữ liệu</div>
+                            )}
+                            {!usageLoading && usageData && (
+                                <>
+                                    {/* Stat Cards */}
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="rounded-xl border bg-muted/30 p-3 text-center">
+                                            <p className="text-[10px] text-muted-foreground mb-1">Tổng tokens</p>
+                                            <p className="text-xl font-bold text-violet-500">{fmtNum(usageData.totalTokens)}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">↑ {fmtNum(usageData.promptTokens)} in / {fmtNum(usageData.completionTokens)} out</p>
+                                        </div>
+                                        <div className="rounded-xl border bg-muted/30 p-3 text-center">
+                                            <p className="text-[10px] text-muted-foreground mb-1">Số lần bot trả lời</p>
+                                            <p className="text-xl font-bold text-blue-500">{fmtNum(usageData.repliesCount)}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">
+                                                {usageData.repliesCount > 0 ? `~${fmtNum(Math.round(usageData.totalTokens / usageData.repliesCount))} token/reply` : '—'}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border bg-muted/30 p-3 text-center">
+                                            <p className="text-[10px] text-muted-foreground mb-1">Model chính</p>
+                                            <p className="text-sm font-bold text-emerald-500 truncate">{usageData.topModel || '—'}</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1 capitalize">{usageData.provider || '—'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* API Key */}
+                                    {usageData.apiKeyMasked && (
+                                        <div className="flex items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-[11px]">
+                                            <span className="text-muted-foreground">🔑 API Key:</span>
+                                            <code className="font-mono text-yellow-600 dark:text-yellow-400">{usageData.apiKeyMasked}</code>
+                                            <span className="text-muted-foreground ml-auto capitalize">{usageData.provider}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Bar Chart by Day */}
+                                    {usageData.byDate?.length > 0 && (
+                                        <div className="rounded-xl border bg-muted/20 p-3">
+                                            <p className="text-[11px] font-medium text-muted-foreground mb-3">Token theo ngày</p>
+                                            <div className="flex items-end gap-0.5 h-24">
+                                                {usageData.byDate.map((d: any) => {
+                                                    const pct = Math.max(4, Math.round((d.tokens / maxBarTokens) * 100))
+                                                    return (
+                                                        <div key={d.date} className="flex-1 flex flex-col items-center gap-1" title={`${d.date}: ${fmtNum(d.tokens)} tokens`}>
+                                                            <div className="w-full rounded-sm bg-violet-500/70 hover:bg-violet-500 transition-all cursor-default" style={{ height: `${pct}%` }} />
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                            <div className="flex justify-between mt-1">
+                                                <span className="text-[10px] text-muted-foreground">{usageData.byDate[0]?.date?.slice(5)}</span>
+                                                <span className="text-[10px] text-muted-foreground">{usageData.byDate[usageData.byDate.length - 1]?.date?.slice(5)}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Model Breakdown */}
+                                    {usageData.byModel?.length > 0 && (
+                                        <div className="rounded-xl border bg-muted/20 p-3">
+                                            <p className="text-[11px] font-medium text-muted-foreground mb-3">Phân tích theo Model</p>
+                                            <div className="space-y-2.5">
+                                                {usageData.byModel.map((m: any, i: number) => {
+                                                    const pct = Math.max(4, Math.round((m.tokens / maxModelTokens) * 100))
+                                                    return (
+                                                        <div key={m.model} className="space-y-1">
+                                                            <div className="flex justify-between items-center text-[11px]">
+                                                                <span className="font-mono font-medium">{m.model}</span>
+                                                                <div className="flex gap-3 text-muted-foreground">
+                                                                    <span>{fmtNum(m.tokens)} tokens</span>
+                                                                    <span>{m.replies} replies</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="h-1.5 w-full rounded-full bg-muted">
+                                                                <div className={`h-1.5 rounded-full ${modelColors[i % modelColors.length]}`} style={{ width: `${pct}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )
+                })()}
+
 
 
                 {/* ─── Bottom Save ─────────────────────── */}
