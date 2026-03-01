@@ -1940,7 +1940,6 @@ export async function POST(
         data: { status: 'PUBLISHING' },
     })
 
-    const results: { platform: string; accountId: string; success: boolean; error?: string; externalId?: string }[] = []
 
     // Get pending platform statuses
     const pendingStatuses = post.platformStatuses.filter((ps) => ps.status === 'pending')
