@@ -1212,8 +1212,8 @@ async function publishToLinkedIn(
                     const uploadToken = initData.value?.uploadToken
                     const liVideoUrn = initData.value?.video
 
-                    if (!liVideoUrn || uploadInstructions.length === 0 || !uploadToken) {
-                        console.error('[LinkedIn] Video init missing required fields:', JSON.stringify(initData))
+                    if (!liVideoUrn || uploadInstructions.length === 0) {
+                        console.error('[LinkedIn] Video init missing required fields (no URN or upload instructions):', JSON.stringify({ liVideoUrn, chunks: uploadInstructions.length, uploadToken }))
                     } else {
                         console.log(`[LinkedIn] Video URN: ${liVideoUrn}, chunks: ${uploadInstructions.length}`)
 
