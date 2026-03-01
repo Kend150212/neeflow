@@ -67,10 +67,36 @@ function statusBadge(status: string, t: (k: string) => string) {
     return <Badge variant="outline" className="text-xs">{status}</Badge>
 }
 
+// ─── Custom Dark Tooltip ────────────────────────────────────────────────────
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
+    if (!active || !payload?.length) return null
+    const date = label ? new Date(label + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) : ''
+    return (
+        <div style={{
+            background: 'var(--color-card, #0d0d0d)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 12,
+            padding: '10px 14px',
+            fontSize: 12,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            minWidth: 140,
+        }}>
+            <p style={{ color: 'var(--color-muted-foreground)', marginBottom: 6, fontWeight: 600 }}>{date}</p>
+            {payload.map(entry => (
+                <div key={entry.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 3 }}>
+                    <span style={{ color: entry.color }}>{entry.name}</span>
+                    <span style={{ color: 'var(--color-foreground)', fontWeight: 700 }}>{entry.value}</span>
+                </div>
+            ))}
+        </div>
+    )
+}
+
 function fmtDate(d: string | null) {
     if (!d) return ''
     return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
@@ -234,10 +260,10 @@ export default function DashboardPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {statCards.map(card => (
                     <Link key={card.label} href={card.href} className="group">
-                        <Card className="relative overflow-hidden hover:border-primary/40 transition-colors">
+                        <Card className="relative overflow-hidden border border-border/60 hover:border-primary/30 transition-all duration-200 hover:shadow-[0_0_20px_rgba(25,230,94,0.08)]">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium text-muted-foreground">{card.label}</CardTitle>
-                                <div className={`p-1.5 rounded-lg ${card.bg}`}>
+                                <div className={`p-2 rounded-xl ${card.bg}`}>
                                     <card.icon className={`h-4 w-4 ${card.color}`} />
                                 </div>
                             </CardHeader>
@@ -245,16 +271,16 @@ export default function DashboardPage() {
                                 <div className="text-2xl font-bold">{card.value}</div>
                                 {card.sub && <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>}
                             </CardContent>
-                            <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary/20 to-primary/60" />
+                            <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
                         </Card>
                     </Link>
                 ))}
             </div>
 
             {/* Status Pills row */}
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
                 {statusPills.map(p => (
-                    <div key={p.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 text-sm">
+                    <div key={p.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-card/60 text-sm">
                         <p.icon className={`h-3.5 w-3.5 ${p.color}`} />
                         <span className="font-semibold">{p.value}</span>
                         <span className="text-muted-foreground">{p.label}</span>
@@ -281,8 +307,7 @@ export default function DashboardPage() {
                                     tickLine={false}
                                 />
                                 <YAxis hide allowDecimals={false} />
-                                <Tooltip
-                                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                                <Tooltip content={<CustomTooltip />}
                                     labelFormatter={v => new Date(v + 'T12:00:00').toLocaleDateString()}
                                 />
                                 <Bar dataKey="published" name={t('dashboard.published')} fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
@@ -303,7 +328,7 @@ export default function DashboardPage() {
                         {upcoming.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-4 text-center">{t('dashboard.noUpcoming')}</p>
                         ) : upcoming.map(p => (
-                            <Link key={p.id} href={`/dashboard/posts/${p.id}`} className="flex flex-col gap-0.5 p-2.5 rounded-lg hover:bg-accent transition-colors">
+                            <Link key={p.id} href={`/dashboard/posts/${p.id}`} className="flex flex-col gap-0.5 p-2.5 rounded-xl hover:bg-primary/8 transition-colors">
                                 <span className="text-sm font-medium truncate">{p.content?.slice(0, 60) || '(No content)'}</span>
                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                     <Clock className="h-3 w-3" />
@@ -328,7 +353,7 @@ export default function DashboardPage() {
                         {recentPosts.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-4 text-center">{t('dashboard.noRecent')}</p>
                         ) : recentPosts.map(p => (
-                            <Link key={p.id} href={`/dashboard/posts/${p.id}`} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent transition-colors">
+                            <Link key={p.id} href={`/dashboard/posts/${p.id}`} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-primary/8 transition-colors">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">{p.content?.slice(0, 60) || '(No content)'}</p>
                                     <p className="text-xs text-muted-foreground">{p.channel.displayName || p.channel.name}</p>
@@ -379,7 +404,7 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent className="space-y-1">
                             {quickActions.map(a => (
-                                <Link key={a.label} href={a.href} className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors group">
+                                <Link key={a.label} href={a.href} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-primary/8 transition-colors group">
                                     <div className="p-1.5 rounded-lg bg-muted">
                                         <a.icon className={`h-4 w-4 ${a.color}`} />
                                     </div>
