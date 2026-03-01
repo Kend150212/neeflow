@@ -2203,16 +2203,23 @@ export default function ChannelDetailPage({
                                         />
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                        <Button
-                                            variant={hideDisabled ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => setHideDisabled(!hideDisabled)}
-                                            className="gap-1.5 h-8 text-xs"
-                                            title={hideDisabled ? 'Show all accounts' : 'Hide disabled accounts'}
-                                        >
-                                            {hideDisabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                                            {hideDisabled ? t('channels.platformActions.showAll') : t('channels.platformActions.hideDisabled')}
-                                        </Button>
+                                        {/* View filter — 2 explicit buttons so current state is always obvious */}
+                                        <div className="flex items-center rounded-md border overflow-hidden">
+                                            <button
+                                                onClick={() => setHideDisabled(false)}
+                                                className={`flex items-center gap-1 px-2.5 h-8 text-xs font-medium transition-colors ${!hideDisabled ? 'bg-foreground text-background' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
+                                            >
+                                                <Eye className="h-3.5 w-3.5" />
+                                                {t('channels.platformActions.showAll')}
+                                            </button>
+                                            <button
+                                                onClick={() => setHideDisabled(true)}
+                                                className={`flex items-center gap-1 px-2.5 h-8 text-xs font-medium transition-colors border-l ${hideDisabled ? 'bg-foreground text-background' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
+                                            >
+                                                <EyeOff className="h-3.5 w-3.5" />
+                                                {t('channels.platformActions.hideDisabled')}
+                                            </button>
+                                        </div>
                                         <Button
                                             variant="outline"
                                             size="sm"
