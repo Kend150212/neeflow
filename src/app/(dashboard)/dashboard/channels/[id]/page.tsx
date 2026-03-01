@@ -1257,7 +1257,7 @@ export default function ChannelDetailPage({
                     </TabsTrigger>
                     <TabsTrigger value="platforms" className="gap-1.5 text-xs">
                         <Globe className="h-3.5 w-3.5" />
-                        <span className="hidden lg:inline">Accounts</span>
+                        <span className="hidden lg:inline">Connections</span>
                     </TabsTrigger>
                     <TabsTrigger value="ai" className="gap-1.5 text-xs">
                         <Bot className="h-3.5 w-3.5" />
