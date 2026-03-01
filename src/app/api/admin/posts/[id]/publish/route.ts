@@ -1387,8 +1387,29 @@ async function publishToLinkedIn(
     if (!res.ok) {
         const errText = await res.text()
         console.error('[LinkedIn] Create post error:', errText)
+
+        // Handle duplicate post detection gracefully — LinkedIn returns 422 with DUPLICATE_POST
+        // when the same content is published twice. Extract the existing post URN and treat as success.
+        if (res.status === 422) {
+            try {
+                const errJson = JSON.parse(errText)
+                const isDuplicate = errJson?.errorDetails?.inputErrors?.some(
+                    (e: any) => e.code === 'DUPLICATE_POST'
+                )
+                if (isDuplicate) {
+                    // Try to extract the existing URN from the error message
+                    // e.g. "duplicate of urn:li:share:7433941389383692288"
+                    const urnMatch = errJson?.message?.match(/urn:li:share:\d+/)
+                    const existingUrn = urnMatch ? urnMatch[0] : 'duplicate'
+                    console.warn('[LinkedIn] Duplicate post detected — existing URN:', existingUrn)
+                    return { externalId: existingUrn }
+                }
+            } catch { /* not JSON, fall through */ }
+        }
+
         throw new Error(`LinkedIn publish failed: ${errText}`)
     }
+
 
     // LinkedIn returns the post URN in x-restli-id header
     const postUrn = res.headers.get('x-restli-id') || res.headers.get('x-linkedin-id') || ''
