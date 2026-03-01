@@ -25,6 +25,14 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { PlatformIcon } from '@/components/platform-icons'
 import { toast } from 'sonner'
@@ -693,6 +701,13 @@ export default function CalendarPage() {
     const [draggedId, setDraggedId] = useState<string | null>(null)
     const [draggedPost, setDraggedPost] = useState<CalendarPost | null>(null)
 
+    // Reschedule confirmation modal state
+    const [pendingDrop, setPendingDrop] = useState<{
+        post: CalendarPost
+        newDateStr: string   // YYYY-MM-DD of the drop target
+        oldScheduledAt: string | null
+    } | null>(null)
+
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -864,7 +879,7 @@ export default function CalendarPage() {
         setDraggedPost(post)
     }
 
-    const handleDragEnd = async (event: DragEndEvent) => {
+    const handleDragEnd = (event: DragEndEvent) => {
         setDraggedId(null)
         setDraggedPost(null)
 
@@ -881,43 +896,55 @@ export default function CalendarPage() {
         // Skip if dropped on same day
         if (droppedDateStr === oldDateStr) return
 
-        // Calculate new scheduledAt (keep same time, change date)
-        const newDate = new Date(droppedDateStr + 'T00:00:00')
-        newDate.setHours(oldDate.getHours(), oldDate.getMinutes(), 0, 0)
+        // Show confirmation modal — user chooses to keep or change the time
+        setPendingDrop({ post, newDateStr: droppedDateStr, oldScheduledAt: post.scheduledAt })
+    }
+
+    // Called after user chooses in the modal
+    const confirmReschedule = async (keepTime: boolean) => {
+        if (!pendingDrop) return
+        const { post, newDateStr, oldScheduledAt } = pendingDrop
+        setPendingDrop(null)
+
+        const oldDate = getPostDate(post)
+
+        // Build new datetime
+        const newDate = new Date(`${newDateStr}T00:00:00`)
+        if (keepTime) {
+            // Preserve original HH:MM
+            newDate.setHours(oldDate.getHours(), oldDate.getMinutes(), 0, 0)
+        } else {
+            // Default to noon on the new day
+            newDate.setHours(9, 0, 0, 0)
+        }
         const newScheduledAt = newDate.toISOString()
-        const oldScheduledAt = post.scheduledAt
 
         // Optimistic update
         setPosts(prev => prev.map(p =>
-            p.id === post.id
-                ? { ...p, scheduledAt: newScheduledAt }
-                : p
+            p.id === post.id ? { ...p, scheduledAt: newScheduledAt } : p
         ))
 
-        // Format display date for toast
         const displayDate = newDate.toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', {
             weekday: 'short', month: 'short', day: 'numeric',
         })
+        const displayTime = newDate.toLocaleTimeString(locale === 'vi' ? 'vi-VN' : 'en-US', {
+            hour: '2-digit', minute: '2-digit',
+        })
 
-        // API call
         try {
             const res = await fetch(`/api/admin/posts/${post.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ scheduledAt: newScheduledAt }),
             })
-
             if (!res.ok) throw new Error('Failed')
 
-            toast.success(`${L.movedTo} ${displayDate}`, {
+            toast.success(`${L.movedTo} ${displayDate} ${displayTime}`, {
                 action: {
                     label: L.undo,
                     onClick: async () => {
-                        // Undo: revert to old date
                         setPosts(prev => prev.map(p =>
-                            p.id === post.id
-                                ? { ...p, scheduledAt: oldScheduledAt }
-                                : p
+                            p.id === post.id ? { ...p, scheduledAt: oldScheduledAt } : p
                         ))
                         await fetch(`/api/admin/posts/${post.id}`, {
                             method: 'PATCH',
@@ -930,9 +957,7 @@ export default function CalendarPage() {
         } catch {
             // Revert on error
             setPosts(prev => prev.map(p =>
-                p.id === post.id
-                    ? { ...p, scheduledAt: oldScheduledAt }
-                    : p
+                p.id === post.id ? { ...p, scheduledAt: oldScheduledAt } : p
             ))
             toast.error(locale === 'vi' ? 'Không thể di chuyển bài viết' : 'Failed to move post')
         }
@@ -946,252 +971,303 @@ export default function CalendarPage() {
     // ─── Render ──────────────────────────────────────────────
 
     return (
-        <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
-        >
-            <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
-                {/* ── Header ── */}
-                <div className="flex flex-col gap-3 pb-3 border-b px-1 shrink-0">
-                    {/* Row 1: Title + nav + view toggle */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <div className="flex items-center gap-1 mr-2">
-                            <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                            <h1 className="text-lg font-bold tracking-tight">{L.title}</h1>
-                        </div>
+        <>
+            <DndContext
+                sensors={sensors}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
+            >
+                <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
+                    {/* ── Header ── */}
+                    <div className="flex flex-col gap-3 pb-3 border-b px-1 shrink-0">
+                        {/* Row 1: Title + nav + view toggle */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1 mr-2">
+                                <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+                                <h1 className="text-lg font-bold tracking-tight">{L.title}</h1>
+                            </div>
 
-                        {/* Navigation */}
-                        <Button variant="outline" size="sm" onClick={handleToday} className="cursor-pointer h-8 text-xs">
-                            {L.today}
-                        </Button>
-                        <div className="flex items-center gap-0.5">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer" onClick={handlePrev}>
-                                <ChevronLeft className="h-4 w-4" />
+                            {/* Navigation */}
+                            <Button variant="outline" size="sm" onClick={handleToday} className="cursor-pointer h-8 text-xs">
+                                {L.today}
                             </Button>
-                            <span className="text-sm font-semibold min-w-[160px] text-center">{title}</span>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer" onClick={handleNext}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
+                            <div className="flex items-center gap-0.5">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer" onClick={handlePrev}>
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="text-sm font-semibold min-w-[160px] text-center">{title}</span>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer" onClick={handleNext}>
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
 
-                        {/* View toggle */}
-                        <div className="flex items-center rounded-lg border p-0.5 ml-auto">
-                            <button
-                                onClick={() => setView('month')}
-                                className={cn('px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer', view === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
-                            >
-                                {L.month}
-                            </button>
-                            <button
-                                onClick={() => setView('week')}
-                                className={cn('px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer', view === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
-                            >
-                                {L.week}
-                            </button>
-                        </div>
-
-                        {/* Create */}
-                        <Button size="sm" className="cursor-pointer h-8 gap-1.5" onClick={() => router.push('/dashboard/posts/compose')}>
-                            <Plus className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">{L.createPost}</span>
-                        </Button>
-
-                        {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                    </div>
-
-                    {/* Row 2: Channel filter + Platform pills + Best Times + Country */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {/* Channel select */}
-                        <Select value={channelId} onValueChange={setChannelId}>
-                            <SelectTrigger className="h-8 text-xs w-44">
-                                <SelectValue placeholder={L.allChannels} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">{L.allChannels}</SelectItem>
-                                {channels.map(ch => (
-                                    <SelectItem key={ch.id} value={ch.id}>{ch.displayName || ch.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                        {/* Platform filter pills */}
-                        <div className="flex items-center gap-1 flex-wrap">
-                            {PLATFORMS.map(platform => {
-                                const isActive = activePlatforms.has(platform)
-                                return (
-                                    <button
-                                        key={platform}
-                                        onClick={() => togglePlatform(platform)}
-                                        title={platform.charAt(0).toUpperCase() + platform.slice(1)}
-                                        className={cn(
-                                            'w-7 h-7 flex items-center justify-center rounded-full border transition-all cursor-pointer',
-                                            isActive
-                                                ? `${PLATFORM_COLORS[platform]} text-white border-transparent shadow-sm`
-                                                : 'bg-transparent text-muted-foreground border-muted hover:border-muted-foreground'
-                                        )}
-                                    >
-                                        <PlatformIcon platform={platform} size="xs" />
-                                    </button>
-                                )
-                            })}
-                            {activePlatforms.size > 0 && (
+                            {/* View toggle */}
+                            <div className="flex items-center rounded-lg border p-0.5 ml-auto">
                                 <button
-                                    onClick={() => setActivePlatforms(new Set())}
-                                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer underline underline-offset-2"
+                                    onClick={() => setView('month')}
+                                    className={cn('px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer', view === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
                                 >
-                                    {locale === 'vi' ? 'Xoá bộ lọc' : 'Clear'}
+                                    {L.month}
                                 </button>
-                            )}
+                                <button
+                                    onClick={() => setView('week')}
+                                    className={cn('px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer', view === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+                                >
+                                    {L.week}
+                                </button>
+                            </div>
+
+                            {/* Create */}
+                            <Button size="sm" className="cursor-pointer h-8 gap-1.5" onClick={() => router.push('/dashboard/posts/compose')}>
+                                <Plus className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">{L.createPost}</span>
+                            </Button>
+
+                            {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                         </div>
 
-                        {/* Failed toggle */}
-                        <button
-                            onClick={() => setShowFailed(v => !v)}
-                            className={cn(
-                                'flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold border transition-all cursor-pointer',
-                                showFailed
-                                    ? 'bg-red-500 text-white border-transparent'
-                                    : 'bg-transparent text-red-500 border-red-500/40 hover:border-red-500'
-                            )}
-                        >
-                            <span className="w-2 h-2 rounded-full bg-red-500" style={showFailed ? { background: 'rgba(255,255,255,0.7)' } : {}} />
-                            {locale === 'vi' ? 'Thất bại' : 'Failed'}
-                        </button>
+                        {/* Row 2: Channel filter + Platform pills + Best Times + Country */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Channel select */}
+                            <Select value={channelId} onValueChange={setChannelId}>
+                                <SelectTrigger className="h-8 text-xs w-44">
+                                    <SelectValue placeholder={L.allChannels} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">{L.allChannels}</SelectItem>
+                                    {channels.map(ch => (
+                                        <SelectItem key={ch.id} value={ch.id}>{ch.displayName || ch.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                        {/* Spacer */}
-                        <div className="flex-1" />
+                            {/* Platform filter pills */}
+                            <div className="flex items-center gap-1 flex-wrap">
+                                {PLATFORMS.map(platform => {
+                                    const isActive = activePlatforms.has(platform)
+                                    return (
+                                        <button
+                                            key={platform}
+                                            onClick={() => togglePlatform(platform)}
+                                            title={platform.charAt(0).toUpperCase() + platform.slice(1)}
+                                            className={cn(
+                                                'w-7 h-7 flex items-center justify-center rounded-full border transition-all cursor-pointer',
+                                                isActive
+                                                    ? `${PLATFORM_COLORS[platform]} text-white border-transparent shadow-sm`
+                                                    : 'bg-transparent text-muted-foreground border-muted hover:border-muted-foreground'
+                                            )}
+                                        >
+                                            <PlatformIcon platform={platform} size="xs" />
+                                        </button>
+                                    )
+                                })}
+                                {activePlatforms.size > 0 && (
+                                    <button
+                                        onClick={() => setActivePlatforms(new Set())}
+                                        className="text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer underline underline-offset-2"
+                                    >
+                                        {locale === 'vi' ? 'Xoá bộ lọc' : 'Clear'}
+                                    </button>
+                                )}
+                            </div>
 
-                        {/* Country selector */}
-                        <Select value={country} onValueChange={setCountry}>
-                            <SelectTrigger className="h-8 text-xs w-36">
-                                <Globe className="h-3 w-3 mr-1" />
-                                <SelectValue placeholder="Auto" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="auto">🌍 Auto</SelectItem>
-                                {COUNTRY_OPTIONS.map(c => (
-                                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            {/* Failed toggle */}
+                            <button
+                                onClick={() => setShowFailed(v => !v)}
+                                className={cn(
+                                    'flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold border transition-all cursor-pointer',
+                                    showFailed
+                                        ? 'bg-red-500 text-white border-transparent'
+                                        : 'bg-transparent text-red-500 border-red-500/40 hover:border-red-500'
+                                )}
+                            >
+                                <span className="w-2 h-2 rounded-full bg-red-500" style={showFailed ? { background: 'rgba(255,255,255,0.7)' } : {}} />
+                                {locale === 'vi' ? 'Thất bại' : 'Failed'}
+                            </button>
 
-                        {/* Best Times toggle button */}
-                        <button
-                            onClick={() => setShowBestTimes(prev => !prev)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shadow-md transition-all ${showBestTimes
-                                ? 'bg-violet-500 text-white'
-                                : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-                                }`}
-                        >
-                            {loadingBestTimes ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                                <Sparkles className="h-3.5 w-3.5" />
-                            )}
-                            {L.bestTimes}
-                        </button>
+                            {/* Spacer */}
+                            <div className="flex-1" />
+
+                            {/* Country selector */}
+                            <Select value={country} onValueChange={setCountry}>
+                                <SelectTrigger className="h-8 text-xs w-36">
+                                    <Globe className="h-3 w-3 mr-1" />
+                                    <SelectValue placeholder="Auto" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="auto">🌍 Auto</SelectItem>
+                                    {COUNTRY_OPTIONS.map(c => (
+                                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            {/* Best Times toggle button */}
+                            <button
+                                onClick={() => setShowBestTimes(prev => !prev)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shadow-md transition-all ${showBestTimes
+                                    ? 'bg-violet-500 text-white'
+                                    : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                                    }`}
+                            >
+                                {loadingBestTimes ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                )}
+                                {L.bestTimes}
+                            </button>
+                        </div>
+
+                        {/* Best Times notification: not enough posts */}
+                        {showBestTimes && bestTimesMessage && (
+                            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs">
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                <span>
+                                    {locale === 'vi'
+                                        ? `Cần ít nhất ${bestTimesMinRequired} bài đã đăng để phân tích giờ tốt nhất. Hiện tại: ${bestTimesPublishedCount} bài.`
+                                        : bestTimesMessage}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Best Times info: data-driven indicator */}
+                        {showBestTimes && !bestTimesMessage && bestTimeSlots.length > 0 && (
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs">
+                                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                                <span>
+                                    {locale === 'vi'
+                                        ? `Gợi ý dựa trên ${bestTimesPublishedCount} bài đã đăng của bạn`
+                                        : `Suggestions based on your ${bestTimesPublishedCount} published posts`}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Row 3: Color legend (when best times is active and has data) */}
+                        {showBestTimes && bestTimeSlots.length > 0 && channelId !== 'all' && (
+                            <div className="flex items-center gap-4 text-[10px]">
+                                <span className="text-muted-foreground font-medium uppercase tracking-wider">
+                                    {locale === 'vi' ? 'Chú thích:' : 'Legend:'}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                                    <span className="text-emerald-700 dark:text-emerald-300 font-medium">{L.legend.best} (80-100)</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                                    <span className="text-amber-700 dark:text-amber-300 font-medium">{L.legend.good} (60-79)</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
+                                    <span className="text-orange-700 dark:text-orange-300 font-medium">{L.legend.fair} (40-59)</span>
+                                </span>
+                                <span className="flex items-center gap-1 ml-2">
+                                    <span className="text-violet-600 dark:text-violet-400">🎉</span>
+                                    <span className="text-muted-foreground">{locale === 'vi' ? 'Ngày lễ boost' : 'Holiday boost'}</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="text-amber-600 dark:text-amber-400">🏠</span>
+                                    <span className="text-muted-foreground">{locale === 'vi' ? 'Ngày nghỉ gia đình' : 'Family holiday'}</span>
+                                </span>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Best Times notification: not enough posts */}
-                    {showBestTimes && bestTimesMessage && (
-                        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs">
-                            <AlertCircle className="h-4 w-4 shrink-0" />
-                            <span>
-                                {locale === 'vi'
-                                    ? `Cần ít nhất ${bestTimesMinRequired} bài đã đăng để phân tích giờ tốt nhất. Hiện tại: ${bestTimesPublishedCount} bài.`
-                                    : bestTimesMessage}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Best Times info: data-driven indicator */}
-                    {showBestTimes && !bestTimesMessage && bestTimeSlots.length > 0 && (
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs">
-                            <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                            <span>
-                                {locale === 'vi'
-                                    ? `Gợi ý dựa trên ${bestTimesPublishedCount} bài đã đăng của bạn`
-                                    : `Suggestions based on your ${bestTimesPublishedCount} published posts`}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Row 3: Color legend (when best times is active and has data) */}
-                    {showBestTimes && bestTimeSlots.length > 0 && channelId !== 'all' && (
-                        <div className="flex items-center gap-4 text-[10px]">
-                            <span className="text-muted-foreground font-medium uppercase tracking-wider">
-                                {locale === 'vi' ? 'Chú thích:' : 'Legend:'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                                <span className="text-emerald-700 dark:text-emerald-300 font-medium">{L.legend.best} (80-100)</span>
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                                <span className="text-amber-700 dark:text-amber-300 font-medium">{L.legend.good} (60-79)</span>
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-                                <span className="text-orange-700 dark:text-orange-300 font-medium">{L.legend.fair} (40-59)</span>
-                            </span>
-                            <span className="flex items-center gap-1 ml-2">
-                                <span className="text-violet-600 dark:text-violet-400">🎉</span>
-                                <span className="text-muted-foreground">{locale === 'vi' ? 'Ngày lễ boost' : 'Holiday boost'}</span>
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <span className="text-amber-600 dark:text-amber-400">🏠</span>
-                                <span className="text-muted-foreground">{locale === 'vi' ? 'Ngày nghỉ gia đình' : 'Family holiday'}</span>
-                            </span>
-                        </div>
-                    )}
-                </div>
-
-                {/* ── Calendar body ── */}
-                <div className="flex-1 overflow-hidden">
-                    {view === 'month' ? (
-                        <MonthView
-                            currentDate={currentDate}
-                            postsByDate={postsByDate}
-                            onPostClick={handlePostClick}
-                            onDayClick={handleDayClick}
-                            locale={(locale as 'en' | 'vi') || 'en'}
-                            holidays={holidays}
-                            draggedId={draggedId}
-                            bestTimeSlots={bestTimeSlots}
-                            showBestTimes={showBestTimes}
-                            onSlotClick={handleSlotClick}
-                        />
-                    ) : (
-                        <WeekView
-                            currentDate={currentDate}
-                            postsByDate={postsByDate}
-                            onPostClick={handlePostClick}
-                            locale={(locale as 'en' | 'vi') || 'en'}
-                            bestTimeSlots={bestTimeSlots}
-                            showBestTimes={showBestTimes}
-                            holidays={holidays}
-                            draggedId={draggedId}
-                            onSlotClick={handleSlotClick}
-                        />
-                    )}
-                </div>
-            </div>
-
-            {/* ── Drag Overlay ── */}
-            <DragOverlay>
-                {draggedPost ? (
-                    <div className="opacity-90 shadow-xl scale-105 pointer-events-none">
-                        <PostCardContent
-                            post={draggedPost}
-                            compact={view === 'month'}
-                            onClick={() => { }}
-                            locale={(locale as 'en' | 'vi') || 'en'}
-                        />
+                    {/* ── Calendar body ── */}
+                    <div className="flex-1 overflow-hidden">
+                        {view === 'month' ? (
+                            <MonthView
+                                currentDate={currentDate}
+                                postsByDate={postsByDate}
+                                onPostClick={handlePostClick}
+                                onDayClick={handleDayClick}
+                                locale={(locale as 'en' | 'vi') || 'en'}
+                                holidays={holidays}
+                                draggedId={draggedId}
+                                bestTimeSlots={bestTimeSlots}
+                                showBestTimes={showBestTimes}
+                                onSlotClick={handleSlotClick}
+                            />
+                        ) : (
+                            <WeekView
+                                currentDate={currentDate}
+                                postsByDate={postsByDate}
+                                onPostClick={handlePostClick}
+                                locale={(locale as 'en' | 'vi') || 'en'}
+                                bestTimeSlots={bestTimeSlots}
+                                showBestTimes={showBestTimes}
+                                holidays={holidays}
+                                draggedId={draggedId}
+                                onSlotClick={handleSlotClick}
+                            />
+                        )}
                     </div>
-                ) : null}
-            </DragOverlay>
-        </DndContext>
+                </div>
+
+                {/* ── Drag Overlay ── */}
+                <DragOverlay>
+                    {draggedPost ? (
+                        <div className="opacity-90 shadow-xl scale-105 pointer-events-none">
+                            <PostCardContent
+                                post={draggedPost}
+                                compact={view === 'month'}
+                                onClick={() => { }}
+                                locale={(locale as 'en' | 'vi') || 'en'}
+                            />
+                        </div>
+                    ) : null}
+                </DragOverlay>
+            </DndContext>
+
+            {/* ── Reschedule confirmation modal ── */}
+            <Dialog open={!!pendingDrop} onOpenChange={(open) => { if (!open) setPendingDrop(null) }}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>{locale === 'vi' ? 'Đổi lịch bài viết' : 'Reschedule Post'}</DialogTitle>
+                        <DialogDescription>
+                            {locale === 'vi'
+                                ? `Chuyển đến ${pendingDrop?.newDateStr ? new Date(pendingDrop.newDateStr + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}`
+                                : `Moving to ${pendingDrop?.newDateStr ? new Date(pendingDrop.newDateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}`
+                            }
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-1">
+                        <button
+                            onClick={() => confirmReschedule(true)}
+                            className="w-full text-left px-4 py-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group"
+                        >
+                            <p className="text-sm font-semibold group-hover:text-primary">
+                                {locale === 'vi' ? '⏰ Giữ nguyên thời gian' : '⏰ Keep same time'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {pendingDrop?.post ? (() => {
+                                    const d = getPostDate(pendingDrop.post)
+                                    return locale === 'vi'
+                                        ? `Đăng lúc ${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ngày mới`
+                                        : `Post at ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} on the new day`
+                                })() : ''}
+                            </p>
+                        </button>
+                        <button
+                            onClick={() => confirmReschedule(false)}
+                            className="w-full text-left px-4 py-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all cursor-pointer group"
+                        >
+                            <p className="text-sm font-semibold group-hover:text-primary">
+                                {locale === 'vi' ? '📅 Đặt lại 9:00 AM' : '📅 Set to 9:00 AM'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {locale === 'vi' ? 'Đặt giờ đăng là 9 giờ sáng ngày mới' : 'Schedule for 9:00 AM on the new day'}
+                            </p>
+                        </button>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" size="sm" onClick={() => setPendingDrop(null)} className="cursor-pointer">
+                            {locale === 'vi' ? 'Huỷ' : 'Cancel'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     )
 }

@@ -224,6 +224,42 @@ export async function PUT(
     return NextResponse.json(post)
 }
 
+// PATCH /api/admin/posts/[id] — lightweight update (scheduledAt only), used by calendar drag-drop
+export async function PATCH(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const session = await auth()
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+    const body = await req.json()
+    const { scheduledAt } = body
+
+    const existing = await prisma.post.findUnique({ where: { id } })
+    if (!existing) {
+        return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+    }
+
+    if (session.user.role !== 'ADMIN' && existing.authorId !== session.user.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const post = await prisma.post.update({
+        where: { id },
+        data: {
+            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+            // If rescheduling a FAILED post, reset it to SCHEDULED
+            ...(existing.status === 'FAILED' ? { status: 'SCHEDULED' } : {}),
+        },
+        select: { id: true, scheduledAt: true, status: true },
+    })
+
+    return NextResponse.json(post)
+}
+
 // DELETE /api/admin/posts/[id] — delete post
 export async function DELETE(
     _req: NextRequest,
