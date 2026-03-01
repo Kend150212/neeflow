@@ -2844,8 +2844,8 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                         </CardHeader>
                                         <CardContent>
                                             <ul className="space-y-1">
-                                                {learningData.customerHandlingTechniques.map((t: string, i: number) => (
-                                                    <li key={i} className="text-[11px] text-muted-foreground">• {t}</li>
+                                                {learningData.customerHandlingTechniques.map((tech: string, i: number) => (
+                                                    <li key={i} className="text-[11px] text-muted-foreground">• {tech}</li>
                                                 ))}
                                             </ul>
                                         </CardContent>
