@@ -1852,10 +1852,12 @@ export default function ComposePage() {
             if (data.usingPlatformKey) {
                 const quota = data.quota as { used: number; limit: number } | undefined
                 const remaining = quota && quota.limit > 0 ? quota.limit - quota.used : null
-                const remainingStr = remaining !== null ? ` — ${remaining} image${remaining !== 1 ? 's' : ''} remaining this month` : ''
-                toast.success(`Image generated with ${modelLabel} (Plan)${remainingStr}`)
+                const remainingStr = remaining !== null
+                    ? ` · ${remaining} image${remaining !== 1 ? 's' : ''} left this month`
+                    : ''
+                toast.success(`✨ Image generated with ${modelLabel}${remainingStr}`)
             } else {
-                toast.success(`Image generated with ${modelLabel} (Your Key)`)
+                toast.success(`✨ Image generated with ${modelLabel}`)
             }
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Image generation failed')
