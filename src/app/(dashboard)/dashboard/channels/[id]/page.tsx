@@ -2203,40 +2203,14 @@ export default function ChannelDetailPage({
                                         />
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                        {/* View filter — 2 explicit buttons so current state is always obvious */}
-                                        <div className="flex items-center rounded-md border overflow-hidden">
-                                            <button
-                                                onClick={() => setHideDisabled(false)}
-                                                className={`flex items-center gap-1 px-2.5 h-8 text-xs font-medium transition-colors ${!hideDisabled ? 'bg-foreground text-background' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
-                                            >
-                                                <Eye className="h-3.5 w-3.5" />
-                                                {t('channels.platformActions.showAll')}
-                                            </button>
-                                            <button
-                                                onClick={() => setHideDisabled(true)}
-                                                className={`flex items-center gap-1 px-2.5 h-8 text-xs font-medium transition-colors border-l ${hideDisabled ? 'bg-foreground text-background' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
-                                            >
-                                                <EyeOff className="h-3.5 w-3.5" />
-                                                {t('channels.platformActions.hideDisabled')}
-                                            </button>
-                                        </div>
                                         <Button
-                                            variant="outline"
+                                            variant={hideDisabled ? 'default' : 'outline'}
                                             size="sm"
-                                            onClick={() => toggleAllPlatforms(true)}
+                                            onClick={() => setHideDisabled(v => !v)}
                                             className="gap-1.5 h-8 text-xs"
                                         >
-                                            <ToggleRight className="h-3.5 w-3.5" />
-                                            {t('channels.platformActions.enableAll')}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => toggleAllPlatforms(false)}
-                                            className="gap-1.5 h-8 text-xs"
-                                        >
-                                            <ToggleLeft className="h-3.5 w-3.5" />
-                                            {t('channels.platformActions.disableAll')}
+                                            <EyeOff className="h-3.5 w-3.5" />
+                                            {t('channels.platformActions.hideDisabled')}
                                         </Button>
                                     </div>
                                 </div>
