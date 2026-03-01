@@ -2341,7 +2341,7 @@ export default function ComposePage() {
             {/* 3-Column Layout — fills remaining height */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 flex-1 min-h-0 divide-x divide-border/60">
                 {/* ── Left: Channels & Settings ── */}
-                <div className={`lg:col-span-3 flex flex-col overflow-hidden ${mobileTab === 'settings' ? 'flex' : 'hidden'} lg:flex`}>
+                <div className={`lg:col-span-2 flex flex-col overflow-hidden ${mobileTab === 'settings' ? 'flex' : 'hidden'} lg:flex`}>
                     {/* Channel selector */}
                     <div className="px-4 pt-4 pb-2 shrink-0">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t('compose.channel')}</p>
@@ -2532,7 +2532,7 @@ export default function ComposePage() {
                 </div>
 
             {/* ── Center: Editor ── */}
-            <div className={`lg:col-span-6 space-y-1.5 overflow-y-auto px-4 py-4 ${mobileTab === 'editor' ? 'block' : 'hidden'} lg:block`}>
+            <div className={`lg:col-span-7 space-y-1.5 overflow-y-auto px-4 py-4 ${mobileTab === 'editor' ? 'block' : 'hidden'} lg:block`}>
                 {/* AI Generate */}
                 <Card >
                     <CardHeader className="py-1.5 px-2.5">
@@ -4412,116 +4412,117 @@ export default function ComposePage() {
                 <div className="px-4 pt-4 pb-2 shrink-0">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Real-time Preview</p>
                 </div>
-                <div className="flex-1 overflow-y-auto px-3 pb-4">
-
-                    <div className="border border-border/60 rounded-2xl overflow-hidden">
-                        <div className="py-1.5 px-2.5">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-xs">Post Preview</CardTitle>
-                                {content.trim() && uniqueSelectedPlatforms.length > 1 && (
-                                    <p className="text-[10px] text-muted-foreground">
-                                        {uniqueSelectedPlatforms.length} platforms
-                                    </p>
+                <div className="flex-1 overflow-y-auto px-2 pb-4 flex flex-col items-center">
+                    {/* Phone frame — always visible */}
+                    <div className="relative mx-auto w-full max-w-[220px]">
+                        {/* Phone shell */}
+                        <div className="relative rounded-[2rem] border-[3px] border-border/80 bg-card shadow-xl overflow-hidden"
+                            style={{ minHeight: '420px' }}>
+                            {/* Notch */}
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4 bg-border/80 rounded-b-xl z-10" />
+                            {/* Status bar */}
+                            <div className="flex items-center justify-between px-4 pt-5 pb-1">
+                                <span className="text-[8px] font-semibold text-muted-foreground">9:41</span>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-3 h-1.5 rounded-[1px] border border-muted-foreground/50">
+                                        <div className="w-2 h-full bg-muted-foreground/60 rounded-[1px]" />
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Screen content */}
+                            <div className="px-1.5 pb-4 flex flex-col gap-1">
+                                {/* Platform pills */}
+                                {uniqueSelectedPlatforms.length > 0 && (
+                                    <div className="flex items-center gap-1 flex-wrap px-1">
+                                        {uniqueSelectedPlatforms.map((platform) => {
+                                            const isActive = effectivePreviewPlatform === platform
+                                            return (
+                                                <button
+                                                    key={platform}
+                                                    onClick={() => setPreviewPlatform(platform)}
+                                                    title={platformLabels[platform] || platform}
+                                                    className={`relative flex items-center justify-center h-6 w-6 rounded-full transition-all cursor-pointer ring-2 ${isActive
+                                                        ? 'ring-offset-1 ring-offset-background shadow scale-110'
+                                                        : 'ring-transparent hover:scale-105'
+                                                        }`}
+                                                    style={{ backgroundColor: platformColors[platform] || '#666', ...(isActive ? { '--tw-ring-color': platformColors[platform] } as React.CSSProperties : {}) }}
+                                                >
+                                                    <PlatformIcon platform={platform} size="xs" />
+                                                </button>
+                                            )
+                                        })}
+                                        {uniqueSelectedPlatforms.length > 1 && (
+                                            <span className="text-[8px] text-muted-foreground">{uniqueSelectedPlatforms.length} platforms</span>
+                                        )}
+                                    </div>
+                                )}
+                                {/* Preview content or Neeflow placeholder */}
+                                {(content.trim() || attachedMedia.length > 0) && effectivePreviewPlatform ? (() => {
+                                    const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
+                                    if (!entry) return null
+                                    const name = entry.accountName
+                                    const accountAvatar = getPlatformAvatar(entry)
+                                    const accountsCount = selectedEntries.filter((e) => e.platform === effectivePreviewPlatform).length
+                                    const previewContent = contentPerPlatform[effectivePreviewPlatform]?.trim() || content
+                                    return (
+                                        <>
+                                            {(() => {
+                                                switch (effectivePreviewPlatform) {
+                                                    case 'facebook':
+                                                        return <FacebookPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} postType={fbPostTypes[entry.id] || 'feed'} mediaRatio={mediaRatio} firstComment={fbFirstComment || undefined} />
+                                                    case 'instagram':
+                                                        return <InstagramPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                    case 'tiktok':
+                                                        return <TikTokPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                    case 'x':
+                                                    case 'twitter':
+                                                        return <XPreview content={previewContent} accountName={name} accountAvatar={accountAvatar} />
+                                                    case 'youtube':
+                                                        return <YouTubePreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                    case 'linkedin':
+                                                        return <LinkedInPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                    default:
+                                                        return <GenericPreview content={previewContent} media={attachedMedia} accountName={name} platform={effectivePreviewPlatform} mediaRatio={mediaRatio} />
+                                                }
+                                            })()}
+                                            {accountsCount > 1 && (
+                                                <p className="text-[9px] text-muted-foreground text-center mt-1">
+                                                    +{accountsCount - 1} more {platformLabels[effectivePreviewPlatform] || effectivePreviewPlatform} accounts
+                                                </p>
+                                            )}
+                                        </>
+                                    )
+                                })() : (
+                                    /* Neeflow placeholder — always shown when no preview */
+                                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                                        <div className="w-10 h-10 rounded-2xl bg-primary/15 flex items-center justify-center shadow-inner">
+                                            <span className="text-primary font-bold text-sm">N</span>
+                                        </div>
+                                        <p className="text-xs font-semibold text-foreground/80 tracking-wide">Neeflow</p>
+                                        <p className="text-[9px] text-muted-foreground text-center leading-relaxed px-2">
+                                            {selectedEntries.length === 0 ? 'Select a platform to preview' : 'Start typing to preview your post'}
+                                        </p>
+                                    </div>
                                 )}
                             </div>
-                            {/* Platform tab pills */}
-                            {content.trim() && uniqueSelectedPlatforms.length > 0 && (
-                                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                                    {uniqueSelectedPlatforms.map((platform) => {
-                                        const accountsForPlatform = selectedEntries.filter((e) => e.platform === platform)
-                                        const isActive = effectivePreviewPlatform === platform
-                                        return (
-                                            <button
-                                                key={platform}
-                                                onClick={() => setPreviewPlatform(platform)}
-                                                title={platformLabels[platform] || platform}
-                                                className={`relative flex items-center justify-center h-8 w-8 rounded-full transition-all cursor-pointer ring-2 ${isActive
-                                                    ? 'ring-offset-2 ring-offset-background shadow-md scale-110'
-                                                    : 'ring-transparent hover:ring-offset-1 hover:ring-offset-background hover:scale-105'
-                                                    }`}
-                                                style={{ backgroundColor: platformColors[platform] || '#666', ...(isActive ? { '--tw-ring-color': platformColors[platform] } as React.CSSProperties : {}) }}
-                                            >
-                                                <PlatformIcon platform={platform} size="xs" />
-                                                {accountsForPlatform.length > 1 && (
-                                                    <span className="absolute -top-1 -right-1 bg-foreground text-background text-[8px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full px-0.5">
-                                                        {accountsForPlatform.length}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                        <div className="space-y-3 p-2.5">
-                            {(content.trim() || attachedMedia.length > 0) && effectivePreviewPlatform ? (() => {
-                                // Find the first account of the currently previewed platform
-                                const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
-                                if (!entry) return null
-                                const name = entry.accountName
-                                const accountAvatar = getPlatformAvatar(entry)
-                                const accountsCount = selectedEntries.filter((e) => e.platform === effectivePreviewPlatform).length
-
-                                return (
-                                    <>
-                                        {(() => {
-                                            // Use per-platform content if available, otherwise fall back to master content
-                                            const previewContent = contentPerPlatform[effectivePreviewPlatform]?.trim() || content
-                                            switch (effectivePreviewPlatform) {
-                                                case 'facebook':
-                                                    return <FacebookPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} postType={fbPostTypes[entry.id] || 'feed'} mediaRatio={mediaRatio} firstComment={fbFirstComment || undefined} />
-                                                case 'instagram':
-                                                    return <InstagramPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
-                                                case 'tiktok':
-                                                    return <TikTokPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
-                                                case 'x':
-                                                case 'twitter':
-                                                    return <XPreview content={previewContent} accountName={name} accountAvatar={accountAvatar} />
-                                                case 'youtube':
-                                                    return <YouTubePreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
-                                                case 'linkedin':
-                                                    return <LinkedInPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
-                                                default:
-                                                    return <GenericPreview content={previewContent} media={attachedMedia} accountName={name} platform={effectivePreviewPlatform} mediaRatio={mediaRatio} />
-                                            }
-                                        })()}
-                                        {accountsCount > 1 && (
-                                            <p className="text-[10px] text-muted-foreground text-center">
-                                                This content will be posted to {accountsCount} {platformLabels[effectivePreviewPlatform] || effectivePreviewPlatform} accounts
-                                            </p>
-                                        )}
-                                    </>
-                                )
-                            })() : (
-                                <div className="text-center py-4">
-                                    <Hash className="h-6 w-6 mx-auto text-muted-foreground/30 mb-1" />
-                                    <p className="text-xs text-muted-foreground">
-                                        {selectedEntries.length === 0 ? 'Select platforms' : 'Start typing'}
-                                    </p>
-                                </div>
-                            )}
+                            {/* Home indicator */}
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-border/70 rounded-full" />
                         </div>
                     </div>
-
-                    {
-                        scheduleDate && (
-                            <Card>
-                                <CardContent className="p-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                            <Clock className="h-4 w-4 text-primary" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium">Scheduled for</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {new Date(`${scheduleDate}T${scheduleTime || '00:00'}`).toLocaleString('vi-VN')}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )
-                    }
+                    {/* Schedule badge below phone */}
+                    {scheduleDate && (
+                        <div className="w-full max-w-[220px] mt-3">
+                            <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 rounded-xl px-3 py-2">
+                                <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-medium">Scheduled</p>
+                                    <p className="text-[9px] text-muted-foreground truncate">
+                                        {new Date(`${scheduleDate}T${scheduleTime || '00:00'}`).toLocaleString('vi-VN')}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
