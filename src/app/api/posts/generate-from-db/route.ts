@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
             rowData,
             columns: rowColumns,
             scheduledAt,
+            requestApproval = false,
         } = await req.json()
 
         if (!channelId || !dataText) {
@@ -196,12 +197,21 @@ Requirements:
         }
 
         // Save draft post with AI-generated content
+        // Determine final status: respect channel approval mode
+        const channel = await prisma.channel.findUnique({ where: { id: channelId }, select: { requireApproval: true } })
+        const approvalMode = (channel?.requireApproval as string | undefined) ?? 'none'
+        let finalStatus: string = scheduledAt ? 'SCHEDULED' : 'DRAFT'
+        if (approvalMode === 'required' && finalStatus !== 'DRAFT') {
+            finalStatus = 'PENDING_APPROVAL'
+        } else if (approvalMode === 'optional' && requestApproval && finalStatus !== 'DRAFT') {
+            finalStatus = 'PENDING_APPROVAL'
+        }
         const firstContent = contentPerPlatform[platformList[0]] || ''
         const post = await prisma.post.create({
             data: {
                 content: firstContent,
                 contentPerPlatform: Object.keys(contentPerPlatform).length > 0 ? contentPerPlatform : undefined,
-                status: scheduledAt ? 'SCHEDULED' : 'DRAFT',
+                status: finalStatus,
                 scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                 authorId: userId,
                 channelId,

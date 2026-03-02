@@ -132,6 +132,9 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     const [availablePlatforms, setAvailablePlatforms] = useState<string[]>([])
     const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
     const [channelTimezone, setChannelTimezone] = useState('UTC')
+    const [channelId4Settings, setChannelId4Settings] = useState<string>('')  // for link to settings
+    const [approvalMode, setApprovalMode] = useState<'none' | 'optional' | 'required'>('none')
+    const [requestApproval, setRequestApproval] = useState(false)
     const [tone, setTone] = useState('viral')
     const [language, setLanguage] = useState('vi')
     const [step, setStep] = useState<'config' | 'starting' | 'generating' | 'done'>('config')
@@ -147,7 +150,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
 
     useEffect(() => {
         if (!open || !activeChannelId) return
-        setStep('config'); setLocalDone(0)
+        setStep('config'); setLocalDone(0); setRequestApproval(false)
         fetch('/api/admin/channels')
             .then(r => r.json())
             .then((data: any[]) => {
@@ -161,6 +164,10 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     setSelectedPlatforms(new Set(plats))
                 }
                 if (channel?.timezone) setChannelTimezone(channel.timezone)
+                if (channel?.requireApproval) setApprovalMode(channel.requireApproval as 'none' | 'optional' | 'required')
+                if (channel?.id) setChannelId4Settings(channel.id)
+                // If required, pre-enable approval toggle
+                if (channel?.requireApproval === 'required') setRequestApproval(true)
             })
             .catch(() => {
                 setAvailablePlatforms(['facebook', 'instagram', 'tiktok'])
@@ -233,6 +240,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             channelId: activeChannelId, dataText: rowToText(rows[i]), tableName,
                             tone, platforms: [...selectedPlatforms], language, rowData: rows[i], columns,
                             scheduledAt: scheduledTimes ? scheduledTimes[i] : null,
+                            requestApproval,
                         }),
                     })
                     if (res.ok) created++
@@ -407,6 +415,72 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 )}
                             </div>
                         )}
+
+                        {/* APPROVAL */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <svg className="h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Approval</p>
+                            </div>
+
+                            {/* mode = none → teaser with settings link */}
+                            {approvalMode === 'none' && (
+                                <div className="flex items-start gap-2.5 rounded-xl border border-dashed border-border/60 bg-muted/30 px-3 py-2.5">
+                                    <svg className="h-4 w-4 text-muted-foreground/60 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                    </svg>
+                                    <div className="min-w-0">
+                                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                            Enable <strong>Approval Mode</strong> on this channel to request approval for bulk posts.
+                                        </p>
+                                        {channelId4Settings && (
+                                            <a
+                                                href={`/dashboard/channels/${channelId4Settings}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-primary hover:underline"
+                                            >
+                                                Open Channel Settings
+                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                </svg>
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* mode = optional → user toggles */}
+                            {approvalMode === 'optional' && (
+                                <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 px-3 py-2.5">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-medium">Request Approval</p>
+                                        <p className="text-[10px] text-muted-foreground">Posts will be sent to approvers before publishing</p>
+                                    </div>
+                                    <button type="button" onClick={() => setRequestApproval(v => !v)}
+                                        className={cn('relative inline-flex h-5 w-9 items-center rounded-full border transition-colors shrink-0',
+                                            requestApproval ? 'bg-primary border-primary' : 'bg-muted border-border/60')}>
+                                        <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform',
+                                            requestApproval ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* mode = required → always on, locked */}
+                            {approvalMode === 'required' && (
+                                <div className="flex items-center justify-between rounded-xl border border-orange-500/30 bg-orange-500/5 px-3 py-2.5">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-medium text-orange-400">Approval Required</p>
+                                        <p className="text-[10px] text-muted-foreground">All posts must be approved before publishing</p>
+                                    </div>
+                                    <div className="relative inline-flex h-5 w-9 items-center rounded-full bg-primary border-primary border opacity-70 cursor-not-allowed shrink-0">
+                                        <span className="inline-block h-3.5 w-3.5 translate-x-[17px] rounded-full bg-white shadow" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* ACTIONS */}
                         <div className="flex gap-2 pt-1">
