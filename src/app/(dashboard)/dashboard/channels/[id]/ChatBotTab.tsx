@@ -84,7 +84,50 @@ interface ChatBotTabProps {
 
 export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const t = useTranslation()
-    const [config, setConfig] = useState<BotConfigData | null>(null)
+    const [config, setConfig] = useState<BotConfigData>({
+        isEnabled: true,
+        botName: 'AI Assistant',
+        greeting: '',
+        greetingMode: 'template',
+        greetingImages: [],
+        personality: '',
+        language: 'vi',
+        imageFolderId: null,
+        consultVideos: [],
+        confidenceThreshold: 0.7,
+        maxBotReplies: 10,
+        botModel: null,
+        autoTagEnabled: true,
+        sentimentEnabled: true,
+        spamFilterEnabled: true,
+        autoTranslate: false,
+        smartAssignEnabled: false,
+        autoEscalateKeywords: [],
+        forbiddenTopics: [],
+        workingHoursOnly: false,
+        workingHoursStart: null,
+        workingHoursEnd: null,
+        workingDays: {
+            mon: { enabled: true, start: '08:00', end: '22:00' },
+            tue: { enabled: true, start: '08:00', end: '22:00' },
+            wed: { enabled: true, start: '08:00', end: '22:00' },
+            thu: { enabled: true, start: '08:00', end: '22:00' },
+            fri: { enabled: true, start: '08:00', end: '22:00' },
+            sat: { enabled: false, start: '08:00', end: '22:00' },
+            sun: { enabled: false, start: '08:00', end: '22:00' },
+        },
+        offHoursMessage: null,
+        trainingPairs: [],
+        exampleConvos: [],
+        enabledPlatforms: ['all'],
+        applyToComments: true,
+        applyToMessages: true,
+        commentReplyMinDelay: 30,
+        commentReplyMaxDelay: 600,
+        enableSmartMemory: false,
+        sessionTimeoutHours: 8,
+        summariesBeforeMerge: 5,
+    })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [planLimits, setPlanLimits] = useState<Record<string, any> | null>(null)
@@ -586,7 +629,6 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
         )
     }
 
-    if (!config) return null
 
     return (
         <>
