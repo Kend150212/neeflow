@@ -880,7 +880,14 @@ export default function ComposePage() {
                 }
             })
             .catch(() => toast.error('Failed to load channels'))
-    }, [editPostId])
+    }, [editPostId, activeChannelId])
+
+    // Re-select channel when workspace changes (and channels already loaded)
+    useEffect(() => {
+        if (!activeChannelId || channels.length === 0 || editPostId) return
+        const workspaceCh = channels.find((ch) => ch.id === activeChannelId)
+        if (workspaceCh) setSelectedChannel(workspaceCh)
+    }, [activeChannelId, channels, editPostId])
 
     // Load existing post when in edit mode
     useEffect(() => {
@@ -2450,22 +2457,21 @@ export default function ComposePage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 flex-1 min-h-0 divide-x divide-border/60">
                 {/* ── Left: Channels & Settings ── */}
                 <div className={`lg:col-span-2 flex flex-col overflow-hidden ${mobileTab === 'settings' ? 'flex' : 'hidden'} lg:flex`}>
-                    {/* Channel selector */}
+                    {/* Channel indicator (read-only — driven by workspace) */}
                     <div className="px-4 pt-4 pb-2 shrink-0">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t('compose.channel')}</p>
-                        <Select
-                            value={selectedChannel?.id || ''}
-                            onValueChange={(v) => setSelectedChannel(channels.find((c) => c.id === v) || null)}
-                        >
-                            <SelectTrigger className="h-8 text-xs bg-card border-border/60">
-                                <SelectValue placeholder={t('compose.selectChannel')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {channels.map((ch) => (
-                                    <SelectItem key={ch.id} value={ch.id}>{ch.displayName}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <div className="h-8 px-3 flex items-center gap-2 bg-muted/40 border border-border/50 rounded-md">
+                            {selectedChannel?.avatarUrl ? (
+                                <img src={selectedChannel.avatarUrl} className="h-5 w-5 rounded-full object-cover shrink-0" alt="" />
+                            ) : (
+                                <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                    <span className="text-[9px] font-bold text-primary">{selectedChannel?.displayName?.[0] || '?'}</span>
+                                </div>
+                            )}
+                            <span className="text-xs font-medium truncate text-foreground">
+                                {selectedChannel?.displayName || t('compose.selectChannel')}
+                            </span>
+                        </div>
                     </div>
 
                     {/* Platform toggle list — Design style */}
