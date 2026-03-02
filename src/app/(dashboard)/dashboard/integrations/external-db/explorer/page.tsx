@@ -12,16 +12,29 @@ export const metadata = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = prisma as any
 
-export default async function DataExplorerPage() {
+export default async function DataExplorerPage({
+    searchParams,
+}: {
+    searchParams?: Promise<{ channelId?: string }>
+}) {
     const session = await auth()
     if (!session?.user) redirect('/login')
 
     const userId = session.user.id as string
+    const resolvedParams = await searchParams
+    const channelId = resolvedParams?.channelId
 
-    // Load db config
-    const config = await db.externalDbConfig.findFirst({ where: { userId } })
-    if (!config || config.testStatus !== 'ok') {
+    // Must have a channelId to look up per-channel config
+    if (!channelId) {
         redirect('/dashboard/integrations/external-db')
+    }
+
+    // Load db config scoped to this channel
+    const config = await db.externalDbConfig.findUnique({
+        where: { userId_channelId: { userId, channelId } },
+    })
+    if (!config || config.testStatus !== 'ok') {
+        redirect(`/dashboard/integrations/external-db?channelId=${channelId}`)
     }
 
     // Decode password (base64)
@@ -54,12 +67,13 @@ export default async function DataExplorerPage() {
             visibleTables = liveTablesResult.map(t => t.name)
         } catch {
             // If live query fails, redirect back to setup
-            redirect('/dashboard/integrations/external-db')
+            redirect(`/dashboard/integrations/external-db?channelId=${channelId}`)
         }
     }
 
     return (
         <DataExplorerClient
+            channelId={channelId}
             dbName={config.database}
             dbType={config.dbType}
             configId={config.id}

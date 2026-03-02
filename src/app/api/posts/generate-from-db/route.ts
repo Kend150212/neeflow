@@ -124,8 +124,8 @@ export async function POST(req: NextRequest) {
         // Detect image URLs — prefer explicitly configured imageColumn from tablePermissions
         let imageUrls: string[] = []
         if (rowData && rowColumns) {
-            const config = await (prisma as any).externalDbConfig.findFirst({
-                where: { userId, isActive: true },
+            const config = await (prisma as any).externalDbConfig.findUnique({
+                where: { userId_channelId: { userId, channelId } },
                 select: { tablePermissions: true },
             })
             const tablePerms = (config?.tablePermissions as Record<string, { imageColumn?: string }>) ?? {}

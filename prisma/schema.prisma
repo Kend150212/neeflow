@@ -297,6 +297,7 @@ model Channel {
   customerMemories     CustomerMemory[]
   botTokenUsage        BotTokenUsage[]
   externalDbLinks      ExternalDbChannelLink[]
+  externalDbConfigs    ExternalDbConfig[]
 
 
   @@map("channels")
@@ -1194,8 +1195,11 @@ model BotTokenUsage {
 model ExternalDbConfig {
   id           String   @id @default(cuid())
 
-  // User that owns this connection
+  // Owner
   userId       String   @map("user_id")
+
+  // Channel this config belongs to (one config per channel)
+  channelId    String   @map("channel_id")
 
   // DB connection details
   dbType       String   @map("db_type")       // mysql | mariadb | postgresql | sqlite
@@ -1226,10 +1230,13 @@ model ExternalDbConfig {
   createdAt    DateTime @default(now())        @map("created_at")
   updatedAt    DateTime @updatedAt             @map("updated_at")
 
-  // 1 config → many channels
+  // Relations
+  channel      Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
   channelLinks ExternalDbChannelLink[]
 
+  @@unique([userId, channelId])
   @@index([userId])
+  @@index([channelId])
   @@map("external_db_configs")
 }
 

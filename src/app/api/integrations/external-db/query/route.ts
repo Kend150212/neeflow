@@ -7,7 +7,7 @@ import { checkIntegrationAccess } from '@/lib/integration-access'
 
 /**
  * POST /api/integrations/external-db/query
- * Body: { table, page?, pageSize?, search?, searchColumns? }
+ * Body: { channelId, table, page?, pageSize?, search?, searchColumns? }
  * Returns: { rows, total, columns, page, pageSize }
  */
 export async function POST(req: NextRequest) {
@@ -19,14 +19,17 @@ export async function POST(req: NextRequest) {
         if (!await checkIntegrationAccess(userId, 'external_db'))
             return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
         const body = await req.json()
-        const { table, page = 1, pageSize = 20, search = '' } = body
+        const { channelId, table, page = 1, pageSize = 20, search = '' } = body
 
+        if (!channelId) return NextResponse.json({ error: 'channelId is required' }, { status: 400 })
         if (!table) return NextResponse.json({ error: 'table is required' }, { status: 400 })
 
-        // Load config
+        // Load config scoped to this channel
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const config = await (prisma as any).externalDbConfig.findFirst({ where: { userId } })
-        if (!config) return NextResponse.json({ error: 'No database configured' }, { status: 404 })
+        const config = await (prisma as any).externalDbConfig.findUnique({
+            where: { userId_channelId: { userId, channelId } },
+        })
+        if (!config) return NextResponse.json({ error: 'No database configured for this channel' }, { status: 404 })
 
         // Decode password
         const password = config.password

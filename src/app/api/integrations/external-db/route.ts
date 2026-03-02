@@ -7,17 +7,20 @@ function encryptPassword(password: string): string {
     return Buffer.from(password).toString('base64')
 }
 
-// GET — load config for the current user
-export async function GET() {
+// GET — load config for the current user + channel
+export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const userId = session.user.id as string
     if (!await checkIntegrationAccess(userId, 'external_db'))
         return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
 
+    const channelId = req.nextUrl.searchParams.get('channelId')
+    if (!channelId) return NextResponse.json({ error: 'channelId is required' }, { status: 400 })
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const config = await (prisma as any).externalDbConfig.findFirst({
-        where: { userId },
+    const config = await (prisma as any).externalDbConfig.findUnique({
+        where: { userId_channelId: { userId, channelId } },
         include: {
             channelLinks: { select: { channelId: true, schemaHint: true } },
         },
@@ -30,7 +33,7 @@ export async function GET() {
     })
 }
 
-// POST — save / update config
+// POST — save / update config for this user + channel
 export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -39,14 +42,17 @@ export async function POST(req: NextRequest) {
     if (!await checkIntegrationAccess(userId, 'external_db'))
         return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
     const body = await req.json()
-    const { dbType, host, port, database, username, password, ssl, queryTimeout, schemaHint, channelIds, testStatus, botQueryEnabled, botQueryTables, botMaxRows } = body
+    const { channelId, dbType, host, port, database, username, password, ssl, queryTimeout, schemaHint, testStatus, botQueryEnabled, botQueryTables, botMaxRows } = body
 
+    if (!channelId) return NextResponse.json({ error: 'channelId is required' }, { status: 400 })
     if (!dbType || !database) {
         return NextResponse.json({ error: 'dbType and database are required' }, { status: 400 })
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const existing = await (prisma as any).externalDbConfig.findFirst({ where: { userId } })
+    const existing = await (prisma as any).externalDbConfig.findUnique({
+        where: { userId_channelId: { userId, channelId } },
+    })
 
     const encryptedPassword = password && password !== '••••••••'
         ? encryptPassword(password)
@@ -54,9 +60,10 @@ export async function POST(req: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const config = await (prisma as any).externalDbConfig.upsert({
-        where: { id: existing?.id ?? '__new__' },
+        where: { userId_channelId: { userId, channelId } },
         create: {
             userId,
+            channelId,
             dbType,
             host: host || null,
             port: port ? parseInt(port) : null,
@@ -87,18 +94,6 @@ export async function POST(req: NextRequest) {
             ...(botMaxRows !== undefined ? { botMaxRows } : {}),
         },
     })
-
-    if (channelIds && Array.isArray(channelIds)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (prisma as any).externalDbChannelLink.deleteMany({ where: { configId: config.id } })
-        if (channelIds.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (prisma as any).externalDbChannelLink.createMany({
-                data: channelIds.map((channelId: string) => ({ configId: config.id, channelId })),
-                skipDuplicates: true,
-            })
-        }
-    }
 
     return NextResponse.json({ success: true, configId: config.id })
 }

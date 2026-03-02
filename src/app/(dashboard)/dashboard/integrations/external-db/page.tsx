@@ -10,19 +10,17 @@ export const metadata = {
 
 const db = prisma as any // cast until Prisma types regenerate post-migration
 
-export default async function ExternalDbPage() {
+export default async function ExternalDbPage({
+    searchParams,
+}: {
+    searchParams?: Promise<{ channelId?: string }>
+}) {
     const session = await auth()
     if (!session?.user) redirect('/login')
 
     const userId = session.user.id as string
-
-    // Load existing DB config for this user
-    const config = await db.externalDbConfig.findFirst({
-        where: { userId },
-        include: {
-            channelLinks: { select: { channelId: true } },
-        },
-    })
+    const resolvedParams = await searchParams
+    const channelId = resolvedParams?.channelId ?? null
 
     // Get channels available via ChannelMember
     const memberships = await prisma.channelMember.findMany({
@@ -31,8 +29,19 @@ export default async function ExternalDbPage() {
     })
     const channels = memberships.map(m => m.channel)
 
+    // Load config for the active channel (if channelId is known)
+    const config = channelId
+        ? await db.externalDbConfig.findUnique({
+            where: { userId_channelId: { userId, channelId } },
+            include: {
+                channelLinks: { select: { channelId: true } },
+            },
+        })
+        : null
+
     return (
         <ExternalDbSetupClient
+            activeChannelId={channelId}
             initialConfig={config ? {
                 id: config.id,
                 dbType: config.dbType,
@@ -46,7 +55,6 @@ export default async function ExternalDbPage() {
                 testStatus: config.testStatus ?? null,
                 lastTestedAt: config.lastTestedAt?.toISOString() ?? null,
                 tablePermissions: config.tablePermissions as Record<string, { visible: boolean; readable: boolean; writable: boolean }>,
-                channelIds: config.channelLinks.map((l: { channelId: string }) => l.channelId),
                 botQueryEnabled: config.botQueryEnabled ?? false,
                 botQueryTables: (config.botQueryTables as string[]) ?? [],
                 botMaxRows: config.botMaxRows ?? 10,

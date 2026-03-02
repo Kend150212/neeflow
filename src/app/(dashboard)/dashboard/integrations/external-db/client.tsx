@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useWorkspace } from '@/lib/workspace-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,7 +43,6 @@ interface InitialConfig {
     testStatus: string | null
     lastTestedAt: string | null
     tablePermissions: Record<string, TablePermission>
-    channelIds: string[]
     botQueryEnabled: boolean
     botQueryTables: string[]
     botMaxRows: number
@@ -54,6 +54,7 @@ interface Channel {
 }
 
 interface Props {
+    activeChannelId: string | null
     initialConfig: InitialConfig | null
     channels: Channel[]
 }
@@ -67,8 +68,20 @@ const DB_TYPES: { value: DbType; label: string; port: string; comingSoon?: boole
 
 const defaultPerm = (): TablePermission => ({ visible: true, readable: true, writable: false, imageColumn: '' })
 
-export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
+export function ExternalDbSetupClient({ activeChannelId: serverChannelId, initialConfig, channels }: Props) {
     const router = useRouter()
+    const { activeChannel } = useWorkspace()
+
+    // Resolve the active channel: prefer workspace context (client-side), fallback to URL param
+    const channelId = activeChannel?.id ?? serverChannelId ?? ''
+
+    // When the workspace channel changes, reload page with the new channelId so
+    // the server component fetches the correct per-channel config.
+    useEffect(() => {
+        if (activeChannel?.id && activeChannel.id !== serverChannelId) {
+            router.push(`/dashboard/integrations/external-db?channelId=${activeChannel.id}`)
+        }
+    }, [activeChannel?.id, serverChannelId, router])
 
     // ── Form state ──────────────────────────────────────────────────────────
     const [dbType, setDbType] = useState<DbType>((initialConfig?.dbType as DbType) ?? 'mysql')
@@ -79,7 +92,6 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
     const [password, setPassword] = useState(initialConfig ? '••••••••' : '')
     const [ssl, setSsl] = useState(initialConfig?.ssl ?? true)
     const [schemaHint, setSchemaHint] = useState(initialConfig?.schemaHint ?? '')
-    const [selectedChannels, setSelectedChannels] = useState<string[]>(initialConfig?.channelIds ?? [])
 
     // ── Status state ────────────────────────────────────────────────────────
     const [testStatus, setTestStatus] = useState<'ok' | 'error' | 'untested' | null>(
@@ -106,9 +118,10 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
 
     // Load existing tables if config exists
     const fetchTables = useCallback(async () => {
+        if (!channelId) return
         setLoadingTables(true)
         try {
-            const res = await fetch('/api/integrations/external-db/tables')
+            const res = await fetch(`/api/integrations/external-db/tables?channelId=${channelId}`)
             if (!res.ok) return
             const data = await res.json()
             if (data.tables) {
@@ -122,7 +135,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
         } finally {
             setLoadingTables(false)
         }
-    }, [])
+    }, [channelId])
 
     useEffect(() => {
         if (initialConfig?.testStatus === 'ok') {
@@ -140,7 +153,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
             const res = await fetch('/api/integrations/external-db/test', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dbType, host, port: parseInt(port) || undefined, database, username, password: password === '••••••••' ? undefined : password, ssl }),
+                body: JSON.stringify({ channelId, dbType, host, port: parseInt(port) || undefined, database, username, password: password === '••••••••' ? undefined : password, ssl }),
             })
             const data = await res.json()
             if (data.ok) {
@@ -159,17 +172,17 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                 await fetch('/api/integrations/external-db', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dbType, host, port, database, username, password, ssl, schemaHint, channelIds: selectedChannels, testStatus: 'ok' }),
+                    body: JSON.stringify({ channelId, dbType, host, port, database, username, password, ssl, schemaHint, testStatus: 'ok' }),
                 })
             } else {
                 setTestStatus('error')
                 setTestError(data.error)
                 toast.error(data.error ?? 'Connection failed')
-                // Persist testStatus=error
+
                 await fetch('/api/integrations/external-db', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dbType, host, port, database, username, password, ssl, schemaHint, channelIds: selectedChannels, testStatus: 'error' }),
+                    body: JSON.stringify({ channelId, dbType, host, port, database, username, password, ssl, schemaHint, testStatus: 'error' }),
                 })
             }
         } catch (e) {
@@ -187,8 +200,8 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    channelId,
                     dbType, host, port, database, username, password, ssl, schemaHint,
-                    channelIds: selectedChannels,
                     testStatus: overrideTestStatus ?? testStatus ?? null,
                     botQueryEnabled,
                     botQueryTables,
@@ -215,7 +228,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
             const res = await fetch('/api/integrations/external-db/tables', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tablePermissions: tablePerms }),
+                body: JSON.stringify({ channelId, tablePermissions: tablePerms }),
             })
             const data = await res.json()
             if (data.success) toast.success('Permissions saved!')
@@ -439,30 +452,6 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                     />
                                 </div>
 
-                                {/* Channels */}
-                                {channels.length > 0 && (
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-semibold text-muted-foreground">Link to Channels</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {channels.map(ch => (
-                                                <button
-                                                    key={ch.id}
-                                                    onClick={() => setSelectedChannels(prev =>
-                                                        prev.includes(ch.id) ? prev.filter(id => id !== ch.id) : [...prev, ch.id]
-                                                    )}
-                                                    className={cn(
-                                                        'px-3 py-1 rounded-full text-xs font-medium border transition-all',
-                                                        selectedChannels.includes(ch.id)
-                                                            ? 'bg-primary/10 border-primary/50 text-primary'
-                                                            : 'border-border text-muted-foreground hover:border-primary/30'
-                                                    )}
-                                                >
-                                                    {ch.displayName}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
 
                                 {/* Action buttons */}
                                 <div className="flex flex-col gap-3 pt-1">

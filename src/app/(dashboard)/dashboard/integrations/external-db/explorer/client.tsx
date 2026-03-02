@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import CreatePostsFromDbModal from './CreatePostsFromDbModal'
 
 interface Props {
+    channelId: string
     dbName: string
     dbType: string
     configId: string
@@ -91,7 +92,7 @@ function formatCellValue(val: unknown, colType: string): React.ReactNode {
     return <span className="text-sm">{str}</span>
 }
 
-export function DataExplorerClient({ dbName, dbType, configId, tables, tablePermissions = {} }: Props) {
+export function DataExplorerClient({ channelId, dbName, dbType, configId, tables, tablePermissions = {} }: Props) {
     const [selectedTable, setSelectedTable] = useState(tables[0] ?? '')
     const [rows, setRows] = useState<RowData[]>([])
     const [columns, setColumns] = useState<string[]>([])
@@ -118,6 +119,7 @@ export function DataExplorerClient({ dbName, dbType, configId, tables, tablePerm
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    channelId,
                     table,
                     page: pg,
                     pageSize: PAGE_SIZE,
