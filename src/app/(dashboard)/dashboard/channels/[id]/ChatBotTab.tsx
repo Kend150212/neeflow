@@ -163,11 +163,21 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     // Tab navigation
     const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'hours' | 'scope' | 'chattest' | 'learning' | 'usage' | 'pages'>('general')
 
+    // Available AI text models (fetched from integrations)
+    const [availableModels, setAvailableModels] = useState<{ provider: string; label: string; models: { id: string; name: string }[] }[]>([])
+    const [modelsLoading, setModelsLoading] = useState(false)
 
     const [trainingSubTab, setTrainingSubTab] = useState<'saved' | 'text' | 'url' | 'sheet' | 'images' | 'video' | 'qa' | 'products' | 'promotions' | 'forbidden'>('saved')
 
-
-
+    // Fetch text models from all configured integrations
+    useEffect(() => {
+        setModelsLoading(true)
+        fetch('/api/admin/integrations/text-models')
+            .then(r => r.json())
+            .then(data => { if (Array.isArray(data)) setAvailableModels(data) })
+            .catch(() => { })
+            .finally(() => setModelsLoading(false))
+    }, [])
 
     // Context preview dialog
     const [contextPreview, setContextPreview] = useState<null | {
@@ -744,26 +754,35 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                             <select
                                 value={config.botModel || ''}
                                 onChange={e => update('botModel', e.target.value || null)}
-                                className="w-full mt-1 h-9 px-3 text-sm rounded-md border border-input bg-background"
+                                disabled={modelsLoading}
+                                className="w-full mt-1 h-9 px-3 text-sm rounded-md border border-input bg-background disabled:opacity-60"
                             >
                                 <option value="">— Use channel default model —</option>
-                                <optgroup label="Gemini">
-                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
-                                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
-                                    <option value="gemini-3-pro-preview">Gemini 3 Pro Preview</option>
-                                </optgroup>
-                                <optgroup label="OpenAI">
-                                    <option value="gpt-4o-mini">GPT-4o Mini</option>
-                                    <option value="gpt-4o">GPT-4o</option>
-                                    <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
-                                    <option value="gpt-4.1">GPT-4.1</option>
-                                </optgroup>
-                                <optgroup label="OpenAI (Legacy)">
-                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                </optgroup>
+                                {availableModels.length > 0 ? (
+                                    availableModels.map(group => (
+                                        <optgroup key={group.provider} label={group.label}>
+                                            {group.models.map(m => (
+                                                <option key={m.id} value={m.id}>{m.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))
+                                ) : (
+                                    /* Fallback static list if fetch fails */
+                                    <>
+                                        <optgroup label="Google Gemini">
+                                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+                                        </optgroup>
+                                        <optgroup label="OpenAI">
+                                            <option value="gpt-4o">GPT-4o</option>
+                                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                            <option value="gpt-4.1">GPT-4.1</option>
+                                            <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                                        </optgroup>
+                                    </>
+                                )}
                             </select>
                             <p className="text-xs text-muted-foreground mt-1">Override the channel&apos;s default AI model for this bot only.</p>
                         </div>
