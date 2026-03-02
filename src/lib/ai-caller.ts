@@ -40,7 +40,7 @@ export async function callAIWithUsage(
     if (!base) {
         throw new Error(`Unsupported AI provider: ${provider}`)
     }
-    return callOpenAICompatibleWithUsage(base, apiKey, model, systemPrompt, userPrompt)
+    return callOpenAICompatibleWithUsage(base, apiKey, model, systemPrompt, userPrompt, provider)
 }
 
 /**
@@ -65,6 +65,7 @@ async function callOpenAICompatibleWithUsage(
     model: string,
     system: string,
     user: string,
+    provider?: string,
 ): Promise<AIUsageResult> {
     const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -83,8 +84,14 @@ async function callOpenAICompatibleWithUsage(
     })
 
     if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        const msg = err.error?.message || err.message || res.statusText
+        let msg = res.statusText
+        try {
+            const err = await res.json()
+            msg = err.error?.message || err.error?.code || err.message || err.detail || JSON.stringify(err)
+        } catch {
+            try { msg = await res.text() } catch { /* keep statusText */ }
+        }
+        console.error(`[AI ${provider ?? 'unknown'}] ${res.status} — ${msg}`)
         throw new Error(`AI error (${res.status}): ${msg}`)
     }
 
@@ -149,7 +156,7 @@ export function getDefaultModel(provider: string, config: Record<string, string>
         case 'openai': return 'gpt-4o-mini'
         case 'gemini': return 'gemini-2.0-flash'
         case 'openrouter': return 'google/gemini-2.0-flash-001'
-        case 'synthetic': return 'google/gemini-2.0-flash'
+        case 'synthetic': return 'google/gemini-2.0-flash-001'
         default: return 'gpt-4o-mini'
     }
 }
