@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -19,7 +21,7 @@ interface Props {
 
 // SVG logos per platform
 const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number }) => {
-    const logos: Record<string, JSX.Element> = {
+    const logos: Record<string, React.ReactNode> = {
         facebook: (
             <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <rect width="24" height="24" rx="6" fill="#1877F2" />
