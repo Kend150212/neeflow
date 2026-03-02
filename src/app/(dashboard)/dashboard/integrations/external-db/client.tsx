@@ -487,7 +487,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                     </div>
 
                     {/* ── Right: Table Manager ── */}
-                    <div className="lg:col-span-7">
+                    <div className="lg:col-span-7 flex flex-col">
                         <div className="rounded-xl border bg-card/50 flex flex-col h-full">
                             {/* Card header */}
                             <div className="p-5 border-b bg-muted/30 flex items-center justify-between">
@@ -510,8 +510,8 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                 </button>
                             </div>
 
-                            {/* Table content */}
-                            <div className="overflow-x-auto overflow-y-auto p-4 max-h-[580px] custom-scrollbar">
+                            {/* Table content — flex-1 so it fills remaining card height, min-h-0 allows shrink */}
+                            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto p-4 custom-scrollbar">
                                 {tables.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
                                         {loadingTables ? (
