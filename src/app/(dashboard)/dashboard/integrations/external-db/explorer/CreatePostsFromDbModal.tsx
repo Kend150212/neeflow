@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Sparkles, X, ChevronRight, Loader2, Zap } from 'lucide-react'
+import { Sparkles, X, ChevronRight, Loader2, Zap, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
@@ -41,13 +42,14 @@ const PLATFORMS = [
 ]
 
 export default function CreatePostsFromDbModal({ open, onClose, rows, columns, tableName }: Props) {
+    const router = useRouter()
     const [channels, setChannels] = useState<Channel[]>([])
     const [selectedChannel, setSelectedChannel] = useState('')
     const [tone, setTone] = useState('viral')
     const [platform, setPlatform] = useState('facebook')
     const [language, setLanguage] = useState('vi')
     const [creating, setCreating] = useState(false)
-    const [step, setStep] = useState<'config' | 'preview' | 'done'>('config')
+    const [step, setStep] = useState<'config' | 'generating' | 'done'>('config')
     const [createdCount, setCreatedCount] = useState(0)
 
     useEffect(() => {
@@ -65,7 +67,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         }
     }, [open])
 
-    // Build a text summary of a row for AI
+    // Build text summary of a row for AI
     function rowToText(row: Record<string, unknown>): string {
         return columns
             .map(col => `${col}: ${row[col] ?? ''}`)
@@ -75,33 +77,73 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     async function handleCreate() {
         if (!selectedChannel) { toast.error('Please select a channel'); return }
         setCreating(true)
-        setStep('preview')
+        setStep('generating')
 
-        let created = 0
-        for (const row of rows) {
-            try {
-                const dataText = rowToText(row)
+        const isSingleRow = rows.length === 1
+
+        try {
+            if (isSingleRow) {
+                // Single row → generate + redirect to compose with pre-filled content
+                const row = rows[0]
                 const res = await fetch('/api/posts/generate-from-db', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         channelId: selectedChannel,
-                        dataText,
+                        dataText: rowToText(row),
                         tableName,
                         tone,
                         platform,
                         language,
+                        rowData: row,
+                        columns,
                     }),
                 })
-                if (res.ok) created++
-            } catch {
-                // skip failed row
-            }
-        }
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error ?? 'Generation failed')
 
-        setCreatedCount(created)
-        setStep('done')
-        setCreating(false)
+                // Build compose URL with pre-filled content + images
+                const params = new URLSearchParams()
+                params.set('content', encodeURIComponent(data.content))
+                if (data.imageUrls?.length > 0) {
+                    params.set('images', encodeURIComponent(JSON.stringify(data.imageUrls)))
+                }
+                onClose()
+                router.push(`/dashboard/posts/compose?${params.toString()}`)
+            } else {
+                // Multiple rows → batch create drafts
+                let created = 0
+                for (const row of rows) {
+                    try {
+                        const res = await fetch('/api/posts/generate-from-db', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                channelId: selectedChannel,
+                                dataText: rowToText(row),
+                                tableName,
+                                tone,
+                                platform,
+                                language,
+                                rowData: row,
+                                columns,
+                            }),
+                        })
+                        if (res.ok) created++
+                    } catch {
+                        // skip failed row
+                    }
+                }
+                setCreatedCount(created)
+                setStep('done')
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed'
+            toast.error(msg)
+            setStep('config')
+        } finally {
+            setCreating(false)
+        }
     }
 
     return (
@@ -115,7 +157,10 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         AI Post Creator
                     </DialogTitle>
                     <DialogDescription>
-                        Generate posts from {rows.length} selected record{rows.length !== 1 ? 's' : ''} in <strong>{tableName}</strong>
+                        {rows.length === 1
+                            ? <>Generate a post from <strong>1 record</strong> in <strong>{tableName}</strong> → opens in Compose Editor</>
+                            : <>Generate posts from <strong>{rows.length} records</strong> in <strong>{tableName}</strong> → saved as drafts</>
+                        }
                     </DialogDescription>
                 </DialogHeader>
 
@@ -139,6 +184,14 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 </span>
                             )}
                         </div>
+
+                        {/* Single row info */}
+                        {rows.length === 1 && (
+                            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-primary">
+                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                Sẽ mở Compose Editor với nội dung đã điền sẵn để bạn chỉnh sửa trước khi đăng
+                            </div>
+                        )}
 
                         {/* Channel */}
                         <div className="space-y-1.5">
@@ -209,26 +262,27 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 <X className="h-4 w-4 mr-2" />
                                 Cancel
                             </Button>
-                            <Button onClick={handleCreate} disabled={!selectedChannel} className="flex-1 gap-2">
+                            <Button onClick={handleCreate} disabled={!selectedChannel || creating} className="flex-1 gap-2">
                                 <Zap className="h-4 w-4" />
-                                Generate {rows.length} Post{rows.length !== 1 ? 's' : ''}
+                                {rows.length === 1 ? 'Generate & Open Editor' : `Generate ${rows.length} Drafts`}
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
                 )}
 
-                {step === 'preview' && (
+                {step === 'generating' && (
                     <div className="flex flex-col items-center gap-4 py-8 text-center">
-                        <div className="relative">
-                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                            </div>
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 text-primary animate-spin" />
                         </div>
                         <div>
-                            <p className="font-bold text-lg">Generating posts with AI...</p>
+                            <p className="font-bold text-lg">Generating with AI...</p>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Processing {rows.length} record{rows.length !== 1 ? 's' : ''}. This may take a moment.
+                                {rows.length === 1
+                                    ? 'Processing 1 record. Almost done...'
+                                    : `Processing ${rows.length} records. This may take a moment.`
+                                }
                             </p>
                         </div>
                     </div>
@@ -244,7 +298,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 {createdCount} post{createdCount !== 1 ? 's' : ''} created!
                             </p>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Posts have been added to your draft queue.
+                                Posts have been saved as drafts.
                             </p>
                         </div>
                         <div className="flex gap-3 w-full">
@@ -252,7 +306,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 Close
                             </Button>
                             <Button asChild className="flex-1">
-                                <a href="/dashboard/posts">View Posts →</a>
+                                <a href="/dashboard/posts">View Drafts →</a>
                             </Button>
                         </div>
                     </div>

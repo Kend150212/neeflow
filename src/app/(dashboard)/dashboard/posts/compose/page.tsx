@@ -882,6 +882,34 @@ export default function ComposePage() {
             .catch(() => toast.error('Failed to load channels'))
     }, [editPostId, activeChannelId])
 
+    // Pre-fill from ?content= and ?images= (redirect from AI Post Creator in Data Explorer)
+    useEffect(() => {
+        const preContent = searchParams.get('content')
+        const preImages = searchParams.get('images')
+        if (preContent) {
+            try { setContent(decodeURIComponent(preContent)) } catch { setContent(preContent) }
+        }
+        if (preImages) {
+            try {
+                const urls: string[] = JSON.parse(decodeURIComponent(preImages))
+                if (urls.length > 0) {
+                    setAttachedMedia(urls.map((url, i) => ({
+                        id: `db-img-${i}`,
+                        url,
+                        type: 'IMAGE' as const,
+                        filename: url.split('/').pop() || `image-${i}.jpg`,
+                        size: 0,
+                        width: null,
+                        height: null,
+                        mimeType: 'image/jpeg',
+                        createdAt: new Date().toISOString(),
+                    })))
+                }
+            } catch { /* skip invalid */ }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // run once on mount
+
     // Re-select channel when workspace changes (and channels already loaded)
     useEffect(() => {
         if (!activeChannelId || channels.length === 0 || editPostId) return

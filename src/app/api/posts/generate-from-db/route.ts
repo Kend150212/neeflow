@@ -4,9 +4,27 @@ import { prisma } from '@/lib/prisma'
 import { callAIWithUsage, getDefaultModel } from '@/lib/ai-caller'
 import { decrypt } from '@/lib/encryption'
 
+// Detect image URLs from row data by column name heuristic
+function detectImageUrls(row: Record<string, unknown>, columns: string[]): string[] {
+    const imageKeywords = /image|photo|img|thumbnail|picture|avatar|banner|cover|media/i
+    const urls: string[] = []
+    for (const col of columns) {
+        if (!imageKeywords.test(col)) continue
+        const val = row[col]
+        if (typeof val === 'string' && val.startsWith('http') && /\.(jpg|jpeg|png|gif|webp|avif)/i.test(val)) {
+            urls.push(val)
+        }
+    }
+    return [...new Set(urls)].slice(0, 4) // max 4 images
+}
+
 /**
  * POST /api/posts/generate-from-db
- * Generates a draft post from a row of external DB data
+ * Generates a draft post from a row of external DB data.
+ * Returns: { success, postId, content, imageUrls }
+ * Modal behavior:
+ *   - 1 row  → caller redirects to /dashboard/posts/compose?content=...&images=...
+ *   - N rows → caller calls N times and shows "done" with link to /dashboard/posts
  */
 export async function POST(req: NextRequest) {
     try {
@@ -14,13 +32,27 @@ export async function POST(req: NextRequest) {
         if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
         const userId = session.user.id
-        const { channelId, dataText, tableName, tone = 'viral', platform = 'facebook', language = 'vi' } = await req.json()
+        const {
+            channelId,
+            dataText,
+            tableName,
+            tone = 'viral',
+            platform = 'facebook',
+            language = 'vi',
+            rowData,      // full row object for image detection
+            columns: rowColumns, // column names list
+        } = await req.json()
 
         if (!channelId || !dataText) {
             return NextResponse.json({ error: 'channelId and dataText are required' }, { status: 400 })
         }
 
-        // Get user's AI key — field is apiKeyEncrypted, model is defaultModel
+        // Detect image URLs from the row columns
+        const imageUrls: string[] = (rowData && rowColumns)
+            ? detectImageUrls(rowData as Record<string, unknown>, rowColumns as string[])
+            : []
+
+        // Get user's AI key
         const keyRecord = await prisma.userApiKey.findFirst({
             where: { userId, isActive: true },
             select: { provider: true, apiKeyEncrypted: true, defaultModel: true },
@@ -28,7 +60,9 @@ export async function POST(req: NextRequest) {
         })
 
         if (!keyRecord?.apiKeyEncrypted) {
-            return NextResponse.json({ error: 'No AI API key configured. Please set up your AI provider in settings.' }, { status: 400 })
+            return NextResponse.json({
+                error: 'No AI API key configured. Please set up your AI provider in settings.',
+            }, { status: 400 })
         }
 
         const provider = keyRecord.provider
@@ -61,18 +95,24 @@ Requirements:
 - Output ONLY the post content`
 
         const result = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
+        const content = result.text.trim()
 
         // Save as draft post
         const post = await prisma.post.create({
             data: {
-                content: result.text.trim(),
+                content,
                 status: 'DRAFT',
                 authorId: userId,
                 channelId,
             },
         })
 
-        return NextResponse.json({ success: true, postId: post.id, content: result.text.trim() })
+        return NextResponse.json({
+            success: true,
+            postId: post.id,
+            content,
+            imageUrls,
+        })
     } catch (err) {
         console.error('[generate-from-db]', err)
         const msg = err instanceof Error ? err.message : 'Generation failed'
