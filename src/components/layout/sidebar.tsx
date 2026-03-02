@@ -86,6 +86,7 @@ const mainNav: NavItem[] = [
     { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Zap },
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
     { titleKey: 'nav.reports', href: '/dashboard/reports', icon: BarChart3 },
+    { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },
     { titleKey: 'nav.apiKeys', href: '/dashboard/api-keys', icon: Key },
     { titleKey: 'nav.billing', href: '/dashboard/billing', icon: CreditCard },
 ]

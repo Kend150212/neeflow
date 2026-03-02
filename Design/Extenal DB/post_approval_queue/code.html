@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Post Approval Queue | Neeflow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00f2ff",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#0f2223",
+                        "surface-dark": "#162c2d",
+                        "border-dark": "#2a4547"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #2a4547;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden p-6 md:p-12 lg:p-20">
+<div class="max-w-6xl mx-auto w-full flex flex-col gap-10">
+<!-- Page Heading Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3 text-primary mb-2">
+<span class="material-symbols-outlined text-3xl">verified_user</span>
+<span class="text-sm font-bold tracking-widest uppercase">Neeflow Core</span>
+</div>
+<h1 class="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">
+                        Post Approval Queue
+                    </h1>
+<p class="text-slate-600 dark:text-slate-400 text-lg max-w-xl">
+                        Review, refine, and authorize your AI-generated content pipeline.
+                    </p>
+</div>
+<div class="flex items-center gap-4 bg-surface-dark/50 p-2 rounded-xl border border-border-dark">
+<div class="flex flex-col px-6 py-2 border-r border-border-dark">
+<span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Total Pending</span>
+<span class="text-primary text-2xl font-bold">12</span>
+</div>
+<div class="flex flex-col px-6 py-2">
+<span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Approved Today</span>
+<span class="text-white text-2xl font-bold">45</span>
+</div>
+</div>
+</div>
+<!-- Global Controls -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-2 flex flex-col justify-center gap-1 rounded-xl border border-border-dark bg-surface-dark/30 p-6 backdrop-blur-sm">
+<div class="flex items-center justify-between">
+<div class="flex flex-col gap-1">
+<h3 class="text-white text-lg font-bold leading-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">bolt</span>
+                                Auto-approve Mode
+                            </h3>
+<p class="text-slate-400 text-sm font-normal leading-normal">
+                                Automatically publish posts with an AI confidence score above 95%.
+                            </p>
+</div>
+<label class="relative flex h-8 w-14 cursor-pointer items-center rounded-full bg-slate-700 p-1 transition-colors duration-300 has-[:checked]:bg-primary">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="h-6 w-6 rounded-full bg-white shadow-lg transition-transform duration-300 peer-checked:translate-x-6"></div>
+</label>
+</div>
+</div>
+<div class="flex items-center justify-between gap-4 rounded-xl border border-border-dark bg-surface-dark/30 p-6 backdrop-blur-sm">
+<div class="flex flex-col">
+<span class="text-slate-400 text-sm">Next scheduled post</span>
+<span class="text-white font-medium">Today, 2:30 PM</span>
+</div>
+<button class="bg-primary/10 text-primary border border-primary/20 p-2 rounded-lg hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined">calendar_month</span>
+</button>
+</div>
+</div>
+<!-- Content Queue -->
+<div class="flex flex-col gap-6">
+<div class="flex items-center justify-between px-2">
+<h2 class="text-2xl font-bold text-white tracking-tight">Pending Content</h2>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-border-dark text-slate-200 text-sm font-medium hover:bg-slate-700 transition-all">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+                            Filter
+                        </button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-background-dark text-sm font-bold hover:opacity-90 transition-all">
+                            Approve All
+                        </button>
+</div>
+</div>
+<div class="overflow-hidden rounded-xl border border-border-dark bg-surface-dark/20 backdrop-blur-md">
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-dark/60 border-bottom border-border-dark">
+<th class="px-6 py-5 text-slate-400 text-xs font-bold uppercase tracking-widest">Product</th>
+<th class="px-6 py-5 text-slate-400 text-xs font-bold uppercase tracking-widest">Platform</th>
+<th class="px-6 py-5 text-slate-400 text-xs font-bold uppercase tracking-widest">Schedule</th>
+<th class="px-6 py-5 text-slate-400 text-xs font-bold uppercase tracking-widest w-1/3">Caption Preview</th>
+<th class="px-6 py-5 text-slate-400 text-xs font-bold uppercase tracking-widest text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-dark/50">
+<!-- Row 1 -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-6">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-lg bg-center bg-cover border border-border-dark" data-alt="Minimalist white watch on dark background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDrri4MxGubYs10qeF8FQiy4GYEjRi9nmWrRqE3jfD6tughRI7q1GS_l0BuTn1foPPAHpS-BILfZwgRTuhDfPYUz2ZCCENPGMsgj4XlVhppo2-HYIZ8AKeTtU_xyHB4vMvA8a5YPAgN1p1krNgn5AMxVgWT0mCszy615L1je6ZYecCEGkfhv0GG8Z8fSICbxQ_IqS0saRbR-W9f_5Dn9LdnOMziXPkEyXj05pa_zULYNwMq83-NdE7glAfQ3Pb68dm1Vd_thXtEcOI')"></div>
+<div class="flex flex-col">
+<span class="text-white font-bold text-sm">Aura Watch S2</span>
+<span class="text-slate-500 text-xs">SKU: AW-002</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center">
+<span class="text-[10px] font-bold text-white uppercase">IG</span>
+</div>
+<span class="text-slate-300 text-sm">Instagram</span>
+</div>
+</td>
+<td class="px-6 py-6">
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Oct 24, 2024</span>
+<span class="text-primary text-xs">10:00 AM</span>
+</div>
+</td>
+<td class="px-6 py-6">
+<p class="text-slate-400 text-sm line-clamp-2 italic font-display">
+                                            "Elevate your every second. The Aura Watch S2 blends timeless design with future-ready tech. #Minimalism #TechLife"
+                                        </p>
+</td>
+<td class="px-6 py-6">
+<div class="flex justify-end gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-slate-400 hover:text-white hover:bg-slate-700 transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-red-400 hover:bg-red-400/10 transition-all">
+<span class="material-symbols-outlined text-xl">close</span>
+</button>
+<button class="px-4 h-10 flex items-center justify-center rounded-lg bg-primary text-background-dark font-bold text-sm hover:opacity-90 transition-all">
+                                                Approve
+                                            </button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-6">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-lg bg-center bg-cover border border-border-dark" data-alt="High-end wireless headphones professional shot" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDcVs3QpP2xMOc8Bgyh_50lRxEilKtedbTabs65hejgOl4_bZZdLnZLNlaUa5AgbYfgT1f6YIJPalVCAv6lHbHUpba4LgS-FtDGQgO2tUcnTp7OxcFcmRWE_uUSd7kIgzdMB7gKVQCHo3WJLSrfOx8Uf6pvaJYrtZuHv2Pk8PeAlRx1C2Oe3lSVX-vHvD3Ck2i245WdFmcN5UyBXJ-2nMjsKfEBKO7h6xwfhE78VQpx40COEMG02T0i2xvTXUybFA29Si711jTHxuM')"></div>
+<div class="flex flex-col">
+<span class="text-white font-bold text-sm">Sonic Buds Pro</span>
+<span class="text-slate-500 text-xs">SKU: SB-900</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-black flex items-center justify-center border border-slate-700">
+<span class="text-[10px] font-bold text-white uppercase">TT</span>
+</div>
+<span class="text-slate-300 text-sm">TikTok</span>
+</div>
+</td>
+<td class="px-6 py-6">
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Oct 24, 2024</span>
+<span class="text-primary text-xs">02:30 PM</span>
+</div>
+</td>
+<td class="px-6 py-6">
+<p class="text-slate-400 text-sm line-clamp-2 italic font-display">
+                                            "Experience sound like never before. 40h battery, active noise cancellation. 🎧✨ #TechTok #MusicLovers"
+                                        </p>
+</td>
+<td class="px-6 py-6">
+<div class="flex justify-end gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-slate-400 hover:text-white hover:bg-slate-700 transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-red-400 hover:bg-red-400/10 transition-all">
+<span class="material-symbols-outlined text-xl">close</span>
+</button>
+<button class="px-4 h-10 flex items-center justify-center rounded-lg bg-primary text-background-dark font-bold text-sm hover:opacity-90 transition-all">
+                                                Approve
+                                            </button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-6">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-lg bg-center bg-cover border border-border-dark" data-alt="Vibrant red running sneakers" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCC-LMrNJBlDjBIIdaHflMCTKaQuhTXBIZnv5RYcUQyFz6fiBO18N2ZdEGdWMnwEV_ZZWXAiJcSV704fRXH45A0_r7DIQfdMGzNJNhnceQyDIdROMZd1xial3gy64DDVw_0emjosTUqd_S4qc2Wh6siinbdPIaRmecTsoWxOufMfhpbQOQHDknVPIDueEjvQ1iRPMHRUxZhngXXLdP0HwkUtl5BtaQ1pCho7IsQxkdgJTl45pI_PnbQ4zQOXHotaniwo-q-RIcP06k')"></div>
+<div class="flex flex-col">
+<span class="text-white font-bold text-sm">Velocity Run</span>
+<span class="text-slate-500 text-xs">SKU: VR-X1</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-[#1877F2] flex items-center justify-center">
+<span class="text-[10px] font-bold text-white uppercase">FB</span>
+</div>
+<span class="text-slate-300 text-sm">Facebook</span>
+</div>
+</td>
+<td class="px-6 py-6">
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Oct 25, 2024</span>
+<span class="text-primary text-xs">09:00 AM</span>
+</div>
+</td>
+<td class="px-6 py-6">
+<p class="text-slate-400 text-sm line-clamp-2 italic font-display">
+                                            "Step into the future of performance. Designed for the city runner. Shop the Velocity collection now."
+                                        </p>
+</td>
+<td class="px-6 py-6">
+<div class="flex justify-end gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-slate-400 hover:text-white hover:bg-slate-700 transition-all">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-red-400 hover:bg-red-400/10 transition-all">
+<span class="material-symbols-outlined text-xl">close</span>
+</button>
+<button class="px-4 h-10 flex items-center justify-center rounded-lg bg-primary text-background-dark font-bold text-sm hover:opacity-90 transition-all">
+                                                Approve
+                                            </button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Footer / Pagination -->
+<div class="flex flex-col md:flex-row items-center justify-between gap-4 px-2 py-4 border-t border-border-dark mt-4">
+<span class="text-slate-500 text-sm">Showing 3 of 12 pending posts</span>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-slate-500 opacity-50 cursor-not-allowed">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-slate-200 bg-border-dark">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-slate-400 hover:bg-surface-dark transition-all">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-slate-400 hover:bg-surface-dark transition-all">3</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark text-slate-400 hover:bg-surface-dark transition-all">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Abstract Decorative Background -->
+<div class="fixed top-0 right-0 -z-10 w-full h-full pointer-events-none opacity-20">
+<div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-[20%] left-[-5%] w-[300px] h-[300px] bg-primary/10 rounded-full blur-[100px]"></div>
+</div>
+</div>
+</body></html>

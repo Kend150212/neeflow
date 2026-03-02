@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | External Database Integration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00f2ff",
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#080c0c",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0d1617;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1b2728;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 px-6 lg:px-20 py-3 bg-background-light dark:bg-background-dark sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">database</span>
+<h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold leading-tight tracking-tight">Neeflow</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Dashboard</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Workflows</a>
+<a class="text-primary text-sm font-medium border-b-2 border-primary py-1" href="#">Integrations</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 items-center">
+<label class="hidden sm:flex flex-col min-w-40 h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+<div class="text-slate-500 flex items-center justify-center pl-3">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="form-input w-full border-none bg-transparent focus:ring-0 text-sm placeholder:text-slate-500" placeholder="Search resources..." value=""/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-xl">settings</span>
+</button>
+</div>
+<div class="bg-primary/20 p-0.5 rounded-full border border-primary/50">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" data-alt="User profile avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD5rec3VJtG-87HcyOBV8gE635z-hKbMR_X32PsjDfVZB2qFwfShcLcRGruIGp7X7RxZAMvhinsU4DpM2YtnXNI8SpIR-eapUYAvaJ6e-b5WTuPoM7ZYUZHrbV6IAxZi805LjJx9xqLwAxOLp-zmo7uBZxRoGAuwW7mXsGnsp4Z06QuU6JssYmP3tBcryIJwzKx4bh24dAH010_G2wbE8PbrBbJPBp5u3-DbKV4SVROT8DOg-taHMOSDGaBfDas_kpYi0jnedgaliw");'></div>
+</div>
+</div>
+</header>
+<main class="flex-1 px-6 lg:px-20 py-8 max-w-[1400px] mx-auto w-full">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div class="max-w-2xl">
+<div class="flex items-center gap-2 text-primary mb-2">
+<span class="material-symbols-outlined text-sm">link</span>
+<span class="text-xs font-bold uppercase tracking-widest">External Source Configuration</span>
+</div>
+<h1 class="text-slate-900 dark:text-slate-100 text-4xl font-black leading-tight tracking-tight mb-3">Database Integration</h1>
+<p class="text-slate-600 dark:text-slate-400 text-lg">Securely connect your production databases to Neeflow. Manage table-level permissions and synchronization settings in one place.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center justify-center gap-2 rounded-lg h-11 px-6 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+<span class="material-symbols-outlined text-lg">auto_stories</span>
+                            View Docs
+                        </button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Section 1: Connection Setup -->
+<div class="lg:col-span-5 flex flex-col gap-6">
+<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden backdrop-blur-sm">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center gap-3">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">settings_input_component</span>
+</div>
+<h3 class="text-lg font-bold">1. Connection Setup</h3>
+</div>
+<div class="p-6 flex flex-col gap-5">
+<div class="space-y-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Database Type</label>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-primary bg-primary/5 text-primary">
+<span class="font-bold">MySQL</span>
+</button>
+<button class="flex items-center justify-center gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary/50 transition-colors">
+<span class="text-slate-600 dark:text-slate-400">PostgreSQL</span>
+</button>
+<button class="flex items-center justify-center gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary/50 transition-colors">
+<span class="text-slate-600 dark:text-slate-400">MariaDB</span>
+</button>
+<button class="flex items-center justify-center gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary/50 transition-colors">
+<span class="text-slate-600 dark:text-slate-400">SQLite</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4">
+<div class="col-span-2 space-y-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Host</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="db.neeflow.io" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Port</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="3306" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Database Name</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="production_v2" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Username</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="neeflow_admin" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Password</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="••••••••••••" type="password"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">verified_user</span>
+<div>
+<p class="text-sm font-bold">Use SSL Encryption</p>
+<p class="text-xs text-slate-500">Recommended for production</p>
+</div>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+<div class="flex flex-col gap-3 mt-4">
+<button class="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-primary text-background-dark font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-xl">save</span>
+                                        Save Configuration
+                                    </button>
+<button class="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-transparent border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+<span class="material-symbols-outlined text-xl">speed</span>
+                                        Test Connection
+                                    </button>
+</div>
+</div>
+</div>
+<!-- Status Card -->
+<div class="p-6 rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-primary/20 shadow-xl shadow-primary/5">
+<div class="flex items-start justify-between">
+<div class="flex flex-col gap-1">
+<p class="text-xs font-bold uppercase tracking-wider text-slate-500">Current Status</p>
+<div class="flex items-center gap-2">
+<div class="size-2.5 bg-primary rounded-full animate-pulse shadow-[0_0_10px_rgba(0,242,255,0.5)]"></div>
+<p class="text-xl font-bold text-slate-100">Live &amp; Connected</p>
+</div>
+<p class="text-sm text-slate-400 mt-2">Latency: <span class="text-primary">24ms</span> • Uptime: <span class="text-primary">99.9%</span></p>
+</div>
+<span class="material-symbols-outlined text-primary text-4xl opacity-50">hub</span>
+</div>
+</div>
+</div>
+<!-- Section 2: Table Manager -->
+<div class="lg:col-span-7">
+<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col h-full backdrop-blur-sm">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">table_chart</span>
+</div>
+<h3 class="text-lg font-bold">2. Table Manager</h3>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                                        Sync Tables
+                                    </button>
+</div>
+</div>
+<div class="p-4 overflow-x-auto custom-scrollbar">
+<table class="w-full text-left border-separate border-spacing-y-2">
+<thead>
+<tr class="text-slate-500 text-xs font-bold uppercase tracking-wider">
+<th class="px-4 py-2">Table Name</th>
+<th class="px-4 py-2">Row Count</th>
+<th class="px-4 py-2 text-center">Visible</th>
+<th class="px-4 py-2 text-center">Readable</th>
+<th class="px-4 py-2 text-center">Writable</th>
+</tr>
+</thead>
+<tbody class="text-sm">
+<!-- Row 1 -->
+<tr class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-4 py-4 rounded-l-xl font-medium">users_master</td>
+<td class="px-4 py-4 text-slate-500">12,482</td>
+<td class="px-4 py-4 text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 rounded-r-xl text-center">
+<input class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-4 py-4 rounded-l-xl font-medium">transactions_log</td>
+<td class="px-4 py-4 text-slate-500">1,042,932</td>
+<td class="px-4 py-4 text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 rounded-r-xl text-center">
+<input class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-4 py-4 rounded-l-xl font-medium">product_catalog</td>
+<td class="px-4 py-4 text-slate-500">4,209</td>
+<td class="px-4 py-4 text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 rounded-r-xl text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-4 py-4 rounded-l-xl font-medium">billing_addresses</td>
+<td class="px-4 py-4 text-slate-500">85,201</td>
+<td class="px-4 py-4 text-center">
+<input class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 text-center">
+<input class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 rounded-r-xl text-center">
+<input class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-4 py-4 rounded-l-xl font-medium">system_configs</td>
+<td class="px-4 py-4 text-slate-500">124</td>
+<td class="px-4 py-4 text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 rounded-r-xl text-center">
+<input checked="" class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-4 py-4 rounded-l-xl font-medium">auth_tokens</td>
+<td class="px-4 py-4 text-slate-500">540,112</td>
+<td class="px-4 py-4 text-center">
+<input class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 text-center">
+<input class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+<td class="px-4 py-4 rounded-r-xl text-center">
+<input class="rounded border-slate-700 text-primary focus:ring-primary bg-transparent size-4" type="checkbox"/>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-auto p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="size-3 rounded-sm bg-primary/20 border border-primary/50"></span>
+<span class="text-xs text-slate-500">12 Tables Selected</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="size-3 rounded-sm bg-slate-400/20 border border-slate-400/50"></span>
+<span class="text-xs text-slate-500">24 Hidden</span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 rounded-lg text-xs font-bold border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">Select All</button>
+<button class="px-4 py-2 rounded-lg text-xs font-bold bg-primary text-background-dark hover:opacity-90 transition-all">Bulk Update Permissions</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Stats -->
+<div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="p-5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 bg-white/50 dark:bg-slate-900/30">
+<div class="size-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+<span class="material-symbols-outlined">storage</span>
+</div>
+<div>
+<p class="text-xs font-bold text-slate-500 uppercase">Storage Used</p>
+<p class="text-2xl font-bold">142.5 GB</p>
+</div>
+</div>
+<div class="p-5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 bg-white/50 dark:bg-slate-900/30">
+<div class="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined">sync_alt</span>
+</div>
+<div>
+<p class="text-xs font-bold text-slate-500 uppercase">Daily Syncs</p>
+<p class="text-2xl font-bold">1,204</p>
+</div>
+</div>
+<div class="p-5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 bg-white/50 dark:bg-slate-900/30">
+<div class="size-12 rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center">
+<span class="material-symbols-outlined">key</span>
+</div>
+<div>
+<p class="text-xs font-bold text-slate-500 uppercase">Access Keys</p>
+<p class="text-2xl font-bold">8 Active</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Info Banner -->
+<footer class="border-t border-slate-200 dark:border-slate-800 px-6 lg:px-20 py-6 bg-slate-50 dark:bg-slate-900/80 mt-10">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4 max-w-[1400px] mx-auto w-full">
+<p class="text-sm text-slate-500">© 2024 Neeflow Systems. All database connections are encrypted via TLS 1.3.</p>
+<div class="flex gap-6">
+<a class="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="text-sm text-slate-500 hover:text-primary transition-colors" href="#">Security Audit</a>
+</div>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

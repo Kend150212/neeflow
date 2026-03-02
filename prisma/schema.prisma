@@ -785,6 +785,10 @@ model Plan {
   trialEnabled   Boolean @default(false) @map("trial_enabled")
   trialDays      Int     @default(14)    @map("trial_days")
 
+  // Integrations access — JSON array of slugs: ["external_db","shopify",...]
+  // null = none allowed. Admin configures per plan.
+  allowedIntegrations Json? @map("allowed_integrations")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
