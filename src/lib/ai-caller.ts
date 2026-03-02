@@ -36,6 +36,11 @@ export async function callAIWithUsage(
         return callGeminiWithUsage(apiKey, model, systemPrompt, userPrompt)
     }
 
+    // Synthetic requires all model IDs to have the "hf:" prefix
+    if (provider === 'synthetic' && model && !model.startsWith('hf:')) {
+        model = `hf:${model}`
+    }
+
     const base = baseUrl || OPENAI_COMPATIBLE_PROVIDERS[provider]
     if (!base) {
         throw new Error(`Unsupported AI provider: ${provider}`)

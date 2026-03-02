@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     // ── Quota-aware key resolution ──
     const providerToUse = channel.defaultAiProvider
-    const keyResult = await resolveTextAIKey(channelId, providerToUse || null)
+    const keyResult = await resolveTextAIKey(channelId, providerToUse || null, channel.defaultAiModel || null)
     if (!keyResult.ok) {
         return NextResponse.json({ error: keyResult.data.error, errorType: keyResult.data.errorType }, { status: keyResult.status })
     }

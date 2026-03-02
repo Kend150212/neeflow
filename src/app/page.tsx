@@ -29,7 +29,7 @@ const SvgFileText = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg
 const SvgRefreshCw = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>)
 const SvgLock = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>)
 const SvgCheckCircle = ({ className = 'w-4 h-4' }: { className?: string }) => (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>)
-import { PricingSection } from '@/components/pricing-section'
+// Pricing hidden for pre-launch
 
 // ── SVG Platform Logos ────────────────────────────────────────────────────────
 const FacebookSVG = () => (
@@ -195,6 +195,18 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
   const branding = useBranding()
+  const [waitlistEmail, setWaitlistEmail] = useState('')
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
+  const [waitlistLoading, setWaitlistLoading] = useState(false)
+
+  const handleWaitlist = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!waitlistEmail) return
+    setWaitlistLoading(true)
+    try { await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: waitlistEmail }) }) } catch { }
+    setWaitlistSubmitted(true)
+    setWaitlistLoading(false)
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -229,19 +241,19 @@ export default function LandingPage() {
         .delay-500 { animation-delay: 0.5s; }
 
         .text-gradient {
-          background: linear-gradient(135deg, #14b8a6 0%, #6366f1 50%, #8b5cf6 100%);
+          background: linear-gradient(135deg, #14d46b 0%, #059669 40%, #6366f1 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
 
         .bg-grid {
-          background-image: radial-gradient(circle, rgba(20,184,166,0.15) 1px, transparent 1px);
+          background-image: radial-gradient(circle, rgba(20,212,107,0.12) 1px, transparent 1px);
           background-size: 32px 32px;
         }
 
         .dark .bg-grid {
-          background-image: radial-gradient(circle, rgba(20,184,166,0.08) 1px, transparent 1px);
+          background-image: radial-gradient(circle, rgba(20,212,107,0.07) 1px, transparent 1px);
         }
 
         .card-hover {
@@ -271,17 +283,17 @@ export default function LandingPage() {
         }
 
         .btn-primary {
-          background: linear-gradient(135deg, #14b8a6, #6366f1);
+          background: linear-gradient(135deg, #14d46b, #059669);
           transition: all 0.2s ease;
         }
         .btn-primary:hover {
           opacity: 0.9;
           transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(20,184,166,0.35);
+          box-shadow: 0 8px 24px rgba(20,212,107,0.4);
         }
 
         .step-connector {
-          background: linear-gradient(90deg, #14b8a6, #6366f1);
+          background: linear-gradient(90deg, #14d46b, #059669);
         }
 
         .orb {
@@ -311,7 +323,7 @@ export default function LandingPage() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-7">
-            {[['Features', '#features'], ['How It Works', '#how-it-works'], ['Pricing', '#pricing'], ['Privacy', '/privacy']].map(([label, href]) => (
+            {[['Features', '#features'], ['How It Works', '#how-it-works'], ['Waitlist', '#waitlist'], ['Privacy', '/privacy']].map(([label, href]) => (
               <a key={label} href={href} className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                 {label}
               </a>
@@ -333,9 +345,9 @@ export default function LandingPage() {
             <Link href="/login" className="hidden sm:block text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
               Sign In
             </Link>
-            <Link href="/login" className="btn-primary text-white text-sm font-semibold px-5 py-2.5 rounded-full flex items-center gap-1.5">
-              Get Started <SvgArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <a href="#waitlist" className="btn-primary text-white text-sm font-semibold px-5 py-2.5 rounded-full flex items-center gap-1.5">
+              Join Waitlist <SvgArrowRight className="w-3.5 h-3.5" />
+            </a>
             {/* Mobile menu button */}
             <button
               className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 cursor-pointer"
@@ -349,8 +361,8 @@ export default function LandingPage() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden glass-nav border-t border-gray-200/60 dark:border-white/5 px-6 py-4 space-y-3">
-            {[['Features', '#features'], ['How It Works', '#how-it-works'], ['Pricing', '#pricing'], ['Privacy', '/privacy'], ['Sign In', '/login']].map(([label, href]) => (
-              <a key={label} href={href} onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium text-gray-700 dark:text-gray-300 py-2 hover:text-teal-500 transition-colors">
+            {[['Features', '#features'], ['How It Works', '#how-it-works'], ['Waitlist', '#waitlist'], ['Privacy', '/privacy'], ['Sign In', '/login']].map(([label, href]) => (
+              <a key={label} href={href} onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium text-gray-700 dark:text-gray-300 py-2 hover:text-green-500 transition-colors">
                 {label}
               </a>
             ))}
@@ -364,15 +376,15 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-grid" />
 
         {/* Gradient orbs */}
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-teal-400 rounded-full orb" />
-        <div className="absolute top-40 right-1/4 w-80 h-80 bg-violet-500 rounded-full orb" />
-        <div className="absolute -bottom-20 left-1/2 w-72 h-72 bg-indigo-400 rounded-full orb" />
+        <div className="absolute top-20 left-1/4 w-96 h-96 bg-green-400 rounded-full orb" />
+        <div className="absolute top-40 right-1/4 w-80 h-80 bg-emerald-500 rounded-full orb" />
+        <div className="absolute -bottom-20 left-1/2 w-72 h-72 bg-green-300 rounded-full orb" />
 
         <div className="relative max-w-5xl mx-auto px-6 text-center">
           {/* Badge */}
-          <div className="animate-fade-up inline-flex items-center gap-2 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 text-xs font-semibold px-4 py-2 rounded-full mb-8">
-            <SvgSparkles className="w-3.5 h-3.5" />
-            AI-Powered Social Media Management
+          <div className="animate-fade-up inline-flex items-center gap-2 bg-green-50 dark:bg-green-950/60 border border-green-200 dark:border-green-800/60 text-green-700 dark:text-green-300 text-xs font-semibold px-4 py-2 rounded-full mb-8">
+            <SvgLock className="w-3.5 h-3.5" />
+            Private Beta — Limited Early Access Spots Available
           </div>
 
           {/* Headline */}
@@ -389,24 +401,24 @@ export default function LandingPage() {
 
           {/* CTAs */}
           <div className="animate-fade-up delay-300 flex flex-col sm:flex-row items-center justify-center gap-3 mb-14">
-            <Link href="/login" className="btn-primary text-white font-semibold px-8 py-4 rounded-full text-base flex items-center gap-2 shadow-xl">
-              Start Free — No Credit Card <SvgArrowRight className="w-4 h-4" />
-            </Link>
-            <a href="#how-it-works" className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1.5 transition-colors px-6 py-4">
-              See How It Works <SvgChevronRight className="w-4 h-4" />
+            <a href="#waitlist" className="btn-primary text-white font-semibold px-8 py-4 rounded-full text-base flex items-center gap-2 shadow-xl">
+              Request Early Access <SvgArrowRight className="w-4 h-4" />
+            </a>
+            <a href="#features" className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1.5 transition-colors px-6 py-4">
+              See Features <SvgChevronRight className="w-4 h-4" />
             </a>
           </div>
 
           {/* Trust badges */}
           <div className="animate-fade-up delay-400 flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500 dark:text-gray-500">
             {[
-              { icon: SvgShield, text: 'SOC 2 Ready' },
-              { icon: SvgLock, text: 'AES-256 Encrypted' },
-              { icon: SvgRefreshCw, text: 'Cancel Anytime' },
+              { icon: SvgUsers, text: 'Limited Beta Spots' },
+              { icon: SvgZap, text: 'Early Access Perks' },
+              { icon: SvgShield, text: 'No Credit Card' },
               { icon: SvgGlobe, text: '7 Platforms' },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-1.5">
-                <Icon className="w-4 h-4 text-teal-500" />
+                <Icon className="w-4 h-4 text-green-500" />
                 <span>{text}</span>
               </div>
             ))}
@@ -560,8 +572,8 @@ export default function LandingPage() {
       <section id="features" className="py-24 bg-gray-50/50 dark:bg-gray-900/40">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800/50 text-teal-700 dark:text-teal-300 text-xs font-semibold px-4 py-2 rounded-full mb-5">
-              <SvgLayers className="w-3.5 h-3.5" /> Everything You Need
+            <div className="inline-flex items-center gap-2 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-300 text-xs font-semibold px-4 py-2 rounded-full mb-5">
+              <SvgLayers className="w-3.5 h-3.5" /> What We&apos;re Building
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               One platform.<br />
@@ -594,19 +606,19 @@ export default function LandingPage() {
       {/* ── MID CTA ─────────────────────────────────────────────────────────── */}
       <section className="py-16 overflow-hidden">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="relative rounded-3xl overflow-hidden p-10 sm:p-14 text-center" style={{ background: 'linear-gradient(135deg, #0d9488 0%, #6366f1 50%, #7c3aed 100%)' }}>
+          <div className="relative rounded-3xl overflow-hidden p-10 sm:p-14 text-center" style={{ background: 'linear-gradient(135deg, #14d46b 0%, #059669 50%, #047857 100%)' }}>
             <div className="absolute inset-0 bg-grid opacity-20" />
             <div className="relative">
-              <div className="text-sm font-semibold text-teal-200 mb-3">🚀 Join 1,000+ teams</div>
+              <div className="text-sm font-semibold text-green-100 mb-3">🚀 Launching Soon — Be First in Line</div>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
-                Ready to save 10+ hours every week?
+                The smarter way to manage social media is almost here.
               </h2>
-              <p className="text-teal-100 mb-8 max-w-lg mx-auto">
-                Start your free trial today. No credit card required. Cancel anytime.
+              <p className="text-green-100 mb-8 max-w-lg mx-auto">
+                Join the waitlist and get early access, priority onboarding, and exclusive launch pricing.
               </p>
-              <Link href="/login" className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold px-8 py-4 rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-200">
-                Start Free Trial <SvgArrowRight className="w-4 h-4" />
-              </Link>
+              <a href="#waitlist" className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold px-8 py-4 rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-200">
+                Join the Waitlist <SvgArrowRight className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </div>
@@ -691,41 +703,84 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── PRICING ─────────────────────────────────────────────────────────── */}
-      <div id="pricing" className="bg-white dark:bg-gray-950">
-        <PricingSection />
-      </div>
+      {/* ── WAITLIST ─────────────────────────────────────────────────────────── */}
+      <section id="waitlist" className="py-24 bg-white dark:bg-gray-950">
+        <div className="max-w-2xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-2 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-300 text-xs font-semibold px-4 py-2 rounded-full mb-6">
+            <SvgSparkles className="w-3.5 h-3.5" /> Secure your spot — limited availability
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
+            Get <span className="text-gradient">Early Access</span>
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 text-lg mb-10 max-w-lg mx-auto">
+            Be among the first to experience {branding.appName}. Early members get priority access, exclusive perks, and special launch pricing.
+          </p>
+
+          {waitlistSubmitted ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-950/60 flex items-center justify-center mb-2">
+                <SvgCheckCircle className="w-8 h-8 text-green-500" />
+              </div>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">You&apos;re on the list!</p>
+              <p className="text-gray-500 dark:text-gray-400">We&apos;ll email you as soon as early access opens. Stay tuned! 🎉</p>
+            </div>
+          ) : (
+            <form onSubmit={handleWaitlist} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+              <input
+                type="email"
+                required
+                placeholder="you@company.com"
+                value={waitlistEmail}
+                onChange={e => setWaitlistEmail(e.target.value)}
+                className="flex-1 h-12 px-4 rounded-full border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50"
+              />
+              <button
+                type="submit"
+                disabled={waitlistLoading}
+                className="btn-primary text-white font-semibold px-7 h-12 rounded-full text-sm whitespace-nowrap disabled:opacity-70 flex items-center gap-2"
+              >
+                {waitlistLoading ? 'Joining...' : <>Join Waitlist <SvgArrowRight className="w-4 h-4" /></>}
+              </button>
+            </form>
+          )}
+
+          <div className="flex flex-wrap justify-center gap-6 mt-10 text-sm text-gray-500 dark:text-gray-500">
+            {[{ icon: SvgShield, t: 'No spam, ever' }, { icon: SvgLock, t: 'Unsubscribe anytime' }, { icon: SvgZap, t: 'Early bird pricing' }].map(({ icon: Icon, t }) => (
+              <div key={t} className="flex items-center gap-1.5"><Icon className="w-4 h-4 text-green-500" />{t}</div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ── FINAL CTA ───────────────────────────────────────────────────────── */}
       <section className="py-28 bg-gray-950 dark:bg-black relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-teal-900 rounded-full orb" />
-        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-violet-900 rounded-full orb" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-green-900 rounded-full orb" />
+        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-emerald-900 rounded-full orb" />
 
         <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 border border-teal-800 text-teal-400 text-xs font-semibold px-4 py-2 rounded-full mb-8">
-            <SvgSparkles className="w-3.5 h-3.5" /> Start Your Free Trial Today
+          <div className="inline-flex items-center gap-2 border border-green-800 text-green-400 text-xs font-semibold px-4 py-2 rounded-full mb-8">
+            <SvgSparkles className="w-3.5 h-3.5" /> Private Beta — Opening Soon
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight tracking-tight">
             Your social media.<br />
             <span className="text-gradient">On autopilot.</span>
           </h2>
           <p className="text-gray-400 text-lg mb-10 max-w-lg mx-auto leading-relaxed">
-            Join thousands of agencies and brands who trust NeeFlow to power their social media presence. No credit card required.
+            We&apos;re putting the finishing touches on something big. Join the waitlist to get early access and be among the first to experience {branding.appName}.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/login" className="btn-primary text-white font-bold px-10 py-4 rounded-full text-base flex items-center gap-2 shadow-2xl">
-              Get Started Free <SvgArrowRight className="w-4 h-4" />
-            </Link>
+            <a href="#waitlist" className="btn-primary text-white font-bold px-10 py-4 rounded-full text-base flex items-center gap-2 shadow-2xl">
+              Join the Waitlist <SvgArrowRight className="w-4 h-4" />
+            </a>
             <Link href="/login" className="text-gray-400 hover:text-white font-medium text-sm flex items-center gap-1 transition-colors">
-              Sign in to existing account <SvgChevronRight className="w-4 h-4" />
+              Already have an account <SvgChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          {/* Feature pills */}
           <div className="flex flex-wrap justify-center gap-3 mt-10">
-            {['14-day free trial', 'No credit card', 'Cancel anytime', '24/7 AI support'].map((t) => (
+            {['Free to join waitlist', 'Early bird pricing', 'Priority onboarding', 'Cancel anytime'].map((t) => (
               <div key={t} className="flex items-center gap-1.5 text-xs text-gray-500">
-                <SvgCheckCircle className="w-3.5 h-3.5 text-teal-500" />
+                <SvgCheckCircle className="w-3.5 h-3.5 text-green-500" />
                 {t}
               </div>
             ))}
@@ -759,7 +814,7 @@ export default function LandingPage() {
             {[
               {
                 title: 'Product',
-                links: [['Features', '#features'], ['Pricing', '#pricing'], ['How It Works', '#how-it-works'], ['Changelog', '#']],
+                links: [['Features', '#features'], ['Waitlist', '#waitlist'], ['How It Works', '#how-it-works'], ['Changelog', '#']],
               },
               {
                 title: 'Company',
