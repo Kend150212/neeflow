@@ -511,7 +511,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                             </div>
 
                             {/* Table content */}
-                            <div className="flex-1 overflow-x-auto p-4">
+                            <div className="overflow-x-auto overflow-y-auto p-4 max-h-[580px] custom-scrollbar">
                                 {tables.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
                                         {loadingTables ? (
