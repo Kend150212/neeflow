@@ -54,11 +54,11 @@ interface Props {
     channels: Channel[]
 }
 
-const DB_TYPES: { value: DbType; label: string; port: string }[] = [
+const DB_TYPES: { value: DbType; label: string; port: string; comingSoon?: boolean }[] = [
     { value: 'mysql', label: 'MySQL', port: '3306' },
-    { value: 'mariadb', label: 'MariaDB', port: '3306' },
-    { value: 'postgresql', label: 'PostgreSQL', port: '5432' },
-    { value: 'sqlite', label: 'SQLite', port: '' },
+    { value: 'mariadb', label: 'MariaDB', port: '3306', comingSoon: true },
+    { value: 'postgresql', label: 'PostgreSQL', port: '5432', comingSoon: true },
+    { value: 'sqlite', label: 'SQLite', port: '', comingSoon: true },
 ]
 
 const defaultPerm = (): TablePermission => ({ visible: true, readable: true, writable: false })
@@ -240,6 +240,15 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                             Securely connect your production database. Manage table-level permissions and synchronization settings in one place.
                         </p>
                     </div>
+                    {/* Explorer shortcut — visible when connection is confirmed */}
+                    {testStatus === 'ok' && (
+                        <Link href="/dashboard/integrations/external-db/explorer" className="flex-shrink-0">
+                            <Button className="gap-2 font-bold">
+                                <Activity className="h-4 w-4" />
+                                Open Data Explorer
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Main Grid: 5/12 + 7/12 */}
@@ -264,15 +273,23 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                         {DB_TYPES.map(t => (
                                             <button
                                                 key={t.value}
-                                                onClick={() => setDbType(t.value)}
+                                                onClick={() => !t.comingSoon && setDbType(t.value)}
+                                                disabled={!!t.comingSoon}
                                                 className={cn(
-                                                    'flex items-center justify-center gap-2 p-3 rounded-lg border-2 text-sm font-bold transition-all',
-                                                    dbType === t.value
-                                                        ? 'border-primary bg-primary/5 text-primary'
-                                                        : 'border-border hover:border-primary/40 text-muted-foreground'
+                                                    'relative flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 text-sm font-bold transition-all',
+                                                    t.comingSoon
+                                                        ? 'border-border/40 text-muted-foreground/40 bg-muted/20 cursor-not-allowed opacity-60'
+                                                        : dbType === t.value
+                                                            ? 'border-primary bg-primary/5 text-primary'
+                                                            : 'border-border hover:border-primary/40 text-muted-foreground'
                                                 )}
                                             >
                                                 {t.label}
+                                                {t.comingSoon && (
+                                                    <span className="text-[9px] font-semibold text-muted-foreground/60 leading-none">
+                                                        Coming Soon
+                                                    </span>
+                                                )}
                                             </button>
                                         ))}
                                     </div>
