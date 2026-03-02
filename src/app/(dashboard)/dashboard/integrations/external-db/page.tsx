@@ -41,6 +41,7 @@ export default async function ExternalDbPage({
 
     return (
         <ExternalDbSetupClient
+            key={channelId ?? 'no-channel'}
             activeChannelId={channelId}
             initialConfig={config ? {
                 id: config.id,
