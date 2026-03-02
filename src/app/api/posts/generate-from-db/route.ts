@@ -5,6 +5,7 @@ import { callAIWithUsage, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 import { uploadToR2, generateR2Key, isR2Configured } from '@/lib/r2'
 import { checkIntegrationAccess } from '@/lib/integration-access'
+import { checkPostLimit, incrementPostUsage } from '@/lib/billing/check-limits'
 
 // Detect image URLs from row data by column name heuristic
 function detectImageUrls(row: Record<string, unknown>, columns: string[]): string[] {
@@ -167,6 +168,19 @@ export async function POST(req: NextRequest) {
         const apiKey = keyResult.apiKey!
         const model = keyResult.model || getDefaultModel(provider, {})
 
+        // ── Post quota check (uses channel owner's plan, not caller's) ──
+        const quotaUserId = keyResult.ownerId ?? userId
+        const quotaErr = await checkPostLimit(quotaUserId)
+        if (quotaErr) {
+            return NextResponse.json({
+                error: quotaErr.message,
+                errorVi: quotaErr.messageVi,
+                code: 'POST_LIMIT_REACHED',
+                limit: quotaErr.limit,
+                current: quotaErr.current,
+            }, { status: 402 })
+        }
+
         // Fetch channel details for context
         const channel = await prisma.channel.findUnique({
             where: { id: channelId },
@@ -247,6 +261,9 @@ ${allHashtags.length > 0 ? `- You may use relevant hashtags from this list: ${al
                 },
             },
         })
+
+        // Increment post usage counter toward plan's monthly limit
+        await incrementPostUsage(quotaUserId).catch(() => { /* non-fatal */ })
 
         // ── Auto-import images from DB row → upload to media → attach to post ──
         if (imageUrls.length > 0) {
