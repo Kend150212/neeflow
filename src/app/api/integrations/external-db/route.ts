@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id as string
     const body = await req.json()
-    const { dbType, host, port, database, username, password, ssl, queryTimeout, schemaHint, channelIds } = body
+    const { dbType, host, port, database, username, password, ssl, queryTimeout, schemaHint, channelIds, testStatus } = body
 
     if (!dbType || !database) {
         return NextResponse.json({ error: 'dbType and database are required' }, { status: 400 })
@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
             ssl: !!ssl,
             queryTimeout: queryTimeout ?? 5000,
             schemaHint: schemaHint || null,
+            testStatus: testStatus ?? null,
         },
         update: {
             dbType,
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest) {
             ssl: !!ssl,
             queryTimeout: queryTimeout ?? 5000,
             schemaHint: schemaHint || null,
+            ...(testStatus !== undefined ? { testStatus } : {}),
         },
     })
 

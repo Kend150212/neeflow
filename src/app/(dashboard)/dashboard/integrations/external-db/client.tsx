@@ -151,10 +151,22 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                     setTablePerms(merged)
                 }
                 toast.success(`Connected! Latency: ${data.latencyMs}ms`)
+                // Persist testStatus=ok so it survives page refresh
+                await fetch('/api/integrations/external-db', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dbType, host, port, database, username, password, ssl, schemaHint, channelIds: selectedChannels, testStatus: 'ok' }),
+                })
             } else {
                 setTestStatus('error')
                 setTestError(data.error)
                 toast.error(data.error ?? 'Connection failed')
+                // Persist testStatus=error
+                await fetch('/api/integrations/external-db', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dbType, host, port, database, username, password, ssl, schemaHint, channelIds: selectedChannels, testStatus: 'error' }),
+                })
             }
         } catch (e) {
             setTestStatus('error')
@@ -164,13 +176,17 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
         }
     }
 
-    async function handleSave() {
+    async function handleSave(overrideTestStatus?: string) {
         setSaving(true)
         try {
             const res = await fetch('/api/integrations/external-db', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dbType, host, port, database, username, password, ssl, schemaHint, channelIds: selectedChannels }),
+                body: JSON.stringify({
+                    dbType, host, port, database, username, password, ssl, schemaHint,
+                    channelIds: selectedChannels,
+                    testStatus: overrideTestStatus ?? testStatus ?? null,
+                }),
             })
             const data = await res.json()
             if (data.success) {
@@ -425,7 +441,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                 {/* Action buttons */}
                                 <div className="flex flex-col gap-3 pt-1">
                                     <Button
-                                        onClick={handleSave}
+                                        onClick={() => handleSave()}
                                         disabled={saving || !database}
                                         className="w-full gap-2 font-bold"
                                     >
