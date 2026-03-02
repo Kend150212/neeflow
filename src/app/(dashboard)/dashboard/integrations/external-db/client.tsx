@@ -293,7 +293,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                 </div>
 
                 {/* Main Grid: 5/12 + 7/12 */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
                     {/* ── Left: Connection Setup ── */}
                     <div className="lg:col-span-5 flex flex-col gap-6">
@@ -528,8 +528,8 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                     </div>
 
                     {/* ── Right: Table Manager ── */}
-                    <div className="lg:col-span-7 flex flex-col">
-                        <div className="rounded-xl border bg-card/50 flex flex-col flex-1">
+                    <div className="lg:col-span-7">
+                        <div className="rounded-xl border bg-card/50 flex flex-col max-h-[640px]">
                             {/* Card header */}
                             <div className="p-5 border-b bg-muted/30 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
