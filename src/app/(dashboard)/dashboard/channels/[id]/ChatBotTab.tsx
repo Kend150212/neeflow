@@ -688,12 +688,12 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         { key: 'behavior' as const, icon: Target, label: t('chatbot.behavior.title'), color: 'text-cyan-500' },
                         { key: 'hours' as const, icon: Clock, label: t('chatbot.hours.title'), color: 'text-amber-500' },
                         { key: 'scope' as const, icon: Target, label: t('chatbot.scope.title'), color: 'text-teal-500' },
-                        { key: 'chattest' as const, icon: null, label: '💬 Chat Test', color: 'text-pink-500' },
+                        { key: 'chattest' as const, icon: MessageCircle, label: 'Chat Test', color: 'text-pink-500' },
 
 
-                        { key: 'pages' as const, icon: null, label: '📱 Accounts', color: 'text-orange-500' },
-                        { key: 'learning' as const, icon: null, label: '🧠 Learning', color: 'text-yellow-500' },
-                        ...(planLimits?.hasBotUsageAnalytics ? [{ key: 'usage' as const, icon: null, label: '📊 Usage', color: 'text-violet-500' }] : []),
+                        { key: 'pages' as const, icon: LayoutGrid, label: 'Accounts', color: 'text-orange-500' },
+                        { key: 'learning' as const, icon: Zap, label: 'Learning', color: 'text-yellow-500' },
+                        ...(planLimits?.hasBotUsageAnalytics ? [{ key: 'usage' as const, icon: BarChart3, label: 'Usage', color: 'text-violet-500' }] : []),
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -740,18 +740,18 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         </div>
                         {/* Bot AI Model */}
                         <div>
-                            <Label className="text-xs">🤖 AI Model (Bot riêng)</Label>
+                            <Label className="text-xs flex items-center gap-1.5"><span>🤖</span> AI Model</Label>
                             <select
                                 value={config.botModel || ''}
                                 onChange={e => update('botModel', e.target.value || null)}
                                 className="w-full mt-1 h-9 px-3 text-sm rounded-md border border-input bg-background"
                             >
-                                <option value="">— Dùng model mặc định của channel —</option>
+                                <option value="">— Use channel default model —</option>
                                 <optgroup label="Gemini">
                                     <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                     <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                                     <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (rẻ nhất)</option>
+                                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (cheapest)</option>
                                     <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
                                     <option value="gemini-3-pro-preview">Gemini 3 Pro Preview</option>
                                 </optgroup>
@@ -765,7 +765,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                                 </optgroup>
                             </select>
-                            <p className="text-xs text-muted-foreground mt-1">Chọn model riêng cho bot này, bỏ qua cài đặt AI chung của channel.</p>
+                            <p className="text-xs text-muted-foreground mt-1">Override the channel&apos;s default AI model for this bot only.</p>
                         </div>
                         {/* Greeting Mode Toggle */}
                         <div>
