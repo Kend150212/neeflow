@@ -4561,7 +4561,7 @@ export default function ComposePage() {
                                 </div>
                                 {/* Screen content — scrollable inside phone */}
                                 <div className="px-2 pb-6 overflow-y-auto absolute inset-0 top-[44px]">
-                                    {(content.trim() || attachedMedia.length > 0) && effectivePreviewPlatform ? (() => {
+                                    {(content.trim() || attachedMedia.length > 0 || Object.values(contentPerPlatform).some(v => v.trim())) && effectivePreviewPlatform ? (() => {
                                         const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
                                         if (!entry) return null
                                         const name = entry.accountName
