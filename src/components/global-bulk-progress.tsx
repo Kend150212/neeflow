@@ -1,6 +1,7 @@
 'use client'
 
 import { useBulkGen } from '@/lib/bulk-gen-context'
+import { useI18n } from '@/lib/i18n'
 import { StopCircle, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -11,6 +12,7 @@ import { cn } from '@/lib/utils'
  */
 export function GlobalBulkProgress() {
     const { state, stop } = useBulkGen()
+    const { t } = useI18n()
 
     if (!state.running && state.done === 0) return null
 
@@ -37,15 +39,15 @@ export function GlobalBulkProgress() {
                     {state.label}
                 </span>
                 <span className="tabular-nums font-bold text-primary shrink-0">
-                    {state.done}/{state.total}
+                    {t('bulkGen.progressLabel').replace('{done}', String(state.done)).replace('{total}', String(state.total))}
                 </span>
                 <span className="text-muted-foreground shrink-0">{pct}%</span>
                 <button
                     onClick={stop}
                     className="ml-1 flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-medium transition-colors"
-                    title="Dừng tạo bài"
+                    title={t('bulkGen.stop')}
                 >
-                    <StopCircle className="h-2.5 w-2.5" /> Dừng
+                    <StopCircle className="h-2.5 w-2.5" /> {t('bulkGen.stop')}
                 </button>
             </div>
         </div>

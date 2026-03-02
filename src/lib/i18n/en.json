@@ -179,6 +179,58 @@
       "WEBHOOK": "Webhooks",
       "DESIGN": "Design Tools",
       "BILLING": "Billing & Payments"
+    },
+    "externalDb": {
+      "explorer": "Data Explorer",
+      "noConnection": "No active external database connection",
+      "goToSettings": "Go to Settings",
+      "selectTable": "Select a table",
+      "loadingTables": "Loading tables...",
+      "noTables": "No tables found",
+      "searchRecords": "Search records...",
+      "filter": "Filter",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "selected": "{count} selected",
+      "createPosts": "Create {count} Posts",
+      "createPost": "Create Post",
+      "rows": "{count} rows",
+      "page": "Page {page} of {total}",
+      "noData": "No data found",
+      "loading": "Loading...",
+      "error": "Failed to load data",
+      "backToTables": "Back to tables"
+    },
+    "aiPostCreator": {
+      "title": "AI Post Creator",
+      "generateFrom": "Generate from {count} record in {table}",
+      "generateFromPlural": "Generate from {count} records in {table}",
+      "toCompose": "→ Compose Editor",
+      "willOpenCompose": "Will open Compose Editor with pre-filled content",
+      "platforms": "Platforms",
+      "loadingPlatforms": "Loading platforms...",
+      "selectedCount": "{count} selected — AI will generate content for each",
+      "tone": "Tone",
+      "toneViral": "🚀 Viral",
+      "tonePromo": "🛍️ Promo",
+      "toneCasual": "😊 Casual",
+      "tonePro": "💼 Pro",
+      "toneStory": "📖 Story",
+      "language": "Language",
+      "langVi": "🇻🇳 Vietnamese",
+      "langEn": "🇺🇸 English",
+      "autoSchedule": "Auto Schedule",
+      "scheduleDesc": "AI will distribute {count} posts evenly across this date range",
+      "fromDate": "From date",
+      "toDate": "To date",
+      "preview": "Schedule preview:",
+      "postN": "Post {n}",
+      "morePostsN": "+{n} more...",
+      "cancel": "Cancel",
+      "generateAndEdit": "Generate & Edit",
+      "createDrafts": "Create {count} Drafts",
+      "selectPlatformError": "Select at least one platform",
+      "noChannelError": "No workspace channel selected"
     }
   },
   "guides": {
@@ -1753,5 +1805,13 @@
     "logout": "Logout",
     "welcome": "Welcome",
     "noChannels": "No channels available"
+  },
+  "bulkGen": {
+    "creating": "Creating posts from {table}",
+    "stoppedAt": "Stopped — created {done} / {total} posts",
+    "successAll": "✅ Created {count} posts from {table}!",
+    "stop": "Stop",
+    "progressLabel": "{done}/{total}",
+    "runningInBackground": "Running in background"
   }
 }

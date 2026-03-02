@@ -179,6 +179,58 @@
       "WEBHOOK": "Webhooks",
       "DESIGN": "Công cụ thiết kế",
       "BILLING": "Thanh toán & Gói cước"
+    },
+    "externalDb": {
+      "explorer": "Khám Phá Dữ Liệu",
+      "noConnection": "Chưa có kết nối cơ sở dữ liệu ngoài",
+      "goToSettings": "Đến Cài Đặt",
+      "selectTable": "Chọn bảng dữ liệu",
+      "loadingTables": "Đang tải bảng...",
+      "noTables": "Không tìm thấy bảng nào",
+      "searchRecords": "Tìm kiếm bản ghi...",
+      "filter": "Lọc",
+      "selectAll": "Chọn tất cả",
+      "deselectAll": "Bỏ chọn tất cả",
+      "selected": "Đã chọn {count}",
+      "createPosts": "Tạo {count} Bài Viết",
+      "createPost": "Tạo Bài Viết",
+      "rows": "{count} dòng",
+      "page": "Trang {page} / {total}",
+      "noData": "Không có dữ liệu",
+      "loading": "Đang tải...",
+      "error": "Không tải được dữ liệu",
+      "backToTables": "Quay lại danh sách bảng"
+    },
+    "aiPostCreator": {
+      "title": "AI Tạo Bài Viết",
+      "generateFrom": "Tạo từ {count} bản ghi trong {table}",
+      "generateFromPlural": "Tạo từ {count} bản ghi trong {table}",
+      "toCompose": "→ Compose Editor",
+      "willOpenCompose": "Sẽ mở Compose Editor với nội dung đã điền sẵn",
+      "platforms": "Nền Tảng",
+      "loadingPlatforms": "Đang tải nền tảng...",
+      "selectedCount": "Đã chọn {count} — AI sẽ tạo nội dung cho từng nền tảng",
+      "tone": "Giọng Điệu",
+      "toneViral": "🚀 Viral",
+      "tonePromo": "🛍️ Quảng cáo",
+      "toneCasual": "😊 Thân thiện",
+      "tonePro": "💼 Chuyên nghiệp",
+      "toneStory": "📖 Kể chuyện",
+      "language": "Ngôn Ngữ",
+      "langVi": "🇻🇳 Tiếng Việt",
+      "langEn": "🇺🇸 English",
+      "autoSchedule": "Lên Lịch Tự Động",
+      "scheduleDesc": "AI phân bổ {count} bài đều trong khoảng thời gian này",
+      "fromDate": "Từ ngày",
+      "toDate": "Đến ngày",
+      "preview": "Xem trước lịch:",
+      "postN": "Bài {n}",
+      "morePostsN": "+{n} bài nữa...",
+      "cancel": "Hủy",
+      "generateAndEdit": "Tạo & Chỉnh sửa",
+      "createDrafts": "Tạo {count} Bài Nháp",
+      "selectPlatformError": "Chọn ít nhất một nền tảng",
+      "noChannelError": "Chưa chọn kênh làm việc"
     }
   },
   "guides": {
@@ -1753,5 +1805,13 @@
     "logout": "Đăng xuất",
     "welcome": "Chào mừng",
     "noChannels": "Không có kênh nào"
+  },
+  "bulkGen": {
+    "creating": "Đang tạo bài từ {table}",
+    "stoppedAt": "Đã dừng — đã tạo {done} / {total} bài",
+    "successAll": "✅ Đã tạo xong {count} bài từ {table}!",
+    "stop": "Dừng",
+    "progressLabel": "{done}/{total}",
+    "runningInBackground": "Đang chạy nền"
   }
 }
