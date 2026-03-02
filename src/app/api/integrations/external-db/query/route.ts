@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getConnector } from '@/lib/external-db'
+import type { ExternalDBConfig } from '@/lib/external-db/interface'
 
 /**
  * POST /api/integrations/external-db/query
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
 
         const userId = session.user.id as string
         const body = await req.json()
-        const { table, page = 1, pageSize = 20, search = '', searchColumns = [] } = body
+        const { table, page = 1, pageSize = 20, search = '' } = body
 
         if (!table) return NextResponse.json({ error: 'table is required' }, { status: 400 })
 
@@ -29,51 +30,36 @@ export async function POST(req: NextRequest) {
             ? Buffer.from(config.password, 'base64').toString('utf-8')
             : ''
 
-        const connector = getConnector(config.dbType)
-        await connector.connect({
-            host: config.host,
-            port: config.port,
+        const dbConfig: ExternalDBConfig = {
+            dbType: config.dbType,
+            host: config.host ?? undefined,
+            port: config.port ?? undefined,
             database: config.database,
-            username: config.username,
+            username: config.username ?? undefined,
             password,
             ssl: config.ssl,
+            queryTimeout: config.queryTimeout ?? 5000,
+        }
+
+        const connector = getConnector(config.dbType)
+
+        // Use built-in getRows for paginated access
+        const result = await connector.getRows(dbConfig, table, {
+            page,
+            pageSize,
+            search: search || undefined,
         })
 
-        try {
-            // Get total count
-            let countSql = `SELECT COUNT(*) as cnt FROM \`${table}\``
-            const whereClause = buildWhere(search, searchColumns)
-            if (whereClause) countSql += ` WHERE ${whereClause}`
-
-            const countRows = await connector.query(countSql, [])
-            const total = Number((countRows[0] as Record<string, unknown>)?.cnt ?? 0)
-
-            // Get paginated rows
-            const offset = (page - 1) * pageSize
-            let sql = `SELECT * FROM \`${table}\``
-            if (whereClause) sql += ` WHERE ${whereClause}`
-            sql += ` LIMIT ${pageSize} OFFSET ${offset}`
-
-            const rows = await connector.query(sql, [])
-
-            // Extract columns from first row
-            const columns = rows.length > 0
-                ? Object.keys(rows[0] as Record<string, unknown>)
-                : []
-
-            return NextResponse.json({ rows, total, columns, page, pageSize })
-        } finally {
-            await connector.disconnect()
-        }
+        return NextResponse.json({
+            rows: result.rows,
+            total: result.total,
+            columns: result.fields,
+            page,
+            pageSize,
+        })
     } catch (err: unknown) {
         console.error('[/api/integrations/external-db/query] error:', err)
         const msg = err instanceof Error ? err.message : 'Query failed'
         return NextResponse.json({ error: msg }, { status: 500 })
     }
-}
-
-function buildWhere(search: string, columns: string[]): string {
-    if (!search || columns.length === 0) return ''
-    const safe = search.replace(/'/g, "''")
-    return columns.map(c => `\`${c}\` LIKE '%${safe}%'`).join(' OR ')
 }
