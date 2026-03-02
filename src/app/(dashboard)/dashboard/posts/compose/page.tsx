@@ -2221,7 +2221,8 @@ export default function ComposePage() {
 
     // Save draft (or update existing)
     const handleSaveDraft = async () => {
-        if (!selectedChannel || !content.trim()) {
+        const hasPlatformContent = Object.values(contentPerPlatform).some(v => v.trim())
+        if (!selectedChannel || (!content.trim() && !hasPlatformContent)) {
             toast.error('Select a channel and add content')
             return
         }
@@ -2257,7 +2258,9 @@ export default function ComposePage() {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    channelId: selectedChannel.id, content,
+                    channelId: selectedChannel.id,
+                    // If no main content but platformContent exists, use first platform's content as preview
+                    content: content.trim() || Object.values(contentPerPlatform).find(v => v.trim()) || '',
                     contentPerPlatform: Object.keys(contentPerPlatform).length > 0 ? contentPerPlatform : undefined,
                     status: scheduledAt ? 'SCHEDULED' : 'DRAFT',
                     scheduledAt,
@@ -2428,7 +2431,7 @@ export default function ComposePage() {
                     ) : (
                         // Normal mode — Save Draft + Publish Now
                         <>
-                            <Button variant="outline" size="sm" className="h-7 text-xs cursor-pointer" onClick={handleSaveDraft} disabled={saving || !content.trim()}>
+                            <Button variant="outline" size="sm" className="h-7 text-xs cursor-pointer" onClick={handleSaveDraft} disabled={saving || (!content.trim() && !Object.values(contentPerPlatform).some(v => v.trim()))}>
                                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
                                 {saving ? t('compose.saving') : t('compose.saveDraft')}
                             </Button>

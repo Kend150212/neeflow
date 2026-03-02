@@ -182,12 +182,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                 if (!res.ok) throw new Error(data.error ?? 'Generation failed')
 
                 const params = new URLSearchParams()
-                if (data.contentPerPlatform && Object.keys(data.contentPerPlatform).length > 0) {
-                    params.set('platformContent', encodeURIComponent(JSON.stringify(data.contentPerPlatform)))
-                }
-                if (data.imageUrls?.length > 0) {
-                    params.set('images', encodeURIComponent(JSON.stringify(data.imageUrls)))
-                }
+                params.set('edit', data.postId)
                 onClose()
                 router.push(`/dashboard/posts/compose?${params.toString()}`)
             } else {
