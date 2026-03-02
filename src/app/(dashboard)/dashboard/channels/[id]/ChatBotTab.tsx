@@ -688,12 +688,12 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         { key: 'behavior' as const, icon: Target, label: t('chatbot.behavior.title'), color: 'text-cyan-500' },
                         { key: 'hours' as const, icon: Clock, label: t('chatbot.hours.title'), color: 'text-amber-500' },
                         { key: 'scope' as const, icon: Target, label: t('chatbot.scope.title'), color: 'text-teal-500' },
-                        { key: 'chattest' as const, icon: MessageCircle, label: '💬 Chat Test', color: 'text-pink-500' },
+                        { key: 'chattest' as const, icon: null, label: '💬 Chat Test', color: 'text-pink-500' },
 
 
-                        { key: 'pages' as const, icon: LayoutGrid, label: '📱 Accounts', color: 'text-orange-500' },
-                        { key: 'learning' as const, icon: Zap, label: '🧠 Learning', color: 'text-yellow-500' },
-                        ...(planLimits?.hasBotUsageAnalytics ? [{ key: 'usage' as const, icon: BarChart3, label: '📊 Usage', color: 'text-violet-500' }] : []),
+                        { key: 'pages' as const, icon: null, label: '📱 Accounts', color: 'text-orange-500' },
+                        { key: 'learning' as const, icon: null, label: '🧠 Learning', color: 'text-yellow-500' },
+                        ...(planLimits?.hasBotUsageAnalytics ? [{ key: 'usage' as const, icon: null, label: '📊 Usage', color: 'text-violet-500' }] : []),
                     ].map(tab => (
                         <button
                             key={tab.key}
@@ -703,7 +703,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     ? 'border-primary text-primary bg-primary/5'
                                     : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
                         >
-                            <tab.icon className={`h-3.5 w-3.5 ${botTab === tab.key ? tab.color : ''}`} />
+                            {tab.icon && <tab.icon className={`h-3.5 w-3.5 ${botTab === tab.key ? tab.color : ''}`} />}
                             {tab.label}
                         </button>
                     ))}
