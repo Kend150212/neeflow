@@ -882,13 +882,21 @@ export default function ComposePage() {
             .catch(() => toast.error('Failed to load channels'))
     }, [editPostId, activeChannelId])
 
-    // Pre-fill from ?content= and ?images= (redirect from AI Post Creator in Data Explorer)
+    // Pre-fill from ?platformContent= and ?images= (redirect from AI Post Creator in Data Explorer)
     useEffect(() => {
-        const preContent = searchParams.get('content')
+        const prePlatformContent = searchParams.get('platformContent')
         const preImages = searchParams.get('images')
-        if (preContent) {
-            try { setContent(decodeURIComponent(preContent)) } catch { setContent(preContent) }
+
+        if (prePlatformContent) {
+            try {
+                const parsed: Record<string, string> = JSON.parse(decodeURIComponent(prePlatformContent))
+                if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                    setContentPerPlatform(parsed)
+                    // Do NOT set generic content — platform content takes priority
+                }
+            } catch { /* skip invalid */ }
         }
+
         if (preImages) {
             try {
                 const urls: string[] = JSON.parse(decodeURIComponent(preImages))

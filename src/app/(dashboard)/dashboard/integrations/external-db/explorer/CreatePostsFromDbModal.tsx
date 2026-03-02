@@ -91,7 +91,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         dataText: rowToText(row),
                         tableName,
                         tone,
-                        platform: primaryPlatform,
+                        platforms: [...selectedPlatforms],  // send all selected platforms
                         language,
                         rowData: row,
                         columns,
@@ -101,12 +101,13 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                 if (!res.ok) throw new Error(data.error ?? 'Generation failed')
 
                 const params = new URLSearchParams()
-                params.set('content', encodeURIComponent(data.content))
+                // Pass per-platform content (not generic content)
+                if (data.contentPerPlatform && Object.keys(data.contentPerPlatform).length > 0) {
+                    params.set('platformContent', encodeURIComponent(JSON.stringify(data.contentPerPlatform)))
+                }
                 if (data.imageUrls?.length > 0) {
                     params.set('images', encodeURIComponent(JSON.stringify(data.imageUrls)))
                 }
-                // Pass platforms so compose can pre-select them
-                params.set('platforms', [...selectedPlatforms].join(','))
                 onClose()
                 router.push(`/dashboard/posts/compose?${params.toString()}`)
             } else {
@@ -122,7 +123,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 dataText: rowToText(row),
                                 tableName,
                                 tone,
-                                platform: primaryPlatform,
+                                platforms: [...selectedPlatforms],
                                 language,
                                 rowData: row,
                                 columns,

@@ -15,16 +15,22 @@ function detectImageUrls(row: Record<string, unknown>, columns: string[]): strin
             urls.push(val)
         }
     }
-    return [...new Set(urls)].slice(0, 4) // max 4 images
+    return [...new Set(urls)].slice(0, 4)
+}
+
+const PLATFORM_HINTS: Record<string, string> = {
+    facebook: 'Facebook (feed post, max 2200 chars, can use longer storytelling, include 3-5 hashtags)',
+    instagram: 'Instagram (caption, max 2200 chars, heavy hashtags 10-20, visual-first language)',
+    twitter: 'X/Twitter (max 280 chars, punchy, 1-2 hashtags max)',
+    tiktok: 'TikTok (caption max 2200 chars, Gen-Z friendly, trending hooks, 3-5 hashtags)',
+    linkedin: 'LinkedIn (professional tone, max 3000 chars, insights-first, 2-3 hashtags)',
+    youtube: 'YouTube (video description, max 5000 chars, include timestamps if relevant, 5-10 hashtags)',
 }
 
 /**
  * POST /api/posts/generate-from-db
- * Generates a draft post from a row of external DB data.
- * Returns: { success, postId, content, imageUrls }
- * Modal behavior:
- *   - 1 row  → caller redirects to /dashboard/posts/compose?content=...&images=...
- *   - N rows → caller calls N times and shows "done" with link to /dashboard/posts
+ * Generates platform-specific content from a row of external DB data.
+ * Returns: { success, contentPerPlatform: {facebook: "...", instagram: "..."}, imageUrls }
  */
 export async function POST(req: NextRequest) {
     try {
@@ -37,20 +43,21 @@ export async function POST(req: NextRequest) {
             dataText,
             tableName,
             tone = 'viral',
-            platform = 'facebook',
+            platforms = ['facebook'],  // NEW: array of platforms
             language = 'vi',
-            rowData,      // full row object for image detection
-            columns: rowColumns, // column names list
+            rowData,
+            columns: rowColumns,
         } = await req.json()
 
         if (!channelId || !dataText) {
             return NextResponse.json({ error: 'channelId and dataText are required' }, { status: 400 })
         }
 
+        const platformList: string[] = Array.isArray(platforms) ? platforms : [platforms]
+
         // Detect image URLs — prefer explicitly configured imageColumn from tablePermissions
         let imageUrls: string[] = []
         if (rowData && rowColumns) {
-            // Load config to check if user configured an image column for this table
             const config = await (prisma as any).externalDbConfig.findFirst({
                 where: { userId, isActive: true },
                 select: { tablePermissions: true },
@@ -58,20 +65,17 @@ export async function POST(req: NextRequest) {
             const tablePerms = (config?.tablePermissions as Record<string, { imageColumn?: string }>) ?? {}
             const configuredImageCol = tablePerms[tableName]?.imageColumn?.trim()
 
-            if (configuredImageCol && rowData) {
-                // Use explicitly configured column
+            if (configuredImageCol) {
                 const val = (rowData as Record<string, unknown>)[configuredImageCol]
                 if (typeof val === 'string' && val.startsWith('http')) {
                     imageUrls = [val]
                 }
             } else {
-                // Fallback: heuristic detection by column name
                 imageUrls = detectImageUrls(rowData as Record<string, unknown>, rowColumns as string[])
             }
         }
 
-        // Get AI key for the channel (prefer text AI providers)
-        // Try text-AI providers in order: openai → anthropic → google → mistral → cohere → any non-image
+        // Get AI key (skip image-only providers)
         const TEXT_AI_PROVIDERS = ['openai', 'anthropic', 'google', 'mistral', 'cohere', 'groq', 'together']
         const IMAGE_ONLY_PROVIDERS = ['runware', 'stability', 'ideogram', 'midjourney', 'dalle']
 
@@ -83,12 +87,9 @@ export async function POST(req: NextRequest) {
                 break
             }
         }
-        // Fallback: default key, as long as it's not image-only
         if (!keyResult) {
             const r = await getChannelOwnerKey(channelId)
-            if (r?.apiKey && !IMAGE_ONLY_PROVIDERS.includes(r.provider ?? '')) {
-                keyResult = r
-            }
+            if (r?.apiKey && !IMAGE_ONLY_PROVIDERS.includes(r.provider ?? '')) keyResult = r
         }
 
         if (!keyResult?.apiKey) {
@@ -115,24 +116,30 @@ export async function POST(req: NextRequest) {
         const toneDesc = toneMap[tone] ?? 'engaging'
 
         const systemPrompt = `You are a social media content creator. Your only job is to write social media posts. Output only the post content, no explanations.`
-        const userPrompt = `Based on the following data record from the "${tableName}" table, write a ${toneDesc} ${platform} post.
+
+        // Generate content per platform
+        const contentPerPlatform: Record<string, string> = {}
+        for (const platform of platformList) {
+            const hint = PLATFORM_HINTS[platform] || `${platform} (optimized for platform)`
+            const userPrompt = `Based on the following data record from the "${tableName}" table, write a ${toneDesc} post for ${hint}.
 
 Data: ${dataText}
 
 Requirements:
 - ${langInstruction}
-- Optimized for ${platform}
-- Include relevant hashtags at the end
-- Maximum 2200 characters
+- Follow platform-specific format and limits described above
 - Output ONLY the post content`
 
-        const result = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
-        const content = result.text.trim()
+            const result = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
+            contentPerPlatform[platform] = result.text.trim()
+        }
 
-        // Save as draft post
+        // For multi-row batch: save draft with first platform's content
+        const firstContent = contentPerPlatform[platformList[0]] || ''
         const post = await prisma.post.create({
             data: {
-                content,
+                content: firstContent,
+                contentPerPlatform: Object.keys(contentPerPlatform).length > 0 ? contentPerPlatform : undefined,
                 status: 'DRAFT',
                 authorId: userId,
                 channelId,
@@ -142,7 +149,7 @@ Requirements:
         return NextResponse.json({
             success: true,
             postId: post.id,
-            content,
+            contentPerPlatform,
             imageUrls,
         })
     } catch (err) {
