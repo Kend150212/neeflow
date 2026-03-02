@@ -42,6 +42,9 @@ interface InitialConfig {
     lastTestedAt: string | null
     tablePermissions: Record<string, TablePermission>
     channelIds: string[]
+    botQueryEnabled: boolean
+    botQueryTables: string[]
+    botMaxRows: number
 }
 
 interface Channel {
