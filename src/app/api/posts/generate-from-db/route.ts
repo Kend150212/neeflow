@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { callAIWithUsage, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { uploadToR2, generateR2Key, isR2Configured } from '@/lib/r2'
 
 // Detect image URLs from row data by column name heuristic
 function detectImageUrls(row: Record<string, unknown>, columns: string[]): string[] {
@@ -18,6 +19,65 @@ function detectImageUrls(row: Record<string, unknown>, columns: string[]): strin
     return [...new Set(urls)].slice(0, 4)
 }
 
+/**
+ * Fetch an external image URL and upload to R2, or store as external URL reference.
+ * Returns the created MediaItem id, or null on failure.
+ */
+async function importImageToMedia(imageUrl: string, channelId: string): Promise<string | null> {
+    try {
+        const res = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) })
+        if (!res.ok) return null
+        const contentType = res.headers.get('content-type') || 'image/jpeg'
+        if (!contentType.startsWith('image/')) return null
+        const arrayBuffer = await res.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+
+        // Derive file name from URL
+        const urlPath = new URL(imageUrl).pathname
+        const fileName = urlPath.split('/').pop()?.split('?')[0] || 'image.jpg'
+
+        const useR2 = await isR2Configured()
+        if (useR2) {
+            const r2Key = generateR2Key(channelId, fileName)
+            const publicUrl = await uploadToR2(buffer, r2Key, contentType)
+            const mediaItem = await prisma.mediaItem.create({
+                data: {
+                    channelId,
+                    url: publicUrl,
+                    thumbnailUrl: publicUrl,
+                    storageFileId: r2Key,
+                    type: 'image',
+                    source: 'upload',
+                    originalName: fileName,
+                    fileSize: buffer.length,
+                    mimeType: contentType,
+                    aiMetadata: { storage: 'r2', r2Key, importedFrom: imageUrl },
+                },
+            })
+            return mediaItem.id
+        } else {
+            // No R2 — store the original external URL directly
+            const mediaItem = await prisma.mediaItem.create({
+                data: {
+                    channelId,
+                    url: imageUrl,
+                    thumbnailUrl: imageUrl,
+                    type: 'image',
+                    source: 'upload',
+                    originalName: fileName,
+                    fileSize: buffer.length,
+                    mimeType: contentType,
+                    aiMetadata: { storage: 'external_url', importedFrom: imageUrl },
+                },
+            })
+            return mediaItem.id
+        }
+    } catch (err) {
+        console.warn('[generate-from-db] Failed to import image:', imageUrl, err)
+        return null
+    }
+}
+
 const PLATFORM_HINTS: Record<string, string> = {
     facebook: 'Facebook (feed post, max 2200 chars, can use longer storytelling, include 3-5 hashtags)',
     instagram: 'Instagram (caption, max 2200 chars, heavy hashtags 10-20, visual-first language)',
@@ -30,7 +90,7 @@ const PLATFORM_HINTS: Record<string, string> = {
 /**
  * POST /api/posts/generate-from-db
  * Generates platform-specific content from a row of external DB data.
- * Returns: { success, contentPerPlatform: {facebook: "...", instagram: "..."}, imageUrls }
+ * Automatically detects and imports image URLs from the row into media.
  */
 export async function POST(req: NextRequest) {
     try {
@@ -43,7 +103,7 @@ export async function POST(req: NextRequest) {
             dataText,
             tableName,
             tone = 'viral',
-            platforms = ['facebook'],  // NEW: array of platforms
+            platforms = ['facebook'],
             language = 'vi',
             rowData,
             columns: rowColumns,
@@ -134,7 +194,7 @@ Requirements:
             contentPerPlatform[platform] = result.text.trim()
         }
 
-        // For multi-row batch: save draft with first platform's content
+        // Save draft post with AI-generated content
         const firstContent = contentPerPlatform[platformList[0]] || ''
         const post = await prisma.post.create({
             data: {
@@ -145,6 +205,24 @@ Requirements:
                 channelId,
             },
         })
+
+        // ── Auto-import images from DB row → upload to media → attach to post ──
+        if (imageUrls.length > 0) {
+            const mediaIds: string[] = []
+            for (const url of imageUrls) {
+                const mediaId = await importImageToMedia(url, channelId)
+                if (mediaId) mediaIds.push(mediaId)
+            }
+            if (mediaIds.length > 0) {
+                await prisma.postMedia.createMany({
+                    data: mediaIds.map((mediaItemId, i) => ({
+                        postId: post.id,
+                        mediaItemId,
+                        sortOrder: i,
+                    })),
+                })
+            }
+        }
 
         return NextResponse.json({
             success: true,
