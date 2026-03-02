@@ -342,9 +342,7 @@ export default function LandingPage() {
                 {theme === 'dark' ? <SvgSun className="w-4 h-4" /> : <SvgMoon className="w-4 h-4" />}
               </button>
             )}
-            <Link href="/login" className="hidden sm:block text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
-              Sign In
-            </Link>
+
             <a href="#waitlist" className="btn-primary text-white text-sm font-semibold px-5 py-2.5 rounded-full flex items-center gap-1.5">
               Join Waitlist <SvgArrowRight className="w-3.5 h-3.5" />
             </a>
@@ -361,7 +359,7 @@ export default function LandingPage() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden glass-nav border-t border-gray-200/60 dark:border-white/5 px-6 py-4 space-y-3">
-            {[['Features', '#features'], ['How It Works', '#how-it-works'], ['Waitlist', '#waitlist'], ['Privacy', '/privacy'], ['Sign In', '/login']].map(([label, href]) => (
+            {[['Features', '#features'], ['How It Works', '#how-it-works'], ['Waitlist', '#waitlist'], ['Privacy', '/privacy']].map(([label, href]) => (
               <a key={label} href={href} onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium text-gray-700 dark:text-gray-300 py-2 hover:text-green-500 transition-colors">
                 {label}
               </a>
