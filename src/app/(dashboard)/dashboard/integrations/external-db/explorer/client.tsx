@@ -21,6 +21,7 @@ interface Props {
     dbType: string
     configId: string
     tables: string[]
+    tablePermissions?: Record<string, { imageColumn?: string }>
 }
 
 interface RowData {
@@ -90,7 +91,7 @@ function formatCellValue(val: unknown, colType: string): React.ReactNode {
     return <span className="text-sm">{str}</span>
 }
 
-export function DataExplorerClient({ dbName, dbType, configId, tables }: Props) {
+export function DataExplorerClient({ dbName, dbType, configId, tables, tablePermissions = {} }: Props) {
     const [selectedTable, setSelectedTable] = useState(tables[0] ?? '')
     const [rows, setRows] = useState<RowData[]>([])
     const [columns, setColumns] = useState<string[]>([])
@@ -345,11 +346,15 @@ export function DataExplorerClient({ dbName, dbType, configId, tables }: Props) 
                                                         }
                                                     </button>
                                                 </td>
-                                                {columns.map(col => (
-                                                    <td key={col} className="px-4 py-3 max-w-[200px]">
-                                                        {formatCellValue(row[col], detectColType(col))}
-                                                    </td>
-                                                ))}
+                                                {columns.map(col => {
+                                                    const configuredImageCol = tablePermissions[selectedTable]?.imageColumn?.trim()
+                                                    const colType = (configuredImageCol && col === configuredImageCol) ? 'image' : detectColType(col)
+                                                    return (
+                                                        <td key={col} className="px-4 py-3 max-w-[200px]">
+                                                            {formatCellValue(row[col], colType)}
+                                                        </td>
+                                                    )
+                                                })}
                                                 <td className="px-4 py-3 text-right">
                                                     <button
                                                         onClick={() => {

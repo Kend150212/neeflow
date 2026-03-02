@@ -41,7 +41,7 @@ export default async function DataExplorerPage() {
     }
 
     // Get visible tables from permissions
-    const perms = (config.tablePermissions ?? {}) as Record<string, { visible: boolean; readable: boolean }>
+    const perms = (config.tablePermissions ?? {}) as Record<string, { visible: boolean; readable: boolean; imageColumn?: string }>
     let visibleTables: string[] = Object.entries(perms)
         .filter(([, p]) => p.visible && p.readable)
         .map(([name]) => name)
@@ -64,6 +64,7 @@ export default async function DataExplorerPage() {
             dbType={config.dbType}
             configId={config.id}
             tables={visibleTables}
+            tablePermissions={config.tablePermissions as Record<string, { imageColumn?: string }> ?? {}}
         />
     )
 }
