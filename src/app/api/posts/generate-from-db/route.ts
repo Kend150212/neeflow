@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { callAIWithUsage, getDefaultModel } from '@/lib/ai-caller'
-import { decrypt } from '@/lib/encryption'
+import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 
 // Detect image URLs from row data by column name heuristic
 function detectImageUrls(row: Record<string, unknown>, columns: string[]): string[] {
@@ -52,22 +52,36 @@ export async function POST(req: NextRequest) {
             ? detectImageUrls(rowData as Record<string, unknown>, rowColumns as string[])
             : []
 
-        // Get user's AI key
-        const keyRecord = await prisma.userApiKey.findFirst({
-            where: { userId, isActive: true },
-            select: { provider: true, apiKeyEncrypted: true, defaultModel: true },
-            orderBy: { isDefault: 'desc' },
-        })
+        // Get AI key for the channel (prefer text AI providers)
+        // Try text-AI providers in order: openai → anthropic → google → mistral → cohere → any non-image
+        const TEXT_AI_PROVIDERS = ['openai', 'anthropic', 'google', 'mistral', 'cohere', 'groq', 'together']
+        const IMAGE_ONLY_PROVIDERS = ['runware', 'stability', 'ideogram', 'midjourney', 'dalle']
 
-        if (!keyRecord?.apiKeyEncrypted) {
+        let keyResult: Awaited<ReturnType<typeof getChannelOwnerKey>> | null = null
+        for (const prov of TEXT_AI_PROVIDERS) {
+            const r = await getChannelOwnerKey(channelId, prov)
+            if (r?.apiKey && !IMAGE_ONLY_PROVIDERS.includes(r.provider ?? '')) {
+                keyResult = r
+                break
+            }
+        }
+        // Fallback: default key, as long as it's not image-only
+        if (!keyResult) {
+            const r = await getChannelOwnerKey(channelId)
+            if (r?.apiKey && !IMAGE_ONLY_PROVIDERS.includes(r.provider ?? '')) {
+                keyResult = r
+            }
+        }
+
+        if (!keyResult?.apiKey) {
             return NextResponse.json({
-                error: 'No AI API key configured. Please set up your AI provider in settings.',
+                error: 'No text AI key configured. Please add an OpenAI, Anthropic, or Google Gemini key in AI API Keys settings.',
             }, { status: 400 })
         }
 
-        const provider = keyRecord.provider
-        const apiKey = decrypt(keyRecord.apiKeyEncrypted)
-        const model = keyRecord.defaultModel || getDefaultModel(provider, {})
+        const provider = keyResult.provider!
+        const apiKey = keyResult.apiKey!
+        const model = keyResult.model || getDefaultModel(provider, {})
 
         const langInstruction = language === 'vi'
             ? 'Viết bằng Tiếng Việt tự nhiên, phù hợp mạng xã hội.'
