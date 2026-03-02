@@ -47,10 +47,28 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'channelId and dataText are required' }, { status: 400 })
         }
 
-        // Detect image URLs from the row columns
-        const imageUrls: string[] = (rowData && rowColumns)
-            ? detectImageUrls(rowData as Record<string, unknown>, rowColumns as string[])
-            : []
+        // Detect image URLs — prefer explicitly configured imageColumn from tablePermissions
+        let imageUrls: string[] = []
+        if (rowData && rowColumns) {
+            // Load config to check if user configured an image column for this table
+            const config = await (prisma as any).externalDbConfig.findFirst({
+                where: { userId, isActive: true },
+                select: { tablePermissions: true },
+            })
+            const tablePerms = (config?.tablePermissions as Record<string, { imageColumn?: string }>) ?? {}
+            const configuredImageCol = tablePerms[tableName]?.imageColumn?.trim()
+
+            if (configuredImageCol && rowData) {
+                // Use explicitly configured column
+                const val = (rowData as Record<string, unknown>)[configuredImageCol]
+                if (typeof val === 'string' && val.startsWith('http')) {
+                    imageUrls = [val]
+                }
+            } else {
+                // Fallback: heuristic detection by column name
+                imageUrls = detectImageUrls(rowData as Record<string, unknown>, rowColumns as string[])
+            }
+        }
 
         // Get AI key for the channel (prefer text AI providers)
         // Try text-AI providers in order: openai → anthropic → google → mistral → cohere → any non-image

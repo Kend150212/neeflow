@@ -21,6 +21,7 @@ interface TablePermission {
     visible: boolean
     readable: boolean
     writable: boolean
+    imageColumn?: string  // column name that contains image URLs
 }
 
 interface TableRow {
@@ -64,7 +65,7 @@ const DB_TYPES: { value: DbType; label: string; port: string; comingSoon?: boole
     { value: 'sqlite', label: 'SQLite', port: '', comingSoon: true },
 ]
 
-const defaultPerm = (): TablePermission => ({ visible: true, readable: true, writable: false })
+const defaultPerm = (): TablePermission => ({ visible: true, readable: true, writable: false, imageColumn: '' })
 
 export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
     const router = useRouter()
@@ -614,6 +615,9 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                                         </th>
                                                     )
                                                 })}
+                                                <th className="px-4 py-2 text-center bg-card/95 backdrop-blur-sm rounded-tr-lg">
+                                                    <span className="text-xs">📷 Image Col</span>
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="text-sm">
@@ -626,15 +630,27 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                                             <td className="px-4 py-3.5 rounded-l-xl font-medium">{t.name}</td>
                                                             <td className="px-4 py-3.5 text-muted-foreground">{t.rowCount.toLocaleString()}</td>
                                                             {(['visible', 'readable', 'writable'] as (keyof TablePermission)[]).map(key => (
-                                                                <td key={key} className={cn('px-4 py-3.5 text-center', key === 'writable' && 'rounded-r-xl')}>
+                                                                <td key={key} className="px-4 py-3.5 text-center">
                                                                     <input
                                                                         type="checkbox"
-                                                                        checked={perm[key]}
+                                                                        checked={!!perm[key]}
                                                                         onChange={() => togglePerm(t.name, key)}
                                                                         className="rounded border-border text-primary focus:ring-primary bg-transparent size-4 cursor-pointer"
                                                                     />
                                                                 </td>
                                                             ))}
+                                                            <td className="px-4 py-2 rounded-r-xl">
+                                                                <input
+                                                                    type="text"
+                                                                    value={perm.imageColumn ?? ''}
+                                                                    onChange={e => setTablePerms(prev => ({
+                                                                        ...prev,
+                                                                        [t.name]: { ...(prev[t.name] ?? defaultPerm()), imageColumn: e.target.value }
+                                                                    }))}
+                                                                    placeholder="e.g. photo_url"
+                                                                    className="w-28 text-xs px-2 py-1.5 rounded-lg border border-border bg-background focus:border-primary outline-none placeholder:text-muted-foreground/50"
+                                                                />
+                                                            </td>
                                                         </tr>
                                                     )
                                                 })}
