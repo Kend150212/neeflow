@@ -167,9 +167,19 @@ export async function POST(req: NextRequest) {
         const apiKey = keyResult.apiKey!
         const model = keyResult.model || getDefaultModel(provider, {})
 
-        const langInstruction = language === 'vi'
-            ? 'Viết bằng Tiếng Việt tự nhiên, phù hợp mạng xã hội.'
-            : 'Write in natural English for social media.'
+        // Fetch channel details for context
+        const channel = await prisma.channel.findUnique({
+            where: { id: channelId },
+            select: {
+                requireApproval: true,
+                displayName: true,
+                language: true,
+                vibeTone: true,
+                knowledgeBase: { take: 8, orderBy: { updatedAt: 'desc' } },
+                hashtagGroups: true,
+            },
+        })
+
 
         const toneMap: Record<string, string> = {
             professional: 'professional and authoritative',
@@ -180,19 +190,31 @@ export async function POST(req: NextRequest) {
         }
         const toneDesc = toneMap[tone] ?? 'engaging'
 
-        const systemPrompt = `You are a social media content creator. Your only job is to write social media posts. Output only the post content, no explanations.`
+        // ── Build channel-aware prompt context (KB, vibeTone, hashtags) ──
+        const kbItems = (channel?.knowledgeBase ?? []) as { title: string; content: string }[]
+        const kbContext = kbItems.map(kb => `[${kb.title}]: ${kb.content.slice(0, 600)}`).join('\n')
+        const vibeTone = (channel?.vibeTone as Record<string, string> | null) ?? {}
+        const vibeStr = Object.entries(vibeTone).map(([k, v]) => `${k}: ${v}`).join(', ')
+        const allHashtags = (channel?.hashtagGroups ?? []).flatMap((g: { hashtags: unknown }) => (g.hashtags as string[]) || []).slice(0, 20)
+        const brandName = channel?.displayName ?? 'Brand'
+        const langLabel = language === 'vi' ? 'Vietnamese' : language === 'en' ? 'English' : language
+
+        const systemPrompt = `You are a social media content creator for the brand "${brandName}". Write engaging posts that reflect the brand voice and style. Output only the post content, no explanations.
+${vibeStr ? `Brand tone & style: ${vibeStr}` : ''}
+${kbContext ? `\nBrand knowledge base:\n${kbContext}` : ''}`
 
         // Generate content per platform
         const contentPerPlatform: Record<string, string> = {}
         for (const platform of platformList) {
             const hint = PLATFORM_HINTS[platform] || `${platform} (optimized for platform)`
-            const userPrompt = `Based on the following data record from the "${tableName}" table, write a ${toneDesc} post for ${hint}.
+            const userPrompt = `Based on the following product/data record from the "${tableName}" table, write a ${toneDesc} post for ${hint}.
 
 Data: ${dataText}
 
 Requirements:
-- ${langInstruction}
+- Language: ${langLabel}
 - Follow platform-specific format and limits described above
+${allHashtags.length > 0 ? `- You may use relevant hashtags from this list: ${allHashtags.join(' ')}` : ''}
 - Output ONLY the post content`
 
             const result = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
@@ -201,7 +223,6 @@ Requirements:
 
         // Save draft post with AI-generated content
         // Determine final status: respect channel approval mode
-        const channel = await prisma.channel.findUnique({ where: { id: channelId }, select: { requireApproval: true } })
         const approvalMode = (channel?.requireApproval as string | undefined) ?? 'none'
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let finalStatus: any = scheduledAt ? 'SCHEDULED' : 'DRAFT'
