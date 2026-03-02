@@ -751,7 +751,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                     <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                                     <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (cheapest)</option>
+                                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
                                     <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
                                     <option value="gemini-3-pro-preview">Gemini 3 Pro Preview</option>
                                 </optgroup>
