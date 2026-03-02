@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkIntegrationAccess } from '@/lib/integration-access'
 
 function encryptPassword(password: string): string {
     return Buffer.from(password).toString('base64')
@@ -10,8 +11,9 @@ function encryptPassword(password: string): string {
 export async function GET() {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
     const userId = session.user.id as string
+    if (!await checkIntegrationAccess(userId, 'external_db'))
+        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const config = await (prisma as any).externalDbConfig.findFirst({
@@ -34,6 +36,8 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const userId = session.user.id as string
+    if (!await checkIntegrationAccess(userId, 'external_db'))
+        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
     const body = await req.json()
     const { dbType, host, port, database, username, password, ssl, queryTimeout, schemaHint, channelIds, testStatus, botQueryEnabled, botQueryTables, botMaxRows } = body
 

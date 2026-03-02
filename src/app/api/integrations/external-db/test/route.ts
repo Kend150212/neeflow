@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getConnector } from '@/lib/external-db'
 import type { ExternalDBConfig } from '@/lib/external-db'
+import { checkIntegrationAccess } from '@/lib/integration-access'
 
 export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const userId = session.user.id as string
+    if (!await checkIntegrationAccess(userId, 'external_db'))
+        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
 
     const body = await req.json()
     const { dbType, host, port, database, username, password, ssl, queryTimeout } = body

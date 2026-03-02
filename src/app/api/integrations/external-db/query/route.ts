@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getConnector } from '@/lib/external-db'
 import type { ExternalDBConfig } from '@/lib/external-db/interface'
+import { checkIntegrationAccess } from '@/lib/integration-access'
 
 /**
  * POST /api/integrations/external-db/query
@@ -15,6 +16,8 @@ export async function POST(req: NextRequest) {
         if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
         const userId = session.user.id as string
+        if (!await checkIntegrationAccess(userId, 'external_db'))
+            return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
         const body = await req.json()
         const { table, page = 1, pageSize = 20, search = '' } = body
 

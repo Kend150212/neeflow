@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { callAIWithUsage, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 import { uploadToR2, generateR2Key, isR2Configured } from '@/lib/r2'
+import { checkIntegrationAccess } from '@/lib/integration-access'
 
 // Detect image URLs from row data by column name heuristic
 function detectImageUrls(row: Record<string, unknown>, columns: string[]): string[] {
@@ -98,6 +99,8 @@ export async function POST(req: NextRequest) {
         if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
         const userId = session.user.id
+        if (!await checkIntegrationAccess(userId, 'external_db'))
+            return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
         const {
             channelId,
             dataText,
