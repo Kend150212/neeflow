@@ -1,10 +1,9 @@
 -- Migration: add channel_id to external_db_configs for per-channel isolation
--- Each channel now has its own independent External DB configuration.
 
--- 1. Add channel_id column (nullable first so existing rows don't fail)
+-- 1. Add column (safe, idempotent)
 ALTER TABLE external_db_configs ADD COLUMN IF NOT EXISTS channel_id VARCHAR(191);
 
--- 2. Backfill: assign the first channel the user owns/admins (no created_at needed)
+-- 2. Backfill: assign first OWNER/ADMIN channel
 UPDATE external_db_configs edc
 SET channel_id = (
     SELECT cm.channel_id
@@ -15,7 +14,7 @@ SET channel_id = (
 )
 WHERE edc.channel_id IS NULL;
 
--- 2b. Fallback: if still NULL, use ANY channel the user is a member of
+-- 2b. Fallback: any channel the user belongs to
 UPDATE external_db_configs edc
 SET channel_id = (
     SELECT cm.channel_id
@@ -25,21 +24,27 @@ SET channel_id = (
 )
 WHERE edc.channel_id IS NULL;
 
--- 3. Delete rows that still have no channel (orphaned configs)
+-- 3. Remove orphaned rows
 DELETE FROM external_db_configs WHERE channel_id IS NULL;
 
--- 4. Make column NOT NULL now that it's backfilled
+-- 4. Make NOT NULL
 ALTER TABLE external_db_configs ALTER COLUMN channel_id SET NOT NULL;
 
--- 5. Add foreign key to channels table
-ALTER TABLE external_db_configs
-    ADD CONSTRAINT IF NOT EXISTS fk_external_db_configs_channel
-    FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE;
+-- 5. Foreign key (skip if already exists)
+DO $$ BEGIN
+    ALTER TABLE external_db_configs
+        ADD CONSTRAINT fk_external_db_configs_channel
+        FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- 6. Add unique constraint: one config per (user, channel)
-ALTER TABLE external_db_configs
-    ADD CONSTRAINT IF NOT EXISTS uq_external_db_config_user_channel
-    UNIQUE (user_id, channel_id);
+-- 6. Unique constraint (skip if already exists)
+DO $$ BEGIN
+    ALTER TABLE external_db_configs
+        ADD CONSTRAINT uq_external_db_config_user_channel
+        UNIQUE (user_id, channel_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
--- 7. Add index on channel_id
+-- 7. Index
 CREATE INDEX IF NOT EXISTS idx_external_db_configs_channel_id ON external_db_configs(channel_id);
