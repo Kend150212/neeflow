@@ -202,7 +202,7 @@ export async function semanticSearchProducts(
 ): Promise<Array<{
     id: string; name: string; category: string | null; price: number | null
     salePrice: number | null; description: string | null; features: string[]
-    tags: string[]; inStock: boolean; productId: string | null
+    tags: string[]; inStock: boolean; productId: string | null; images: string[]
 }>> {
     try {
         const queryVec = await generateEmbedding(query, provider, apiKey)
@@ -211,9 +211,9 @@ export async function semanticSearchProducts(
         const candidates = await prisma.$queryRawUnsafe<Array<{
             id: string; name: string; category: string | null; price: number | null
             sale_price: number | null; description: string | null; features: string[]
-            tags: string[]; in_stock: boolean; product_id: string | null; embedding: string
+            tags: string[]; in_stock: boolean; product_id: string | null; images: string[]; embedding: string
         }>>(
-            `SELECT id, name, category, price, sale_price, description, features, tags, in_stock, product_id, embedding::text
+            `SELECT id, name, category, price, sale_price, description, features, tags, in_stock, product_id, images, embedding::text
              FROM product_catalog
              WHERE channel_id = $1 AND in_stock = true AND embedding IS NOT NULL
              ORDER BY embedding <=> $2::vector
@@ -240,6 +240,7 @@ export async function semanticSearchProducts(
                     tags: p.tags || [],
                     inStock: p.in_stock,
                     productId: p.product_id,
+                    images: p.images || [],
                     score: vec.length > 0 ? cosineSimilarity(queryVec, vec) : 0,
                 }
             })
@@ -261,15 +262,15 @@ async function fullTextSearchProducts(
 ): Promise<Array<{
     id: string; name: string; category: string | null; price: number | null
     salePrice: number | null; description: string | null; features: string[]
-    tags: string[]; inStock: boolean; productId: string | null
+    tags: string[]; inStock: boolean; productId: string | null; images: string[]
 }>> {
     try {
         const results = await prisma.$queryRawUnsafe<Array<{
             id: string; name: string; category: string | null; price: number | null
             sale_price: number | null; description: string | null; features: string[]
-            tags: string[]; in_stock: boolean; product_id: string | null
+            tags: string[]; in_stock: boolean; product_id: string | null; images: string[]
         }>>(
-            `SELECT id, name, category, price, sale_price, description, features, tags, in_stock, product_id
+            `SELECT id, name, category, price, sale_price, description, features, tags, in_stock, product_id, images
              FROM product_catalog
              WHERE channel_id = $1 AND in_stock = true
                AND search_vector @@ plainto_tsquery('simple', $2)
@@ -291,6 +292,7 @@ async function fullTextSearchProducts(
                 tags: p.tags || [],
                 inStock: p.in_stock,
                 productId: p.product_id,
+                images: p.images || [],
             }))
         }
     } catch {
@@ -303,6 +305,7 @@ async function fullTextSearchProducts(
         select: {
             id: true, name: true, category: true, price: true, salePrice: true,
             description: true, features: true, tags: true, inStock: true, productId: true,
+            images: true,
         },
         orderBy: { updatedAt: 'desc' },
         take: topK,

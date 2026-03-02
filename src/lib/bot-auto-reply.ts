@@ -203,9 +203,10 @@ export async function botAutoReply(
         // Semantic RAG search: only load the top-5 most relevant entries
         // instead of dumping all 50 into the prompt.
         // Falls back to latest entries if no embeddings exist yet.
-        const knowledgeEntries = await semanticSearchKnowledge(
-            channel.id, inboundContent, provider, apiKey, 5
-        )
+        const [knowledgeEntries, productResults] = await Promise.all([
+            semanticSearchKnowledge(channel.id, inboundContent, provider, apiKey, 5),
+            semanticSearchProducts(channel.id, inboundContent, provider, apiKey, 3),
+        ])
 
         // Load recent conversation history
         const totalMsgCount = await prisma.inboxMessage.count({ where: { conversationId } })
@@ -387,6 +388,27 @@ export async function botAutoReply(
                 systemPrompt += `\n\n### ${entry.title}\n${entry.content.substring(0, 2000)}`
             }
             systemPrompt += `\n--- END KNOWLEDGE BASE ---`
+        }
+
+        // ─── Inject matched products (with images) ────────────────────
+        if (productResults.length > 0) {
+            systemPrompt += `\n\n--- MATCHED PRODUCTS ---`
+            systemPrompt += `\nThese products match the customer's inquiry. Use their details to answer accurately.`
+            for (const p of productResults) {
+                const price = p.salePrice
+                    ? `${p.salePrice.toLocaleString()}đ (Sale price, was ${p.price?.toLocaleString()}đ)`
+                    : p.price ? `${p.price.toLocaleString()}đ` : 'Contact for price'
+                systemPrompt += `\n\n**${p.name}**${p.category ? ` [${p.category}]` : ''}`
+                systemPrompt += `\nPrice: ${price}`
+                if (p.description) systemPrompt += `\nDescription: ${p.description}`
+                if (p.features?.length) systemPrompt += `\nFeatures: ${p.features.join(', ')}`
+                const imgs = (p.images || []).slice(0, 3)
+                if (imgs.length > 0) {
+                    systemPrompt += `\nImages (include these in your reply using [IMAGE: url] format, placed at the END after your text):`
+                    for (const img of imgs) systemPrompt += `\n[IMAGE: ${img}]`
+                }
+            }
+            systemPrompt += `\n--- END MATCHED PRODUCTS ---`
         }
 
         if (trainingPairs.length > 0) {
