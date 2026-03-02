@@ -950,6 +950,15 @@ export default function ComposePage() {
                     setScheduleDate(dateParts)
                     setScheduleTime(timeParts)
                 }
+                // Restore contentPerPlatform from post
+                if (post.contentPerPlatform && typeof post.contentPerPlatform === 'object') {
+                    const cpp = post.contentPerPlatform as Record<string, string>
+                    setContentPerPlatform(cpp)
+                    // Auto-open first platform tab
+                    const firstKey = Object.keys(cpp).find(k => cpp[k]?.trim())
+                    if (firstKey) setActiveContentTab(firstKey)
+                }
+
                 // Restore selected platforms from platformStatuses
                 if (post.platformStatuses && ch) {
                     const selectedIds = new Set<string>()
@@ -984,6 +993,19 @@ export default function ComposePage() {
                             }
                         }
                     }
+
+                    // If no platforms from platformStatuses (freshly-created draft),
+                    // enable platform accounts whose type is in contentPerPlatform
+                    if (selectedIds.size === 0 && post.contentPerPlatform) {
+                        const cpp = post.contentPerPlatform as Record<string, string>
+                        const cpKeys = Object.keys(cpp).map(k => k.toLowerCase())
+                        ch.platforms.forEach(p => {
+                            if (cpKeys.includes(p.platform.toLowerCase())) {
+                                selectedIds.add(p.id)
+                            }
+                        })
+                    }
+
                     setSelectedPlatformIds(selectedIds)
                     setFbPostTypes(fbTypes)
                     setFbCarousel(restoredFbCarousel)
