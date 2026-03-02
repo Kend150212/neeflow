@@ -58,7 +58,7 @@ interface CalendarPost {
     scheduledAt: string | null
     publishedAt: string | null
     createdAt: string
-    channel: { id: string; displayName: string; name: string }
+    channel: { id: string; displayName: string; name: string; timezone?: string }
     media: { mediaItem: { id: string; url: string; thumbnailUrl: string | null; type: string } }[]
     platformStatuses: { platform: string; status: string }[]
 }
@@ -868,16 +868,22 @@ export default function CalendarPage() {
     const activeChannel = channels.find(c => c.id === channelId) ?? channels.find(c => c.id === activeChannelId)
     const channelTz = activeChannel?.timezone || 'UTC'
 
-    // Group filtered posts by date string (in channel timezone)
+    // Group posts by date — use each post's own channel timezone (correct for All-Channels mode)
     const postsByDate = useMemo(() => {
         const map: Record<string, CalendarPost[]> = {}
         for (const post of filteredPosts) {
-            const dateStr = toTzDateStr(getPostDate(post), channelTz)
+            // In All-Channels mode each post uses its own channel timezone;
+            // in single-channel mode use the selected channelTz (same result, but avoids
+            // hitting Intl on every post when it's the same tz)
+            const tz = channelId === 'all'
+                ? (post.channel.timezone || 'UTC')
+                : channelTz
+            const dateStr = toTzDateStr(getPostDate(post), tz)
             if (!map[dateStr]) map[dateStr] = []
             map[dateStr].push(post)
         }
         return map
-    }, [filteredPosts, channelTz])
+    }, [filteredPosts, channelTz, channelId])
 
     const handlePrev = () => {
         setCurrentDate(d => {

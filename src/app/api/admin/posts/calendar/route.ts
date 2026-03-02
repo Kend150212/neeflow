@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
             { createdAt: 'asc' },
         ],
         include: {
-            channel: { select: { id: true, displayName: true, name: true } },
+            channel: { select: { id: true, displayName: true, name: true, timezone: true } },
             media: {
                 take: 1,
                 include: {
