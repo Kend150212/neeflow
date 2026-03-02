@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import {
     Database, Settings2, TableProperties, RefreshCw,
     CheckCircle2, XCircle, Loader2, Save, Zap, Shield,
-    ArrowLeft, Activity, SlidersHorizontal
+    ArrowLeft, Activity, SlidersHorizontal, Search
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -247,6 +247,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
         })
     }
 
+    const [tableSearch, setTableSearch] = useState('')
     const visibleCount = Object.values(tablePerms).filter(p => p.visible).length
 
     // ─── Render ──────────────────────────────────────────────────────────────
@@ -539,7 +540,28 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                     <RefreshCw className={cn('h-3.5 w-3.5', loadingTables && 'animate-spin')} />
                                     Sync Tables
                                 </button>
+                            </div>                                {/* Search sub-header */}
+                            <div className="px-5 pb-4 pt-1">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search tables..."
+                                        value={tableSearch}
+                                        onChange={e => setTableSearch(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-muted/30 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                                    />
+                                    {tableSearch && (
+                                        <button
+                                            onClick={() => setTableSearch('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
                             </div>
+
 
                             {/* Table content — flex-1 fills remaining card height, scrolls inside */}
                             <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto p-4 custom-scrollbar">
@@ -560,15 +582,15 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                     </div>
                                 ) : (
                                     <table className="w-full text-left border-separate border-spacing-y-1.5">
-                                        <thead>
+                                        <thead className="sticky top-0 z-10">
                                             <tr className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
-                                                <th className="px-4 py-2">Table Name</th>
-                                                <th className="px-4 py-2">Rows</th>
+                                                <th className="px-4 py-2 bg-card/95 backdrop-blur-sm rounded-tl-lg">Table Name</th>
+                                                <th className="px-4 py-2 bg-card/95 backdrop-blur-sm">Rows</th>
                                                 {(['visible', 'readable', 'writable'] as (keyof TablePermission)[]).map(key => {
                                                     const allChecked = tables.length > 0 && tables.every(t => (tablePerms[t.name] ?? defaultPerm())[key])
                                                     const someChecked = tables.some(t => (tablePerms[t.name] ?? defaultPerm())[key])
                                                     return (
-                                                        <th key={key} className="px-4 py-2 text-center">
+                                                        <th key={key} className="px-4 py-2 text-center bg-card/95 backdrop-blur-sm last:rounded-tr-lg">
                                                             <div className="flex flex-col items-center gap-1">
                                                                 <span className="capitalize">{key}</span>
                                                                 <input
@@ -586,25 +608,27 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                             </tr>
                                         </thead>
                                         <tbody className="text-sm">
-                                            {tables.map(t => {
-                                                const perm = tablePerms[t.name] ?? defaultPerm()
-                                                return (
-                                                    <tr key={t.name} className="bg-muted/20 hover:bg-muted/40 transition-colors rounded-xl">
-                                                        <td className="px-4 py-3.5 rounded-l-xl font-medium">{t.name}</td>
-                                                        <td className="px-4 py-3.5 text-muted-foreground">{t.rowCount.toLocaleString()}</td>
-                                                        {(['visible', 'readable', 'writable'] as (keyof TablePermission)[]).map(key => (
-                                                            <td key={key} className={cn('px-4 py-3.5 text-center', key === 'writable' && 'rounded-r-xl')}>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={perm[key]}
-                                                                    onChange={() => togglePerm(t.name, key)}
-                                                                    className="rounded border-border text-primary focus:ring-primary bg-transparent size-4 cursor-pointer"
-                                                                />
-                                                            </td>
-                                                        ))}
-                                                    </tr>
-                                                )
-                                            })}
+                                            {tables
+                                                .filter(t => t.name.toLowerCase().includes(tableSearch.toLowerCase()))
+                                                .map(t => {
+                                                    const perm = tablePerms[t.name] ?? defaultPerm()
+                                                    return (
+                                                        <tr key={t.name} className="bg-muted/20 hover:bg-muted/40 transition-colors rounded-xl">
+                                                            <td className="px-4 py-3.5 rounded-l-xl font-medium">{t.name}</td>
+                                                            <td className="px-4 py-3.5 text-muted-foreground">{t.rowCount.toLocaleString()}</td>
+                                                            {(['visible', 'readable', 'writable'] as (keyof TablePermission)[]).map(key => (
+                                                                <td key={key} className={cn('px-4 py-3.5 text-center', key === 'writable' && 'rounded-r-xl')}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={perm[key]}
+                                                                        onChange={() => togglePerm(t.name, key)}
+                                                                        className="rounded border-border text-primary focus:ring-primary bg-transparent size-4 cursor-pointer"
+                                                                    />
+                                                                </td>
+                                                            ))}
+                                                        </tr>
+                                                    )
+                                                })}
                                         </tbody>
                                     </table>
                                 )}
