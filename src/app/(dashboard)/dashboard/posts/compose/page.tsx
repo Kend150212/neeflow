@@ -892,7 +892,9 @@ export default function ComposePage() {
                 const parsed: Record<string, string> = JSON.parse(decodeURIComponent(prePlatformContent))
                 if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
                     setContentPerPlatform(parsed)
-                    // Do NOT set generic content — platform content takes priority
+                    // Auto-open the first platform tab so user sees content immediately
+                    const firstPlatform = Object.keys(parsed)[0]
+                    if (firstPlatform) setActiveContentTab(firstPlatform)
                 }
             } catch { /* skip invalid */ }
         }
