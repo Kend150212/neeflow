@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { WorkspaceProvider } from '@/lib/workspace-context'
 import { DashboardMain } from '@/components/layout/dashboard-main'
 import { TrialBanner } from '@/components/trial-banner'
+import { DashboardClientShell } from '@/components/layout/dashboard-client-shell'
 
 export default async function DashboardLayout({
     children,
@@ -45,13 +46,15 @@ export default async function DashboardLayout({
     return (
         <div className="flex h-screen overflow-hidden bg-background">
             <WorkspaceProvider>
-                <Sidebar session={session} />
-                <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-                    <TrialBanner />
-                    <DashboardMain>
-                        {children}
-                    </DashboardMain>
-                </div>
+                <DashboardClientShell>
+                    <Sidebar session={session} />
+                    <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+                        <TrialBanner />
+                        <DashboardMain>
+                            {children}
+                        </DashboardMain>
+                    </div>
+                </DashboardClientShell>
             </WorkspaceProvider>
             <Toaster richColors position="top-right" />
         </div>

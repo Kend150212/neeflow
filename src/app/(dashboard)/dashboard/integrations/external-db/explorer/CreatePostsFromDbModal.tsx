@@ -1,9 +1,10 @@
 'use client'
 
 import React from 'react'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace-context'
+import { useBulkGen } from '@/lib/bulk-gen-context'
 import { toast } from 'sonner'
 import { Sparkles, X, Loader2, Zap, ExternalLink, Check, Calendar, Clock, Square, StopCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -18,7 +19,6 @@ interface Props {
     tableName: string
 }
 
-// SVG logos per platform
 const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number }) => {
     const logos: Record<string, React.ReactNode> = {
         facebook: (
@@ -30,15 +30,13 @@ const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number
         instagram: (
             <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <defs>
-                    <linearGradient id="ig-grad-m" x1="0%" y1="100%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#FFDC80" />
-                        <stop offset="25%" stopColor="#FCAF45" />
-                        <stop offset="50%" stopColor="#F77737" />
-                        <stop offset="75%" stopColor="#E1306C" />
+                    <linearGradient id="ig-g2" x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#FFDC80" /><stop offset="25%" stopColor="#FCAF45" />
+                        <stop offset="50%" stopColor="#F77737" /><stop offset="75%" stopColor="#E1306C" />
                         <stop offset="100%" stopColor="#833AB4" />
                     </linearGradient>
                 </defs>
-                <rect width="24" height="24" rx="6" fill="url(#ig-grad-m)" />
+                <rect width="24" height="24" rx="6" fill="url(#ig-g2)" />
                 <rect x="6" y="6" width="12" height="12" rx="3.5" stroke="white" strokeWidth="1.5" fill="none" />
                 <circle cx="12" cy="12" r="3" stroke="white" strokeWidth="1.5" fill="none" />
                 <circle cx="16" cy="8" r="0.8" fill="white" />
@@ -100,15 +98,12 @@ function distributeScheduleTimes(startDate: string, endDate: string, count: numb
         const d = new Date(`${startDate}T${String(BEST_HOURS[0]).padStart(2, '0')}:00:00`)
         return [toChannelTzIso(d, timezone)]
     }
-    const results: string[] = []
-    for (let i = 0; i < count; i++) {
+    return Array.from({ length: count }, (_, i) => {
         const fraction = i / (count - 1)
-        const ms = start.getTime() + fraction * totalMs
-        const d = new Date(ms)
+        const d = new Date(start.getTime() + fraction * totalMs)
         d.setHours(BEST_HOURS[i % BEST_HOURS.length], 0, 0, 0)
-        results.push(toChannelTzIso(d, timezone))
-    }
-    return results
+        return toChannelTzIso(d, timezone)
+    })
 }
 
 function toChannelTzIso(localDate: Date, timezone: string): string {
@@ -118,43 +113,19 @@ function toChannelTzIso(localDate: Date, timezone: string): string {
             hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
         })
         const parts = Object.fromEntries(formatter.formatToParts(localDate).map(p => [p.type, p.value]))
-        const datePart = `${parts.year}-${parts.month}-${parts.day}`
-        const hour = localDate.getHours()
-        const target = `${datePart}T${String(hour).padStart(2, '0')}:00:00`
+        const target = `${parts.year}-${parts.month}-${parts.day}T${String(localDate.getHours()).padStart(2, '0')}:00:00`
         const utcDate = new Date(new Date(`${target}Z`).toLocaleString('en-US', { timeZone: 'UTC' }))
         const tzDate = new Date(new Date(`${target}Z`).toLocaleString('en-US', { timeZone: timezone }))
-        const offset = utcDate.getTime() - tzDate.getTime()
-        return new Date(new Date(target + 'Z').getTime() + offset).toISOString()
+        return new Date(new Date(`${target}Z`).getTime() + utcDate.getTime() - tzDate.getTime()).toISOString()
     } catch { return localDate.toISOString() }
 }
 
 function toDateInputValue(d: Date) { return d.toISOString().slice(0, 10) }
 
-// ─── Progress Bar Component ─────────────────────────────────────────
-function ProgressBar({ value, total }: { value: number; total: number }) {
-    const pct = total > 0 ? Math.round((value / total) * 100) : 0
-    return (
-        <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{value} / {total} bài</span>
-                <span className="font-bold tabular-nums text-primary">{pct}%</span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                    className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-                    style={{ width: `${pct}%` }}
-                />
-            </div>
-        </div>
-    )
-}
-
-// Global toast ID for background progress
-const BG_TOAST_ID = 'db-post-gen-progress'
-
 export default function CreatePostsFromDbModal({ open, onClose, rows, columns, tableName }: Props) {
     const router = useRouter()
     const { activeChannelId } = useWorkspace()
+    const bulkGen = useBulkGen()
 
     const [availablePlatforms, setAvailablePlatforms] = useState<string[]>([])
     const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
@@ -162,10 +133,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     const [tone, setTone] = useState('viral')
     const [language, setLanguage] = useState('vi')
     const [step, setStep] = useState<'config' | 'generating' | 'done'>('config')
-    const [progress, setProgress] = useState(0)        // number of posts completed
-    const [bgMode, setBgMode] = useState(false)        // whether modal is closed but gen running
-    const stoppedRef = useRef(false)                   // stop flag (checked in loop)
-    const totalRef = useRef(0)                         // total posts to create
+    const [localDone, setLocalDone] = useState(0)  // local progress for in-modal bar
 
     // Date range scheduling
     const [enableSchedule, setEnableSchedule] = useState(false)
@@ -177,7 +145,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
 
     useEffect(() => {
         if (!open || !activeChannelId) return
-        setStep('config'); setProgress(0); setBgMode(false); stoppedRef.current = false
+        setStep('config'); setLocalDone(0)
         fetch('/api/admin/channels')
             .then(r => r.json())
             .then((data: any[]) => {
@@ -210,167 +178,80 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         return columns.map(col => `${col}: ${row[col] ?? ''}`).join(', ')
     }
 
-    /** Stop the running batch */
-    function handleStop() {
-        stoppedRef.current = true
-        toast.dismiss(BG_TOAST_ID)
-        toast.info(`Đã dừng — đã tạo ${progress} / ${totalRef.current} bài`)
-        if (bgMode) { setBgMode(false) }
-    }
-
-    /** Close modal but keep batch running in background */
-    function handleCloseWhileGenerating() {
-        setBgMode(true)
-        onClose()
-        // Show persistent toast with live progress indicator
-        toast.loading(
-            <div className="flex items-center gap-3 w-full">
-                <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold">Đang tạo bài từ {tableName}…</p>
-                    <div id={`bg-progress-text-${BG_TOAST_ID}`} className="text-[11px] text-muted-foreground">
-                        {progress} / {totalRef.current} bài
-                    </div>
-                </div>
-                <button
-                    onClick={handleStop}
-                    className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
-                >
-                    <StopCircle className="h-3 w-3" /> Dừng
-                </button>
-            </div>,
-            { id: BG_TOAST_ID, duration: Infinity }
-        )
-    }
-
-    /** Update the background toast with new progress */
-    const updateBgToast = useCallback((done: number, total: number, stopped: boolean) => {
-        if (stopped) {
-            toast.dismiss(BG_TOAST_ID)
-            return
-        }
-        const pct = Math.round((done / total) * 100)
-        if (done >= total) {
-            toast.success(
-                <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-emerald-400" />
-                    <span className="text-xs font-semibold">Đã tạo {done} bài thành công!</span>
-                </div>,
-                { id: BG_TOAST_ID, duration: 5000 }
-            )
-        } else {
-            toast.loading(
-                <div className="flex items-center gap-3 w-full">
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold">Đang tạo bài từ {tableName}… {pct}%</p>
-                        <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{done} / {total} bài</p>
-                    </div>
-                    <button
-                        onClick={() => { stoppedRef.current = true; toast.dismiss(BG_TOAST_ID); toast.info(`Đã dừng — đã tạo ${done} bài`) }}
-                        className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
-                    >
-                        <StopCircle className="h-3 w-3" /> Dừng
-                    </button>
-                </div>,
-                { id: BG_TOAST_ID, duration: Infinity }
-            )
-        }
-    }, [tableName])
-
     async function handleCreate() {
         if (!activeChannelId) { toast.error('No workspace channel selected'); return }
         if (selectedPlatforms.size === 0) { toast.error('Select at least one platform'); return }
 
         setStep('generating')
-        stoppedRef.current = false
-        setProgress(0)
+        setLocalDone(0)
 
         const isSingleRow = rows.length === 1
         const scheduledTimes = (enableSchedule && !isSingleRow)
-            ? distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone)
-            : null
+            ? distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone) : null
         const singleScheduledAt = (enableSchedule && isSingleRow)
-            ? distributeScheduleTimes(scheduleStart, scheduleEnd, 1, channelTimezone)[0]
-            : null
+            ? distributeScheduleTimes(scheduleStart, scheduleEnd, 1, channelTimezone)[0] : null
 
         try {
             if (isSingleRow) {
-                const row = rows[0]
                 const res = await fetch('/api/posts/generate-from-db', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        channelId: activeChannelId, dataText: rowToText(row), tableName,
-                        tone, platforms: [...selectedPlatforms], language, rowData: row, columns,
+                        channelId: activeChannelId, dataText: rowToText(rows[0]), tableName,
+                        tone, platforms: [...selectedPlatforms], language, rowData: rows[0], columns,
                         scheduledAt: singleScheduledAt,
                     }),
                 })
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.error ?? 'Generation failed')
-                const params = new URLSearchParams()
-                params.set('edit', data.postId)
+                const params = new URLSearchParams(); params.set('edit', data.postId)
                 onClose()
                 router.push(`/dashboard/posts/compose?${params.toString()}`)
                 return
             }
 
-            // ── Batch mode ────────────────────────────────────────────
-            totalRef.current = rows.length
+            // ── Batch mode: use global context progress bar ──────────
+            bulkGen.start(rows.length, `Đang tạo bài từ ${tableName}`)
+            onClose()   // close modal immediately → user can navigate freely
+
             let created = 0
-
             for (let i = 0; i < rows.length; i++) {
-                if (stoppedRef.current) break
-
-                const row = rows[i]
+                if (bulkGen.isStopped()) break
                 try {
                     const res = await fetch('/api/posts/generate-from-db', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            channelId: activeChannelId, dataText: rowToText(row), tableName,
-                            tone, platforms: [...selectedPlatforms], language, rowData: row, columns,
+                            channelId: activeChannelId, dataText: rowToText(rows[i]), tableName,
+                            tone, platforms: [...selectedPlatforms], language, rowData: rows[i], columns,
                             scheduledAt: scheduledTimes ? scheduledTimes[i] : null,
                         }),
                     })
                     if (res.ok) created++
-                } catch { /* skip failed row */ }
-
-                const newProgress = i + 1
-                setProgress(newProgress)
-
-                // Update background toast if modal was closed
-                if (bgMode || stoppedRef.current) {
-                    updateBgToast(created, rows.length, stoppedRef.current)
-                }
+                } catch { /* skip */ }
+                bulkGen.tick()
+                setLocalDone(i + 1)
             }
 
-            // Final update
-            if (bgMode) {
-                updateBgToast(created, rows.length, stoppedRef.current)
-                setBgMode(false)
-            } else if (!stoppedRef.current) {
-                setProgress(created)
-                setStep('done')
+            if (bulkGen.isStopped()) {
+                bulkGen.stop()
+                toast.info(`Đã dừng — đã tạo ${created} / ${rows.length} bài`)
             } else {
-                toast.info(`Đã dừng — đã tạo ${created} bài`)
-                setStep('config')
+                bulkGen.finish()
+                toast.success(`✅ Đã tạo xong ${created} bài từ ${tableName}!`, { duration: 5000 })
             }
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Failed to generate'
-            toast.error(msg)
+            toast.error(err instanceof Error ? err.message : 'Failed to generate')
             setStep('config')
         }
     }
 
     const isSingleRow = rows.length === 1
-    const pct = totalRef.current > 0 ? Math.round((progress / totalRef.current) * 100) : 0
+    const pct = rows.length > 0 ? Math.round((localDone / rows.length) * 100) : 0
 
     const schedulePreview = (() => {
         if (!enableSchedule || isSingleRow || !scheduleStart || !scheduleEnd || scheduleStart > scheduleEnd) return null
-        const times = distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone)
-        return times.slice(0, 3).map(t =>
+        return distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone).slice(0, 3).map(t =>
             new Date(t).toLocaleString('vi-VN', {
                 timeZone: channelTimezone, day: '2-digit', month: '2-digit',
                 hour: '2-digit', minute: '2-digit',
@@ -379,21 +260,11 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     })()
 
     return (
-        <Dialog open={open} onOpenChange={v => {
-            if (!v) {
-                // If batch is running, go background; otherwise close normally
-                if (step === 'generating' && !isSingleRow) {
-                    handleCloseWhileGenerating()
-                } else {
-                    onClose()
-                }
-            }
-        }}>
+        <Dialog open={open} onOpenChange={v => !v && step !== 'generating' && onClose()}>
             <DialogContent className="max-w-md bg-background/95 backdrop-blur border border-border/60 shadow-2xl">
                 <DialogHeader className="pb-1">
                     <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        AI Post Creator
+                        <Sparkles className="h-4 w-4 text-primary" /> AI Post Creator
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
                         Generate from <strong>{rows.length} record{rows.length > 1 ? 's' : ''}</strong> in <strong>{tableName}</strong>
@@ -401,7 +272,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* ── CONFIG STEP ─────────────────────────────────────── */}
+                {/* CONFIG */}
                 {step === 'config' && (
                     <div className="space-y-5 pt-1">
                         {isSingleRow && (
@@ -501,30 +372,27 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                                 <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Từ ngày</label>
                                                 <input type="date" value={scheduleStart} min={today}
                                                     onChange={e => setScheduleStart(e.target.value)}
-                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
+                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Đến ngày</label>
                                                 <input type="date" value={scheduleEnd} min={scheduleStart || today}
                                                     onChange={e => setScheduleEnd(e.target.value)}
-                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
+                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
                                             </div>
                                         </div>
                                         {schedulePreview && (
-                                            <div className="space-y-1">
-                                                <p className="text-[10px] text-muted-foreground font-medium">Preview:</p>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {schedulePreview.map((t, i) => (
-                                                        <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
-                                                            <Clock className="h-2.5 w-2.5" /> Bài {i + 1}: {t}
-                                                        </span>
-                                                    ))}
-                                                    {rows.length > 3 && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
-                                                            +{rows.length - 3} bài nữa...
-                                                        </span>
-                                                    )}
-                                                </div>
+                                            <div className="flex flex-wrap gap-1">
+                                                {schedulePreview.map((t, i) => (
+                                                    <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
+                                                        <Clock className="h-2.5 w-2.5" /> Bài {i + 1}: {t}
+                                                    </span>
+                                                ))}
+                                                {rows.length > 3 && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
+                                                        +{rows.length - 3} bài nữa...
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -545,70 +413,18 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     </div>
                 )}
 
-                {/* ── GENERATING STEP ──────────────────────────────────── */}
-                {step === 'generating' && (
-                    <div className="py-6 flex flex-col items-center gap-5">
-                        {/* Animated icon */}
+                {/* GENERATING — only shown for single-row (batch exits modal immediately) */}
+                {step === 'generating' && isSingleRow && (
+                    <div className="py-10 flex flex-col items-center gap-4">
                         <div className="relative">
                             <div className="h-14 w-14 rounded-full border-2 border-primary/20 flex items-center justify-center">
                                 <Sparkles className="h-6 w-6 text-primary animate-pulse" />
                             </div>
                             <Loader2 className="absolute inset-0 m-auto h-14 w-14 text-primary/30 animate-spin" />
                         </div>
-
-                        {/* Label */}
-                        <div className="text-center space-y-1 w-full">
+                        <div className="text-center space-y-1">
                             <p className="font-semibold text-sm">Đang tạo nội dung…</p>
-                            <p className="text-xs text-muted-foreground">
-                                {[...selectedPlatforms].map(p => PLATFORM_LABELS[p] || p).join(', ')}
-                            </p>
-                        </div>
-
-                        {/* Progress bar */}
-                        {!isSingleRow && (
-                            <div className="w-full px-2">
-                                <ProgressBar value={progress} total={rows.length} />
-                            </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex gap-2 w-full">
-                            <Button
-                                variant="outline" size="sm" className="flex-1 text-xs"
-                                onClick={handleCloseWhileGenerating}
-                                title="Đóng modal, quá trình tạo bài vẫn tiếp tục"
-                            >
-                                <Square className="h-3 w-3 mr-1.5" />
-                                Ẩn (chạy nền)
-                            </Button>
-                            <Button
-                                variant="destructive" size="sm" className="flex-1 text-xs"
-                                onClick={handleStop}
-                            >
-                                <StopCircle className="h-3 w-3 mr-1.5" />
-                                Dừng lại
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── DONE STEP ────────────────────────────────────────── */}
-                {step === 'done' && (
-                    <div className="py-8 flex flex-col items-center gap-4 text-center">
-                        <div className="h-14 w-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                            <Check className="h-7 w-7 text-primary" />
-                        </div>
-                        <div>
-                            <p className="font-semibold">{progress} bài đã tạo!</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {enableSchedule
-                                    ? `Đã lên lịch từ ${scheduleStart} → ${scheduleEnd}`
-                                    : 'Vào trang Posts để xem và đăng bài.'}
-                            </p>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={onClose}>Đóng</Button>
-                            <Button size="sm" onClick={() => router.push('/dashboard/posts')}>Xem Posts</Button>
+                            <p className="text-xs text-muted-foreground">{[...selectedPlatforms].map(p => PLATFORM_LABELS[p] || p).join(', ')}</p>
                         </div>
                     </div>
                 )}
