@@ -488,7 +488,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
 
                     {/* ── Right: Table Manager ── */}
                     <div className="lg:col-span-7 flex flex-col">
-                        <div className="rounded-xl border bg-card/50 flex flex-col h-full">
+                        <div className="rounded-xl border bg-card/50 flex flex-col" style={{ maxHeight: 'calc(100svh - 180px)' }}>
                             {/* Card header */}
                             <div className="p-5 border-b bg-muted/30 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
