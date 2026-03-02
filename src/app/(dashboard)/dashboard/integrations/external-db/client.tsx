@@ -232,6 +232,21 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
         setTablePerms(all)
     }
 
+    function deselectAll() {
+        const none: Record<string, TablePermission> = {}
+        for (const t of tables) none[t.name] = { visible: false, readable: false, writable: false }
+        setTablePerms(none)
+    }
+
+    function toggleColumn(key: keyof TablePermission) {
+        const allChecked = tables.every(t => (tablePerms[t.name] ?? defaultPerm())[key])
+        setTablePerms(prev => {
+            const next = { ...prev }
+            for (const t of tables) next[t.name] = { ...(next[t.name] ?? defaultPerm()), [key]: !allChecked }
+            return next
+        })
+    }
+
     const visibleCount = Object.values(tablePerms).filter(p => p.visible).length
 
     // ─── Render ──────────────────────────────────────────────────────────────
@@ -549,9 +564,25 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                             <tr className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
                                                 <th className="px-4 py-2">Table Name</th>
                                                 <th className="px-4 py-2">Rows</th>
-                                                <th className="px-4 py-2 text-center">Visible</th>
-                                                <th className="px-4 py-2 text-center">Readable</th>
-                                                <th className="px-4 py-2 text-center">Writable</th>
+                                                {(['visible', 'readable', 'writable'] as (keyof TablePermission)[]).map(key => {
+                                                    const allChecked = tables.length > 0 && tables.every(t => (tablePerms[t.name] ?? defaultPerm())[key])
+                                                    const someChecked = tables.some(t => (tablePerms[t.name] ?? defaultPerm())[key])
+                                                    return (
+                                                        <th key={key} className="px-4 py-2 text-center">
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className="capitalize">{key}</span>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    title={`Toggle all ${key}`}
+                                                                    checked={allChecked}
+                                                                    ref={el => { if (el) el.indeterminate = someChecked && !allChecked }}
+                                                                    onChange={() => toggleColumn(key)}
+                                                                    className="rounded border-border text-primary focus:ring-primary bg-transparent size-3.5 cursor-pointer"
+                                                                />
+                                                            </div>
+                                                        </th>
+                                                    )
+                                                })}
                                             </tr>
                                         </thead>
                                         <tbody className="text-sm">
@@ -598,6 +629,12 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                             className="px-4 py-2 rounded-lg text-xs font-bold border border-border hover:bg-muted transition-colors"
                                         >
                                             Select All
+                                        </button>
+                                        <button
+                                            onClick={deselectAll}
+                                            className="px-4 py-2 rounded-lg text-xs font-bold border border-border hover:bg-muted transition-colors"
+                                        >
+                                            Deselect All
                                         </button>
                                         <button
                                             onClick={handleSavePermissions}
