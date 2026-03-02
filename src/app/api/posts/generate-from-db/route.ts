@@ -200,7 +200,8 @@ Requirements:
         // Determine final status: respect channel approval mode
         const channel = await prisma.channel.findUnique({ where: { id: channelId }, select: { requireApproval: true } })
         const approvalMode = (channel?.requireApproval as string | undefined) ?? 'none'
-        let finalStatus: string = scheduledAt ? 'SCHEDULED' : 'DRAFT'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let finalStatus: any = scheduledAt ? 'SCHEDULED' : 'DRAFT'
         if (approvalMode === 'required' && finalStatus !== 'DRAFT') {
             finalStatus = 'PENDING_APPROVAL'
         } else if (approvalMode === 'optional' && requestApproval && finalStatus !== 'DRAFT') {
