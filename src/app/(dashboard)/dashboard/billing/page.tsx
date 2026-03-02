@@ -179,8 +179,17 @@ export default function BillingPage() {
 
     const fetchBilling = useCallback(() => {
         return fetch('/api/billing')
-            .then(r => r.json())
-            .then(data => setInfo(data))
+            .then(async r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`)
+                return r.json()
+            })
+            .then(data => {
+                // Only set info if we got a valid plan response
+                if (data && data.plan) setInfo(data)
+            })
+            .catch(() => {
+                // Leave info as null — error UI will show
+            })
     }, [])
 
     useEffect(() => {
@@ -293,7 +302,21 @@ export default function BillingPage() {
         )
     }
 
-    if (!info) return null
+    if (!info) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+                <AlertCircle className="h-10 w-10 text-muted-foreground" />
+                <div>
+                    <p className="font-semibold">{isVi ? 'Không thể tải thông tin thanh toán' : 'Could not load billing info'}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{isVi ? 'Vui lòng thử lại sau.' : 'Please try again later.'}</p>
+                </div>
+                <Button variant="outline" onClick={() => { setLoading(true); fetchBilling().finally(() => setLoading(false)) }}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    {isVi ? 'Thử lại' : 'Retry'}
+                </Button>
+            </div>
+        )
+    }
 
     const { plan, subscription, usage, aiImage } = info
     const isFree = plan.planName === 'Free' && !plan.isInTrial
