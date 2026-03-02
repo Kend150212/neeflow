@@ -375,7 +375,6 @@ model KnowledgeBase {
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
-  @@index([embedding], name: "knowledge_base_embedding_idx", type: Hnsw(distanceStrategy: Cosine))
   @@map("knowledge_bases")
 }
 
