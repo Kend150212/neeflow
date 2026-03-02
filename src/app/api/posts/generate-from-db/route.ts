@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { callAIWithUsage, getDefaultModel } from '@/lib/ai-caller'
+import { decrypt } from '@/lib/encryption'
 
 /**
  * POST /api/posts/generate-from-db
@@ -19,19 +20,20 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'channelId and dataText are required' }, { status: 400 })
         }
 
-        // Get user's AI key
+        // Get user's AI key — field is apiKeyEncrypted, model is defaultModel
         const keyRecord = await prisma.userApiKey.findFirst({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
+            where: { userId, isActive: true },
+            select: { provider: true, apiKeyEncrypted: true, defaultModel: true },
+            orderBy: { isDefault: 'desc' },
         })
 
-        if (!keyRecord?.apiKey) {
+        if (!keyRecord?.apiKeyEncrypted) {
             return NextResponse.json({ error: 'No AI API key configured. Please set up your AI provider in settings.' }, { status: 400 })
         }
 
         const provider = keyRecord.provider
-        const apiKey = keyRecord.apiKey
-        const model = keyRecord.model || getDefaultModel(provider, {})
+        const apiKey = decrypt(keyRecord.apiKeyEncrypted)
+        const model = keyRecord.defaultModel || getDefaultModel(provider, {})
 
         const langInstruction = language === 'vi'
             ? 'Viết bằng Tiếng Việt tự nhiên, phù hợp mạng xã hội.'
