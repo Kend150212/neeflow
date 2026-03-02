@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Lock, ArrowRight, Zap } from 'lucide-react'
+import { Lock, ArrowRight, Zap, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Props {
     allowedIntegrations: string[]
+    addonsBySlug: Record<string, { name: string; displayName: string; priceMonthly: number }>
 }
 
 interface IntegrationCard {
@@ -177,7 +178,7 @@ const integrations: IntegrationCard[] = [
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function IntegrationsClient({ allowedIntegrations }: Props) {
+export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props) {
     const isAllowed = (slug: string) => allowedIntegrations.includes(slug)
 
     return (
@@ -203,6 +204,7 @@ export function IntegrationsClient({ allowedIntegrations }: Props) {
                         const isComingSoon = !!intg.badge
                         const isLocked = !allowed && !isComingSoon
                         const isActive = allowed && !isComingSoon
+                        const availableAddon = !allowed && !isComingSoon ? addonsBySlug[intg.slug] : null
 
                         return (
                             <div
@@ -222,11 +224,19 @@ export function IntegrationsClient({ allowedIntegrations }: Props) {
                                         </Badge>
                                     </div>
                                 )}
-                                {isLocked && (
+                                {isLocked && !availableAddon && (
                                     <div className="absolute top-3 right-3">
                                         <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 border-amber-500/50 text-amber-500">
                                             <Lock className="h-2.5 w-2.5 mr-1" />
                                             Upgrade
+                                        </Badge>
+                                    </div>
+                                )}
+                                {isLocked && availableAddon && (
+                                    <div className="absolute top-3 right-3">
+                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 border-blue-500/50 text-blue-500">
+                                            <ShoppingBag className="h-2.5 w-2.5 mr-1" />
+                                            Add-on
                                         </Badge>
                                     </div>
                                 )}
@@ -272,7 +282,16 @@ export function IntegrationsClient({ allowedIntegrations }: Props) {
                                                 <ArrowRight className="h-3.5 w-3.5" />
                                             </Link>
                                         </Button>
+                                    ) : isLocked && availableAddon ? (
+                                        /* Has a purchasable add-on — show Get Add-on */
+                                        <Button asChild size="sm" variant="outline" className="w-full h-8 text-xs border-blue-500/30 text-blue-600 hover:bg-blue-500/10 gap-1">
+                                            <Link href="/dashboard/billing">
+                                                <ShoppingBag className="h-3 w-3" />
+                                                Get Add-on · ${availableAddon.priceMonthly}/mo
+                                            </Link>
+                                        </Button>
                                     ) : isLocked ? (
+                                        /* No add-on available — show Upgrade Plan */
                                         <Button asChild size="sm" variant="outline" className="w-full h-8 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
                                             <Link href="/dashboard/billing">
                                                 <Lock className="h-3 w-3 mr-1.5" />

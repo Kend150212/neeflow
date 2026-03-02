@@ -862,6 +862,8 @@ model Addon {
   quotaField    String? @map("quota_field")    // e.g. "maxStorageMB", "maxChannels"
   quotaAmount   Int     @default(0) @map("quota_amount") // e.g. 5120 (5GB in MB)
   featureField  String? @map("feature_field")  // e.g. "hasAutoSchedule"
+  // If set, purchasing this add-on unlocks the named integration for the subscriber
+  integrationSlug String? @map("integration_slug") // e.g. "external_db", "shopify"
 
   // Pricing
   priceMonthly  Float   @default(0) @map("price_monthly")

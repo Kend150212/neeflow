@@ -80,6 +80,7 @@ type Addon = {
     quotaField: string | null
     quotaAmount: number
     featureField: string | null
+    integrationSlug: string | null  // unlocks an integration (e.g. 'external_db')
     priceMonthly: number
     priceAnnual: number
     stripeProductId: string | null
@@ -93,7 +94,7 @@ type Addon = {
 
 const EMPTY_ADDON = {
     name: '', displayName: '', displayNameVi: '', description: null as string | null, descriptionVi: null as string | null,
-    category: 'quota', quotaField: null as string | null, quotaAmount: 0, featureField: null as string | null,
+    category: 'quota', quotaField: null as string | null, quotaAmount: 0, featureField: null as string | null, integrationSlug: null as string | null,
     priceMonthly: 0, priceAnnual: 0,
     stripeProductId: null as string | null, stripePriceIdMonthly: null as string | null, stripePriceIdAnnual: null as string | null,
     icon: 'plus', sortOrder: 0, isActive: true,
@@ -117,6 +118,13 @@ const FEATURE_FIELD_OPTIONS = [
     { value: 'hasPrioritySupport', label: 'Priority Support' },
     { value: 'hasWhiteLabel', label: 'White Label' },
     { value: 'hasSmartFlow', label: 'SmartFlow™' },
+]
+
+const INTEGRATION_SLUG_OPTIONS = [
+    { value: 'external_db', label: '🗄️ External Database (MySQL / Airtable / Shopify)' },
+    { value: 'shopify', label: '🛝 Shopify Standalone' },
+    { value: 'wordpress', label: '📝 WordPress' },
+    { value: 'google_sheets', label: '📊 Google Sheets' },
 ]
 
 export default function AdminPlansPage() {
@@ -608,6 +616,7 @@ export default function AdminPlansPage() {
                                 <div className="text-xs text-muted-foreground space-y-0.5">
                                     {addon.quotaField && <div>Field: <span className="font-medium text-foreground">{addon.quotaField}</span> +{addon.quotaAmount}</div>}
                                     {addon.featureField && <div>Unlocks: <span className="font-medium text-foreground">{addon.featureField}</span></div>}
+                                    {addon.integrationSlug && <div>Integration: <span className="font-medium text-primary">{addon.integrationSlug}</span></div>}
                                     <div>${addon.priceMonthly}/mo · ${addon.priceAnnual}/yr</div>
                                 </div>
                                 <div className="flex items-center justify-between pt-1">
@@ -1000,11 +1009,18 @@ export default function AdminPlansPage() {
                                     <Label className="text-xs text-muted-foreground">Category</Label>
                                     <select
                                         value={editAddon.category}
-                                        onChange={e => setEditAddon(p => ({ ...p, category: e.target.value, quotaField: e.target.value === 'feature' ? null : p.quotaField, featureField: e.target.value === 'quota' ? null : p.featureField }))}
+                                        onChange={e => setEditAddon(p => ({
+                                            ...p,
+                                            category: e.target.value,
+                                            quotaField: e.target.value !== 'quota' ? null : p.quotaField,
+                                            featureField: e.target.value !== 'feature' ? null : p.featureField,
+                                            integrationSlug: e.target.value !== 'integration' ? null : p.integrationSlug,
+                                        }))}
                                         className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
                                     >
                                         <option value="quota">Quota (numeric boost)</option>
                                         <option value="feature">Feature (unlock)</option>
+                                        <option value="integration">🔗 Integration (unlock access)</option>
                                     </select>
                                 </div>
 
@@ -1022,7 +1038,7 @@ export default function AdminPlansPage() {
                                             </select>
                                         </div>
                                     </>
-                                ) : (
+                                ) : editAddon.category === 'feature' ? (
                                     <div className="space-y-1">
                                         <Label className="text-xs text-muted-foreground">Feature Field</Label>
                                         <select
@@ -1032,6 +1048,18 @@ export default function AdminPlansPage() {
                                         >
                                             <option value="">Select feature...</option>
                                             {FEATURE_FIELD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                        </select>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">Integration Slug</Label>
+                                        <select
+                                            value={editAddon.integrationSlug ?? ''}
+                                            onChange={e => setEditAddon(p => ({ ...p, integrationSlug: e.target.value || null }))}
+                                            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                        >
+                                            <option value="">Select integration...</option>
+                                            {INTEGRATION_SLUG_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                         </select>
                                     </div>
                                 )}
