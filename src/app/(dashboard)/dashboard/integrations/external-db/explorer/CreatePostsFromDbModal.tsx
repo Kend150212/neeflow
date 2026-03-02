@@ -1,12 +1,11 @@
 'use client'
 
 import React from 'react'
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace-context'
 import { toast } from 'sonner'
-import { Sparkles, X, Loader2, Zap, ExternalLink, Check, Calendar, Clock } from 'lucide-react'
+import { Sparkles, X, Loader2, Zap, ExternalLink, Check, Calendar, Clock, Square, StopCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -31,7 +30,7 @@ const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number
         instagram: (
             <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <defs>
-                    <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <linearGradient id="ig-grad-m" x1="0%" y1="100%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor="#FFDC80" />
                         <stop offset="25%" stopColor="#FCAF45" />
                         <stop offset="50%" stopColor="#F77737" />
@@ -39,7 +38,7 @@ const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number
                         <stop offset="100%" stopColor="#833AB4" />
                     </linearGradient>
                 </defs>
-                <rect width="24" height="24" rx="6" fill="url(#ig-grad)" />
+                <rect width="24" height="24" rx="6" fill="url(#ig-grad-m)" />
                 <rect x="6" y="6" width="12" height="12" rx="3.5" stroke="white" strokeWidth="1.5" fill="none" />
                 <circle cx="12" cy="12" r="3" stroke="white" strokeWidth="1.5" fill="none" />
                 <circle cx="16" cy="8" r="0.8" fill="white" />
@@ -55,7 +54,6 @@ const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number
             <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
                 <rect width="24" height="24" rx="6" fill="#010101" />
                 <path d="M17.5 9.5a5.5 5.5 0 0 1-3.5-1.2V15a4 4 0 1 1-4-4v2a2 2 0 1 0 2 2V5.5h2a3.5 3.5 0 0 0 3.5 3.5v0.5z" fill="white" />
-                <path d="M14 7.5a3.5 3.5 0 0 0 2.5 1.5v0.5a5.5 5.5 0 0 1-3.5-1.2" fill="#69C9D0" opacity="0.8" />
             </svg>
         ),
         linkedin: (
@@ -80,12 +78,8 @@ const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
-    facebook: 'Facebook',
-    instagram: 'Instagram',
-    twitter: 'X / Twitter',
-    tiktok: 'TikTok',
-    linkedin: 'LinkedIn',
-    youtube: 'YouTube',
+    facebook: 'Facebook', instagram: 'Instagram', twitter: 'X / Twitter',
+    tiktok: 'TikTok', linkedin: 'LinkedIn', youtube: 'YouTube',
 }
 
 const TONES = [
@@ -96,80 +90,67 @@ const TONES = [
     { value: 'storytelling', label: '📖 Story' },
 ]
 
-// Best posting hours (in 24h) - cycles through these for distributed schedule
 const BEST_HOURS = [8, 12, 18, 20, 9, 15, 21]
 
-/**
- * Distribute N posts across a date range at optimal times.
- * Returns array of ISO date strings in the given timezone.
- */
-function distributeScheduleTimes(
-    startDate: string,          // YYYY-MM-DD
-    endDate: string,            // YYYY-MM-DD
-    count: number,
-    timezone: string,
-): string[] {
+function distributeScheduleTimes(startDate: string, endDate: string, count: number, timezone: string): string[] {
     const start = new Date(`${startDate}T00:00:00`)
     const end = new Date(`${endDate}T23:59:59`)
     const totalMs = end.getTime() - start.getTime()
-
     if (count === 1) {
-        // Put single post on the start date at a good hour
         const d = new Date(`${startDate}T${String(BEST_HOURS[0]).padStart(2, '0')}:00:00`)
         return [toChannelTzIso(d, timezone)]
     }
-
-    // Distribute evenly, then snap to nearest best hour
     const results: string[] = []
     for (let i = 0; i < count; i++) {
-        const fraction = count === 1 ? 0 : i / (count - 1)
+        const fraction = i / (count - 1)
         const ms = start.getTime() + fraction * totalMs
         const d = new Date(ms)
-        // Snap to best hour cycling through BEST_HOURS
-        const hour = BEST_HOURS[i % BEST_HOURS.length]
-        d.setHours(hour, 0, 0, 0)
+        d.setHours(BEST_HOURS[i % BEST_HOURS.length], 0, 0, 0)
         results.push(toChannelTzIso(d, timezone))
     }
     return results
 }
 
-/** Convert a local Date to an ISO string adjusted for the channel timezone offset */
 function toChannelTzIso(localDate: Date, timezone: string): string {
     try {
-        // Get the UTC time that corresponds to localDate interpreted in the target timezone
-        // We format the date as-is in that timezone, then parse back
         const formatter = new Intl.DateTimeFormat('en-CA', {
-            timeZone: timezone,
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-            hour12: false,
+            timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
         })
-        // formatToParts gives us fields in the target TZ
-        const parts = Object.fromEntries(
-            formatter.formatToParts(localDate).map(p => [p.type, p.value])
-        )
-        // Construct ISO string in target tz and convert to UTC
-        const localIso = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`
-        // Re-interpret: we want the DATE parts from timezone but hour from BEST_HOURS
-        // So re-build using the date parts of localDate in the target timezone:
+        const parts = Object.fromEntries(formatter.formatToParts(localDate).map(p => [p.type, p.value]))
         const datePart = `${parts.year}-${parts.month}-${parts.day}`
         const hour = localDate.getHours()
         const target = `${datePart}T${String(hour).padStart(2, '0')}:00:00`
-        // Convert to UTC by using the Intl offset trick
         const utcDate = new Date(new Date(`${target}Z`).toLocaleString('en-US', { timeZone: 'UTC' }))
         const tzDate = new Date(new Date(`${target}Z`).toLocaleString('en-US', { timeZone: timezone }))
         const offset = utcDate.getTime() - tzDate.getTime()
         return new Date(new Date(target + 'Z').getTime() + offset).toISOString()
-    } catch {
-        // Fallback: best effort
-        return localDate.toISOString()
-    }
+    } catch { return localDate.toISOString() }
 }
 
-/** Format Date as YYYY-MM-DD for min attribute */
-function toDateInputValue(d: Date) {
-    return d.toISOString().slice(0, 10)
+function toDateInputValue(d: Date) { return d.toISOString().slice(0, 10) }
+
+// ─── Progress Bar Component ─────────────────────────────────────────
+function ProgressBar({ value, total }: { value: number; total: number }) {
+    const pct = total > 0 ? Math.round((value / total) * 100) : 0
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{value} / {total} bài</span>
+                <span className="font-bold tabular-nums text-primary">{pct}%</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                    className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                    style={{ width: `${pct}%` }}
+                />
+            </div>
+        </div>
+    )
 }
+
+// Global toast ID for background progress
+const BG_TOAST_ID = 'db-post-gen-progress'
 
 export default function CreatePostsFromDbModal({ open, onClose, rows, columns, tableName }: Props) {
     const router = useRouter()
@@ -181,40 +162,34 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     const [tone, setTone] = useState('viral')
     const [language, setLanguage] = useState('vi')
     const [step, setStep] = useState<'config' | 'generating' | 'done'>('config')
-    const [createdCount, setCreatedCount] = useState(0)
+    const [progress, setProgress] = useState(0)        // number of posts completed
+    const [bgMode, setBgMode] = useState(false)        // whether modal is closed but gen running
+    const stoppedRef = useRef(false)                   // stop flag (checked in loop)
+    const totalRef = useRef(0)                         // total posts to create
 
     // Date range scheduling
     const [enableSchedule, setEnableSchedule] = useState(false)
     const today = toDateInputValue(new Date())
     const [scheduleStart, setScheduleStart] = useState(today)
     const [scheduleEnd, setScheduleEnd] = useState(() => {
-        const d = new Date(); d.setDate(d.getDate() + 7)
-        return toDateInputValue(d)
+        const d = new Date(); d.setDate(d.getDate() + 7); return toDateInputValue(d)
     })
 
-    // Reset and fetch channel platforms when modal opens
     useEffect(() => {
         if (!open || !activeChannelId) return
-        setStep('config')
-        setCreatedCount(0)
-
-        // Fetch platforms connected to this channel
+        setStep('config'); setProgress(0); setBgMode(false); stoppedRef.current = false
         fetch('/api/admin/channels')
             .then(r => r.json())
             .then((data: any[]) => {
                 const channel = data.find((c: any) => c.id === activeChannelId)
                 if (channel?.platforms) {
-                    // Get unique platform types that have active accounts
                     const plats = [...new Set(
-                        channel.platforms
-                            .filter((p: any) => p.isActive !== false)
+                        channel.platforms.filter((p: any) => p.isActive !== false)
                             .map((p: any) => (p.platform as string).toLowerCase())
                     )] as string[]
                     setAvailablePlatforms(plats.length > 0 ? plats : ['facebook', 'instagram'])
-                    // Default: select all available
                     setSelectedPlatforms(new Set(plats))
                 }
-                // Store channel timezone
                 if (channel?.timezone) setChannelTimezone(channel.timezone)
             })
             .catch(() => {
@@ -226,12 +201,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     function togglePlatform(p: string) {
         setSelectedPlatforms(prev => {
             const next = new Set(prev)
-            if (next.has(p)) {
-                if (next.size === 1) return prev // keep at least 1
-                next.delete(p)
-            } else {
-                next.add(p)
-            }
+            if (next.has(p)) { if (next.size === 1) return prev; next.delete(p) } else { next.add(p) }
             return next
         })
     }
@@ -240,19 +210,87 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         return columns.map(col => `${col}: ${row[col] ?? ''}`).join(', ')
     }
 
+    /** Stop the running batch */
+    function handleStop() {
+        stoppedRef.current = true
+        toast.dismiss(BG_TOAST_ID)
+        toast.info(`Đã dừng — đã tạo ${progress} / ${totalRef.current} bài`)
+        if (bgMode) { setBgMode(false) }
+    }
+
+    /** Close modal but keep batch running in background */
+    function handleCloseWhileGenerating() {
+        setBgMode(true)
+        onClose()
+        // Show persistent toast with live progress indicator
+        toast.loading(
+            <div className="flex items-center gap-3 w-full">
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold">Đang tạo bài từ {tableName}…</p>
+                    <div id={`bg-progress-text-${BG_TOAST_ID}`} className="text-[11px] text-muted-foreground">
+                        {progress} / {totalRef.current} bài
+                    </div>
+                </div>
+                <button
+                    onClick={handleStop}
+                    className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
+                >
+                    <StopCircle className="h-3 w-3" /> Dừng
+                </button>
+            </div>,
+            { id: BG_TOAST_ID, duration: Infinity }
+        )
+    }
+
+    /** Update the background toast with new progress */
+    const updateBgToast = useCallback((done: number, total: number, stopped: boolean) => {
+        if (stopped) {
+            toast.dismiss(BG_TOAST_ID)
+            return
+        }
+        const pct = Math.round((done / total) * 100)
+        if (done >= total) {
+            toast.success(
+                <div className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    <span className="text-xs font-semibold">Đã tạo {done} bài thành công!</span>
+                </div>,
+                { id: BG_TOAST_ID, duration: 5000 }
+            )
+        } else {
+            toast.loading(
+                <div className="flex items-center gap-3 w-full">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold">Đang tạo bài từ {tableName}… {pct}%</p>
+                        <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{done} / {total} bài</p>
+                    </div>
+                    <button
+                        onClick={() => { stoppedRef.current = true; toast.dismiss(BG_TOAST_ID); toast.info(`Đã dừng — đã tạo ${done} bài`) }}
+                        className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
+                    >
+                        <StopCircle className="h-3 w-3" /> Dừng
+                    </button>
+                </div>,
+                { id: BG_TOAST_ID, duration: Infinity }
+            )
+        }
+    }, [tableName])
+
     async function handleCreate() {
         if (!activeChannelId) { toast.error('No workspace channel selected'); return }
         if (selectedPlatforms.size === 0) { toast.error('Select at least one platform'); return }
 
         setStep('generating')
+        stoppedRef.current = false
+        setProgress(0)
 
         const isSingleRow = rows.length === 1
-
-        // Pre-compute schedule times if enabled
-        const scheduledTimes: string[] | null = (enableSchedule && !isSingleRow)
+        const scheduledTimes = (enableSchedule && !isSingleRow)
             ? distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone)
             : null
-        // Single row with schedule: use start date at first best hour
         const singleScheduledAt = (enableSchedule && isSingleRow)
             ? distributeScheduleTimes(scheduleStart, scheduleEnd, 1, channelTimezone)[0]
             : null
@@ -264,50 +302,60 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        channelId: activeChannelId,
-                        dataText: rowToText(row),
-                        tableName,
-                        tone,
-                        platforms: [...selectedPlatforms],
-                        language,
-                        rowData: row,
-                        columns,
+                        channelId: activeChannelId, dataText: rowToText(row), tableName,
+                        tone, platforms: [...selectedPlatforms], language, rowData: row, columns,
                         scheduledAt: singleScheduledAt,
                     }),
                 })
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.error ?? 'Generation failed')
-
                 const params = new URLSearchParams()
                 params.set('edit', data.postId)
                 onClose()
                 router.push(`/dashboard/posts/compose?${params.toString()}`)
-            } else {
-                // Batch: create 1 draft per row
-                let created = 0
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i]
-                    try {
-                        const res = await fetch('/api/posts/generate-from-db', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                channelId: activeChannelId,
-                                dataText: rowToText(row),
-                                tableName,
-                                tone,
-                                platforms: [...selectedPlatforms],
-                                language,
-                                rowData: row,
-                                columns,
-                                scheduledAt: scheduledTimes ? scheduledTimes[i] : null,
-                            }),
-                        })
-                        if (res.ok) created++
-                    } catch { /* skip */ }
+                return
+            }
+
+            // ── Batch mode ────────────────────────────────────────────
+            totalRef.current = rows.length
+            let created = 0
+
+            for (let i = 0; i < rows.length; i++) {
+                if (stoppedRef.current) break
+
+                const row = rows[i]
+                try {
+                    const res = await fetch('/api/posts/generate-from-db', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            channelId: activeChannelId, dataText: rowToText(row), tableName,
+                            tone, platforms: [...selectedPlatforms], language, rowData: row, columns,
+                            scheduledAt: scheduledTimes ? scheduledTimes[i] : null,
+                        }),
+                    })
+                    if (res.ok) created++
+                } catch { /* skip failed row */ }
+
+                const newProgress = i + 1
+                setProgress(newProgress)
+
+                // Update background toast if modal was closed
+                if (bgMode || stoppedRef.current) {
+                    updateBgToast(created, rows.length, stoppedRef.current)
                 }
-                setCreatedCount(created)
+            }
+
+            // Final update
+            if (bgMode) {
+                updateBgToast(created, rows.length, stoppedRef.current)
+                setBgMode(false)
+            } else if (!stoppedRef.current) {
+                setProgress(created)
                 setStep('done')
+            } else {
+                toast.info(`Đã dừng — đã tạo ${created} bài`)
+                setStep('config')
             }
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Failed to generate'
@@ -317,24 +365,30 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     }
 
     const isSingleRow = rows.length === 1
+    const pct = totalRef.current > 0 ? Math.round((progress / totalRef.current) * 100) : 0
 
-    // Preview schedule distribution
     const schedulePreview = (() => {
-        if (!enableSchedule || isSingleRow) return null
-        if (!scheduleStart || !scheduleEnd || scheduleStart > scheduleEnd) return null
+        if (!enableSchedule || isSingleRow || !scheduleStart || !scheduleEnd || scheduleStart > scheduleEnd) return null
         const times = distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone)
-        return times.slice(0, 3).map(t => {
-            const d = new Date(t)
-            return d.toLocaleString('vi-VN', {
-                timeZone: channelTimezone,
-                day: '2-digit', month: '2-digit',
+        return times.slice(0, 3).map(t =>
+            new Date(t).toLocaleString('vi-VN', {
+                timeZone: channelTimezone, day: '2-digit', month: '2-digit',
                 hour: '2-digit', minute: '2-digit',
             })
-        })
+        )
     })()
 
     return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+        <Dialog open={open} onOpenChange={v => {
+            if (!v) {
+                // If batch is running, go background; otherwise close normally
+                if (step === 'generating' && !isSingleRow) {
+                    handleCloseWhileGenerating()
+                } else {
+                    onClose()
+                }
+            }
+        }}>
             <DialogContent className="max-w-md bg-background/95 backdrop-blur border border-border/60 shadow-2xl">
                 <DialogHeader className="pb-1">
                     <DialogTitle className="flex items-center gap-2 text-base font-semibold">
@@ -347,9 +401,9 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     </DialogDescription>
                 </DialogHeader>
 
+                {/* ── CONFIG STEP ─────────────────────────────────────── */}
                 {step === 'config' && (
                     <div className="space-y-5 pt-1">
-                        {/* Channel badge */}
                         {isSingleRow && (
                             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
                                 <ExternalLink className="h-3.5 w-3.5" />
@@ -362,23 +416,18 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Platforms</p>
                             {availablePlatforms.length === 0 ? (
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Loading platforms...
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading platforms...
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-3 gap-2">
                                     {availablePlatforms.map(p => (
-                                        <button
-                                            key={p}
-                                            type="button"
-                                            onClick={() => togglePlatform(p)}
+                                        <button key={p} type="button" onClick={() => togglePlatform(p)}
                                             className={cn(
                                                 'relative flex flex-col items-center gap-2 px-3 py-3 rounded-xl border transition-all text-xs font-medium',
                                                 selectedPlatforms.has(p)
                                                     ? 'border-primary bg-primary/10 text-primary shadow-[0_0_0_1px] shadow-primary'
                                                     : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:bg-card'
-                                            )}
-                                        >
+                                            )}>
                                             {selectedPlatforms.has(p) && (
                                                 <span className="absolute top-1.5 right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary">
                                                     <Check className="h-2 w-2 text-primary-foreground" />
@@ -398,17 +447,13 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tone</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {TONES.map(t => (
-                                    <button
-                                        key={t.value}
-                                        type="button"
-                                        onClick={() => setTone(t.value)}
+                                    <button key={t.value} type="button" onClick={() => setTone(t.value)}
                                         className={cn(
                                             'px-3 py-1.5 rounded-full text-xs border transition-all',
                                             tone === t.value
                                                 ? 'border-primary bg-primary/10 text-primary font-semibold'
                                                 : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:text-foreground'
-                                        )}
-                                    >
+                                        )}>
                                         {t.label}
                                     </button>
                                 ))}
@@ -417,27 +462,20 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
 
                         {/* LANGUAGE */}
                         <div className="grid grid-cols-2 gap-2">
-                            {[
-                                { value: 'vi', label: '🇻🇳 Tiếng Việt' },
-                                { value: 'en', label: '🇺🇸 English' },
-                            ].map(l => (
-                                <button
-                                    key={l.value}
-                                    type="button"
-                                    onClick={() => setLanguage(l.value)}
+                            {[{ value: 'vi', label: '🇻🇳 Tiếng Việt' }, { value: 'en', label: '🇺🇸 English' }].map(l => (
+                                <button key={l.value} type="button" onClick={() => setLanguage(l.value)}
                                     className={cn(
                                         'py-2 rounded-xl text-xs border transition-all font-medium',
                                         language === l.value
                                             ? 'border-primary bg-primary/10 text-primary'
                                             : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:text-foreground'
-                                    )}
-                                >
+                                    )}>
                                     {l.label}
                                 </button>
                             ))}
                         </div>
 
-                        {/* AUTO SCHEDULE — only for batch */}
+                        {/* AUTO SCHEDULE */}
                         {!isSingleRow && (
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
@@ -445,62 +483,40 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                                         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Auto Schedule</p>
                                     </div>
-                                    {/* Toggle switch */}
-                                    <button
-                                        type="button"
-                                        onClick={() => setEnableSchedule(v => !v)}
-                                        className={cn(
-                                            'relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
-                                            enableSchedule ? 'bg-primary border-primary' : 'bg-muted border-border/60'
-                                        )}
-                                    >
-                                        <span className={cn(
-                                            'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform',
-                                            enableSchedule ? 'translate-x-[17px]' : 'translate-x-[2px]'
-                                        )} />
+                                    <button type="button" onClick={() => setEnableSchedule(v => !v)}
+                                        className={cn('relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
+                                            enableSchedule ? 'bg-primary border-primary' : 'bg-muted border-border/60')}>
+                                        <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform',
+                                            enableSchedule ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
                                     </button>
                                 </div>
-
                                 {enableSchedule && (
                                     <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                                         <p className="text-[10px] text-muted-foreground">
-                                            AI sẽ phân bổ {rows.length} bài đều trong khoảng thời gian này
-                                            {channelTimezone !== 'UTC' && (
-                                                <span className="ml-1 text-primary/70">· {channelTimezone}</span>
-                                            )}
+                                            AI phân bổ {rows.length} bài đều trong khoảng thời gian này
+                                            {channelTimezone !== 'UTC' && <span className="ml-1 text-primary/70">· {channelTimezone}</span>}
                                         </p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Từ ngày</label>
-                                                <input
-                                                    type="date"
-                                                    value={scheduleStart}
-                                                    min={today}
+                                                <input type="date" value={scheduleStart} min={today}
                                                     onChange={e => setScheduleStart(e.target.value)}
-                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-                                                />
+                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Đến ngày</label>
-                                                <input
-                                                    type="date"
-                                                    value={scheduleEnd}
-                                                    min={scheduleStart || today}
+                                                <input type="date" value={scheduleEnd} min={scheduleStart || today}
                                                     onChange={e => setScheduleEnd(e.target.value)}
-                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-                                                />
+                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                                             </div>
                                         </div>
-
-                                        {/* Preview first 3 schedule times */}
                                         {schedulePreview && (
                                             <div className="space-y-1">
-                                                <p className="text-[10px] text-muted-foreground font-medium">Preview lịch đăng:</p>
+                                                <p className="text-[10px] text-muted-foreground font-medium">Preview:</p>
                                                 <div className="flex flex-wrap gap-1">
                                                     {schedulePreview.map((t, i) => (
                                                         <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
-                                                            <Clock className="h-2.5 w-2.5" />
-                                                            Bài {i + 1}: {t}
+                                                            <Clock className="h-2.5 w-2.5" /> Bài {i + 1}: {t}
                                                         </span>
                                                     ))}
                                                     {rows.length > 3 && (
@@ -529,40 +545,70 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     </div>
                 )}
 
+                {/* ── GENERATING STEP ──────────────────────────────────── */}
                 {step === 'generating' && (
-                    <div className="py-10 flex flex-col items-center gap-4">
+                    <div className="py-6 flex flex-col items-center gap-5">
+                        {/* Animated icon */}
                         <div className="relative">
                             <div className="h-14 w-14 rounded-full border-2 border-primary/20 flex items-center justify-center">
                                 <Sparkles className="h-6 w-6 text-primary animate-pulse" />
                             </div>
                             <Loader2 className="absolute inset-0 m-auto h-14 w-14 text-primary/30 animate-spin" />
                         </div>
-                        <div className="text-center space-y-1">
-                            <p className="font-semibold text-sm">Generating platform content…</p>
+
+                        {/* Label */}
+                        <div className="text-center space-y-1 w-full">
+                            <p className="font-semibold text-sm">Đang tạo nội dung…</p>
                             <p className="text-xs text-muted-foreground">
-                                Creating {selectedPlatforms.size} version{selectedPlatforms.size > 1 ? 's' : ''} for{' '}
                                 {[...selectedPlatforms].map(p => PLATFORM_LABELS[p] || p).join(', ')}
                             </p>
+                        </div>
+
+                        {/* Progress bar */}
+                        {!isSingleRow && (
+                            <div className="w-full px-2">
+                                <ProgressBar value={progress} total={rows.length} />
+                            </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-2 w-full">
+                            <Button
+                                variant="outline" size="sm" className="flex-1 text-xs"
+                                onClick={handleCloseWhileGenerating}
+                                title="Đóng modal, quá trình tạo bài vẫn tiếp tục"
+                            >
+                                <Square className="h-3 w-3 mr-1.5" />
+                                Ẩn (chạy nền)
+                            </Button>
+                            <Button
+                                variant="destructive" size="sm" className="flex-1 text-xs"
+                                onClick={handleStop}
+                            >
+                                <StopCircle className="h-3 w-3 mr-1.5" />
+                                Dừng lại
+                            </Button>
                         </div>
                     </div>
                 )}
 
+                {/* ── DONE STEP ────────────────────────────────────────── */}
                 {step === 'done' && (
                     <div className="py-8 flex flex-col items-center gap-4 text-center">
                         <div className="h-14 w-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
                             <Check className="h-7 w-7 text-primary" />
                         </div>
                         <div>
-                            <p className="font-semibold">{createdCount} drafts created!</p>
+                            <p className="font-semibold">{progress} bài đã tạo!</p>
                             <p className="text-xs text-muted-foreground mt-1">
                                 {enableSchedule
                                     ? `Đã lên lịch từ ${scheduleStart} → ${scheduleEnd}`
-                                    : 'Check your Posts page to review & publish.'}
+                                    : 'Vào trang Posts để xem và đăng bài.'}
                             </p>
                         </div>
                         <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
-                            <Button size="sm" onClick={() => router.push('/dashboard/posts')}>View Posts</Button>
+                            <Button variant="outline" size="sm" onClick={onClose}>Đóng</Button>
+                            <Button size="sm" onClick={() => router.push('/dashboard/posts')}>Xem Posts</Button>
                         </div>
                     </div>
                 )}
