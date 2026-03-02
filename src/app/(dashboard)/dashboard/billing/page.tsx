@@ -69,11 +69,13 @@ type BillingInfo = {
         quotaField: string | null
         quotaAmount: number
         featureField: string | null
+        integrationSlug: string | null
         icon: string
         priceMonthly: number
         priceAnnual: number
         quantity: number
     }[]
+    planIntegrations: string[]  // integration slugs included in the plan
     effectiveLimits: Record<string, number | boolean> | null
 }
 
@@ -603,6 +605,81 @@ export default function BillingPage() {
                             </Button>
                         </CardContent>
                     </Card>
+
+                    {/* ── Integrations Access Panel ── */}
+                    {(() => {
+                        const planSlugs: string[] = info.planIntegrations ?? []
+                        const addonSlugs: string[] = (info.activeAddons ?? [])
+                            .filter(a => a.integrationSlug)
+                            .map(a => a.integrationSlug as string)
+                        const allSlugs = [...new Set([...planSlugs, ...addonSlugs])]
+
+                        const INTEGRATION_LABELS: Record<string, { label: string; emoji: string }> = {
+                            external_db: { label: 'External Database', emoji: '🗄️' },
+                            shopify: { label: 'Shopify', emoji: '🛍️' },
+                            wordpress: { label: 'WordPress', emoji: '📝' },
+                            google_sheets: { label: 'Google Sheets', emoji: '📊' },
+                        }
+
+                        return (
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <span className="text-base">🔗</span>
+                                        {isVi ? 'Integrations được kích hoạt' : 'Integrations Access'}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    {allSlugs.length === 0 ? (
+                                        <div className="text-sm text-muted-foreground">
+                                            <p>{isVi ? 'Plan hiện tại không bao gồm integration nào.' : 'Your current plan does not include any integrations.'}</p>
+                                            <Button asChild variant="outline" size="sm" className="mt-3 gap-1.5 text-xs">
+                                                <a href="/dashboard/billing">
+                                                    {isVi ? 'Nâng cấp hoặc mua Add-on →' : 'Upgrade or get an Add-on →'}
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-border/40">
+                                            {allSlugs.map(slug => {
+                                                const meta = INTEGRATION_LABELS[slug] ?? { label: slug, emoji: '🔌' }
+                                                const fromAddon = addonSlugs.includes(slug)
+                                                const fromPlan = planSlugs.includes(slug)
+                                                return (
+                                                    <div key={slug} className="flex items-center justify-between py-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-base">{meta.emoji}</span>
+                                                            <span className="text-sm font-medium">{meta.label}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {fromPlan && (
+                                                                <Badge className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary border-primary/30">
+                                                                    {isVi ? 'Trong plan' : 'Plan'}
+                                                                </Badge>
+                                                            )}
+                                                            {fromAddon && (
+                                                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
+                                                                    Add-on
+                                                                </Badge>
+                                                            )}
+                                                            <Badge className="text-[10px] px-1.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                                                                ✓ Active
+                                                            </Badge>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                    <Button asChild variant="ghost" size="sm" className="w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground mt-1">
+                                        <a href="/dashboard/integrations">
+                                            {isVi ? 'Xem trang Integrations →' : 'Go to Integrations →'}
+                                        </a>
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )
+                    })()}
 
                     {/* ── Usage Row — all 4 stats in one grid ── */}
                     <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">

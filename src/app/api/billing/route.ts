@@ -65,7 +65,7 @@ export async function GET(_req: NextRequest) {
         }
 
         // Get active add-ons and effective limits
-        let activeAddons: { addon: { id: string; displayName: string; displayNameVi: string; category: string; quotaField: string | null; quotaAmount: number; featureField: string | null; icon: string; priceMonthly: number }; quantity: number }[] = []
+        let activeAddons: { addon: { id: string; displayName: string; displayNameVi: string; category: string; quotaField: string | null; quotaAmount: number; featureField: string | null; integrationSlug: string | null; icon: string; priceMonthly: number; priceAnnual: number }; quantity: number }[] = []
         let effectiveLimits = null
         try {
             const [addons, limits] = await Promise.all([
@@ -117,7 +117,7 @@ export async function GET(_req: NextRequest) {
                 usedThisMonth: smartFlowJobsThisMonth,
                 hasByokKey: !!byokKey,
             },
-            activeAddons: activeAddons.map((sa: { addon: { id: string; displayName: string; displayNameVi: string; category: string; quotaField: string | null; quotaAmount: number; featureField: string | null; icon: string; priceMonthly: number }; quantity: number }) => ({
+            activeAddons: activeAddons.map((sa) => ({
                 id: sa.addon.id,
                 displayName: sa.addon.displayName,
                 displayNameVi: sa.addon.displayNameVi,
@@ -125,10 +125,16 @@ export async function GET(_req: NextRequest) {
                 quotaField: sa.addon.quotaField,
                 quotaAmount: sa.addon.quotaAmount,
                 featureField: sa.addon.featureField,
+                integrationSlug: sa.addon.integrationSlug ?? null,
                 icon: sa.addon.icon,
                 priceMonthly: sa.addon.priceMonthly,
+                priceAnnual: sa.addon.priceAnnual,
                 quantity: sa.quantity,
             })),
+            // Integrations unlocked by the plan (for the billing page info panel)
+            planIntegrations: Array.isArray(sub?.plan?.allowedIntegrations)
+                ? (sub.plan.allowedIntegrations as string[])
+                : [],
             effectiveLimits,
         })
     } catch (err) {
