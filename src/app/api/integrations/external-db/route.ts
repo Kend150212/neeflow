@@ -13,7 +13,7 @@ export async function GET() {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const userId = session.user.id as string
     if (!await checkIntegrationAccess(userId, 'external_db'))
-        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
+        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const config = await (prisma as any).externalDbConfig.findFirst({
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id as string
     if (!await checkIntegrationAccess(userId, 'external_db'))
-        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
+        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
     const body = await req.json()
     const { dbType, host, port, database, username, password, ssl, queryTimeout, schemaHint, channelIds, testStatus, botQueryEnabled, botQueryTables, botMaxRows } = body
 

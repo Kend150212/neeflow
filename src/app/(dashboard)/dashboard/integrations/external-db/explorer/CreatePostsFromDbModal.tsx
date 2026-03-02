@@ -188,8 +188,8 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     }
 
     async function handleCreate() {
-        if (!activeChannelId) { toast.error('No workspace channel selected'); return }
-        if (selectedPlatforms.size === 0) { toast.error('Select at least one platform'); return }
+        if (!activeChannelId) { toast.error(t('integrations.aiPostCreator.noChannelError')); return }
+        if (selectedPlatforms.size === 0) { toast.error(t('integrations.aiPostCreator.selectPlatformError')); return }
 
         setStep('generating')
         setLocalDone(0)
@@ -251,13 +251,13 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
 
             if (bulkGen.isStopped()) {
                 bulkGen.stop()
-                toast.info(`Đã dừng — đã tạo ${created} / ${rows.length} bài`)
+                toast.info(t('integrations.aiPostCreator.stoppedToast').replace('{created}', String(created)).replace('{total}', String(rows.length)))
             } else {
                 bulkGen.finish()
-                toast.success(`✅ Đã tạo xong ${created} bài từ ${tableName}!`, { duration: 5000 })
+                toast.success(t('integrations.aiPostCreator.doneToast').replace('{created}', String(created)).replace('{table}', tableName), { duration: 5000 })
             }
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Failed to generate')
+            toast.error(err instanceof Error ? err.message : t('integrations.aiPostCreator.errorToast'))
             setStep('config')
         }
     }
@@ -290,7 +290,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     <div className="flex items-center gap-1.5 mt-1">
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                             <Sparkles className="h-2.5 w-2.5" />
-                            Using Channel KB &amp; Brand Voice
+                            {t('integrations.aiPostCreator.kbBadge')}
                         </span>
                     </div>
                 </DialogHeader>

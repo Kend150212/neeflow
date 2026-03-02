@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
         const userId = session.user.id as string
         if (!await checkIntegrationAccess(userId, 'external_db'))
-            return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
+            return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
         const body = await req.json()
         const { table, page = 1, pageSize = 20, search = '' } = body
 

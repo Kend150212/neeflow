@@ -233,7 +233,13 @@
       "noChannelError": "Chưa chọn kênh làm việc",
       "startingTitle": "Đang tạo bài viết nền",
       "startingDesc": "AI đang tạo {count} bài viết của bạn. Theo dõi tiến trình ở góc trên bên phải màn hình.",
-      "startingHint": "Bạn có thể đóng hộp thoại này và tiếp tục làm việc."
+      "startingHint": "Bạn có thể đóng hộp thoại này và tiếp tục làm việc.",
+      "kbBadge": "Đang dùng KB & Giọng thương hiệu của kênh",
+      "stoppedToast": "Đã dừng — đã tạo {created} / {total} bài",
+      "doneToast": "✅ Đã tạo {created} bài từ {table}!",
+      "errorToast": "Tạo bài thất bại",
+      "integrationAccessError": "Nâng cấp gói để sử dụng tính năng External DB.",
+      "postLimitError": "Bạn đã đạt giới hạn bài đăng tháng này ({limit}). Nâng cấp để tiếp tục."
     }
   },
   "guides": {

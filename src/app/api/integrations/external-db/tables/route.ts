@@ -18,7 +18,7 @@ export async function GET() {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const userId = session.user.id as string
     if (!await checkIntegrationAccess(userId, 'external_db'))
-        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
+        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
     const dbConfig = await db.externalDbConfig.findFirst({ where: { userId, isActive: true } })
     if (!dbConfig) return NextResponse.json({ error: 'No active DB config' }, { status: 404 })
 
@@ -48,7 +48,7 @@ export async function PUT(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const userId = session.user.id as string
     if (!await checkIntegrationAccess(userId, 'external_db'))
-        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.' }, { status: 403 })
+        return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
     const { tablePermissions } = await req.json()
 
     const dbConfig = await db.externalDbConfig.findFirst({ where: { userId } })
