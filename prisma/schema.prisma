@@ -296,6 +296,7 @@ model Channel {
   promotions           Promotion[]
   customerMemories     CustomerMemory[]
   botTokenUsage        BotTokenUsage[]
+  externalDbLinks      ExternalDbChannelLink[]
 
 
   @@map("channels")
@@ -1184,4 +1185,57 @@ model BotTokenUsage {
   @@index([channelId, createdAt])
   @@index([channelId, model, createdAt])
   @@map("bot_token_usage")
+}
+
+// ─── External DB Integration ────────────────────────────────────────────────
+
+model ExternalDbConfig {
+  id           String   @id @default(cuid())
+
+  // User that owns this connection
+  userId       String   @map("user_id")
+
+  // DB connection details
+  dbType       String   @map("db_type")       // mysql | mariadb | postgresql | sqlite
+  host         String?
+  port         Int?
+  database     String
+  username     String?
+  password     String?  @db.Text              // AES-256 encrypted at rest
+  ssl          Boolean  @default(false)
+  queryTimeout Int      @default(5000)         @map("query_timeout")
+
+  // AI schema hint (user-provided short description)
+  schemaHint   String?  @db.Text              @map("schema_hint")
+
+  // Per-table permissions: { tableName: { visible, readable, writable } }
+  tablePermissions Json @default("{}") @map("table_permissions")
+
+  // Status
+  isActive     Boolean  @default(true)         @map("is_active")
+  testStatus   String?  @map("test_status")    // ok | error | untested
+  lastTestedAt DateTime? @map("last_tested_at")
+
+  createdAt    DateTime @default(now())        @map("created_at")
+  updatedAt    DateTime @updatedAt             @map("updated_at")
+
+  // 1 config → many channels
+  channelLinks ExternalDbChannelLink[]
+
+  @@index([userId])
+  @@map("external_db_configs")
+}
+
+model ExternalDbChannelLink {
+  configId    String @map("config_id")
+  channelId   String @map("channel_id")
+
+  // Channel-specific schema hint override (optional)
+  schemaHint  String? @db.Text @map("schema_hint")
+
+  config  ExternalDbConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  channel Channel          @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@id([configId, channelId])
+  @@map("external_db_channel_links")
 }
