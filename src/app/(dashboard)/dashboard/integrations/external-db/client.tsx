@@ -283,7 +283,7 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                 </div>
 
                 {/* Main Grid: 5/12 + 7/12 */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
                     {/* ── Left: Connection Setup ── */}
                     <div className="lg:col-span-5 flex flex-col gap-6">
@@ -518,8 +518,8 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                     </div>
 
                     {/* ── Right: Table Manager ── */}
-                    <div className="lg:col-span-7">
-                        <div className="rounded-xl border bg-card/50 block overflow-hidden">
+                    <div className="lg:col-span-7 flex flex-col">
+                        <div className="rounded-xl border bg-card/50 flex flex-col flex-1">
                             {/* Card header */}
                             <div className="p-5 border-b bg-muted/30 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -541,8 +541,8 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                                 </button>
                             </div>
 
-                            {/* Table content — fixed max-h so it scrolls without stretching */}
-                            <div className="overflow-x-auto overflow-y-auto max-h-[560px] p-4 custom-scrollbar">
+                            {/* Table content — flex-1 fills remaining card height, scrolls inside */}
+                            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto p-4 custom-scrollbar">
                                 {tables.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
                                         {loadingTables ? (
