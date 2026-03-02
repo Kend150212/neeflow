@@ -1288,7 +1288,18 @@
       "trainingAddFailed": "Không thể thêm dữ liệu huấn luyện",
       "trainingDeleted": "Đã xóa mục huấn luyện",
       "trainingDeleteFailed": "Không thể xóa",
-      "updateFailed": "Không thể cập nhật"
+      "updateFailed": "Không thể cập nhật",
+      "syncSuccess": "✅ Đã đồng bộ {embedded}/{total} dữ liệu",
+      "syncFailed": "Đồng bộ thất bại"
+    },
+    "ragStatus": {
+      "label": "🧠 Trí nhớ Bot",
+      "training": "Đào tạo",
+      "products": "Sản phẩm",
+      "noData": "⚠ Chưa có dữ liệu",
+      "checkStatus": "Kiểm tra",
+      "syncBtn": "🔄 Đồng bộ trí nhớ Bot",
+      "syncing": "Đang đồng bộ..."
     },
     "trainingTabs": {
       "text": "Văn bản",

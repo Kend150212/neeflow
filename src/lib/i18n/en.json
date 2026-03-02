@@ -1288,7 +1288,18 @@
       "trainingAddFailed": "Failed to add training data",
       "trainingDeleted": "Training entry deleted",
       "trainingDeleteFailed": "Failed to delete",
-      "updateFailed": "Failed to update"
+      "updateFailed": "Failed to update",
+      "syncSuccess": "✅ Synced {embedded}/{total} entries",
+      "syncFailed": "Sync failed"
+    },
+    "ragStatus": {
+      "label": "🧠 Bot Knowledge",
+      "training": "Training",
+      "products": "Products",
+      "noData": "⚠ No data yet",
+      "checkStatus": "Check status",
+      "syncBtn": "🔄 Sync Bot Memory",
+      "syncing": "Syncing..."
     },
     "trainingTabs": {
       "text": "Text",

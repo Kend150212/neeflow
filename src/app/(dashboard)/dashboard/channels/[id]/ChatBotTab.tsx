@@ -918,17 +918,17 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         {/* ─── Bot Knowledge Status ─── */}
                         <div className="flex items-center gap-2 px-1 py-1.5 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-200/50 dark:border-violet-800/30">
                             <div className="flex-1 flex items-center gap-2 text-[11px]">
-                                <span className="font-medium text-violet-700 dark:text-violet-300">🧠 Bot Knowledge / Trí nhớ Bot:</span>
+                                <span className="font-medium text-violet-700 dark:text-violet-300">{t('chatbot.ragStatus.label')}:</span>
                                 {embedStats ? (
                                     <span className="text-muted-foreground">
-                                        Training {embedStats.knowledge.embedded}/{embedStats.knowledge.total} ·
-                                        Sản phẩm {embedStats.products.embedded}/{embedStats.products.total}
+                                        {t('chatbot.ragStatus.training')} {embedStats.knowledge.embedded}/{embedStats.knowledge.total} ·
+                                        {t('chatbot.ragStatus.products')} {embedStats.products.embedded}/{embedStats.products.total}
                                         {embedStats.knowledge.embedded + embedStats.products.embedded === 0 && (
-                                            <span className="text-amber-600 ml-1">⚠ Chưa có dữ liệu / No data yet</span>
+                                            <span className="text-amber-600 ml-1">{t('chatbot.ragStatus.noData')}</span>
                                         )}
                                     </span>
                                 ) : (
-                                    <button className="text-violet-500 underline text-[10px]" onClick={loadEmbedStats}>Kiểm tra / Check status</button>
+                                    <button className="text-violet-500 underline text-[10px]" onClick={loadEmbedStats}>{t('chatbot.ragStatus.checkStatus')}</button>
                                 )}
                             </div>
                             <Button
@@ -942,17 +942,17 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                         const res = await fetch(`/api/admin/channels/${channelId}/bot-config/embed`, { method: 'POST' })
                                         const data = await res.json()
                                         if (data.success) {
-                                            toast.success(`✅ Đã đồng bộ ${data.embedded}/${data.total} dữ liệu / Synced ${data.embedded}/${data.total} entries`)
+                                            toast.success(t('chatbot.toasts.syncSuccess').replace('{embedded}', data.embedded).replace('{total}', data.total))
                                             await loadEmbedStats()
                                         } else {
-                                            toast.error(data.error || 'Đồng bộ thất bại / Sync failed')
+                                            toast.error(data.error || t('chatbot.toasts.syncFailed'))
                                         }
-                                    } catch { toast.error('Network error') }
+                                    } catch { toast.error(t('chatbot.toasts.networkError')) }
                                     setEmbedLoading(false)
                                 }}
                             >
                                 {embedLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                                {embedLoading ? 'Đang đồng bộ... / Syncing...' : '🔄 Đồng bộ trí nhớ Bot / Sync Bot Memory'}
+                                {embedLoading ? t('chatbot.ragStatus.syncing') : t('chatbot.ragStatus.syncBtn')}
                             </Button>
                         </div>
 
