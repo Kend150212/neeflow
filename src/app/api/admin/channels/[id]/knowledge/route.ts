@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { embedAndSaveKnowledge } from '@/lib/rag-search'
+import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 
 // GET /api/admin/channels/[id]/knowledge — list knowledge base entries
 export async function GET(
@@ -55,6 +57,20 @@ export async function POST(
         },
     })
 
+    // ── Auto-embed in background (non-blocking) ──────────────────
+    if (content) {
+        setImmediate(async () => {
+            try {
+                const ownerKey = await getChannelOwnerKey(id, null)
+                if (ownerKey.apiKey && ownerKey.provider) {
+                    await embedAndSaveKnowledge(entry.id, ownerKey.provider, ownerKey.apiKey)
+                }
+            } catch (err) {
+                console.error('[KB] Auto-embed failed for entry:', entry.id, err)
+            }
+        })
+    }
+
     return NextResponse.json(entry, { status: 201 })
 }
 
@@ -68,7 +84,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    await params // consume params
+    const { id } = await params
     const body = await req.json()
     const { entryId, title, sourceType, sourceUrl, content } = body
 
@@ -83,8 +99,24 @@ export async function PUT(
             ...(sourceType !== undefined && { sourceType }),
             ...(sourceUrl !== undefined && { sourceUrl }),
             ...(content !== undefined && { content }),
+            // Reset embedding so it gets re-generated
+            ...(content !== undefined && { embeddedAt: null }),
         },
     })
+
+    // ── Re-embed in background if content changed ────────────────
+    if (content !== undefined) {
+        setImmediate(async () => {
+            try {
+                const ownerKey = await getChannelOwnerKey(id, null)
+                if (ownerKey.apiKey && ownerKey.provider) {
+                    await embedAndSaveKnowledge(entryId, ownerKey.provider, ownerKey.apiKey)
+                }
+            } catch (err) {
+                console.error('[KB] Auto-re-embed failed for entry:', entryId, err)
+            }
+        })
+    }
 
     return NextResponse.json(entry)
 }

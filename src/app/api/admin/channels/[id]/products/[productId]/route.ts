@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { embedAndSaveProduct } from '@/lib/rag-search'
+import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 
 /**
  * PATCH /api/admin/channels/[id]/products/[productId]
@@ -30,6 +32,19 @@ export async function PATCH(
             tags: Array.isArray(body.tags) ? body.tags : [],
             inStock: body.inStock !== false,
         },
+    })
+
+    // ── Auto re-embed in background (non-blocking) ───────────────
+    setImmediate(async () => {
+        try {
+            const { id: channelId } = await params
+            const ownerKey = await getChannelOwnerKey(channelId, null)
+            if (ownerKey.apiKey && ownerKey.provider) {
+                await embedAndSaveProduct(productId, ownerKey.provider, ownerKey.apiKey)
+            }
+        } catch (err) {
+            console.error('[Product] Auto-re-embed failed for product:', productId, err)
+        }
     })
 
     return NextResponse.json(product)

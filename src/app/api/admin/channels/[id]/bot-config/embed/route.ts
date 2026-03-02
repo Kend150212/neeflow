@@ -103,9 +103,15 @@ export async function GET(
 
     const [kbTotal, kbEmbedded, productTotal, productEmbedded] = await Promise.all([
         prisma.knowledgeBase.count({ where: { channelId } }),
-        prisma.knowledgeBase.count({ where: { channelId, embeddedAt: { not: null } } }),
+        prisma.$queryRawUnsafe<[{ count: bigint }]>(
+            `SELECT COUNT(*)::bigint AS count FROM knowledge_bases WHERE channel_id = $1 AND embedded_at IS NOT NULL`,
+            channelId
+        ).then(r => Number(r[0]?.count ?? 0)),
         prisma.productCatalog.count({ where: { channelId } }),
-        prisma.productCatalog.count({ where: { channelId, embeddedAt: { not: null } } }),
+        prisma.$queryRawUnsafe<[{ count: bigint }]>(
+            `SELECT COUNT(*)::bigint AS count FROM product_catalogs WHERE channel_id = $1 AND embedded_at IS NOT NULL`,
+            channelId
+        ).then(r => Number(r[0]?.count ?? 0)),
     ])
 
     return NextResponse.json({

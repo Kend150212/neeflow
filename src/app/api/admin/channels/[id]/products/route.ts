@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { embedAndSaveProduct } from '@/lib/rag-search'
+import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 
 /**
  * GET /api/admin/channels/[id]/products
@@ -67,6 +69,18 @@ export async function POST(
             inStock: body.inStock !== false,
             syncSource: 'manual',
         },
+    })
+
+    // ── Auto-embed in background (non-blocking) ──────────────────
+    setImmediate(async () => {
+        try {
+            const ownerKey = await getChannelOwnerKey(channelId, null)
+            if (ownerKey.apiKey && ownerKey.provider) {
+                await embedAndSaveProduct(product.id, ownerKey.provider, ownerKey.apiKey)
+            }
+        } catch (err) {
+            console.error('[Product] Auto-embed failed for product:', product.id, err)
+        }
     })
 
     return NextResponse.json(product, { status: 201 })

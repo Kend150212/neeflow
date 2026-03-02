@@ -2,11 +2,13 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [pgvector(map: "vector")]
 }
 
 
@@ -366,13 +368,14 @@ model KnowledgeBase {
   sourceType String   @default("text") @map("source_type") // text, url, google_sheet, file
   sourceUrl  String?  @map("source_url")
   content    String   @db.Text
-  embedding  Json?    // Float[] vector from text-embedding-3-small or gemini text-embedding-004
+  embedding  Unsupported("vector(1536)")?  // pgvector — text-embedding-3-small (1536 dims) or gemini-text-embedding-004 (768 dims padded)
   embeddedAt DateTime? @map("embedded_at")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
+  @@index([embedding], name: "knowledge_base_embedding_idx", type: Hnsw(distanceStrategy: Cosine))
   @@map("knowledge_bases")
 }
 
@@ -389,7 +392,7 @@ model ProductCatalog {
   images      String[] // array of image URLs
   tags        String[] // search keywords
   inStock     Boolean  @default(true) @map("in_stock")
-  embedding   Json?    // Float[] vector for semantic product search
+  embedding   Unsupported("vector(1536)")?  // pgvector — for semantic product search
   embeddedAt  DateTime? @map("embedded_at")
 
   // Sync metadata — for future Google Sheets / WordPress / Shopify integration
