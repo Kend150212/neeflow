@@ -203,6 +203,11 @@ Requirements:
                 status: 'DRAFT',
                 authorId: userId,
                 channelId,
+                // Tag post with its creation source for display in dashboard
+                metadata: {
+                    source: 'external_db',
+                    tableName,
+                },
             },
         })
 

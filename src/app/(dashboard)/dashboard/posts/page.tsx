@@ -44,6 +44,26 @@ interface Post {
     author: { id: string; name: string | null; email: string }
     media: PostMedia[]; platformStatuses: PlatformStatus[]
     _count: { approvals: number }
+    metadata?: Record<string, string> | null
+}
+
+// Source badge — auto-detects integration source from post.metadata
+function SourceBadge({ metadata }: { metadata?: Record<string, string> | null }) {
+    if (!metadata?.source) return null
+    const sourceMap: Record<string, { label: string; color: string; icon: string }> = {
+        external_db: { label: 'MySQL', color: 'text-orange-400 bg-orange-500/10 border-orange-500/20', icon: '🗄️' },
+        shopify: { label: 'Shopify', color: 'text-green-400  bg-green-500/10  border-green-500/20', icon: '🛍️' },
+        wordpress: { label: 'WordPress', color: 'text-sky-400    bg-sky-500/10    border-sky-500/20', icon: '📝' },
+        woocommerce: { label: 'WooCommerce', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20', icon: '🛒' },
+        google_sheets: { label: 'Sheets', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: '📊' },
+    }
+    const cfg = sourceMap[metadata.source]
+    if (!cfg) return null
+    return (
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cfg.color}`}>
+            <span>{cfg.icon}</span>{cfg.label}
+        </span>
+    )
 }
 
 interface PlatformStat {
@@ -274,6 +294,7 @@ function QueueCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate, an
                 <div className="flex items-center justify-between pt-2.5 border-t border-border/40 mt-auto">
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{post.channel.displayName}</span>
+                        <SourceBadge metadata={post.metadata} />
                         {post.scheduledAt && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-500 dark:text-blue-400">
                                 <Calendar className="h-2.5 w-2.5" />
@@ -685,6 +706,7 @@ export default function PostsPage() {
                                                 <StatusIcon className="h-3 w-3" />{sc.label}
                                             </span>
                                             <span className="text-xs text-muted-foreground">{post.channel.displayName}</span>
+                                            <SourceBadge metadata={post.metadata} />
                                             {post.media.length > 0 && (
                                                 <span className="text-xs text-muted-foreground">📎 {post.media.length}</span>
                                             )}
