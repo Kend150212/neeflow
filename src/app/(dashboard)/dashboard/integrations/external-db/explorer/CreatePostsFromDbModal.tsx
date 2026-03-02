@@ -286,6 +286,13 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         Generate from <strong>{rows.length} record{rows.length > 1 ? 's' : ''}</strong> in <strong>{tableName}</strong>
                         {isSingleRow && ' → Compose Editor'}
                     </DialogDescription>
+                    {/* KB indicator */}
+                    <div className="flex items-center gap-1.5 mt-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <Sparkles className="h-2.5 w-2.5" />
+                            Using Channel KB &amp; Brand Voice
+                        </span>
+                    </div>
                 </DialogHeader>
 
                 {/* CONFIG */}
