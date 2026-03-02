@@ -185,6 +185,56 @@ function getPostDate(post: CalendarPost): Date {
     return new Date(post.scheduledAt || post.publishedAt || post.createdAt)
 }
 
+/** Convert a UTC Date to YYYY-MM-DD in the given IANA timezone (or local if blank). */
+function toTzDateStr(date: Date, tz?: string): string {
+    if (!tz || tz === 'UTC') {
+        // Fast path for UTC
+        return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
+    }
+    try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: tz,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+        }).formatToParts(date)
+        const y = parts.find(p => p.type === 'year')?.value ?? ''
+        const m = parts.find(p => p.type === 'month')?.value ?? ''
+        const d = parts.find(p => p.type === 'day')?.value ?? ''
+        return `${y}-${m}-${d}`
+    } catch {
+        // fallback to local
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    }
+}
+
+/** Convert YYYY-MM-DD + HH:MM string in given timezone to a UTC ISO string. */
+function tzDateTimeToUtcIso(dateStr: string, timeStr: string, tz?: string): string {
+    if (!tz || tz === 'UTC') {
+        return new Date(`${dateStr}T${timeStr}:00Z`).toISOString()
+    }
+    try {
+        // Use Intl to find the UTC offset for the given wall-clock time in the TZ
+        const naive = new Date(`${dateStr}T${timeStr}:00`) // local parse, we'll correct it
+        // Find offset by formatting a known UTC time in the target TZ
+        // Strategy: binary-search-free — format the naive UTC interpretation in the target TZ
+        // and compute the difference
+        const utcMs = naive.getTime()
+        const tzStr = new Intl.DateTimeFormat('en-CA', {
+            timeZone: tz,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+        }).format(new Date(utcMs))
+        // tzStr might be "2026-03-04, 11:00:00" — parse it
+        const match = tzStr.match(/(\d{4})-(\d{2})-(\d{2})[,\s]+(\d{2}):(\d{2}):(\d{2})/)
+        if (!match) return naive.toISOString()
+        const [, yr, mo, dy, hr, mi, se] = match.map(Number)
+        const tzWall = Date.UTC(yr, mo - 1, dy, hr, mi, se)
+        const offset = utcMs - tzWall // offset = local(UTC) - tz-interpreted
+        return new Date(utcMs + offset).toISOString()
+    } catch {
+        return new Date(`${dateStr}T${timeStr}:00`).toISOString()
+    }
+}
+
 function toLocalDateStr(date: Date): string {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
@@ -814,16 +864,20 @@ export default function CalendarPage() {
         )
     }, [posts, activePlatforms])
 
-    // Group filtered posts by date string
+    // Get channel timezone
+    const activeChannel = channels.find(c => c.id === channelId) ?? channels.find(c => c.id === activeChannelId)
+    const channelTz = activeChannel?.timezone || 'UTC'
+
+    // Group filtered posts by date string (in channel timezone)
     const postsByDate = useMemo(() => {
         const map: Record<string, CalendarPost[]> = {}
         for (const post of filteredPosts) {
-            const dateStr = toLocalDateStr(getPostDate(post))
+            const dateStr = toTzDateStr(getPostDate(post), channelTz)
             if (!map[dateStr]) map[dateStr] = []
             map[dateStr].push(post)
         }
         return map
-    }, [filteredPosts])
+    }, [filteredPosts, channelTz])
 
     const handlePrev = () => {
         setCurrentDate(d => {
@@ -859,7 +913,7 @@ export default function CalendarPage() {
     }
 
     const handleSlotClick = (date: string, time: string) => {
-        const scheduledAt = new Date(`${date}T${time}:00`).toISOString()
+        const scheduledAt = tzDateTimeToUtcIso(date, time, channelTz)
         router.push(`/dashboard/posts/compose?scheduledAt=${encodeURIComponent(scheduledAt)}`)
     }
 
@@ -908,28 +962,31 @@ export default function CalendarPage() {
         setPendingDrop(null)
         setRescheduleCustomTime('')
 
+        // Extract old time in channel timezone
         const oldDate = getPostDate(post)
+        const oldTimeInTz = new Intl.DateTimeFormat('en-GB', {
+            timeZone: channelTz || undefined,
+            hour: '2-digit', minute: '2-digit', hour12: false,
+        }).format(oldDate) // e.g. "11:00"
 
-        const newDate = new Date(`${newDateStr}T00:00:00`)
-        if (keepTime) {
-            newDate.setHours(oldDate.getHours(), oldDate.getMinutes(), 0, 0)
-        } else if (customTime) {
-            const [h, m] = customTime.split(':').map(Number)
-            newDate.setHours(h, m, 0, 0)
-        } else {
-            newDate.setHours(9, 0, 0, 0)
-        }
-        const newScheduledAt = newDate.toISOString()
+        const newScheduledAt = tzDateTimeToUtcIso(
+            newDateStr,
+            keepTime ? oldTimeInTz : (customTime ?? '09:00'),
+            channelTz,
+        )
 
         // Optimistic update
         setPosts(prev => prev.map(p =>
             p.id === post.id ? { ...p, scheduledAt: newScheduledAt } : p
         ))
 
-        const displayDate = newDate.toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', {
+        const newDateObj = new Date(newScheduledAt)
+        const displayDate = newDateObj.toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', {
+            timeZone: channelTz || undefined,
             weekday: 'short', month: 'short', day: 'numeric',
         })
-        const displayTime = newDate.toLocaleTimeString(locale === 'vi' ? 'vi-VN' : 'en-US', {
+        const displayTime = newDateObj.toLocaleTimeString(locale === 'vi' ? 'vi-VN' : 'en-US', {
+            timeZone: channelTz || undefined,
             hour: '2-digit', minute: '2-digit',
         })
 

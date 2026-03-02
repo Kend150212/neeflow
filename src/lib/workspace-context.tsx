@@ -9,6 +9,7 @@ interface WorkspaceChannel {
     id: string
     displayName: string
     name: string
+    timezone?: string
 }
 
 interface WorkspaceContextType {
