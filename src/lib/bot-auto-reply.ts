@@ -992,9 +992,10 @@ async function sendFacebookMessage(
         }
     }
 
-    // Send images
+    // Send images — 1 image: simple attachment | 2+ images: generic template carousel (1 API call)
     if (imageUrls?.length) {
-        for (const url of imageUrls) {
+        if (imageUrls.length === 1) {
+            // Single image — plain attachment
             try {
                 const res = await fetch(apiUrl, {
                     method: 'POST',
@@ -1004,7 +1005,7 @@ async function sendFacebookMessage(
                         message: {
                             attachment: {
                                 type: 'image',
-                                payload: { url, is_reusable: true },
+                                payload: { url: imageUrls[0], is_reusable: true },
                             },
                         },
                     }),
@@ -1015,9 +1016,51 @@ async function sendFacebookMessage(
                     if (data.error.code === 190 || data.error.code === 10 || data.error.type === 'OAuthException') {
                         permissionError = true
                     }
+                } else {
+                    console.log(`[FB Send] ✅ Single image sent to ${recipientId}`)
                 }
             } catch (err) {
                 console.error(`[FB Send] ❌ Image network error:`, err)
+            }
+        } else {
+            // Multiple images — send as Generic Template carousel (1 API call, FB max 10 elements)
+            const elements = imageUrls.slice(0, 10).map((url, i) => ({
+                title: `${i + 1}`,
+                image_url: url,
+                default_action: {
+                    type: 'web_url',
+                    url,
+                    webview_height_ratio: 'FULL',
+                },
+            }))
+            try {
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        recipient: { id: recipientId },
+                        message: {
+                            attachment: {
+                                type: 'template',
+                                payload: {
+                                    template_type: 'generic',
+                                    elements,
+                                },
+                            },
+                        },
+                    }),
+                })
+                const data = await res.json()
+                if (data.error) {
+                    console.error(`[FB Send] ❌ Carousel send failed:`, JSON.stringify(data.error))
+                    if (data.error.code === 190 || data.error.code === 10 || data.error.type === 'OAuthException') {
+                        permissionError = true
+                    }
+                } else {
+                    console.log(`[FB Send] ✅ Carousel (${imageUrls.length} images) sent to ${recipientId} in 1 API call`)
+                }
+            } catch (err) {
+                console.error(`[FB Send] ❌ Carousel network error:`, err)
             }
         }
     }
