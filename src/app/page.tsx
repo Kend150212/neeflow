@@ -82,45 +82,45 @@ const platforms = [
 const features = [
   {
     icon: SvgSparkles,
-    title: 'AI Content Generation',
-    desc: 'Generate captions, hashtags, and full content calendars in seconds. Powered by GPT-4 and Gemini.',
+    title: 'AI Content Engine',
+    desc: 'Type your brand in plain English. Get captions, hashtags, hooks, and a full content calendar — tuned for each platform. Powered by GPT-4, Gemini, Claude and more.',
     gradient: 'from-violet-500 to-purple-600',
-    badge: 'Most Popular',
+    badge: '🔥 Core Feature',
   },
   {
     icon: SvgCalendar,
-    title: 'Smart Scheduling',
-    desc: 'AI predicts your optimal posting times based on audience behavior. Set it and forget it.',
-    gradient: 'from-blue-500 to-cyan-600',
+    title: 'Smart Auto-Scheduler',
+    desc: 'AI analyzes your audience and picks the exact time each post should go live for maximum reach. Schedule once, repeat forever.',
+    gradient: 'from-green-500 to-emerald-600',
     badge: null,
   },
   {
     icon: SvgBarChart3,
     title: 'Unified Analytics',
-    desc: 'Get cross-platform reports in one dashboard. Track followers, engagement, reach, and ROI.',
-    gradient: 'from-teal-500 to-emerald-600',
+    desc: 'One dashboard for all your platforms. See follower growth, reach, engagement rate, and content ROI — no tab-switching required.',
+    gradient: 'from-blue-500 to-cyan-600',
     badge: null,
   },
   {
     icon: SvgInbox,
-    title: 'Unified Inbox',
-    desc: 'Manage all DMs, comments, and mentions from every platform in one smart inbox.',
+    title: 'Smart Unified Inbox',
+    desc: 'Every DM, comment, and mention across Facebook, Instagram, TikTok and more — priority-sorted, AI-labeled, in one inbox.',
     gradient: 'from-orange-500 to-amber-600',
     badge: null,
   },
   {
-    icon: SvgUsers,
-    title: 'Team Collaboration',
-    desc: 'Assign roles, set approval workflows, and collaborate seamlessly with your team.',
-    gradient: 'from-pink-500 to-rose-600',
-    badge: null,
+    icon: SvgBot,
+    title: 'AI Chatbot (Trained on Your Brand)',
+    desc: 'Build an AI agent that knows your products, tone, and FAQs. Replies to DMs and comments 24/7 — feels human, scales infinitely.',
+    gradient: 'from-indigo-500 to-violet-600',
+    badge: '✨ New',
   },
   {
-    icon: SvgBot,
-    title: 'AI Auto-Reply Bot',
-    desc: 'Train your own AI chatbot to handle FAQs and comment replies automatically 24/7.',
-    gradient: 'from-indigo-500 to-blue-600',
-    badge: 'New',
+    icon: SvgUsers,
+    title: 'Agency-Ready Team Tools',
+    desc: 'Multi-channel workspaces, role-based access, post approval flows, and client reporting. Built for agencies managing 10+ brands.',
+    gradient: 'from-pink-500 to-rose-600',
+    badge: null,
   },
 ]
 
@@ -128,49 +128,23 @@ const steps = [
   {
     number: '01',
     icon: SvgGlobe,
-    title: 'Connect Your Platforms',
-    desc: 'Connect all your social media accounts in under 2 minutes. Facebook, Instagram, TikTok, YouTube, LinkedIn, X and Pinterest.',
+    title: 'Connect All Your Channels',
+    desc: 'Link Facebook, Instagram, TikTok, YouTube, LinkedIn, X and Pinterest in under 2 minutes. Every account, one workspace.',
   },
   {
     number: '02',
     icon: SvgSparkles,
-    title: 'Let AI Create Your Content',
-    desc: 'Describe your brand or topic, and our AI generates captions, hashtags, and full content calendars tailored to each platform.',
+    title: 'Train Your AI on Your Brand',
+    desc: 'Upload your brand voice, product catalog, FAQs, and tone. The AI learns to write and reply exactly like you — but faster.',
   },
   {
     number: '03',
     icon: SvgTrendingUp,
-    title: 'Publish & Grow',
-    desc: 'Schedule posts at AI-optimized times, track performance with unified analytics, and grow your audience on autopilot.',
+    title: 'Publish, Reply & Grow — on Autopilot',
+    desc: 'AI creates posts, schedules at optimal times, replies to comments and DMs, and surfaces insights — while you focus on the big picture.',
   },
 ]
 
-const testimonials = [
-  {
-    name: 'Sarah Chen',
-    role: 'Social Media Manager, Luxe Agency',
-    review: 'NeeFlow cut our content production time by 70%. The AI writes better captions than most of our junior staff. Absolute game changer for our 40+ client accounts.',
-    rating: 5,
-    initials: 'SC',
-    gradient: 'from-violet-500 to-purple-600',
-  },
-  {
-    name: 'Marcus Rivera',
-    role: 'E-commerce Brand Owner',
-    review: 'I run 3 brands and 7 social accounts solo. NeeFlow is the only reason that\'s possible. The scheduler + AI together saves me 15 hours every single week.',
-    rating: 5,
-    initials: 'MR',
-    gradient: 'from-teal-500 to-cyan-600',
-  },
-  {
-    name: 'Linh Tran',
-    role: 'Digital Marketing Director',
-    review: 'Our engagement rate went up 140% in the first month. The analytics dashboard finally gives me the full picture across all platforms without the chaos.',
-    rating: 5,
-    initials: 'LT',
-    gradient: 'from-orange-500 to-amber-600',
-  },
-]
 
 // ── Animated Counter ───────────────────────────────────────────────────────────
 function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: string }) {
@@ -382,19 +356,19 @@ export default function LandingPage() {
           {/* Badge */}
           <div className="animate-fade-up inline-flex items-center gap-2 bg-green-50 dark:bg-green-950/60 border border-green-200 dark:border-green-800/60 text-green-700 dark:text-green-300 text-xs font-semibold px-4 py-2 rounded-full mb-8">
             <SvgLock className="w-3.5 h-3.5" />
-            Private Beta — Limited Early Access Spots Available
+            Private Beta — Waitlist Now Open
           </div>
 
           {/* Headline */}
           <h1 className="animate-fade-up delay-100 text-5xl sm:text-6xl md:text-7xl font-800 leading-[1.08] tracking-tight mb-6 font-extrabold">
-            Manage Every Platform
+            Your Social Media,
             <br />
-            <span className="text-gradient">10× Faster with AI</span>
+            <span className="text-gradient">Runs on Autopilot</span>
           </h1>
 
           {/* Subtitle */}
           <p className="animate-fade-up delay-200 text-lg sm:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            One dashboard to create, schedule, and analyze content across Facebook, Instagram, TikTok, YouTube, LinkedIn, X and Pinterest. Powered by AI that actually understands your brand.
+            NeeFlow is the AI-powered platform that writes your posts, replies to every DM and comment, schedules at peak times, and grows your audience — across 7 platforms, 24/7, without lifting a finger.
           </p>
 
           {/* CTAs */}
@@ -550,10 +524,10 @@ export default function LandingPage() {
       <section className="py-20 bg-white dark:bg-gray-950">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
-            { value: 10, suffix: '+', label: 'Platforms Supported', sub: 'All major networks' },
-            { value: 45, suffix: 'hrs', label: 'Saved Per Month', sub: 'Per user on average' },
-            { value: 140, suffix: '%', label: 'Engagement Boost', sub: 'Avg. in 30 days' },
-            { value: 24, suffix: '/7', label: 'AI Availability', sub: 'Always-on automation' },
+            { value: 7, suffix: '', label: 'Platforms in One Workspace', sub: 'Facebook, IG, TikTok + more' },
+            { value: 10, suffix: 'x', label: 'More Content Output', sub: 'Compared to manual posting' },
+            { value: 3, suffix: 'min', label: 'Setup to First Post', sub: 'Connect and go live instantly' },
+            { value: 24, suffix: '/7', label: 'AI Works For You', sub: 'Never sleeps, never stops' },
           ].map((stat, i) => (
             <div key={i} className="group">
               <div className="text-4xl sm:text-5xl font-extrabold text-gradient mb-2">
@@ -574,11 +548,11 @@ export default function LandingPage() {
               <SvgLayers className="w-3.5 h-3.5" /> What We&apos;re Building
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
-              One platform.<br />
-              <span className="text-gradient">Infinite possibilities.</span>
+              Every tool your brand needs.<br />
+              <span className="text-gradient">Powered by AI. All in one place.</span>
             </h2>
             <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto text-lg">
-              Everything a modern social media team needs — unified, AI-powered, and ridiculously easy to use.
+              Stop juggling 6 different tools. NeeFlow handles content creation, scheduling, replies, analytics, and team management — so you just focus on strategy.
             </p>
           </div>
 
@@ -607,15 +581,15 @@ export default function LandingPage() {
           <div className="relative rounded-3xl overflow-hidden p-10 sm:p-14 text-center" style={{ background: 'linear-gradient(135deg, #14d46b 0%, #059669 50%, #047857 100%)' }}>
             <div className="absolute inset-0 bg-grid opacity-20" />
             <div className="relative">
-              <div className="text-sm font-semibold text-green-100 mb-3">🚀 Launching Soon — Be First in Line</div>
+              <div className="text-sm font-semibold text-green-100 mb-3">🤖 Your entire social media team — in one AI</div>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
-                The smarter way to manage social media is almost here.
+                Stop paying 5 freelancers to do what one AI can handle.
               </h2>
               <p className="text-green-100 mb-8 max-w-lg mx-auto">
-                Join the waitlist and get early access, priority onboarding, and exclusive launch pricing.
+                Content writer. Scheduler. Community manager. Analyst. Chatbot. NeeFlow replaces them all — and works 24/7.
               </p>
               <a href="#waitlist" className="inline-flex items-center gap-2 bg-white text-gray-900 font-bold px-8 py-4 rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-200">
-                Join the Waitlist <SvgArrowRight className="w-4 h-4" />
+                I Want Early Access <SvgArrowRight className="w-4 h-4" />
               </a>
             </div>
           </div>
@@ -630,10 +604,10 @@ export default function LandingPage() {
               <SvgClock className="w-3.5 h-3.5" /> Up & Running in Minutes
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
-              How NeeFlow works
+              So simple, you&apos;ll wonder why<br />you ever did it manually
             </h2>
             <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-lg">
-              From zero to fully automated in 3 simple steps.
+              Connect → Train → Automate. Your social media on rails in 3 steps.
             </p>
           </div>
 
@@ -662,44 +636,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ────────────────────────────────────────────────────── */}
-      <section className="py-24 bg-gray-50/50 dark:bg-gray-900/40">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-300 text-xs font-semibold px-4 py-2 rounded-full mb-5">
-              <SvgStar className="w-3.5 h-3.5" filled /> Loved by Teams Worldwide
-            </div>
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
-              Real results. Real people.
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div key={i} className="feature-card card-hover rounded-2xl p-7">
-                {/* Stars */}
-                <div className="flex gap-1 mb-5">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <SvgStar key={j} className="w-4 h-4 text-amber-400" filled />
-                  ))}
-                </div>
-                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-6 italic">
-                  &ldquo;{t.review}&rdquo;
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${t.gradient} flex items-center justify-center text-white text-sm font-extrabold shrink-0`}>
-                    {t.initials}
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-gray-900 dark:text-white">{t.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-500">{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── WAITLIST ─────────────────────────────────────────────────────────── */}
       <section id="waitlist" className="py-24 bg-white dark:bg-gray-950">
@@ -708,10 +644,10 @@ export default function LandingPage() {
             <SvgSparkles className="w-3.5 h-3.5" /> Secure your spot — limited availability
           </div>
           <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
-            Get <span className="text-gradient">Early Access</span>
+            Get <span className="text-gradient">Early Access</span> — Before Everyone Else
           </h2>
           <p className="text-gray-500 dark:text-gray-400 text-lg mb-10 max-w-lg mx-auto">
-            Be among the first to experience {branding.appName}. Early members get priority access, exclusive perks, and special launch pricing.
+            We&apos;re opening access to a limited number of early members. Join today to lock in founding-member pricing and get hands-on onboarding from our team.
           </p>
 
           {waitlistSubmitted ? (
@@ -764,7 +700,7 @@ export default function LandingPage() {
             <span className="text-gradient">On autopilot.</span>
           </h2>
           <p className="text-gray-400 text-lg mb-10 max-w-lg mx-auto leading-relaxed">
-            We&apos;re putting the finishing touches on something big. Join the waitlist to get early access and be among the first to experience {branding.appName}.
+            We&apos;re putting the final touches on the platform. Join the waitlist now — early members get founding pricing, direct access to our team, and first dibs on every new feature.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="#waitlist" className="btn-primary text-white font-bold px-10 py-4 rounded-full text-base flex items-center gap-2 shadow-2xl">
