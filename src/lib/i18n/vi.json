@@ -230,7 +230,10 @@
       "generateAndEdit": "Tạo & Chỉnh sửa",
       "createDrafts": "Tạo {count} Bài Nháp",
       "selectPlatformError": "Chọn ít nhất một nền tảng",
-      "noChannelError": "Chưa chọn kênh làm việc"
+      "noChannelError": "Chưa chọn kênh làm việc",
+      "startingTitle": "Đang tạo bài viết nền",
+      "startingDesc": "AI đang tạo {count} bài viết của bạn. Theo dõi tiến trình ở góc trên bên phải màn hình.",
+      "startingHint": "Bạn có thể đóng hộp thoại này và tiếp tục làm việc."
     }
   },
   "guides": {

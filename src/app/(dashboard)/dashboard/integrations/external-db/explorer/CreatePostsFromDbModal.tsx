@@ -81,8 +81,13 @@ const PLATFORM_LABELS: Record<string, string> = {
     tiktok: 'TikTok', linkedin: 'LinkedIn', youtube: 'YouTube',
 }
 
-// Tones use i18n keys
-const TONE_VALUES = ['viral', 'promotional', 'casual', 'professional', 'storytelling']
+const TONES = [
+    { value: 'viral', label: '🚀 Viral' },
+    { value: 'promotional', label: '🛍️ Promo' },
+    { value: 'casual', label: '😊 Casual' },
+    { value: 'professional', label: '💼 Pro' },
+    { value: 'storytelling', label: '📖 Story' },
+]
 
 const BEST_HOURS = [8, 12, 18, 20, 9, 15, 21]
 
@@ -124,20 +129,12 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     const bulkGen = useBulkGen()
     const { t } = useI18n()
 
-    const TONES = [
-        { value: 'viral', label: t('integrations.aiPostCreator.toneViral') },
-        { value: 'promotional', label: t('integrations.aiPostCreator.tonePromo') },
-        { value: 'casual', label: t('integrations.aiPostCreator.toneCasual') },
-        { value: 'professional', label: t('integrations.aiPostCreator.tonePro') },
-        { value: 'storytelling', label: t('integrations.aiPostCreator.toneStory') },
-    ]
-
     const [availablePlatforms, setAvailablePlatforms] = useState<string[]>([])
     const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
     const [channelTimezone, setChannelTimezone] = useState('UTC')
     const [tone, setTone] = useState('viral')
     const [language, setLanguage] = useState('vi')
-    const [step, setStep] = useState<'config' | 'generating' | 'done'>('config')
+    const [step, setStep] = useState<'config' | 'starting' | 'generating' | 'done'>('config')
     const [localDone, setLocalDone] = useState(0)  // local progress for in-modal bar
 
     // Date range scheduling
@@ -184,8 +181,8 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     }
 
     async function handleCreate() {
-        if (!activeChannelId) { toast.error(t('integrations.aiPostCreator.noChannelError')); return }
-        if (selectedPlatforms.size === 0) { toast.error(t('integrations.aiPostCreator.selectPlatformError')); return }
+        if (!activeChannelId) { toast.error('No workspace channel selected'); return }
+        if (selectedPlatforms.size === 0) { toast.error('Select at least one platform'); return }
 
         setStep('generating')
         setLocalDone(0)
@@ -215,10 +212,16 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                 return
             }
 
-            // ── Batch mode: use global context progress bar ──────────
-            bulkGen.start(rows.length, t('bulkGen.creating').replace('{table}', tableName))
-            onClose()   // close modal immediately → user can navigate freely
+            // ── Batch mode: show 'starting' notification first ──────
+            bulkGen.start(rows.length, `${tableName}`)
+            setStep('starting')
 
+            // Auto-close after 2.5s, then run the loop
+            setTimeout(() => {
+                onClose()
+            }, 2500)
+
+            // Run generation in parallel (modal closing is just UI)
             let created = 0
             for (let i = 0; i < rows.length; i++) {
                 if (bulkGen.isStopped()) break
@@ -240,13 +243,10 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
 
             if (bulkGen.isStopped()) {
                 bulkGen.stop()
-                toast.info(t('bulkGen.stoppedAt').replace('{done}', String(created)).replace('{total}', String(rows.length)))
+                toast.info(`Đã dừng — đã tạo ${created} / ${rows.length} bài`)
             } else {
                 bulkGen.finish()
-                toast.success(
-                    t('bulkGen.successAll').replace('{count}', String(created)).replace('{table}', tableName),
-                    { duration: 5000 }
-                )
+                toast.success(`✅ Đã tạo xong ${created} bài từ ${tableName}!`, { duration: 5000 })
             }
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Failed to generate')
@@ -272,14 +272,11 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
             <DialogContent className="max-w-md bg-background/95 backdrop-blur border border-border/60 shadow-2xl">
                 <DialogHeader className="pb-1">
                     <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-                        <Sparkles className="h-4 w-4 text-primary" /> {t('integrations.aiPostCreator.title')}
+                        <Sparkles className="h-4 w-4 text-primary" /> AI Post Creator
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
-                        {rows.length === 1
-                            ? t('integrations.aiPostCreator.generateFrom').replace('{count}', '1').replace('{table}', tableName)
-                            : t('integrations.aiPostCreator.generateFromPlural').replace('{count}', String(rows.length)).replace('{table}', tableName)
-                        }
-                        {isSingleRow && ` ${t('integrations.aiPostCreator.toCompose')}`}
+                        Generate from <strong>{rows.length} record{rows.length > 1 ? 's' : ''}</strong> in <strong>{tableName}</strong>
+                        {isSingleRow && ' → Compose Editor'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -289,16 +286,16 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         {isSingleRow && (
                             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
                                 <ExternalLink className="h-3.5 w-3.5" />
-                                {t('integrations.aiPostCreator.willOpenCompose')}
+                                Sẽ mở Compose Editor với nội dung đã điền sẵn
                             </div>
                         )}
 
                         {/* PLATFORMS */}
                         <div className="space-y-2.5">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.aiPostCreator.platforms')}</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Platforms</p>
                             {availablePlatforms.length === 0 ? (
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('integrations.aiPostCreator.loadingPlatforms')}
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading platforms...
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-3 gap-2">
@@ -321,14 +318,12 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                     ))}
                                 </div>
                             )}
-                            <p className="text-[10px] text-muted-foreground">
-                                {t('integrations.aiPostCreator.selectedCount').replace('{count}', String(selectedPlatforms.size))}
-                            </p>
+                            <p className="text-[10px] text-muted-foreground">{selectedPlatforms.size} selected — AI will generate content for each</p>
                         </div>
 
                         {/* TONE */}
                         <div className="space-y-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.aiPostCreator.tone')}</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tone</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {TONES.map(t => (
                                     <button key={t.value} type="button" onClick={() => setTone(t.value)}
@@ -365,7 +360,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.aiPostCreator.autoSchedule')}</p>
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Auto Schedule</p>
                                     </div>
                                     <button type="button" onClick={() => setEnableSchedule(v => !v)}
                                         className={cn('relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
@@ -377,18 +372,18 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 {enableSchedule && (
                                     <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                                         <p className="text-[10px] text-muted-foreground">
-                                            {t('integrations.aiPostCreator.scheduleDesc').replace('{count}', String(rows.length))}
+                                            AI phân bổ {rows.length} bài đều trong khoảng thời gian này
                                             {channelTimezone !== 'UTC' && <span className="ml-1 text-primary/70">· {channelTimezone}</span>}
                                         </p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('integrations.aiPostCreator.fromDate')}</label>
+                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Từ ngày</label>
                                                 <input type="date" value={scheduleStart} min={today}
                                                     onChange={e => setScheduleStart(e.target.value)}
                                                     className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('integrations.aiPostCreator.toDate')}</label>
+                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Đến ngày</label>
                                                 <input type="date" value={scheduleEnd} min={scheduleStart || today}
                                                     onChange={e => setScheduleEnd(e.target.value)}
                                                     className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
@@ -396,15 +391,14 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                         </div>
                                         {schedulePreview && (
                                             <div className="flex flex-wrap gap-1">
-                                                {schedulePreview.map((t2, i) => (
+                                                {schedulePreview.map((t, i) => (
                                                     <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
-                                                        <Clock className="h-2.5 w-2.5" />
-                                                        {t('integrations.aiPostCreator.postN').replace('{n}', String(i + 1))}: {t2}
+                                                        <Clock className="h-2.5 w-2.5" /> Bài {i + 1}: {t}
                                                     </span>
                                                 ))}
                                                 {rows.length > 3 && (
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
-                                                        {t('integrations.aiPostCreator.morePostsN').replace('{n}', String(rows.length - 3))}
+                                                        +{rows.length - 3} bài nữa...
                                                     </span>
                                                 )}
                                             </div>
@@ -417,14 +411,11 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         {/* ACTIONS */}
                         <div className="flex gap-2 pt-1">
                             <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>
-                                <X className="h-3.5 w-3.5 mr-1" /> {t('integrations.aiPostCreator.cancel')}
+                                <X className="h-3.5 w-3.5 mr-1" /> Cancel
                             </Button>
                             <Button size="sm" className="flex-1 font-semibold" onClick={handleCreate} disabled={selectedPlatforms.size === 0}>
                                 <Zap className="h-3.5 w-3.5 mr-1" />
-                                {isSingleRow
-                                    ? t('integrations.aiPostCreator.generateAndEdit')
-                                    : t('integrations.aiPostCreator.createDrafts').replace('{count}', String(rows.length))
-                                }
+                                {isSingleRow ? 'Generate & Edit' : `Create ${rows.length} Drafts`}
                             </Button>
                         </div>
                     </div>
@@ -443,6 +434,48 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             <p className="font-semibold text-sm">Đang tạo nội dung…</p>
                             <p className="text-xs text-muted-foreground">{[...selectedPlatforms].map(p => PLATFORM_LABELS[p] || p).join(', ')}</p>
                         </div>
+                    </div>
+                )}
+
+                {/* STARTING — batch mode: brief confirmation before auto-close */}
+                {step === 'starting' && (
+                    <div className="py-8 flex flex-col items-center gap-5 text-center">
+                        {/* Animated icon with pulsing rings */}
+                        <div className="relative flex items-center justify-center">
+                            <span className="absolute h-20 w-20 rounded-full bg-primary/10 animate-ping opacity-60" />
+                            <span className="absolute h-16 w-16 rounded-full bg-primary/10" />
+                            <div className="relative h-14 w-14 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center">
+                                <Sparkles className="h-6 w-6 text-primary" />
+                            </div>
+                        </div>
+
+                        {/* Count badge */}
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                            <Zap className="h-3 w-3 text-primary" />
+                            <span className="text-xs font-bold text-primary">{rows.length} posts</span>
+                        </div>
+
+                        {/* Title & description */}
+                        <div className="space-y-1.5 px-2">
+                            <p className="font-bold text-base">
+                                {t('integrations.aiPostCreator.startingTitle')}
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                {t('integrations.aiPostCreator.startingDesc').replace('{count}', String(rows.length))}
+                            </p>
+                        </div>
+
+                        {/* Visual arrow pointing to top-right */}
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/60 border border-border/50 text-xs text-muted-foreground">
+                            <span>{t('integrations.aiPostCreator.startingHint')}</span>
+                            <span className="text-primary font-semibold">↗</span>
+                        </div>
+
+                        {/* Close button */}
+                        <Button variant="outline" size="sm" className="w-full mt-1" onClick={onClose}>
+                            <X className="h-3.5 w-3.5 mr-1" />
+                            {t('integrations.aiPostCreator.cancel')}
+                        </Button>
                     </div>
                 )}
             </DialogContent>
