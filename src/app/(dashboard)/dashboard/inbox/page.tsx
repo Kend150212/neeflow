@@ -920,7 +920,7 @@ export default function InboxPage() {
         <div className="absolute inset-0 flex overflow-hidden">
             {/* ═══ LEFT SIDEBAR — Filters ═══ */}
             <div className={cn(
-                'hidden md:flex border-r flex-col shrink-0 bg-card transition-all duration-200 overflow-visible relative',
+                'hidden md:flex border-r flex-col shrink-0 bg-card transition-all duration-200 overflow-hidden relative',
                 sidebarCollapsed ? 'w-[50px]' : 'w-[250px]'
             )}>
                 {/* Channel indicator */}
