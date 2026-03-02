@@ -14,6 +14,24 @@ import { buildPromotionContext } from '@/lib/product-context'
 import { buildMemoryContext, summarizeSession } from '@/lib/customer-memory'
 import { semanticSearchKnowledge, semanticSearchProducts } from '@/lib/rag-search'
 
+/**
+ * Infer AI provider from a model ID string.
+ * Returns provider name or null (caller falls back to channel default).
+ */
+function inferProviderFromModel(model: string): string | null {
+    if (!model) return null
+    const m = model.toLowerCase()
+    if (m.startsWith('gemini-')) return 'gemini'
+    if (m.startsWith('gpt-') || m.startsWith('o1') || m.startsWith('o3') || m.startsWith('o4') || m.startsWith('chatgpt')) return 'openai'
+    if (m.startsWith('claude-')) return 'anthropic'
+    // OpenRouter / Synthetic style: "provider/model" → detect by prefix
+    if (m.startsWith('google/') || m.startsWith('anthropic/') || m.startsWith('openai/') ||
+        m.startsWith('meta-llama/') || m.startsWith('mistralai/') || m.startsWith('qwen/')) {
+        return 'openrouter'  // also works for synthetic gateway
+    }
+    return null
+}
+
 // ─── Dedup cache: prevent duplicate Messenger sends ─────────
 // Key: "recipientId" → timestamp of last bot send
 // When same page is in multiple channels, only the first channel's
@@ -128,14 +146,21 @@ export async function botAutoReply(
         }
 
         // ─── 7. Resolve AI key ────────────────────────────────────
-        const ownerKey = await getChannelOwnerKey(channel.id, channel.defaultAiProvider)
+        // If botConfig overrides the model, infer the provider from the model name
+        // so we fetch the matching API key (not always the channel's default provider)
+        const botOverrideModel = (botConfig as any)?.botModel as string | null | undefined
+        const preferredProvider = botOverrideModel
+            ? inferProviderFromModel(botOverrideModel) ?? channel.defaultAiProvider
+            : channel.defaultAiProvider
+
+        const ownerKey = await getChannelOwnerKey(channel.id, preferredProvider)
         if (!ownerKey.apiKey) {
             return { replied: false, reason: 'No AI API key available' }
         }
 
         const provider = ownerKey.provider!
         const apiKey = ownerKey.apiKey
-        const model = (botConfig as any)?.botModel || channel.defaultAiModel || ownerKey.model || getDefaultModel(provider, {})
+        const model = botOverrideModel || channel.defaultAiModel || ownerKey.model || getDefaultModel(provider, {})
 
         // ─── 7b. Smart Memory: detect session timeout ─────────────
         // If enabled and the conversation was dormant for > sessionTimeoutHours,
