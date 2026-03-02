@@ -289,7 +289,7 @@ export default function InboxPage() {
     // ─── State ────────────────────────
     const [statusFilter, setStatusFilter] = useState('all')
     const [activeTab, setActiveTab] = useState('messages')
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedPlatformIds, setSelectedPlatformIds] = useState<string[]>([])
     const [conversations, setConversations] = useState<Conversation[]>([])
@@ -920,7 +920,7 @@ export default function InboxPage() {
         <div className="absolute inset-0 flex overflow-hidden">
             {/* ═══ LEFT SIDEBAR — Filters ═══ */}
             <div className={cn(
-                'border-r flex flex-col shrink-0 bg-card transition-all duration-200 overflow-hidden',
+                'hidden md:flex border-r flex-col shrink-0 bg-card transition-all duration-200 overflow-visible relative',
                 sidebarCollapsed ? 'w-[50px]' : 'w-[250px]'
             )}>
                 {/* Channel indicator */}
@@ -928,13 +928,13 @@ export default function InboxPage() {
                     <div className="flex items-center gap-2 px-1">
                         <button
                             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                            className="shrink-0 cursor-pointer hover:text-primary transition-colors"
+                            className="shrink-0 cursor-pointer flex items-center justify-center w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 transition-colors shadow-sm"
                             title={sidebarCollapsed ? t('inbox.sidebar.expandSidebar') : t('inbox.sidebar.collapseSidebar')}
                         >
                             {sidebarCollapsed ? (
-                                <PanelLeft className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                <PanelLeft className="h-3.5 w-3.5 text-white" />
                             ) : (
-                                <PanelLeftClose className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                <PanelLeftClose className="h-3.5 w-3.5 text-white" />
                             )}
                         </button>
                         {!sidebarCollapsed && <span className="text-sm font-semibold whitespace-nowrap">{t('inbox.title')}</span>}
@@ -1195,7 +1195,7 @@ export default function InboxPage() {
 
             {/* ═══ CENTER — Conversation List ═══ */}
             <div className={cn(
-                "w-[320px] border-r flex-col shrink-0 bg-background",
+                "w-[320px] border-r flex-col shrink-0 bg-background overflow-hidden",
                 selectedConversation ? 'hidden md:flex' : 'flex'
             )}>
                 {/* Tabs */}
