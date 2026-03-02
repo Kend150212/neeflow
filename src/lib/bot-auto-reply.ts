@@ -21,13 +21,15 @@ import { semanticSearchKnowledge, semanticSearchProducts } from '@/lib/rag-searc
 function inferProviderFromModel(model: string): string | null {
     if (!model) return null
     const m = model.toLowerCase()
+    // Synthetic uses hf: prefix
+    if (m.startsWith('hf:')) return 'synthetic'
     if (m.startsWith('gemini-')) return 'gemini'
     if (m.startsWith('gpt-') || m.startsWith('o1') || m.startsWith('o3') || m.startsWith('o4') || m.startsWith('chatgpt')) return 'openai'
     if (m.startsWith('claude-')) return 'anthropic'
-    // OpenRouter / Synthetic style: "provider/model" → detect by prefix
+    // OpenRouter style: "provider/model"
     if (m.startsWith('google/') || m.startsWith('anthropic/') || m.startsWith('openai/') ||
         m.startsWith('meta-llama/') || m.startsWith('mistralai/') || m.startsWith('qwen/')) {
-        return 'openrouter'  // also works for synthetic gateway
+        return 'openrouter'
     }
     return null
 }

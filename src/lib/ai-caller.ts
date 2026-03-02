@@ -156,7 +156,7 @@ export function getDefaultModel(provider: string, config: Record<string, string>
         case 'openai': return 'gpt-4o-mini'
         case 'gemini': return 'gemini-2.0-flash'
         case 'openrouter': return 'google/gemini-2.0-flash-001'
-        case 'synthetic': return 'google/gemini-2.0-flash-001'
+        case 'synthetic': return 'hf:google/gemini-2.0-flash-001'
         default: return 'gpt-4o-mini'
     }
 }
