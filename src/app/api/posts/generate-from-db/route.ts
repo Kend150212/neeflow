@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
             language = 'vi',
             rowData,
             columns: rowColumns,
+            scheduledAt,
         } = await req.json()
 
         if (!channelId || !dataText) {
@@ -200,7 +201,8 @@ Requirements:
             data: {
                 content: firstContent,
                 contentPerPlatform: Object.keys(contentPerPlatform).length > 0 ? contentPerPlatform : undefined,
-                status: 'DRAFT',
+                status: scheduledAt ? 'SCHEDULED' : 'DRAFT',
+                scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                 authorId: userId,
                 channelId,
                 // Tag post with its creation source for display in dashboard

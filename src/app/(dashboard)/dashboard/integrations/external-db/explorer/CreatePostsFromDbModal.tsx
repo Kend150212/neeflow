@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace-context'
 import { toast } from 'sonner'
-import { Sparkles, X, Loader2, Zap, ExternalLink, Check } from 'lucide-react'
+import { Sparkles, X, Loader2, Zap, ExternalLink, Check, Calendar, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -96,16 +96,101 @@ const TONES = [
     { value: 'storytelling', label: '📖 Story' },
 ]
 
+// Best posting hours (in 24h) - cycles through these for distributed schedule
+const BEST_HOURS = [8, 12, 18, 20, 9, 15, 21]
+
+/**
+ * Distribute N posts across a date range at optimal times.
+ * Returns array of ISO date strings in the given timezone.
+ */
+function distributeScheduleTimes(
+    startDate: string,          // YYYY-MM-DD
+    endDate: string,            // YYYY-MM-DD
+    count: number,
+    timezone: string,
+): string[] {
+    const start = new Date(`${startDate}T00:00:00`)
+    const end = new Date(`${endDate}T23:59:59`)
+    const totalMs = end.getTime() - start.getTime()
+
+    if (count === 1) {
+        // Put single post on the start date at a good hour
+        const d = new Date(`${startDate}T${String(BEST_HOURS[0]).padStart(2, '0')}:00:00`)
+        return [toChannelTzIso(d, timezone)]
+    }
+
+    // Distribute evenly, then snap to nearest best hour
+    const results: string[] = []
+    for (let i = 0; i < count; i++) {
+        const fraction = count === 1 ? 0 : i / (count - 1)
+        const ms = start.getTime() + fraction * totalMs
+        const d = new Date(ms)
+        // Snap to best hour cycling through BEST_HOURS
+        const hour = BEST_HOURS[i % BEST_HOURS.length]
+        d.setHours(hour, 0, 0, 0)
+        results.push(toChannelTzIso(d, timezone))
+    }
+    return results
+}
+
+/** Convert a local Date to an ISO string adjusted for the channel timezone offset */
+function toChannelTzIso(localDate: Date, timezone: string): string {
+    try {
+        // Get the UTC time that corresponds to localDate interpreted in the target timezone
+        // We format the date as-is in that timezone, then parse back
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: timezone,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false,
+        })
+        // formatToParts gives us fields in the target TZ
+        const parts = Object.fromEntries(
+            formatter.formatToParts(localDate).map(p => [p.type, p.value])
+        )
+        // Construct ISO string in target tz and convert to UTC
+        const localIso = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`
+        // Re-interpret: we want the DATE parts from timezone but hour from BEST_HOURS
+        // So re-build using the date parts of localDate in the target timezone:
+        const datePart = `${parts.year}-${parts.month}-${parts.day}`
+        const hour = localDate.getHours()
+        const target = `${datePart}T${String(hour).padStart(2, '0')}:00:00`
+        // Convert to UTC by using the Intl offset trick
+        const utcDate = new Date(new Date(`${target}Z`).toLocaleString('en-US', { timeZone: 'UTC' }))
+        const tzDate = new Date(new Date(`${target}Z`).toLocaleString('en-US', { timeZone: timezone }))
+        const offset = utcDate.getTime() - tzDate.getTime()
+        return new Date(new Date(target + 'Z').getTime() + offset).toISOString()
+    } catch {
+        // Fallback: best effort
+        return localDate.toISOString()
+    }
+}
+
+/** Format Date as YYYY-MM-DD for min attribute */
+function toDateInputValue(d: Date) {
+    return d.toISOString().slice(0, 10)
+}
+
 export default function CreatePostsFromDbModal({ open, onClose, rows, columns, tableName }: Props) {
     const router = useRouter()
     const { activeChannelId } = useWorkspace()
 
     const [availablePlatforms, setAvailablePlatforms] = useState<string[]>([])
     const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
+    const [channelTimezone, setChannelTimezone] = useState('UTC')
     const [tone, setTone] = useState('viral')
     const [language, setLanguage] = useState('vi')
     const [step, setStep] = useState<'config' | 'generating' | 'done'>('config')
     const [createdCount, setCreatedCount] = useState(0)
+
+    // Date range scheduling
+    const [enableSchedule, setEnableSchedule] = useState(false)
+    const today = toDateInputValue(new Date())
+    const [scheduleStart, setScheduleStart] = useState(today)
+    const [scheduleEnd, setScheduleEnd] = useState(() => {
+        const d = new Date(); d.setDate(d.getDate() + 7)
+        return toDateInputValue(d)
+    })
 
     // Reset and fetch channel platforms when modal opens
     useEffect(() => {
@@ -129,6 +214,8 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     // Default: select all available
                     setSelectedPlatforms(new Set(plats))
                 }
+                // Store channel timezone
+                if (channel?.timezone) setChannelTimezone(channel.timezone)
             })
             .catch(() => {
                 setAvailablePlatforms(['facebook', 'instagram', 'tiktok'])
@@ -161,6 +248,15 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
 
         const isSingleRow = rows.length === 1
 
+        // Pre-compute schedule times if enabled
+        const scheduledTimes: string[] | null = (enableSchedule && !isSingleRow)
+            ? distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone)
+            : null
+        // Single row with schedule: use start date at first best hour
+        const singleScheduledAt = (enableSchedule && isSingleRow)
+            ? distributeScheduleTimes(scheduleStart, scheduleEnd, 1, channelTimezone)[0]
+            : null
+
         try {
             if (isSingleRow) {
                 const row = rows[0]
@@ -176,6 +272,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         language,
                         rowData: row,
                         columns,
+                        scheduledAt: singleScheduledAt,
                     }),
                 })
                 const data = await res.json()
@@ -188,7 +285,8 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
             } else {
                 // Batch: create 1 draft per row
                 let created = 0
-                for (const row of rows) {
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i]
                     try {
                         const res = await fetch('/api/posts/generate-from-db', {
                             method: 'POST',
@@ -202,6 +300,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 language,
                                 rowData: row,
                                 columns,
+                                scheduledAt: scheduledTimes ? scheduledTimes[i] : null,
                             }),
                         })
                         if (res.ok) created++
@@ -218,6 +317,21 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     }
 
     const isSingleRow = rows.length === 1
+
+    // Preview schedule distribution
+    const schedulePreview = (() => {
+        if (!enableSchedule || isSingleRow) return null
+        if (!scheduleStart || !scheduleEnd || scheduleStart > scheduleEnd) return null
+        const times = distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone)
+        return times.slice(0, 3).map(t => {
+            const d = new Date(t)
+            return d.toLocaleString('vi-VN', {
+                timeZone: channelTimezone,
+                day: '2-digit', month: '2-digit',
+                hour: '2-digit', minute: '2-digit',
+            })
+        })
+    })()
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -323,6 +437,85 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             ))}
                         </div>
 
+                        {/* AUTO SCHEDULE — only for batch */}
+                        {!isSingleRow && (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Auto Schedule</p>
+                                    </div>
+                                    {/* Toggle switch */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setEnableSchedule(v => !v)}
+                                        className={cn(
+                                            'relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
+                                            enableSchedule ? 'bg-primary border-primary' : 'bg-muted border-border/60'
+                                        )}
+                                    >
+                                        <span className={cn(
+                                            'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform',
+                                            enableSchedule ? 'translate-x-[17px]' : 'translate-x-[2px]'
+                                        )} />
+                                    </button>
+                                </div>
+
+                                {enableSchedule && (
+                                    <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                                        <p className="text-[10px] text-muted-foreground">
+                                            AI sẽ phân bổ {rows.length} bài đều trong khoảng thời gian này
+                                            {channelTimezone !== 'UTC' && (
+                                                <span className="ml-1 text-primary/70">· {channelTimezone}</span>
+                                            )}
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Từ ngày</label>
+                                                <input
+                                                    type="date"
+                                                    value={scheduleStart}
+                                                    min={today}
+                                                    onChange={e => setScheduleStart(e.target.value)}
+                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Đến ngày</label>
+                                                <input
+                                                    type="date"
+                                                    value={scheduleEnd}
+                                                    min={scheduleStart || today}
+                                                    onChange={e => setScheduleEnd(e.target.value)}
+                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Preview first 3 schedule times */}
+                                        {schedulePreview && (
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-muted-foreground font-medium">Preview lịch đăng:</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {schedulePreview.map((t, i) => (
+                                                        <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
+                                                            <Clock className="h-2.5 w-2.5" />
+                                                            Bài {i + 1}: {t}
+                                                        </span>
+                                                    ))}
+                                                    {rows.length > 3 && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
+                                                            +{rows.length - 3} bài nữa...
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* ACTIONS */}
                         <div className="flex gap-2 pt-1">
                             <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>
@@ -361,11 +554,15 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         </div>
                         <div>
                             <p className="font-semibold">{createdCount} drafts created!</p>
-                            <p className="text-xs text-muted-foreground mt-1">Check your Posts page to review &amp; publish.</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {enableSchedule
+                                    ? `Đã lên lịch từ ${scheduleStart} → ${scheduleEnd}`
+                                    : 'Check your Posts page to review & publish.'}
+                            </p>
                         </div>
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
-                            <Button size="sm" onClick={() => router.push('/dashboard/posts')}>View Drafts</Button>
+                            <Button size="sm" onClick={() => router.push('/dashboard/posts')}>View Posts</Button>
                         </div>
                     </div>
                 )}
