@@ -898,6 +898,8 @@ export default function ComposePage() {
                         url,
                         type: 'IMAGE' as const,
                         filename: url.split('/').pop() || `image-${i}.jpg`,
+                        originalName: url.split('/').pop() || `image-${i}.jpg`,
+                        thumbnailUrl: url,
                         size: 0,
                         width: null,
                         height: null,
