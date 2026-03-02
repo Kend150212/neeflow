@@ -42,6 +42,7 @@ type Plan = {
     hasBotUsageAnalytics: boolean
     maxSmartFlowJobsPerMonth: number
     allowedImageModels: { provider: string; models: string[] }[] | null
+    allowedIntegrations: string[] | null  // e.g. ['external_db', 'shopify']
     isActive: boolean
     isPublic: boolean
     sortOrder: number
@@ -62,6 +63,7 @@ const EMPTY_PLAN: Omit<Plan, 'id' | '_count'> = {
     hasPrioritySupport: false, hasWhiteLabel: false, hasSmartFlow: false, hasBotUsageAnalytics: false,
     maxSmartFlowJobsPerMonth: 0,
     allowedImageModels: null,
+    allowedIntegrations: null,
     isActive: true, isPublic: true, sortOrder: 0,
     // Per-plan trial defaults: off
     trialEnabled: false, trialDays: 14,
@@ -527,6 +529,10 @@ export default function AdminPlansPage() {
                                         {plan.hasWhiteLabel && <Badge variant="secondary" className="text-xs px-1">White-label</Badge>}
                                         {plan.hasSmartFlow && <Badge variant="secondary" className="text-xs px-1">SmartFlow™</Badge>}
                                         {(plan as any).hasBotUsageAnalytics && <Badge variant="secondary" className="text-xs px-1">📊 Usage Analytics</Badge>}
+                                        {/* Integration badges */}
+                                        {(plan as any).allowedIntegrations?.includes('external_db') && (
+                                            <Badge variant="secondary" className="text-xs px-1 bg-orange-500/10 text-orange-600 border-orange-500/20">🗄️ Ext DB</Badge>
+                                        )}
                                         {plan.trialEnabled && (
                                             <Badge className="text-xs px-1 bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-400">
                                                 🎁 {plan.trialDays}d trial
@@ -813,6 +819,37 @@ export default function AdminPlansPage() {
                                 {toggle('hasWhiteLabel', 'White Label')}
                                 {toggle('hasSmartFlow', 'SmartFlow™')}
                                 {toggle('hasBotUsageAnalytics', '📊 Bot Usage Analytics')}
+                            </div>
+                        </div>
+
+                        {/* INTEGRATIONS */}
+                        <div className="border-t pt-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">INTEGRATIONS ACCESS</p>
+                            <p className="text-[11px] text-muted-foreground mb-3">Control which integration features plan users can access.</p>
+                            <div className="space-y-2">
+                                {[
+                                    { slug: 'external_db', label: '🗄️ External Database (MySQL / Airtable / Shopify)', desc: 'Connect & generate posts from external DBs' },
+                                ].map(({ slug, label, desc }) => {
+                                    const enabled = (editPlan.allowedIntegrations ?? []).includes(slug)
+                                    return (
+                                        <div key={slug} className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2.5">
+                                            <div>
+                                                <p className="text-xs font-medium">{label}</p>
+                                                <p className="text-[10px] text-muted-foreground">{desc}</p>
+                                            </div>
+                                            <Switch
+                                                checked={enabled}
+                                                onCheckedChange={v => setEditPlan(p => {
+                                                    const current = p.allowedIntegrations ?? []
+                                                    const next = v
+                                                        ? [...current.filter(s => s !== slug), slug]
+                                                        : current.filter(s => s !== slug)
+                                                    return { ...p, allowedIntegrations: next.length > 0 ? next : null }
+                                                })}
+                                            />
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
 

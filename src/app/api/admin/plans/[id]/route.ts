@@ -47,6 +47,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         hasPrioritySupport, hasWhiteLabel,
         hasSmartFlow, maxSmartFlowJobsPerMonth, hasBotUsageAnalytics,
         allowedImageModels,
+        allowedIntegrations,
         isActive, isPublic, sortOrder,
         trialEnabled, trialDays,
     } = body
@@ -192,6 +193,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
             ...(hasBotUsageAnalytics !== undefined && { hasBotUsageAnalytics }),
             ...(maxSmartFlowJobsPerMonth !== undefined && { maxSmartFlowJobsPerMonth }),
             ...(allowedImageModels !== undefined && { allowedImageModels }),
+            ...(allowedIntegrations !== undefined && { allowedIntegrations }),
             ...(isActive !== undefined && { isActive }),
             ...(isPublic !== undefined && { isPublic }),
             ...(sortOrder !== undefined && { sortOrder }),

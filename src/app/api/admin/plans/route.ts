@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
         hasPrioritySupport = false, hasWhiteLabel = false,
         hasSmartFlow = false, maxSmartFlowJobsPerMonth = 0,
         allowedImageModels = null,
+        allowedIntegrations = null,
         isActive = true, isPublic = true, sortOrder = 0,
         // ─── Per-plan trial config ─────────────────────────────
         trialEnabled = false, trialDays = 14,
@@ -117,6 +118,7 @@ export async function POST(req: NextRequest) {
             hasPrioritySupport, hasWhiteLabel,
             hasSmartFlow, maxSmartFlowJobsPerMonth,
             allowedImageModels,
+            allowedIntegrations,
             isActive, isPublic, sortOrder,
             trialEnabled, trialDays,
         },
