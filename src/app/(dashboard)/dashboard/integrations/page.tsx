@@ -14,33 +14,20 @@ export default async function IntegrationsPage() {
 
     const userId = session.user.id as string
 
-    // Check if user has any active subscription
+    // Fetch user's active subscription + plan allowedIntegrations
     const subscription = await prisma.subscription.findFirst({
         where: { userId, status: { in: ['active', 'trialing'] } },
-        select: { id: true, planId: true },
+        select: {
+            plan: {
+                select: { allowedIntegrations: true }
+            }
+        },
     })
 
-    let allowedIntegrations: string[] = []
-
-    if (subscription?.planId) {
-        // Try to read allowedIntegrations via raw SQL — column may not exist yet if migration hasn't run
-        try {
-            const rows = await prisma.$queryRaw<{ allowed_integrations: unknown }[]>`
-                SELECT allowed_integrations FROM plans WHERE id = ${subscription.planId} LIMIT 1
-            `
-            const raw = rows[0]?.allowed_integrations
-            if (Array.isArray(raw)) {
-                allowedIntegrations = raw as string[]
-            } else if (raw === null || raw === undefined) {
-                // Column exists but null — no integrations configured yet on this plan.
-                // Default: allow external_db for all paid subscribers.
-                allowedIntegrations = ['external_db']
-            }
-        } catch {
-            // Column doesn't exist yet (migration pending) — allow external_db for all subscribers
-            allowedIntegrations = ['external_db']
-        }
-    }
+    // Strictly use what admin configured on the plan.
+    // null / not subscribed → no integrations unlocked → cards show Upgrade button
+    const raw = subscription?.plan?.allowedIntegrations
+    const allowedIntegrations: string[] = Array.isArray(raw) ? (raw as string[]) : []
 
     return <IntegrationsClient allowedIntegrations={allowedIntegrations} />
 }
