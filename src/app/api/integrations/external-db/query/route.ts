@@ -4,10 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { getConnector } from '@/lib/external-db'
 import type { ExternalDBConfig } from '@/lib/external-db/interface'
 import { checkIntegrationAccess } from '@/lib/integration-access'
+import { decrypt } from '@/lib/encryption'
 
 /**
  * POST /api/integrations/external-db/query
- * Body: { channelId, table, page?, pageSize?, search?, searchColumns? }
+ * Body: { channelId, table, page?, pageSize?, search? }
  * Returns: { rows, total, columns, page, pageSize }
  */
 export async function POST(req: NextRequest) {
@@ -18,11 +19,17 @@ export async function POST(req: NextRequest) {
         const userId = session.user.id as string
         if (!await checkIntegrationAccess(userId, 'external_db'))
             return NextResponse.json({ error: 'Upgrade your plan to use External DB integration.', messageVi: 'Nâng cấp gói để sử dụng tính năng External DB.' }, { status: 403 })
+
         const body = await req.json()
         const { channelId, table, page = 1, pageSize = 20, search = '' } = body
 
         if (!channelId) return NextResponse.json({ error: 'channelId is required' }, { status: 400 })
-        if (!table) return NextResponse.json({ error: 'table is required' }, { status: 400 })
+        if (!table || typeof table !== 'string') return NextResponse.json({ error: 'table is required' }, { status: 400 })
+
+        // Sanitize pagination & search inputs
+        const safePage = Math.max(1, Math.floor(Number(page) || 1))
+        const safePageSize = Math.min(200, Math.max(1, Math.floor(Number(pageSize) || 20)))
+        const safeSearch = typeof search === 'string' ? search.slice(0, 200) : ''
 
         // Load config scoped to this channel
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,10 +38,19 @@ export async function POST(req: NextRequest) {
         })
         if (!config) return NextResponse.json({ error: 'No database configured for this channel' }, { status: 404 })
 
-        // Decode password
-        const password = config.password
-            ? Buffer.from(config.password, 'base64').toString('utf-8')
-            : ''
+        // Validate table name against the config's tablePermissions whitelist (SQL injection prevention)
+        const tablePerms = (config.tablePermissions as Record<string, { readable?: boolean }>) ?? {}
+        const allowedTables = Object.entries(tablePerms)
+            .filter(([, p]) => p?.readable !== false)
+            .map(([name]) => name)
+
+        // If tablePermissions is populated, enforce whitelist; otherwise allow all tables via connector
+        if (allowedTables.length > 0 && !allowedTables.includes(table)) {
+            return NextResponse.json({ error: 'Access to this table is not permitted' }, { status: 403 })
+        }
+
+        // Decrypt password using AES-256
+        const password = config.password ? decrypt(config.password) : ''
 
         const dbConfig: ExternalDBConfig = {
             dbType: config.dbType,
@@ -49,19 +65,18 @@ export async function POST(req: NextRequest) {
 
         const connector = getConnector(config.dbType)
 
-        // Use built-in getRows for paginated access
         const result = await connector.getRows(dbConfig, table, {
-            page,
-            pageSize,
-            search: search || undefined,
+            page: safePage,
+            pageSize: safePageSize,
+            search: safeSearch || undefined,
         })
 
         return NextResponse.json({
             rows: result.rows,
             total: result.total,
             columns: result.fields,
-            page,
-            pageSize,
+            page: safePage,
+            pageSize: safePageSize,
         })
     } catch (err: unknown) {
         console.error('[/api/integrations/external-db/query] error:', err)

@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkIntegrationAccess } from '@/lib/integration-access'
-
-function encryptPassword(password: string): string {
-    return Buffer.from(password).toString('base64')
-}
+import { encrypt } from '@/lib/encryption'
 
 // GET — load config for the current user + channel
 export async function GET(req: NextRequest) {
@@ -55,7 +52,7 @@ export async function POST(req: NextRequest) {
     })
 
     const encryptedPassword = password && password !== '••••••••'
-        ? encryptPassword(password)
+        ? encrypt(password)
         : existing?.password ?? null
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

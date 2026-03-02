@@ -4,10 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getConnector } from '@/lib/external-db'
 import type { ExternalDBConfig } from '@/lib/external-db'
 import { checkIntegrationAccess } from '@/lib/integration-access'
-
-function decryptPassword(encrypted: string): string {
-    try { return Buffer.from(encrypted, 'base64').toString('utf-8') } catch { return encrypted }
-}
+import { decrypt } from '@/lib/encryption'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = prisma as any
@@ -33,7 +30,7 @@ export async function GET(req: NextRequest) {
         port: dbConfig.port ?? undefined,
         database: dbConfig.database,
         username: dbConfig.username ?? undefined,
-        password: dbConfig.password ? decryptPassword(dbConfig.password) : undefined,
+        password: dbConfig.password ? decrypt(dbConfig.password) : undefined,
         ssl: dbConfig.ssl,
         queryTimeout: dbConfig.queryTimeout,
     }
