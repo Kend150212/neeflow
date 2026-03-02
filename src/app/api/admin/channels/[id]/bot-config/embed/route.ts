@@ -109,7 +109,7 @@ export async function GET(
         ).then(r => Number(r[0]?.count ?? 0)),
         prisma.productCatalog.count({ where: { channelId } }),
         prisma.$queryRawUnsafe<[{ count: bigint }]>(
-            `SELECT COUNT(*)::bigint AS count FROM product_catalogs WHERE channel_id = $1 AND embedded_at IS NOT NULL`,
+            `SELECT COUNT(*)::bigint AS count FROM product_catalog WHERE channel_id = $1 AND embedded_at IS NOT NULL`,
             channelId
         ).then(r => Number(r[0]?.count ?? 0)),
     ])

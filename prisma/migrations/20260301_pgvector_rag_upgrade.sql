@@ -14,8 +14,8 @@ ALTER TABLE "knowledge_bases"
         ELSE "embedding"::text::vector(1536)
     END;
 
--- Step 3: Migrate product_catalogs embedding column from JSON to vector(1536)
-ALTER TABLE "product_catalogs"
+-- Step 3: Migrate product_catalog embedding column from JSON to vector(1536)
+ALTER TABLE "product_catalog"
     ALTER COLUMN "embedding" TYPE vector(1536)
     USING CASE
         WHEN "embedding" IS NULL THEN NULL
@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS "knowledge_base_embedding_idx"
     ON "knowledge_bases" USING hnsw ("embedding" vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS "product_catalog_embedding_idx"
-    ON "product_catalogs" USING hnsw ("embedding" vector_cosine_ops);
+    ON "product_catalog" USING hnsw ("embedding" vector_cosine_ops);
 
 -- Step 5: Add tsvector columns for full-text search (hybrid search fallback)
 ALTER TABLE "knowledge_bases"
@@ -37,7 +37,7 @@ ALTER TABLE "knowledge_bases"
         to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(content, ''))
     ) STORED;
 
-ALTER TABLE "product_catalogs"
+ALTER TABLE "product_catalog"
     ADD COLUMN IF NOT EXISTS "search_vector" tsvector
     GENERATED ALWAYS AS (
         to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(description, '') || ' ' || coalesce(category, ''))
@@ -47,4 +47,4 @@ CREATE INDEX IF NOT EXISTS "knowledge_base_search_vector_idx"
     ON "knowledge_bases" USING GIN ("search_vector");
 
 CREATE INDEX IF NOT EXISTS "product_catalog_search_vector_idx"
-    ON "product_catalogs" USING GIN ("search_vector");
+    ON "product_catalog" USING GIN ("search_vector");

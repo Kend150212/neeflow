@@ -214,7 +214,7 @@ export async function semanticSearchProducts(
             tags: string[]; in_stock: boolean; product_id: string | null; embedding: string
         }>>(
             `SELECT id, name, category, price, sale_price, description, features, tags, in_stock, product_id, embedding::text
-             FROM product_catalogs
+             FROM product_catalog
              WHERE channel_id = $1 AND in_stock = true AND embedding IS NOT NULL
              ORDER BY embedding <=> $2::vector
              LIMIT 20`,
@@ -270,7 +270,7 @@ async function fullTextSearchProducts(
             tags: string[]; in_stock: boolean; product_id: string | null
         }>>(
             `SELECT id, name, category, price, sale_price, description, features, tags, in_stock, product_id
-             FROM product_catalogs
+             FROM product_catalog
              WHERE channel_id = $1 AND in_stock = true
                AND search_vector @@ plainto_tsquery('simple', $2)
              ORDER BY ts_rank(search_vector, plainto_tsquery('simple', $2)) DESC
@@ -367,7 +367,7 @@ export async function embedAndSaveProduct(
     const vecLiteral = toVectorLiteral(embedding)
 
     await prisma.$executeRawUnsafe(
-        `UPDATE product_catalogs SET embedding = $1::vector, embedded_at = now() WHERE id = $2`,
+        `UPDATE product_catalog SET embedding = $1::vector, embedded_at = now() WHERE id = $2`,
         vecLiteral,
         productId
     )
