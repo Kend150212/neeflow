@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { callAI, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
 import { buildProductContext, extractImageMarkers, buildPromotionContext } from '@/lib/product-context'
+import { buildExternalDbContext } from '@/lib/external-db-context'
 
 
 /**
@@ -162,6 +163,12 @@ export async function POST(
         // Inject product catalog context if products found
         if (productContext.contextText) {
             systemPrompt += `\n\n${productContext.contextText}`
+        }
+
+        // Inject live External DB context (Option C — search then inject)
+        const externalDbContext = await buildExternalDbContext(channelId, message)
+        if (externalDbContext) {
+            systemPrompt += `\n\n--- EXTERNAL DATABASE (Live) ---\n${externalDbContext}\n--- END EXTERNAL DATABASE ---`
         }
 
         // Inject active promotions / holiday pricing

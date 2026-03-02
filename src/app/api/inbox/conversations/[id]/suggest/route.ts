@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { callAI, getDefaultModel } from '@/lib/ai-caller'
 import { getChannelOwnerKey } from '@/lib/channel-owner-key'
+import { buildExternalDbContext } from '@/lib/external-db-context'
 
 /**
  * POST /api/inbox/conversations/[id]/suggest
@@ -141,6 +142,15 @@ export async function POST(
     }
 
     systemPrompt += `\n\nBased on the conversation history, suggest a professional and friendly reply. Keep it concise and natural. Reply in ${channel.language === 'vi' ? 'Vietnamese' : channel.language === 'en' ? 'English' : channel.language || 'the same language the customer is using'}. Do NOT include any prefix like "Agent:" — just the reply text.`
+
+    // Inject live External DB context using the last customer message as search query
+    const lastCustomerMsg = messages.find(m => m.direction === 'inbound')?.content || conversation.externalUserName || ''
+    if (lastCustomerMsg) {
+        const externalDbContext = await buildExternalDbContext(channel.id, lastCustomerMsg)
+        if (externalDbContext) {
+            systemPrompt += `\n\n--- EXTERNAL DATABASE (Live) ---\n${externalDbContext}\n--- END EXTERNAL DATABASE ---`
+        }
+    }
 
     const userPrompt = `Customer name: ${conversation.externalUserName || 'Customer'}
 

@@ -1216,6 +1216,11 @@ model ExternalDbConfig {
   testStatus   String?  @map("test_status")    // ok | error | untested
   lastTestedAt DateTime? @map("last_tested_at")
 
+  // Bot integration (Option C — live search on message)
+  botQueryEnabled  Boolean  @default(false)  @map("bot_query_enabled")
+  botQueryTables   Json     @default("[]")   @map("bot_query_tables")  // string[] of table names
+  botMaxRows       Int      @default(10)     @map("bot_max_rows")
+
   createdAt    DateTime @default(now())        @map("created_at")
   updatedAt    DateTime @updatedAt             @map("updated_at")
 

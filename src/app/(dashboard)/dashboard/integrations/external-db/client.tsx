@@ -186,6 +186,9 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                     dbType, host, port, database, username, password, ssl, schemaHint,
                     channelIds: selectedChannels,
                     testStatus: overrideTestStatus ?? testStatus ?? null,
+                    botQueryEnabled,
+                    botQueryTables,
+                    botMaxRows,
                 }),
             })
             const data = await res.json()
@@ -248,6 +251,9 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
     }
 
     const [tableSearch, setTableSearch] = useState('')
+    const [botQueryEnabled, setBotQueryEnabled] = useState(initialConfig?.botQueryEnabled ?? false)
+    const [botQueryTables, setBotQueryTables] = useState<string[]>((initialConfig?.botQueryTables as string[]) ?? [])
+    const [botMaxRows, setBotMaxRows] = useState(initialConfig?.botMaxRows ?? 10)
     const visibleCount = Object.values(tablePerms).filter(p => p.visible).length
 
     // ─── Render ──────────────────────────────────────────────────────────────
@@ -674,6 +680,115 @@ export function ExternalDbSetupClient({ initialConfig, channels }: Props) {
                         </div>
                     </div>
                 </div>
+
+                {/* ── Bot Integration (Option C) ── */}
+                {tables.length > 0 && (
+                    <div className="rounded-xl border bg-card/50 p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                                    <Database className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-base">🤖 Bot Integration</h3>
+                                    <p className="text-xs text-muted-foreground">Bot tự search DB khi có khách hỏi — chỉ inject rows liên quan</p>
+                                </div>
+                            </div>
+                            {/* Toggle */}
+                            <button
+                                onClick={() => setBotQueryEnabled(v => !v)}
+                                className={cn(
+                                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                                    botQueryEnabled ? 'bg-primary' : 'bg-muted'
+                                )}
+                            >
+                                <span className={cn(
+                                    'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+                                    botQueryEnabled ? 'translate-x-6' : 'translate-x-1'
+                                )} />
+                            </button>
+                        </div>
+
+                        {botQueryEnabled && (
+                            <div className="space-y-4 pt-2 border-t border-border/50">
+                                {/* Tables to search */}
+                                <div>
+                                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Tables bot có thể search</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                                        {tables.map(t => {
+                                            const checked = botQueryTables.length === 0 || botQueryTables.includes(t.name)
+                                            return (
+                                                <label key={t.name} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={() => setBotQueryTables(prev => {
+                                                            // If empty = all selected → clicking one deselects that one
+                                                            const base = prev.length === 0 ? tables.map(x => x.name) : prev
+                                                            if (base.includes(t.name)) {
+                                                                const next = base.filter(x => x !== t.name)
+                                                                return next.length === tables.length ? [] : next
+                                                            } else {
+                                                                const next = [...base, t.name]
+                                                                return next.length === tables.length ? [] : next
+                                                            }
+                                                        })}
+                                                        className="rounded border-border text-primary size-3.5 cursor-pointer"
+                                                    />
+                                                    <span className="text-xs truncate">{t.name}</span>
+                                                </label>
+                                            )
+                                        })}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1.5">
+                                        {botQueryTables.length === 0
+                                            ? `✓ Tất cả ${tables.length} tables`
+                                            : `${botQueryTables.length} / ${tables.length} tables đã chọn`}
+                                    </p>
+                                </div>
+
+                                {/* Max rows */}
+                                <div className="flex items-center gap-4">
+                                    <div>
+                                        <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Max rows / query</p>
+                                        <p className="text-xs text-muted-foreground">Giới hạn token — khuyến nghị 10-20 rows</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 ml-auto">
+                                        {[5, 10, 20, 50].map(v => (
+                                            <button
+                                                key={v}
+                                                onClick={() => setBotMaxRows(v)}
+                                                className={cn(
+                                                    'px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors',
+                                                    botMaxRows === v
+                                                        ? 'bg-primary text-primary-foreground border-primary'
+                                                        : 'border-border hover:bg-muted'
+                                                )}
+                                            >{v}</button>
+                                        ))}
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={200}
+                                            value={botMaxRows}
+                                            onChange={e => setBotMaxRows(Number(e.target.value))}
+                                            className="w-16 px-2 py-1.5 rounded-lg border border-border bg-muted/30 text-xs text-center outline-none focus:border-primary/50"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => handleSave()}
+                                    disabled={saving}
+                                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all"
+                                >
+                                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                    Save Bot Settings
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Footer stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
