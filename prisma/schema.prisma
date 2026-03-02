@@ -1038,6 +1038,7 @@ model BotConfig {
   consultVideos   Json?   @default("[]") @map("consult_videos") // [{title, url, description}]
 
   // AI behavior
+  botModel            String? @map("bot_model") // Override channel's default AI model for this bot
   confidenceThreshold Float   @default(0.7) @map("confidence_threshold")
   maxBotReplies       Int     @default(10) @map("max_bot_replies")
   autoTagEnabled      Boolean @default(true) @map("auto_tag_enabled")

@@ -135,7 +135,7 @@ export async function botAutoReply(
 
         const provider = ownerKey.provider!
         const apiKey = ownerKey.apiKey
-        const model = channel.defaultAiModel || ownerKey.model || getDefaultModel(provider, {})
+        const model = (botConfig as any)?.botModel || channel.defaultAiModel || ownerKey.model || getDefaultModel(provider, {})
 
         // ─── 7b. Smart Memory: detect session timeout ─────────────
         // If enabled and the conversation was dormant for > sessionTimeoutHours,

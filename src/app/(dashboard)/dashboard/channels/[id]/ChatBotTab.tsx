@@ -52,6 +52,7 @@ interface BotConfigData {
     consultVideos: { title: string; url: string; description: string }[]
     confidenceThreshold: number
     maxBotReplies: number
+    botModel: string | null
     autoTagEnabled: boolean
     sentimentEnabled: boolean
     spamFilterEnabled: boolean
@@ -448,6 +449,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         enableSmartMemory: data.enableSmartMemory ?? false,
                         sessionTimeoutHours: data.sessionTimeoutHours ?? 8,
                         summariesBeforeMerge: data.summariesBeforeMerge ?? 5,
+                        botModel: data.botModel || null,
                     })
                 }
             } catch { /* ignore */ }
@@ -770,6 +772,35 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                     <option value="zh">中文</option>
                                 </select>
                             </div>
+                        </div>
+                        {/* Bot AI Model */}
+                        <div>
+                            <Label className="text-xs">🤖 AI Model (Bot riêng)</Label>
+                            <select
+                                value={config.botModel || ''}
+                                onChange={e => update('botModel', e.target.value || null)}
+                                className="w-full mt-1 h-9 px-3 text-sm rounded-md border border-input bg-background"
+                            >
+                                <option value="">— Dùng model mặc định của channel —</option>
+                                <optgroup label="Gemini">
+                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (rẻ nhất)</option>
+                                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
+                                    <option value="gemini-3-pro-preview">Gemini 3 Pro Preview</option>
+                                </optgroup>
+                                <optgroup label="OpenAI">
+                                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                    <option value="gpt-4o">GPT-4o</option>
+                                    <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                                    <option value="gpt-4.1">GPT-4.1</option>
+                                </optgroup>
+                                <optgroup label="OpenAI (Legacy)">
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                </optgroup>
+                            </select>
+                            <p className="text-xs text-muted-foreground mt-1">Chọn model riêng cho bot này, bỏ qua cài đặt AI chung của channel.</p>
                         </div>
                         {/* Greeting Mode Toggle */}
                         <div>

@@ -81,7 +81,7 @@ export async function PUT(
     const allowedFields = [
         'isEnabled', 'botName', 'greeting', 'greetingMode', 'greetingImages', 'personality', 'language',
         'imageFolderId', 'consultVideos',
-        'confidenceThreshold', 'maxBotReplies',
+        'confidenceThreshold', 'maxBotReplies', 'botModel',
         'autoTagEnabled', 'sentimentEnabled', 'spamFilterEnabled', 'autoTranslate', 'smartAssignEnabled',
         'autoEscalateKeywords', 'forbiddenTopics',
         'workingHoursOnly', 'workingHoursStart', 'workingHoursEnd', 'offHoursMessage',
