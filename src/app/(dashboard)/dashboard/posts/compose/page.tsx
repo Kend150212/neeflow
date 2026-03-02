@@ -2461,13 +2461,9 @@ export default function ComposePage() {
                     <div className="px-4 pt-4 pb-2 shrink-0">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t('compose.channel')}</p>
                         <div className="h-8 px-3 flex items-center gap-2 bg-muted/40 border border-border/50 rounded-md">
-                            {selectedChannel?.avatarUrl ? (
-                                <img src={selectedChannel.avatarUrl} className="h-5 w-5 rounded-full object-cover shrink-0" alt="" />
-                            ) : (
-                                <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                                    <span className="text-[9px] font-bold text-primary">{selectedChannel?.displayName?.[0] || '?'}</span>
-                                </div>
-                            )}
+                            <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                <span className="text-[9px] font-bold text-primary">{selectedChannel?.displayName?.[0]?.toUpperCase() || '?'}</span>
+                            </div>
                             <span className="text-xs font-medium truncate text-foreground">
                                 {selectedChannel?.displayName || t('compose.selectChannel')}
                             </span>
