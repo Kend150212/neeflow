@@ -47,6 +47,9 @@ export default async function ExternalDbPage() {
                 lastTestedAt: config.lastTestedAt?.toISOString() ?? null,
                 tablePermissions: config.tablePermissions as Record<string, { visible: boolean; readable: boolean; writable: boolean }>,
                 channelIds: config.channelLinks.map((l: { channelId: string }) => l.channelId),
+                botQueryEnabled: config.botQueryEnabled ?? false,
+                botQueryTables: (config.botQueryTables as string[]) ?? [],
+                botMaxRows: config.botMaxRows ?? 10,
             } : null}
             channels={channels}
         />
