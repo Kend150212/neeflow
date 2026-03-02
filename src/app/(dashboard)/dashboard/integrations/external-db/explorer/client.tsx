@@ -102,7 +102,7 @@ export function DataExplorerClient({ dbName, dbType, configId, tables }: Props) 
     const [searchInput, setSearchInput] = useState('')
     const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
     const [createModalOpen, setCreateModalOpen] = useState(false)
-    const searchTimer = useRef<NodeJS.Timeout>()
+    const searchTimer = useRef<NodeJS.Timeout | undefined>(undefined)
 
     const totalPages = Math.ceil(total / PAGE_SIZE)
 
