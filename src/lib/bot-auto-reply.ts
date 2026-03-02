@@ -475,13 +475,10 @@ export async function botAutoReply(
 
         if (imageLibrary.length > 0) {
             systemPrompt += `\n\n--- IMAGE LIBRARY ---`
-            systemPrompt += `\nYou have access to the following named images. When a customer asks to see an image or a room/product photo, include it using EXACTLY this format on its own line: [IMAGE: <url>]
-- Use this format for EACH image you want to send (one per line)
-- Do NOT send image URLs as plain text — ONLY use [IMAGE: url] format
-- The [IMAGE: url] lines will be replaced with actual image attachments automatically
-- Put the [IMAGE: url] at the END of your reply, after the text`
+            systemPrompt += `\nWhen customer asks to see an image or room photo, COPY the exact [IMAGE: url] token(s) below and place them at the END of your reply after the text. DO NOT modify or retype — copy exactly as shown:`
             for (const img of imageLibrary) {
-                systemPrompt += `\n- "${img.originalName || 'Untitled'}": ${img.url}`
+                const label = img.originalName?.replace(/\.[^/.]+$/, '') || 'Image'
+                systemPrompt += `\n- ${label}: [IMAGE: ${img.url}]`
             }
             systemPrompt += `\n--- END IMAGE LIBRARY ---`
         }
@@ -746,6 +743,8 @@ async function sendAndSaveReply(
         })
         : null
 
+    let botSentMessageId: string | undefined
+
     if (platform === 'facebook' && platformAccount?.accessToken) {
         const conversationType = conversation.type || 'message'
 
@@ -770,6 +769,8 @@ async function sendAndSaveReply(
                     text,
                     imageUrls
                 )
+                // Capture message_id so we can save it as externalId (prevents echo duplicate in inbox)
+                botSentMessageId = result.messageId
 
                 // Auto-mark broken token for dashboard notification
                 if (result.permissionError && conversation.platformAccountId) {
@@ -932,7 +933,8 @@ async function sendAndSaveReply(
         }
     }
 
-    // Save outbound message to DB
+    // Save outbound message to DB (with FB message_id as externalId to prevent echo duplicates)
+    const fbMessageId = platform === 'facebook' || platform === 'instagram' ? (botSentMessageId || null) : null
     await prisma.inboxMessage.create({
         data: {
             conversationId: conversation.id,
@@ -942,6 +944,7 @@ async function sendAndSaveReply(
             senderName: 'Bot',
             mediaUrl: imageUrls?.[0] || null,
             mediaType: imageUrls?.[0] ? 'image' : null,
+            externalId: fbMessageId,
             sentAt: new Date(),
         },
     })
@@ -955,10 +958,12 @@ async function sendFacebookMessage(
     recipientId: string,
     text: string,
     imageUrls?: string[]
-): Promise<{ sent: boolean; permissionError: boolean }> {
+): Promise<{ sent: boolean; permissionError: boolean; messageId?: string }> {
     const apiUrl = `https://graph.facebook.com/v19.0/me/messages?access_token=${accessToken}`
     let sent = false
     let permissionError = false
+
+    let messageId: string | undefined
 
     // Send text message
     if (text) {
@@ -974,13 +979,13 @@ async function sendFacebookMessage(
             const data = await res.json()
             if (data.error) {
                 console.error(`[FB Send] ❌ Text send failed for ${recipientId}:`, JSON.stringify(data.error))
-                // OAuthException (190) = token expired/invalid, (10) = permission denied
                 if (data.error.code === 190 || data.error.code === 10 || data.error.type === 'OAuthException') {
                     permissionError = true
                 }
             } else {
                 console.log(`[FB Send] ✅ Message sent to ${recipientId} (msg_id: ${data.message_id || 'unknown'})`)
                 sent = true
+                messageId = data.message_id || undefined
             }
         } catch (err) {
             console.error(`[FB Send] ❌ Network error sending to ${recipientId}:`, err)
@@ -1017,7 +1022,7 @@ async function sendFacebookMessage(
         }
     }
 
-    return { sent, permissionError }
+    return { sent, permissionError, messageId }
 }
 
 /**
