@@ -1249,11 +1249,42 @@ export default function ChannelDetailPage({
                 </div>
             </div>
 
-            {/* ─── Side Navigation + Content Layout ─────────────── */}
+            {/* ─── Responsive Nav + Content Layout ─────────────── */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
+                {/* ─── Mobile: Horizontal scrollable tabs (< lg) ─── */}
+                <div className="lg:hidden overflow-x-auto pb-2 mb-3 border-b flex gap-1 scrollbar-hide">
+                    {([
+                        { v: 'general', icon: <Settings className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.general') },
+                        { v: 'platforms', icon: <Globe className="h-3.5 w-3.5 shrink-0" />, label: 'Connections' },
+                        { v: 'ai', icon: <Bot className="h-3.5 w-3.5 shrink-0" />, label: 'AI Setup' },
+                        { v: 'chatbot', icon: <MessageSquareDot className="h-3.5 w-3.5 shrink-0" />, label: 'Chat Bot' },
+                        { v: 'auto-content', icon: <Zap className="h-3.5 w-3.5 shrink-0" />, label: 'SmartFlow' },
+                        { v: 'vibe', icon: <Palette className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.vibe') },
+                        { v: 'knowledge', icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.knowledge') },
+                        { v: 'templates', icon: <FileText className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.templates') },
+                        { v: 'hashtags', icon: <Hash className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.hashtags') },
+                        { v: 'webhooks', icon: <Bell className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.webhooks') },
+                        { v: 'members', icon: <Users className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.members') },
+                        { v: 'customers', icon: <UserPlus className="h-3.5 w-3.5 shrink-0" />, label: 'Customers' },
+                    ] as { v: string; icon: React.ReactNode; label: string }[]).map(({ v, icon, label }) => (
+                        <button
+                            key={v}
+                            type="button"
+                            onClick={() => setActiveTab(v)}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs whitespace-nowrap transition-all shrink-0 ${activeTab === v
+                                    ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                }`}
+                        >
+                            {icon}
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                {/* ─── Desktop: Sidebar + Content (≥ lg) ──────────── */}
                 <div className="flex gap-6 items-start">
-                    {/* Left Side Menu */}
-                    <nav className="w-52 shrink-0 flex flex-col gap-0.5 rounded-xl border bg-card p-2 sticky top-20">
+                    {/* Left Side Menu — desktop only */}
+                    <nav className="hidden lg:flex flex-col w-52 shrink-0 gap-0.5 rounded-xl border bg-card p-2 sticky top-20">
                         {([
                             { v: 'general', icon: <Settings className="h-4 w-4 shrink-0" />, label: t('channels.tabs.general') },
                             { v: 'platforms', icon: <Globe className="h-4 w-4 shrink-0" />, label: 'Connections' },
@@ -1284,6 +1315,7 @@ export default function ChannelDetailPage({
                     </nav>
                     {/* Content Area */}
                     <div className="flex-1 min-w-0">
+
 
                         {/* ─── General Tab ───────────────────── */}
                         <TabsContent value="general" className="space-y-4">
