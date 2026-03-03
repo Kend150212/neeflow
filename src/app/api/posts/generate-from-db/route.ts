@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
             columns: rowColumns,
             scheduledAt,
             requestApproval = false,
+            imageMediaId,        // pre-generated AI image ID from External DB modal
         } = await req.json()
 
         if (!channelId || !dataText) {
@@ -265,8 +266,21 @@ ${allHashtags.length > 0 ? `- You may use relevant hashtags from this list: ${al
         // Increment post usage counter toward plan's monthly limit
         await incrementPostUsage(quotaUserId).catch(() => { /* non-fatal */ })
 
+        // ── Attach pre-generated AI image (first, sortOrder 0) ──
+        let aiMediaAttached = false
+        if (imageMediaId && typeof imageMediaId === 'string') {
+            try {
+                await prisma.postMedia.create({
+                    data: { postId: post.id, mediaItemId: imageMediaId, sortOrder: 0 },
+                })
+                aiMediaAttached = true
+            } catch (err) {
+                console.warn('[generate-from-db] Failed to attach imageMediaId:', imageMediaId, err)
+            }
+        }
+
         // ── Auto-import images from DB row → upload to media → attach to post ──
-        if (imageUrls.length > 0) {
+        if (!aiMediaAttached && imageUrls.length > 0) {
             const mediaIds: string[] = []
             for (const url of imageUrls) {
                 const mediaId = await importImageToMedia(url, channelId)
