@@ -485,6 +485,15 @@ export default function PlatformsTab({
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2">
+                                                            {/* Token Status Badge */}
+                                                            {(() => {
+                                                                const exp = p.tokenExpiresAt ? new Date(p.tokenExpiresAt) : null
+                                                                const now = Date.now()
+                                                                if (!exp) return <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">No expiry</span>
+                                                                if (exp.getTime() < now) return <span title={exp.toLocaleString()} className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium">⚠ Expired</span>
+                                                                if (exp.getTime() < now + 7 * 24 * 60 * 60 * 1000) return <span title={exp.toLocaleString()} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 font-medium">⏱ Expires soon</span>
+                                                                return <span title={exp.toLocaleString()} className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 font-medium">✓ Token valid</span>
+                                                            })()}
                                                             <Switch checked={p.isActive} onCheckedChange={(checked) => togglePlatformActive(p.id, checked)} />
                                                             <Button
                                                                 variant="outline"
