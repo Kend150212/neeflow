@@ -7,7 +7,7 @@ import { useWorkspace } from '@/lib/workspace-context'
 import { useBulkGen } from '@/lib/bulk-gen-context'
 import { useI18n } from '@/lib/i18n'
 import { toast } from 'sonner'
-import { Sparkles, X, Loader2, Zap, ExternalLink, Check, Calendar, Clock, Square, StopCircle } from 'lucide-react'
+import { Sparkles, X, Loader2, Zap, ExternalLink, Check, Calendar, Clock, Image, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,44 @@ interface Props {
     tableName: string
 }
 
+// ── Provider / model helpers ──────────────────────────────────────────────────
+const MODEL_DISPLAY_NAMES: Record<string, string> = {
+    'gemini-3.1-flash-image-preview': 'Nano Banana 2',
+    'gemini-2.0-flash-exp': 'Flash Exp',
+    'gemini-3-pro-image-preview': 'Gemini 3 Pro Image',
+    'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
+    'imagen-3.0-generate-002': 'Imagen 3',
+    'dall-e-3': 'DALL·E 3',
+    'gpt-image-1': 'GPT Image 1',
+    'runware:100@1': 'FLUX.1 Dev',
+    'runware:5@1': 'FLUX.1 Schnell',
+}
+
+const ASPECT_RATIOS = [
+    { label: '1:1', w: 1024, h: 1024 },
+    { label: '16:9', w: 1792, h: 1024 },
+    { label: '9:16', w: 1024, h: 1792 },
+    { label: '4:3', w: 1024, h: 768 },
+    { label: '3:4', w: 768, h: 1024 },
+    { label: '4:5', w: 819, h: 1024 },
+]
+
+// Ratio SVG shape indicator
+function AspectRatioShape({ label, active }: { label: string; active: boolean }) {
+    const shapes: Record<string, { w: number; h: number }> = {
+        '1:1': { w: 18, h: 18 }, '16:9': { w: 24, h: 13 }, '9:16': { w: 13, h: 24 },
+        '4:3': { w: 20, h: 15 }, '3:4': { w: 15, h: 20 }, '4:5': { w: 14, h: 18 },
+    }
+    const s = shapes[label] ?? { w: 18, h: 18 }
+    return (
+        <svg width={s.w} height={s.h} viewBox={`0 0 ${s.w} ${s.h}`}>
+            <rect x="0.75" y="0.75" width={s.w - 1.5} height={s.h - 1.5} rx="2"
+                stroke={active ? 'currentColor' : '#6b7280'} strokeWidth="1.5" fill="none" />
+        </svg>
+    )
+}
+
+// ── Platform logos / labels ───────────────────────────────────────────────────
 const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number }) => {
     const logos: Record<string, React.ReactNode> = {
         facebook: (
@@ -123,6 +161,7 @@ function toChannelTzIso(localDate: Date, timezone: string): string {
 
 function toDateInputValue(d: Date) { return d.toISOString().slice(0, 10) }
 
+// ── Main modal ────────────────────────────────────────────────────────────────
 export default function CreatePostsFromDbModal({ open, onClose, rows, columns, tableName }: Props) {
     const router = useRouter()
     const { activeChannelId } = useWorkspace()
@@ -132,13 +171,13 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     const [availablePlatforms, setAvailablePlatforms] = useState<string[]>([])
     const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
     const [channelTimezone, setChannelTimezone] = useState('UTC')
-    const [channelId4Settings, setChannelId4Settings] = useState<string>('')  // for link to settings
+    const [channelId4Settings, setChannelId4Settings] = useState<string>('')
     const [approvalMode, setApprovalMode] = useState<'none' | 'optional' | 'required'>('none')
     const [requestApproval, setRequestApproval] = useState(false)
     const [tone, setTone] = useState('viral')
     const [language, setLanguage] = useState('vi')
     const [step, setStep] = useState<'config' | 'starting' | 'generating' | 'done'>('config')
-    const [localDone, setLocalDone] = useState(0)  // local progress for in-modal bar
+    const [localDone, setLocalDone] = useState(0)
 
     // Date range scheduling
     const [enableSchedule, setEnableSchedule] = useState(false)
@@ -148,9 +187,117 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         const d = new Date(); d.setDate(d.getDate() + 7); return toDateInputValue(d)
     })
 
+    // ── AI Image generation state ─────────────────────────────────────────────
+    const [enableAiImage, setEnableAiImage] = useState(false)
+    const [imagePrompt, setImagePrompt] = useState('')
+    const [selectedAspect, setSelectedAspect] = useState('1:1')
+    const [imageProvider, setImageProvider] = useState('') // 'plan:gemini' | 'byok:openai' etc.
+    const [imageModel, setImageModel] = useState('')
+    const [availableImageModels, setAvailableImageModels] = useState<{ id: string; name: string }[]>([])
+    const [loadingModels, setLoadingModels] = useState(false)
+    const [imageQuota, setImageQuota] = useState<{ used: number; limit: number }>({ used: 0, limit: -1 })
+    const [byokProviders, setByokProviders] = useState<{ provider: string; name: string; source: string }[]>([])
+    const [planProviders, setPlanProviders] = useState<{ provider: string; name: string; source: string }[]>([])
+    const [providerDropdownOpen, setProviderDropdownOpen] = useState(false)
+    const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+    const [generatingImage, setGeneratingImage] = useState(false)
+    const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
+    const [generatedMediaId, setGeneratedMediaId] = useState<string | null>(null)
+
+    // Fetch image providers + quota when modal opens
+    useEffect(() => {
+        if (!open) return
+        fetch('/api/user/image-providers')
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then((data: { byok: { provider: string; name: string }[]; plan: { provider: string; name: string }[]; quota: { used: number; limit: number } }) => {
+                setByokProviders((data.byok || []).map(p => ({ ...p, source: 'byok' })))
+                setPlanProviders((data.plan || []).map(p => ({ ...p, source: 'plan' })))
+                setImageQuota(data.quota || { used: 0, limit: -1 })
+                // Auto-select first
+                const all = [
+                    ...(data.byok || []).map(p => ({ ...p, source: 'byok' })),
+                    ...(data.plan || []).map(p => ({ ...p, source: 'plan' })),
+                ]
+                if (all.length > 0 && !imageProvider) {
+                    const first = all[0]
+                    setImageProvider(`${first.source}:${first.provider}`)
+                    fetchModels(`${first.source}:${first.provider}`)
+                }
+            })
+            .catch(() => { })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open])
+
+    function fetchModels(providerKey: string) {
+        const [source, ...rest] = providerKey.split(':')
+        const providerName = rest.join(':')
+        setLoadingModels(true)
+        setAvailableImageModels([])
+        setImageModel('')
+        const endpoint = source === 'plan'
+            ? fetch('/api/admin/posts/plan-models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
+            : fetch('/api/user/api-keys/models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
+
+        endpoint.then(r => r.json()).then(d => {
+            const models = (d.models || [])
+                .filter((m: { id: string; type?: string }) => source === 'plan' || m.type === 'image')
+                .map((m: { id: string; name?: string }) => ({
+                    id: m.id,
+                    name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id,
+                }))
+            setAvailableImageModels(models)
+            if (models.length > 0) setImageModel(models[0].id)
+        }).catch(() => { }).finally(() => setLoadingModels(false))
+    }
+
+    function handleProviderSelect(key: string) {
+        setImageProvider(key)
+        setProviderDropdownOpen(false)
+        fetchModels(key)
+    }
+
+    async function handleGenerateImage() {
+        if (!activeChannelId) { toast.error('No channel selected'); return }
+        if (!imagePrompt.trim()) { toast.error('Enter an image prompt'); return }
+        const aspect = ASPECT_RATIOS.find(a => a.label === selectedAspect) ?? ASPECT_RATIOS[0]
+        const [source, ...rest] = imageProvider.split(':')
+        const providerName = rest.join(':')
+        setGeneratingImage(true)
+        try {
+            const res = await fetch('/api/admin/posts/generate-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    channelId: activeChannelId,
+                    prompt: imagePrompt,
+                    width: aspect.w,
+                    height: aspect.h,
+                    provider: providerName,
+                    model: imageModel || undefined,
+                    keySource: source,
+                }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Image generation failed')
+            setGeneratedImageUrl(data.mediaItem?.url || null)
+            setGeneratedMediaId(data.mediaItem?.id || null)
+            // Update quota display
+            if (data.quota) setImageQuota(data.quota)
+            else setImageQuota(q => ({ ...q, used: q.used + 1 }))
+            toast.success('Image generated!')
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Image generation failed')
+        } finally {
+            setGeneratingImage(false)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     useEffect(() => {
         if (!open || !activeChannelId) return
         setStep('config'); setLocalDone(0); setRequestApproval(false)
+        setGeneratedImageUrl(null); setGeneratedMediaId(null)
         fetch('/api/admin/channels')
             .then(r => r.json())
             .then((data: any[]) => {
@@ -166,7 +313,6 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                 if (channel?.timezone) setChannelTimezone(channel.timezone)
                 if (channel?.requireApproval) setApprovalMode(channel.requireApproval as 'none' | 'optional' | 'required')
                 if (channel?.id) setChannelId4Settings(channel.id)
-                // If required, pre-enable approval toggle
                 if (channel?.requireApproval === 'required') setRequestApproval(true)
             })
             .catch(() => {
@@ -200,6 +346,9 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         const singleScheduledAt = (enableSchedule && isSingleRow)
             ? distributeScheduleTimes(scheduleStart, scheduleEnd, 1, channelTimezone)[0] : null
 
+        const aiImagePayload = enableAiImage && generatedMediaId
+            ? { imageMediaId: generatedMediaId } : {}
+
         try {
             if (isSingleRow) {
                 const res = await fetch('/api/posts/generate-from-db', {
@@ -209,6 +358,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         channelId: activeChannelId, dataText: rowToText(rows[0]), tableName,
                         tone, platforms: [...selectedPlatforms], language, rowData: rows[0], columns,
                         scheduledAt: singleScheduledAt,
+                        ...aiImagePayload,
                     }),
                 })
                 const data = await res.json()
@@ -219,16 +369,10 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                 return
             }
 
-            // ── Batch mode: show 'starting' notification first ──────
             bulkGen.start(rows.length, `${tableName}`)
             setStep('starting')
+            setTimeout(() => { onClose() }, 2500)
 
-            // Auto-close after 2.5s, then run the loop
-            setTimeout(() => {
-                onClose()
-            }, 2500)
-
-            // Run generation in parallel (modal closing is just UI)
             let created = 0
             for (let i = 0; i < rows.length; i++) {
                 if (bulkGen.isStopped()) break
@@ -241,6 +385,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             tone, platforms: [...selectedPlatforms], language, rowData: rows[i], columns,
                             scheduledAt: scheduledTimes ? scheduledTimes[i] : null,
                             requestApproval,
+                            ...aiImagePayload,
                         }),
                     })
                     if (res.ok) created++
@@ -275,9 +420,23 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         )
     })()
 
+    // Provider display helpers
+    const allImgProviders = [
+        ...byokProviders.map(p => ({ ...p, source: 'byok' })),
+        ...planProviders.map(p => ({ ...p, source: 'plan' })),
+    ]
+    const selectedProviderEntry = allImgProviders.find(p => `${p.source}:${p.provider}` === imageProvider)
+    const selectedModelEntry = availableImageModels.find(m => m.id === imageModel)
+
+    const quotaLabel = imageQuota.limit === -1
+        ? null
+        : imageQuota.limit === 0
+            ? null
+            : `${imageQuota.used}/${imageQuota.limit} used`
+
     return (
         <Dialog open={open} onOpenChange={v => !v && step !== 'generating' && onClose()}>
-            <DialogContent className="max-w-md bg-background/95 backdrop-blur border border-border/60 shadow-2xl">
+            <DialogContent className="max-w-md bg-background/95 backdrop-blur border border-border/60 shadow-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader className="pb-1">
                     <DialogTitle className="flex items-center gap-2 text-base font-semibold">
                         <Sparkles className="h-4 w-4 text-primary" /> AI Post Creator
@@ -286,7 +445,6 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         Generate from <strong>{rows.length} record{rows.length > 1 ? 's' : ''}</strong> in <strong>{tableName}</strong>
                         {isSingleRow && ' → Compose Editor'}
                     </DialogDescription>
-                    {/* KB indicator */}
                     <div className="flex items-center gap-1.5 mt-1">
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                             <Sparkles className="h-2.5 w-2.5" />
@@ -369,6 +527,186 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             ))}
                         </div>
 
+                        {/* ── AI IMAGE GENERATION ─────────────────────────────── */}
+                        <div className="space-y-3">
+                            {/* Toggle header */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Image className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">AI Image</p>
+                                    {quotaLabel && (
+                                        <span className={cn(
+                                            'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                                            imageQuota.used >= imageQuota.limit
+                                                ? 'bg-red-500/20 text-red-400'
+                                                : 'bg-emerald-500/20 text-emerald-400'
+                                        )}>
+                                            {quotaLabel}
+                                        </span>
+                                    )}
+                                </div>
+                                <button type="button" onClick={() => setEnableAiImage(v => !v)}
+                                    className={cn('relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
+                                        enableAiImage ? 'bg-primary border-primary' : 'bg-muted border-border/60')}>
+                                    <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform',
+                                        enableAiImage ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
+                                </button>
+                            </div>
+
+                            {enableAiImage && (
+                                <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                                    {/* Provider + Model row */}
+                                    <div className="flex items-center gap-2">
+                                        {/* Provider dropdown */}
+                                        <div className="relative flex-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setProviderDropdownOpen(v => !v); setModelDropdownOpen(false) }}
+                                                className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/60 bg-background text-xs hover:border-border transition-colors"
+                                            >
+                                                <span className="truncate font-medium">
+                                                    {selectedProviderEntry
+                                                        ? selectedProviderEntry.name || selectedProviderEntry.provider
+                                                        : allImgProviders.length === 0 ? 'No providers' : 'Select provider'}
+                                                </span>
+                                                <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                            </button>
+                                            {providerDropdownOpen && allImgProviders.length > 0 && (
+                                                <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-xl border border-border/60 bg-popover shadow-xl overflow-hidden">
+                                                    <div className="py-1">
+                                                        {byokProviders.length > 0 && (
+                                                            <>
+                                                                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys (unlimited)</div>
+                                                                {byokProviders.map(p => (
+                                                                    <button key={`byok:${p.provider}`} type="button"
+                                                                        onClick={() => handleProviderSelect(`byok:${p.provider}`)}
+                                                                        className={cn('w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors',
+                                                                            imageProvider === `byok:${p.provider}` ? 'text-primary font-medium' : 'text-foreground')}>
+                                                                        {p.name || p.provider}
+                                                                        {imageProvider === `byok:${p.provider}` && <Check className="h-3 w-3" />}
+                                                                    </button>
+                                                                ))}
+                                                            </>
+                                                        )}
+                                                        {planProviders.length > 0 && (
+                                                            <>
+                                                                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground">
+                                                                    ⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${Math.max(0, imageQuota.limit - imageQuota.used)} left`})
+                                                                </div>
+                                                                {planProviders.map(p => (
+                                                                    <button key={`plan:${p.provider}`} type="button"
+                                                                        onClick={() => handleProviderSelect(`plan:${p.provider}`)}
+                                                                        className={cn('w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors',
+                                                                            imageProvider === `plan:${p.provider}` ? 'text-primary font-medium' : 'text-foreground')}>
+                                                                        {p.name || p.provider}
+                                                                        {imageProvider === `plan:${p.provider}` && <Check className="h-3 w-3" />}
+                                                                    </button>
+                                                                ))}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Model dropdown */}
+                                        <div className="relative flex-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setModelDropdownOpen(v => !v); setProviderDropdownOpen(false) }}
+                                                className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/60 bg-background text-xs hover:border-border transition-colors"
+                                                disabled={loadingModels}
+                                            >
+                                                <span className="truncate font-medium">
+                                                    {loadingModels ? 'Loading…'
+                                                        : selectedModelEntry ? selectedModelEntry.name
+                                                            : availableImageModels.length === 0 ? 'No models' : 'Select model'}
+                                                </span>
+                                                {loadingModels
+                                                    ? <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
+                                                    : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />}
+                                            </button>
+                                            {modelDropdownOpen && availableImageModels.length > 0 && (
+                                                <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-xl border border-border/60 bg-popover shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                                                    <div className="py-1">
+                                                        {availableImageModels.map(m => (
+                                                            <button key={m.id} type="button"
+                                                                onClick={() => { setImageModel(m.id); setModelDropdownOpen(false) }}
+                                                                className={cn('w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors',
+                                                                    imageModel === m.id ? 'text-primary font-medium' : 'text-foreground')}>
+                                                                {m.name}
+                                                                {imageModel === m.id && <Check className="h-3 w-3" />}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Aspect Ratio */}
+                                    <div className="space-y-1.5">
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Aspect Ratio</p>
+                                        <div className="flex gap-1.5">
+                                            {ASPECT_RATIOS.map(ar => (
+                                                <button key={ar.label} type="button"
+                                                    onClick={() => setSelectedAspect(ar.label)}
+                                                    className={cn(
+                                                        'flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border transition-all text-[10px] font-medium',
+                                                        selectedAspect === ar.label
+                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                            : 'border-border/60 bg-background text-muted-foreground hover:border-border'
+                                                    )}>
+                                                    <AspectRatioShape label={ar.label} active={selectedAspect === ar.label} />
+                                                    {ar.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Prompt */}
+                                    <div className="space-y-1.5">
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Image Prompt</p>
+                                        <textarea
+                                            value={imagePrompt}
+                                            onChange={e => setImagePrompt(e.target.value)}
+                                            placeholder="Describe the image you want to generate..."
+                                            rows={2}
+                                            className="w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-xs resize-none focus:outline-none focus:border-primary placeholder:text-muted-foreground/60"
+                                        />
+                                    </div>
+
+                                    {/* Generate button + preview */}
+                                    <div className="space-y-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleGenerateImage}
+                                            disabled={generatingImage || !imagePrompt.trim() || !imageProvider}
+                                            className={cn(
+                                                'w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all',
+                                                generatingImage || !imagePrompt.trim() || !imageProvider
+                                                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                            )}>
+                                            {generatingImage
+                                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
+                                                : <><Sparkles className="h-3.5 w-3.5" /> Generate Image</>}
+                                        </button>
+
+                                        {generatedImageUrl && (
+                                            <div className="relative rounded-lg overflow-hidden border border-primary/30">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={generatedImageUrl} alt="Generated" className="w-full object-cover max-h-40" />
+                                                <div className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/90 text-[9px] text-white font-semibold">
+                                                    <Check className="h-2.5 w-2.5" /> Ready
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {/* AUTO SCHEDULE */}
                         {!isSingleRow && (
                             <div className="space-y-3">
@@ -432,7 +770,6 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Approval</p>
                             </div>
 
-                            {/* mode = none → teaser with settings link */}
                             {approvalMode === 'none' && (
                                 <div className="flex items-start gap-2.5 rounded-xl border border-dashed border-border/60 bg-muted/30 px-3 py-2.5">
                                     <svg className="h-4 w-4 text-muted-foreground/60 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -443,12 +780,8 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                             Enable <strong>Approval Mode</strong> on this channel to request approval for bulk posts.
                                         </p>
                                         {channelId4Settings && (
-                                            <a
-                                                href={`/dashboard/channels/${channelId4Settings}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-primary hover:underline"
-                                            >
+                                            <a href={`/dashboard/channels/${channelId4Settings}`} target="_blank" rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-primary hover:underline">
                                                 Open Channel Settings
                                                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -459,7 +792,6 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 </div>
                             )}
 
-                            {/* mode = optional → user toggles */}
                             {approvalMode === 'optional' && (
                                 <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 px-3 py-2.5">
                                     <div className="space-y-0.5">
@@ -475,7 +807,6 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 </div>
                             )}
 
-                            {/* mode = required → always on, locked */}
                             {approvalMode === 'required' && (
                                 <div className="flex items-center justify-between rounded-xl border border-orange-500/30 bg-orange-500/5 px-3 py-2.5">
                                     <div className="space-y-0.5">
@@ -502,7 +833,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     </div>
                 )}
 
-                {/* GENERATING — only shown for single-row (batch exits modal immediately) */}
+                {/* GENERATING — single row */}
                 {step === 'generating' && isSingleRow && (
                     <div className="py-10 flex flex-col items-center gap-4">
                         <div className="relative">
@@ -518,10 +849,9 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                     </div>
                 )}
 
-                {/* STARTING — batch mode: brief confirmation before auto-close */}
+                {/* STARTING — batch mode */}
                 {step === 'starting' && (
                     <div className="py-8 flex flex-col items-center gap-5 text-center">
-                        {/* Animated icon with pulsing rings */}
                         <div className="relative flex items-center justify-center">
                             <span className="absolute h-20 w-20 rounded-full bg-primary/10 animate-ping opacity-60" />
                             <span className="absolute h-16 w-16 rounded-full bg-primary/10" />
@@ -529,30 +859,20 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                 <Sparkles className="h-6 w-6 text-primary" />
                             </div>
                         </div>
-
-                        {/* Count badge */}
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
                             <Zap className="h-3 w-3 text-primary" />
                             <span className="text-xs font-bold text-primary">{rows.length} posts</span>
                         </div>
-
-                        {/* Title & description */}
                         <div className="space-y-1.5 px-2">
-                            <p className="font-bold text-base">
-                                {t('integrations.aiPostCreator.startingTitle')}
-                            </p>
+                            <p className="font-bold text-base">{t('integrations.aiPostCreator.startingTitle')}</p>
                             <p className="text-xs text-muted-foreground leading-relaxed">
                                 {t('integrations.aiPostCreator.startingDesc').replace('{count}', String(rows.length))}
                             </p>
                         </div>
-
-                        {/* Visual arrow pointing to top-right */}
                         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/60 border border-border/50 text-xs text-muted-foreground">
                             <span>{t('integrations.aiPostCreator.startingHint')}</span>
                             <span className="text-primary font-semibold">↗</span>
                         </div>
-
-                        {/* Close button */}
                         <Button variant="outline" size="sm" className="w-full mt-1" onClick={onClose}>
                             <X className="h-3.5 w-3.5 mr-1" />
                             {t('integrations.aiPostCreator.cancel')}
