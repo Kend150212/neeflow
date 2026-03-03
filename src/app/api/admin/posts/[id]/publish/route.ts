@@ -1534,49 +1534,12 @@ async function publishToTikTok(
             }
         }
 
-        // ── Step 1: Resolve the TikTok-ready URL + publish ─────────────────
-        //
-        // Strategy: 
-        //   A. Fresh transcode (no cache) → FILE_UPLOAD directly to TikTok servers
-        //      (avoids Cloudflare blocking TikTok crawlers from pulling R2 URLs)
-        //   B. Cached tiktokUrl exists → PULL_FROM_URL (fast path, no re-transcode)
+        // ── Always: Fresh transcode → FILE_UPLOAD ──────────────────────────
+        // PULL_FROM_URL was removed: Cloudflare blocks TikTok crawlers from pulling
+        // media.neeflow.com, causing reason:internal. FILE_UPLOAD sends the binary
+        // directly to TikTok servers — reliable and doesn't depend on external access.
 
-        const cachedUrl = (videoMedia as any).tiktokUrl as string | undefined
 
-        if (cachedUrl) {
-            // ── Path B: Cached transcoded URL → PULL_FROM_URL ────────────────
-            console.log('[TikTok] ✅ Using cached transcoded URL → PULL_FROM_URL:', cachedUrl)
-            const bEndpoint = publishMode === 'inbox'
-                ? 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
-                : 'https://open.tiktokapis.com/v2/post/publish/video/init/'
-            const bInitRes = await fetch(bEndpoint, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
-                body: JSON.stringify({
-                    post_info: {
-                        title: content.slice(0, 2200),
-                        privacy_level: privacy,
-                        disable_comment: disableComment,
-                        disable_duet: disableDuet,
-                        disable_stitch: disableStitch,
-                        ...(brandedContent ? { brand_content_toggle: true } : {}),
-                        ...(aiGenerated ? { is_aigc: true } : {}),
-                    },
-                    source_info: { source: 'PULL_FROM_URL', video_url: cachedUrl },
-                }),
-            })
-            const bInitData = await bInitRes.json()
-            console.log('[TikTok] Init response (cached PULL):', JSON.stringify(bInitData))
-            if (bInitData.error?.code && bInitData.error.code !== 'ok') {
-                throw new Error(tiktokErrorMessage(bInitData.error.code, bInitData.error.message))
-            }
-            const bPublishId: string = bInitData.data?.publish_id
-            if (!bPublishId) throw new Error('TikTok: missing publish_id')
-            console.log('[TikTok] Video queued for pull, publish_id:', bPublishId)
-            return { externalId: bPublishId }
-        }
-
-        // ── Path A: Fresh transcode → FILE_UPLOAD ────────────────────────────
         const fs = await import('fs')
         const fsPromises = await import('fs/promises')
         const os = await import('os')
@@ -1657,22 +1620,6 @@ async function publishToTikTok(
 
             const { size: encSize } = await fsPromises.stat(tmpPathEncoded)
             console.log(`[TikTok] Encoded: ${(encSize / 1024 / 1024).toFixed(2)} MB`)
-
-            // Upload transcoded file to R2 in background (for caching future repeats)
-            // We do NOT await this — the primary publish happens via FILE_UPLOAD below.
-            const { uploadToR2, generateR2Key } = await import('@/lib/r2')
-            const { prisma: dbClient } = await import('@/lib/prisma')
-            const encodedBuffer = await fsPromises.readFile(tmpPathEncoded)
-            const r2Key = generateR2Key(videoMedia.id || 'tmp', 'tiktok-encoded.mp4')
-            uploadToR2(encodedBuffer, r2Key, 'video/mp4').then(async (uploadedUrl) => {
-                console.log(`[TikTok] Uploaded transcoded file to R2 (cache): ${uploadedUrl}`)
-                if (videoMedia.id) {
-                    await dbClient.mediaItem.update({
-                        where: { id: videoMedia.id },
-                        data: { tiktokUrl: uploadedUrl } as any,
-                    }).catch((e: unknown) => console.warn('[TikTok] Failed to cache tiktokUrl:', e))
-                }
-            }).catch((e: unknown) => console.warn('[TikTok] R2 background upload failed:', e))
 
             // ── Publish via FILE_UPLOAD (binary sent directly to TikTok) ───────
             // Avoids Cloudflare blocking TikTok crawler from pulling media.neeflow.com
