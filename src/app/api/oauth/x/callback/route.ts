@@ -65,16 +65,20 @@ export async function GET(req: NextRequest) {
         const refreshToken = tokens.refresh_token
         const expiresIn = tokens.expires_in
 
-        // Get X user info
-        const userRes = await fetch('https://api.twitter.com/2/users/me', {
+        // Get X user info including profile image
+        const userRes = await fetch('https://api.twitter.com/2/users/me?user.fields=profile_image_url,name', {
             headers: { Authorization: `Bearer ${accessToken}` },
         })
         let username = 'X Account'
         let userId = 'unknown'
+        let avatarUrl: string | undefined
         if (userRes.ok) {
             const userData = await userRes.json()
             username = userData.data?.username || username
             userId = userData.data?.id || userId
+            // X returns _normal (48px) — replace with _400x400 for a bigger version
+            const profileImg = userData.data?.profile_image_url
+            avatarUrl = profileImg ? profileImg.replace('_normal', '_400x400') : undefined
         }
 
         await prisma.channelPlatform.upsert({
@@ -85,12 +89,13 @@ export async function GET(req: NextRequest) {
                     accountId: userId,
                 },
             },
-            update: { accountName: `@${username}`, accessToken, refreshToken: refreshToken || undefined, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null, connectedBy: state.userId || null, isActive: true },
+            update: { accountName: `@${username}`, avatarUrl: avatarUrl || undefined, accessToken, refreshToken: refreshToken || undefined, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null, connectedBy: state.userId || null, isActive: true } as any,
             create: {
                 channelId: state.channelId, platform: 'x', accountId: userId, accountName: `@${username}`,
+                avatarUrl: avatarUrl || undefined,
                 accessToken, refreshToken: refreshToken || undefined, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
                 connectedBy: state.userId || null, isActive: true, config: { source: 'oauth' },
-            },
+            } as any,
         })
 
         const successUrl = `/dashboard/channels/${state.channelId}?tab=platforms&oauth=x&imported=1`

@@ -99,29 +99,29 @@ export async function GET(req: NextRequest) {
             },
             update: {
                 accountName,
+                avatarUrl: profile.threads_profile_picture_url || undefined,
                 accessToken,
                 connectedBy: state.userId || null,
                 isActive: true,
                 config: {
                     source: 'oauth',
-                    profilePictureUrl: profile.threads_profile_picture_url || null,
                     biography: profile.threads_biography || null,
                 },
-            },
+            } as any,
             create: {
                 channelId: state.channelId,
                 platform: 'threads',
                 accountId,
                 accountName,
+                avatarUrl: profile.threads_profile_picture_url || undefined,
                 accessToken,
                 connectedBy: state.userId || null,
                 isActive: true,
                 config: {
                     source: 'oauth',
-                    profilePictureUrl: profile.threads_profile_picture_url || null,
                     biography: profile.threads_biography || null,
                 },
-            },
+            } as any,
         })
 
         console.log(`[Threads OAuth] ✅ Connected: @${accountName} (${accountId})`)

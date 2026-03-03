@@ -72,10 +72,12 @@ export async function GET(req: NextRequest) {
         })
         let username = 'Pinterest Account'
         let userId = 'unknown'
+        let avatarUrl: string | undefined
         if (userRes.ok) {
             const userData = await userRes.json()
             username = userData.username || userData.business_name || username
             userId = userData.id || userId
+            avatarUrl = userData.profile_picture || userData.profile_image || undefined
         }
 
         await prisma.channelPlatform.upsert({
@@ -86,12 +88,13 @@ export async function GET(req: NextRequest) {
                     accountId: userId,
                 },
             },
-            update: { accountName: username, accessToken, refreshToken: refreshToken || undefined, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null, connectedBy: state.userId || null, isActive: true },
+            update: { accountName: username, avatarUrl: avatarUrl || undefined, accessToken, refreshToken: refreshToken || undefined, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null, connectedBy: state.userId || null, isActive: true } as any,
             create: {
                 channelId: state.channelId, platform: 'pinterest', accountId: userId, accountName: username,
+                avatarUrl: avatarUrl || undefined,
                 accessToken, refreshToken: refreshToken || undefined, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
                 connectedBy: state.userId || null, isActive: true, config: { source: 'oauth' },
-            },
+            } as any,
         })
 
         const successUrl = `/dashboard/channels/${state.channelId}?tab=platforms&oauth=pinterest&imported=1`

@@ -36,6 +36,18 @@ export async function POST(req: NextRequest) {
         const sessionData = await sessionRes.json()
         const { accessJwt, refreshJwt, did, handle: resolvedHandle, displayName } = sessionData
 
+        // Fetch profile to get avatar URL
+        let avatarUrl: string | undefined
+        try {
+            const profileRes = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${did}`, {
+                headers: { 'Accept': 'application/json' },
+            })
+            if (profileRes.ok) {
+                const profileData = await profileRes.json()
+                avatarUrl = profileData.avatar || undefined
+            }
+        } catch { /* ignore avatar fetch failure */ }
+
         // Upsert the channel platform
         await prisma.channelPlatform.upsert({
             where: {
@@ -47,25 +59,27 @@ export async function POST(req: NextRequest) {
             },
             update: {
                 accountName: displayName || resolvedHandle || normalizedHandle,
+                avatarUrl: avatarUrl || undefined,
                 accessToken: accessJwt,
                 refreshToken: refreshJwt,
                 // Bluesky JWTs expire in ~2 hours; set a 90-minute expiry and rely on cron refresh
                 tokenExpiresAt: new Date(Date.now() + 90 * 60 * 1000),
                 connectedBy: session.user.id,
                 isActive: true,
-            },
+            } as any,
             create: {
                 channelId,
                 platform: 'bluesky',
                 accountId: did,
                 accountName: displayName || resolvedHandle || normalizedHandle,
+                avatarUrl: avatarUrl || undefined,
                 accessToken: accessJwt,
                 refreshToken: refreshJwt,
                 tokenExpiresAt: new Date(Date.now() + 90 * 60 * 1000),
                 connectedBy: session.user.id,
                 isActive: true,
                 config: { handle: normalizedHandle },
-            },
+            } as any,
         })
 
         return NextResponse.json({

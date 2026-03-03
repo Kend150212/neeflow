@@ -84,6 +84,7 @@ export async function GET(req: NextRequest) {
         const userInfo = userRes.ok ? await userRes.json() : {}
         const googleAccountName = userInfo.name || userInfo.email || 'Google Account'
         const googleAccountId = userInfo.id || 'unknown'
+        const googleAvatarUrl: string | undefined = userInfo.picture || undefined
 
         // Step 3: Get Google Business Accounts
         const accountsRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
@@ -124,6 +125,7 @@ export async function GET(req: NextRequest) {
                             },
                             update: {
                                 accountName: locationName,
+                                avatarUrl: googleAvatarUrl,
                                 accessToken,
                                 refreshToken: refreshToken || undefined,
                                 tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
@@ -136,6 +138,7 @@ export async function GET(req: NextRequest) {
                                 platform: 'gbp',
                                 accountId: locationId,
                                 accountName: locationName,
+                                avatarUrl: googleAvatarUrl,
                                 accessToken,
                                 refreshToken: refreshToken || undefined,
                                 tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
@@ -163,24 +166,26 @@ export async function GET(req: NextRequest) {
                     },
                     update: {
                         accountName: googleAccountName,
+                        avatarUrl: googleAvatarUrl,
                         accessToken,
                         refreshToken: refreshToken || undefined,
                         tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
                         connectedBy: state.userId || null,
                         isActive: true,
-                    },
+                    } as any,
                     create: {
                         channelId: state.channelId,
                         platform: 'gbp',
                         accountId: googleAccountId,
                         accountName: googleAccountName,
+                        avatarUrl: googleAvatarUrl,
                         accessToken,
                         refreshToken: refreshToken || undefined,
                         tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
                         connectedBy: state.userId || null,
                         isActive: true,
                         config: { noLocationsFound: true },
-                    },
+                    } as any,
                 })
                 imported = 1
                 console.warn('[GBP OAuth] No business locations found — stored Google account as fallback')
@@ -198,24 +203,26 @@ export async function GET(req: NextRequest) {
                 },
                 update: {
                     accountName: googleAccountName,
+                    avatarUrl: googleAvatarUrl,
                     accessToken,
                     refreshToken: refreshToken || undefined,
                     tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
                     connectedBy: state.userId || null,
                     isActive: true,
-                },
+                } as any,
                 create: {
                     channelId: state.channelId,
                     platform: 'gbp',
                     accountId: googleAccountId,
                     accountName: googleAccountName,
+                    avatarUrl: googleAvatarUrl,
                     accessToken,
                     refreshToken: refreshToken || undefined,
                     tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
                     connectedBy: state.userId || null,
                     isActive: true,
                     config: { noLocationsFound: true },
-                },
+                } as any,
             })
             imported = 1
         }
