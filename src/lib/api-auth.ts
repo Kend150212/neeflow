@@ -19,7 +19,7 @@ export async function generateApiKey(): Promise<{ rawKey: string; keyHash: strin
  * Returns the user context or a NextResponse error.
  */
 export async function authenticateApiKey(req: NextRequest): Promise<
-    | { user: { id: string; name: string | null; email: string; role: string }; plan: { maxApiCallsPerMonth: number;[key: string]: unknown }; usage: { apiCalls: number; month: string }; keyId: string }
+    | { user: { id: string; name: string | null; email: string; role: string }; plan: { maxApiCallsPerMonth: number;[key: string]: unknown }; usage: { apiCalls: number; postsCreated: number; usageId: string; month: string }; keyId: string }
     | NextResponse
 > {
     const apiKey = req.headers.get('x-api-key')
@@ -142,7 +142,7 @@ export async function authenticateApiKey(req: NextRequest): Promise<
     return {
         user: { id: matchedKey.user.id, name: matchedKey.user.name, email: matchedKey.user.email, role: matchedKey.user.role },
         plan,
-        usage: { apiCalls: usage.apiCalls + 1, month },
+        usage: { apiCalls: usage.apiCalls + 1, postsCreated: usage.postsCreated, usageId: usage.id, month },
         keyId: matchedKey.id,
     }
 }

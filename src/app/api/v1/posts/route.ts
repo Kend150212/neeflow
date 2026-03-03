@@ -82,6 +82,27 @@ export async function POST(req: NextRequest) {
         )
     }
 
+    // ── Post quota check ────────────────────────────────────────────────────
+    const maxPosts = (plan.maxPostsPerMonth as number) ?? 0
+    if (maxPosts !== -1 && maxPosts !== 0) {
+        // maxPosts === -1 → unlimited, maxPosts === 0 → no gating (legacy)
+        const now = new Date()
+        const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10)
+        if (usage.postsCreated >= maxPosts) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        code: 'POST_QUOTA_EXCEEDED',
+                        message: `Post limit reached (${maxPosts}/month). Resets on ${resetDate}.`,
+                    },
+                    meta: { posts: { used: usage.postsCreated, limit: maxPosts, reset: resetDate } },
+                },
+                { status: 429 },
+            )
+        }
+    }
+
     // Verify channel access
     const channel = await prisma.channel.findFirst({
         where: {
@@ -163,5 +184,11 @@ export async function POST(req: NextRequest) {
         },
     })
 
-    return apiSuccess(fullPost, usage.apiCalls, plan.maxApiCallsPerMonth, 201)
+    // Increment postsCreated usage (fire-and-forget)
+    prisma.usage.update({
+        where: { id: usage.usageId },
+        data: { postsCreated: { increment: 1 } },
+    }).catch(() => { })
+
+    return apiSuccess(fullPost, usage.apiCalls, plan.maxApiCallsPerMonth as number, 201)
 }
