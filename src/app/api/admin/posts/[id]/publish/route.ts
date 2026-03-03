@@ -1560,98 +1560,27 @@ async function publishToTikTok(
             })
 
             const { size: rawSize } = await fsPromises.stat(tmpPath)
-            console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB`)
+            console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB — transcoding to H.264/AAC CFR 30fps...`)
 
-            // ── Step 1b: Check if already TikTok-compatible via ffprobe ──
-            // If video is already H.264 + AAC (or no audio), skip re-encode.
-            // Only transcode when needed (H.265, WebM, AVI, etc.)
-            const probeResult = await new Promise<{ videoCodec: string; audioCodec: string; frameRate: number }>((resolve) => {
-                const ffprobe = spawn('ffprobe', [
-                    '-v', 'quiet',
-                    '-print_format', 'json',
-                    '-show_streams',
-                    tmpPath,
-                ])
-                let out = ''
-                ffprobe.stdout.on('data', (d: Buffer) => { out += d.toString() })
-                ffprobe.on('close', () => {
-                    try {
-                        const streams = JSON.parse(out).streams || []
-                        const video = streams.find((s: { codec_type: string }) => s.codec_type === 'video')
-                        const audio = streams.find((s: { codec_type: string }) => s.codec_type === 'audio')
-                        // Parse frame rate: comes as fraction string like "30/1" or "120/1" or "24000/1001"
-                        let frameRate = 30
-                        const rStr: string = video?.r_frame_rate || video?.avg_frame_rate || '30/1'
-                        const [num, den] = rStr.split('/').map(Number)
-                        if (num && den) frameRate = Math.round(num / den)
-                        resolve({
-                            videoCodec: video?.codec_name || '',
-                            audioCodec: audio?.codec_name || 'none',
-                            frameRate,
-                        })
-                    } catch {
-                        resolve({ videoCodec: '', audioCodec: '', frameRate: 30 })
-                    }
-                })
-                ffprobe.on('error', () => resolve({ videoCodec: '', audioCodec: '', frameRate: 30 }))
-            })
-
-            console.log(`[TikTok] Probe: video=${probeResult.videoCodec}, audio=${probeResult.audioCodec}, fps=${probeResult.frameRate}`)
-
-            const isH264 = probeResult.videoCodec === 'h264'
-            const isAudioOk = probeResult.audioCodec === 'aac' || probeResult.audioCodec === 'none' || probeResult.audioCodec === ''
-            // TikTok requires 23-60fps. If outside range, we must transcode.
-            const isFpsOk = probeResult.frameRate >= 23 && probeResult.frameRate <= 60
-            const needsTranscode = !isH264 || !isAudioOk || !isFpsOk
-            if (!needsTranscode) {
-                // ── Fast path: already TikTok-compatible, skip FFmpeg ───
-                console.log('[TikTok] ✅ Video already H.264/AAC — skipping FFmpeg transcode')
-                const uploadSize = rawSize
-
-                const endpoint = publishMode === 'inbox'
-                    ? 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
-                    : 'https://open.tiktokapis.com/v2/post/publish/video/init/'
-
-                const initRes = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
-                    body: JSON.stringify({
-                        post_info: {
-                            title: content.slice(0, 2200), privacy_level: privacy,
-                            disable_comment: disableComment, disable_duet: disableDuet, disable_stitch: disableStitch,
-                            ...(brandedContent ? { brand_content_toggle: true } : {}),
-                            ...(aiGenerated ? { ai_generated_content: true } : {}),
-                        },
-                        source_info: { source: 'FILE_UPLOAD', video_size: uploadSize, chunk_size: uploadSize, total_chunk_count: 1 },
-                    }),
-                })
-                const initData = await initRes.json()
-                console.log('[TikTok] Init response (fast path):', JSON.stringify(initData))
-                if (initData.error?.code && initData.error.code !== 'ok') throw new Error(tiktokErrorMessage(initData.error.code, initData.error.message))
-                const publishId: string = initData.data?.publish_id
-                const uploadUrl: string = initData.data?.upload_url
-                if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
-
-                await httpsUpload(uploadUrl, tmpPath, uploadSize)
-                console.log('[TikTok] Video uploaded (fast path), publish_id:', publishId)
-                return { externalId: publishId }
-            }
-
-            // ── Slow path: transcode with FFmpeg ────────────────────────
+            // ── Step 1b: Always transcode via FFmpeg ────────────────────
+            // TikTok requires: H.264 video + AAC audio + Constant Frame Rate (CFR).
+            // Many videos (even H.264) have Variable Frame Rate (VFR) from camera apps.
+            // VFR → frame_rate_check_failed on TikTok, so we ALWAYS force CFR here.
             await new Promise<void>((resolve, reject) => {
                 const ffmpegArgs = [
                     '-y',
                     '-i', tmpPath,
                     // Silent audio fallback in case video has no audio track
                     '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
-                    // Video: H.264 High profile — TikTok-compatible
+                    // Video: H.264 High profile, force CFR 30fps
                     '-c:v', 'libx264',
                     '-profile:v', 'high',
                     '-level', '4.0',
                     '-pix_fmt', 'yuv420p',
                     '-preset', 'fast',
                     '-crf', '23',
-                    '-r', '30',         // Force 30fps — fixes frame_rate_check_failed
+                    '-r', '30',       // Force 30fps CFR — required by TikTok
+                    '-vsync', 'cfr',  // Explicitly force Constant Frame Rate
                     // Audio: AAC stereo 128k
                     '-c:a', 'aac',
                     '-b:a', '128k',
@@ -1669,7 +1598,7 @@ async function publishToTikTok(
                 ffmpeg.stderr.on('data', (d: Buffer) => { ffmpegErr += d.toString() })
                 ffmpeg.on('close', (code) => {
                     if (code === 0) {
-                        console.log('[TikTok] FFmpeg transcode complete')
+                        console.log('[TikTok] FFmpeg transcode complete (H.264 + AAC + CFR 30fps)')
                         resolve()
                     } else {
                         console.error('[TikTok] FFmpeg error:', ffmpegErr.slice(-500))
@@ -1681,6 +1610,7 @@ async function publishToTikTok(
 
             const { size: videoSize } = await fsPromises.stat(tmpPathEncoded)
             console.log(`[TikTok] Encoded file: ${(videoSize / 1024 / 1024).toFixed(2)} MB`)
+
 
             // ── Step 2: Init upload ─────────────────────────────────────
             const endpoint = publishMode === 'inbox'
