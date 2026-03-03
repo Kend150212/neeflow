@@ -201,8 +201,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     const [providerDropdownOpen, setProviderDropdownOpen] = useState(false)
     const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
     const [generatingImage, setGeneratingImage] = useState(false)
-    const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
-    const [generatedMediaId, setGeneratedMediaId] = useState<string | null>(null)
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
 
     // Fetch image providers + quota when modal opens
     useEffect(() => {
@@ -279,8 +278,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Image generation failed')
-            setGeneratedImageUrl(data.mediaItem?.url || null)
-            setGeneratedMediaId(data.mediaItem?.id || null)
+            setPreviewImageUrl(data.mediaItem?.url || null)
             // Update quota display
             if (data.quota) setImageQuota(data.quota)
             else setImageQuota(q => ({ ...q, used: q.used + 1 }))
@@ -297,7 +295,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     useEffect(() => {
         if (!open || !activeChannelId) return
         setStep('config'); setLocalDone(0); setRequestApproval(false)
-        setGeneratedImageUrl(null); setGeneratedMediaId(null)
+        setPreviewImageUrl(null)
         fetch('/api/admin/channels')
             .then(r => r.json())
             .then((data: any[]) => {
@@ -346,8 +344,19 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         const singleScheduledAt = (enableSchedule && isSingleRow)
             ? distributeScheduleTimes(scheduleStart, scheduleEnd, 1, channelTimezone)[0] : null
 
-        const aiImagePayload = enableAiImage && generatedMediaId
-            ? { imageMediaId: generatedMediaId } : {}
+        // Build imageConfig payload — sent to generate-from-db API which generates the image server-side per row
+        const aiImagePayload = enableAiImage && imagePrompt.trim() && imageProvider
+            ? {
+                imageConfig: {
+                    provider: imageProvider.split(':').slice(1).join(':'),
+                    model: imageModel || undefined,
+                    keySource: imageProvider.split(':')[0],
+                    prompt: imagePrompt.trim(),
+                    width: (ASPECT_RATIOS.find(a => a.label === selectedAspect) ?? ASPECT_RATIOS[0]).w,
+                    height: (ASPECT_RATIOS.find(a => a.label === selectedAspect) ?? ASPECT_RATIOS[0]).h,
+                },
+            }
+            : {}
 
         try {
             if (isSingleRow) {
@@ -676,7 +685,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                         />
                                     </div>
 
-                                    {/* Generate button + preview */}
+                                    {/* Preview button + preview image */}
                                     <div className="space-y-2">
                                         <button
                                             type="button"
@@ -686,19 +695,22 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                                 'w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all',
                                                 generatingImage || !imagePrompt.trim() || !imageProvider
                                                     ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                                                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                                    : 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30'
                                             )}>
                                             {generatingImage
-                                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
-                                                : <><Sparkles className="h-3.5 w-3.5" /> Generate Image</>}
+                                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating preview…</>
+                                                : <><Sparkles className="h-3.5 w-3.5" /> Preview Image (optional)</>}
                                         </button>
+                                        <p className="text-[10px] text-muted-foreground text-center">
+                                            Image generates automatically when you create posts
+                                        </p>
 
-                                        {generatedImageUrl && (
+                                        {previewImageUrl && (
                                             <div className="relative rounded-lg overflow-hidden border border-primary/30">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img src={generatedImageUrl} alt="Generated" className="w-full object-cover max-h-40" />
+                                                <img src={previewImageUrl} alt="Preview" className="w-full object-cover max-h-40" />
                                                 <div className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/90 text-[9px] text-white font-semibold">
-                                                    <Check className="h-2.5 w-2.5" /> Ready
+                                                    <Check className="h-2.5 w-2.5" /> Preview
                                                 </div>
                                             </div>
                                         )}
