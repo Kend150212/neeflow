@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef, startTransition } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { useRouter } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -385,6 +385,23 @@ export default function PostsPage() {
         finally { setLoading(false) }
     }, [page, filterChannel, filterStatus, search])
 
+    // Silent background refresh — no loading state, no flicker
+    const silentFetchPosts = useCallback(async () => {
+        try {
+            const params = new URLSearchParams({ page: String(page), limit: '20' })
+            if (filterChannel !== 'all') params.set('channelId', filterChannel)
+            if (filterStatus !== 'all') params.set('status', filterStatus)
+            if (search.trim()) params.set('search', search.trim())
+            const res = await fetch(`/api/admin/posts?${params}`)
+            const data = await res.json()
+            startTransition(() => {
+                setPosts(data.posts || [])
+                setTotalPages(data.pagination?.totalPages || 1)
+                setTotal(data.pagination?.total || 0)
+            })
+        } catch { /* silent — don't disturb UX */ }
+    }, [page, filterChannel, filterStatus, search])
+
     useEffect(() => { if (filterReady) fetchPosts() }, [fetchPosts, filterReady])
     useEffect(() => { setSelected(new Set()) }, [page, filterChannel, filterStatus])
 
@@ -497,10 +514,10 @@ export default function PostsPage() {
     useEffect(() => {
         const hasPublishing = posts.some(p => p.status === 'PUBLISHING')
         if (!hasPublishing) return
-        // Poll every 4 seconds while any post is PUBLISHING
-        const interval = setInterval(() => { fetchPosts() }, 4000)
+        // Silent poll every 6s while any post is PUBLISHING — no loading flicker
+        const interval = setInterval(() => { silentFetchPosts() }, 6000)
         return () => clearInterval(interval)
-    }, [posts, fetchPosts])
+    }, [posts, silentFetchPosts])
     // ─────────────────────────────────────────────────────────────────────────
 
     // Count scheduled for today
