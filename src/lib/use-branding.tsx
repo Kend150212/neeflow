@@ -26,15 +26,31 @@ export const DEFAULT_BRANDING: BrandingSettings = {
 
 const BrandingContext = createContext<BrandingSettings>(DEFAULT_BRANDING)
 
-export function BrandingProvider({ children }: { children: ReactNode }) {
-    const [branding, setBranding] = useState<BrandingSettings>(DEFAULT_BRANDING)
+/**
+ * BrandingProvider — accepts server-fetched initialBranding to prevent the
+ * FOUC (Flash of Original Content) caused by starting with DEFAULT_BRANDING
+ * and then fetching the real branding from the API on mount.
+ */
+export function BrandingProvider({
+    children,
+    initialBranding,
+}: {
+    children: ReactNode
+    initialBranding?: BrandingSettings
+}) {
+    const [branding, setBranding] = useState<BrandingSettings>(
+        initialBranding ?? DEFAULT_BRANDING
+    )
 
     useEffect(() => {
-        fetch('/api/admin/branding')
-            .then(r => r.ok ? r.json() : DEFAULT_BRANDING)
-            .then(d => setBranding({ ...DEFAULT_BRANDING, ...d }))
-            .catch(() => { })
-    }, [])
+        // Only re-fetch if we didn't get server-side branding (fallback safety)
+        if (!initialBranding) {
+            fetch('/api/admin/branding')
+                .then(r => r.ok ? r.json() : DEFAULT_BRANDING)
+                .then(d => setBranding({ ...DEFAULT_BRANDING, ...d }))
+                .catch(() => { })
+        }
+    }, [initialBranding])
 
     return (
         <BrandingContext.Provider value={branding}>

@@ -59,11 +59,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const initialBranding = await getBrandingServer()
   return (
     <html lang="vi" suppressHydrationWarning>
       <head>
@@ -72,7 +73,7 @@ export default function RootLayout({
         <link rel="terms-of-service" href="https://neeflow.com/terms" />
       </head>
       <body className={`${spaceGrotesk.variable} font-sans antialiased`}>
-        <Providers>
+        <Providers initialBranding={initialBranding}>
           {/* Background ambient orb blobs — purple layout style */}
           <div className="fixed inset-0 -z-50 overflow-hidden pointer-events-none">
             <div className="absolute top-[8%] left-[15%] w-[500px] h-[500px] rounded-full bg-primary/5 blur-[120px]" />
