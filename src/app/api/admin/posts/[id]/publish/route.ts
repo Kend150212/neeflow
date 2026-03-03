@@ -1565,7 +1565,7 @@ async function publishToTikTok(
             // ── Step 1b: Check if already TikTok-compatible via ffprobe ──
             // If video is already H.264 + AAC (or no audio), skip re-encode.
             // Only transcode when needed (H.265, WebM, AVI, etc.)
-            const probeResult = await new Promise<{ videoCodec: string; audioCodec: string }>((resolve) => {
+            const probeResult = await new Promise<{ videoCodec: string; audioCodec: string; frameRate: number }>((resolve) => {
                 const ffprobe = spawn('ffprobe', [
                     '-v', 'quiet',
                     '-print_format', 'json',
@@ -1579,23 +1579,30 @@ async function publishToTikTok(
                         const streams = JSON.parse(out).streams || []
                         const video = streams.find((s: { codec_type: string }) => s.codec_type === 'video')
                         const audio = streams.find((s: { codec_type: string }) => s.codec_type === 'audio')
+                        // Parse frame rate: comes as fraction string like "30/1" or "120/1" or "24000/1001"
+                        let frameRate = 30
+                        const rStr: string = video?.r_frame_rate || video?.avg_frame_rate || '30/1'
+                        const [num, den] = rStr.split('/').map(Number)
+                        if (num && den) frameRate = Math.round(num / den)
                         resolve({
                             videoCodec: video?.codec_name || '',
                             audioCodec: audio?.codec_name || 'none',
+                            frameRate,
                         })
                     } catch {
-                        resolve({ videoCodec: '', audioCodec: '' })
+                        resolve({ videoCodec: '', audioCodec: '', frameRate: 30 })
                     }
                 })
-                ffprobe.on('error', () => resolve({ videoCodec: '', audioCodec: '' }))
+                ffprobe.on('error', () => resolve({ videoCodec: '', audioCodec: '', frameRate: 30 }))
             })
 
-            console.log(`[TikTok] Probe: video=${probeResult.videoCodec}, audio=${probeResult.audioCodec}`)
+            console.log(`[TikTok] Probe: video=${probeResult.videoCodec}, audio=${probeResult.audioCodec}, fps=${probeResult.frameRate}`)
 
             const isH264 = probeResult.videoCodec === 'h264'
             const isAudioOk = probeResult.audioCodec === 'aac' || probeResult.audioCodec === 'none' || probeResult.audioCodec === ''
-            const needsTranscode = !isH264 || !isAudioOk
-
+            // TikTok requires 23-60fps. If outside range, we must transcode.
+            const isFpsOk = probeResult.frameRate >= 23 && probeResult.frameRate <= 60
+            const needsTranscode = !isH264 || !isAudioOk || !isFpsOk
             if (!needsTranscode) {
                 // ── Fast path: already TikTok-compatible, skip FFmpeg ───
                 console.log('[TikTok] ✅ Video already H.264/AAC — skipping FFmpeg transcode')
@@ -1625,28 +1632,26 @@ async function publishToTikTok(
                 const uploadUrl: string = initData.data?.upload_url
                 if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
 
-                // Use https.request with ReadStream — most reliable for large binary uploads
                 await httpsUpload(uploadUrl, tmpPath, uploadSize)
                 console.log('[TikTok] Video uploaded (fast path), publish_id:', publishId)
                 return { externalId: publishId }
             }
 
-            // ── Slow path: transcode needed ────────────────────────────
-            console.log(`[TikTok] 🔄 Transcoding required (video=${probeResult.videoCodec}, audio=${probeResult.audioCodec})`)
-
+            // ── Slow path: transcode with FFmpeg ────────────────────────
             await new Promise<void>((resolve, reject) => {
                 const ffmpegArgs = [
                     '-y',
                     '-i', tmpPath,
                     // Silent audio fallback in case video has no audio track
                     '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
-                    // Video: H.264 High profile — simple, proven TikTok-compatible settings
+                    // Video: H.264 High profile — TikTok-compatible
                     '-c:v', 'libx264',
                     '-profile:v', 'high',
                     '-level', '4.0',
                     '-pix_fmt', 'yuv420p',
                     '-preset', 'fast',
                     '-crf', '23',
+                    '-r', '30',         // Force 30fps — fixes frame_rate_check_failed
                     // Audio: AAC stereo 128k
                     '-c:a', 'aac',
                     '-b:a', '128k',
