@@ -1626,13 +1626,13 @@ async function publishToTikTok(
             console.log(`[TikTok] Has audio: ${hasAudio}`)
 
             // FFmpeg transcode → H.264 30fps CFR + AAC (exactly 1 audio track)
-            // -fps_mode cfr replaces deprecated -vsync cfr (FFmpeg 5+)
+            // -vsync cfr: use this (not -fps_mode cfr which is FFmpeg 5+ only)
             await new Promise<void>((resolve, reject) => {
                 const ffmpegArgs = hasAudio
                     ? ['-y', '-i', tmpPath,
                         '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0',
                         '-pix_fmt', 'yuv420p', '-preset', 'fast', '-crf', '23',
-                        '-r', '30', '-fps_mode', 'cfr',
+                        '-r', '30', '-vsync', 'cfr',
                         '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
                         '-map', '0:v:0', '-map', '0:a:0',
                         '-movflags', '+faststart', tmpPathEncoded]
@@ -1641,7 +1641,7 @@ async function publishToTikTok(
                         '-i', tmpPath,
                         '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0',
                         '-pix_fmt', 'yuv420p', '-preset', 'fast', '-crf', '23',
-                        '-r', '30', '-fps_mode', 'cfr',
+                        '-r', '30', '-vsync', 'cfr',
                         '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
                         '-map', '1:v:0', '-map', '0:a:0',
                         '-shortest', '-movflags', '+faststart', tmpPathEncoded]
