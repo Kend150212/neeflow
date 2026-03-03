@@ -1534,15 +1534,16 @@ async function publishToTikTok(
                 const uploadUrl: string = initData.data?.upload_url
                 if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
 
-                const readStream = fs.createReadStream(tmpCached)
+                const cachedBuffer = await fsPromises.readFile(tmpCached)
                 const uploadRes = await fetch(uploadUrl, {
                     method: 'PUT',
-                    // @ts-expect-error Node.js ReadStream is valid as fetch body
-                    body: readStream,
+                    body: cachedBuffer,
                     headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(cachedSize), 'Content-Range': `bytes 0-${cachedSize - 1}/${cachedSize}` },
-                    duplex: 'half',
                 })
-                if (!uploadRes.ok) { const errText = await uploadRes.text(); throw new Error(`TikTok video upload failed: ${uploadRes.status} ${errText}`) }
+                const uploadText = await uploadRes.text()
+                console.log(`[TikTok] Cached upload response: ${uploadRes.status} — ${uploadText.slice(0, 200)}`)
+                if (!uploadRes.ok) throw new Error(`TikTok video upload failed: ${uploadRes.status} ${uploadText}`)
+
                 console.log('[TikTok] Cached video uploaded, publish_id:', publishId)
                 return { externalId: publishId }
             } finally {
@@ -1688,23 +1689,25 @@ async function publishToTikTok(
             const uploadUrl: string = initData.data?.upload_url
             if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
 
-            // ── Step 3: Stream encoded file to TikTok ──────────────────
-            const readStream = fs.createReadStream(tmpPathEncoded)
+            // ── Step 3: Upload encoded file to TikTok (buffer for reliability) ─
+            // NOTE: ReadStream+fetch can silently drop bytes in Next.js.
+            // Reading into a Buffer guarantees all bytes are sent.
+            const videoBuffer = await fsPromises.readFile(tmpPathEncoded)
             const uploadRes = await fetch(uploadUrl, {
                 method: 'PUT',
-                // @ts-expect-error Node.js ReadStream is valid as fetch body
-                body: readStream,
+                body: videoBuffer,
                 headers: {
                     'Content-Type': 'video/mp4',
                     'Content-Length': String(videoSize),
                     'Content-Range': `bytes 0-${videoSize - 1}/${videoSize}`,
                 },
-                duplex: 'half',
             })
 
+            const uploadResText = await uploadRes.text()
+            console.log(`[TikTok] Upload response: ${uploadRes.status} — ${uploadResText.slice(0, 200)}`)
+
             if (!uploadRes.ok) {
-                const errText = await uploadRes.text()
-                throw new Error(`TikTok video upload failed: ${uploadRes.status} ${errText}`)
+                throw new Error(`TikTok video upload failed: ${uploadRes.status} ${uploadResText}`)
             }
 
             console.log('[TikTok] Video uploaded, publish_id:', publishId)
