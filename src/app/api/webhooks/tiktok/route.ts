@@ -45,6 +45,12 @@ export async function POST(req: NextRequest) {
             await handlePublishComplete(payload)
         }
 
+        // ── post.publish.failed ──────────────────────────────────────────────
+        // Fired when TikTok fails to pull/process the video (e.g. reason=internal)
+        if (eventType === 'post.publish.failed') {
+            await handlePublishFailed(payload)
+        }
+
         // ── video.status_update (legacy / non-sandbox) ──────────────────────
         if (eventType === 'video.status_update') {
             await handleVideoStatusUpdate(payload)
@@ -121,9 +127,85 @@ async function handlePublishComplete(payload: {
 }
 
 /**
+ * post.publish.failed
+ * Fired when TikTok cannot pull/process the video from the URL.
+ * Payload: { client_key, event, create_time, user_openid, content: JSON string }
+ * content: { publish_id, publish_type, reason }
+ *   reason can be: "internal", "permission_denied", "video_pull_failed", etc.
+ */
+async function handlePublishFailed(payload: {
+    content?: string
+    user_openid?: string
+}) {
+    let publishId: string | undefined
+    let reason: string | undefined
+    try {
+        const content = JSON.parse(payload.content ?? '{}')
+        publishId = content.publish_id
+        reason = content.reason
+    } catch {
+        console.warn('[TikTok Webhook] post.publish.failed: failed to parse content field')
+        return
+    }
+
+    if (!publishId) {
+        console.warn('[TikTok Webhook] post.publish.failed: no publish_id')
+        return
+    }
+
+    const errorMessage = `TikTok publishing failed (reason: ${reason || 'unknown'}).`
+    console.error('[TikTok Webhook] post.publish.failed — publish_id:', publishId, 'reason:', reason)
+
+    try {
+        // Mark postPlatformStatus as FAILED
+        await prisma.postPlatformStatus.updateMany({
+            where: { platform: 'tiktok', externalId: publishId },
+            data: {
+                status: 'FAILED',
+                errorMsg: errorMessage,
+            },
+        })
+
+        // Find parent post and mark as FAILED; also clear cached tiktokUrl
+        // so the next publish attempt re-transcodes a fresh file instead of
+        // reusing the broken cached URL.
+        const record = await prisma.postPlatformStatus.findFirst({
+            where: { platform: 'tiktok', externalId: publishId },
+            select: { postId: true },
+        })
+        if (record?.postId) {
+            await prisma.post.update({
+                where: { id: record.postId },
+                data: { status: 'FAILED' },
+            })
+            console.log('[TikTok Webhook] Post', record.postId, 'marked FAILED (reason:', reason, ')')
+
+            // Clear tiktokUrl cache on all media items attached to this post
+            // so the next attempt re-transcodes from scratch rather than
+            // reusing the broken cached URL.
+            const mediaItems = await prisma.postMedia.findMany({
+                where: { postId: record.postId },
+                select: { mediaItemId: true },
+            })
+            const mediaItemIds = mediaItems.map(m => m.mediaItemId)
+            if (mediaItemIds.length > 0) {
+                await prisma.mediaItem.updateMany({
+                    where: { id: { in: mediaItemIds } },
+                    data: { tiktokUrl: null } as any,
+                }).catch((e: unknown) => console.warn('[TikTok Webhook] Could not clear tiktokUrl cache:', e))
+            }
+        }
+    } catch (err) {
+        console.error('[TikTok Webhook] DB update failed:', err)
+    }
+}
+
+
+/**
  * video.status_update (legacy format)
  * Payload: { data: { video_id, status, error_code, error_message } }
  */
+
 async function handleVideoStatusUpdate(payload: {
     data?: {
         video_id?: string
