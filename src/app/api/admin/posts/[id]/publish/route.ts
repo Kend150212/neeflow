@@ -1534,159 +1534,207 @@ async function publishToTikTok(
             }
         }
 
-        // ── Step 1: Resolve the TikTok-ready URL ───────────────────────
-        // Use cached transcoded URL if available; otherwise transcode now.
-        let tiktokReadyUrl: string
+        // ── Step 1: Resolve the TikTok-ready URL + publish ─────────────────
+        //
+        // Strategy: 
+        //   A. Fresh transcode (no cache) → FILE_UPLOAD directly to TikTok servers
+        //      (avoids Cloudflare blocking TikTok crawlers from pulling R2 URLs)
+        //   B. Cached tiktokUrl exists → PULL_FROM_URL (fast path, no re-transcode)
 
         const cachedUrl = (videoMedia as any).tiktokUrl as string | undefined
+
         if (cachedUrl) {
-            // Fast path: already transcoded & stored on R2
-            console.log('[TikTok] ✅ Using cached transcoded URL:', cachedUrl)
-            tiktokReadyUrl = cachedUrl
-        } else {
-            // Slow path: download → FFmpeg → upload to R2
-            const fs = await import('fs')
-            const fsPromises = await import('fs/promises')
-            const os = await import('os')
-            const path = await import('path')
-            const { randomUUID } = await import('crypto')
-            const { spawn } = await import('child_process')
+            // ── Path B: Cached transcoded URL → PULL_FROM_URL ────────────────
+            console.log('[TikTok] ✅ Using cached transcoded URL → PULL_FROM_URL:', cachedUrl)
+            const bEndpoint = publishMode === 'inbox'
+                ? 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
+                : 'https://open.tiktokapis.com/v2/post/publish/video/init/'
+            const bInitRes = await fetch(bEndpoint, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
+                body: JSON.stringify({
+                    post_info: {
+                        title: content.slice(0, 2200),
+                        privacy_level: privacy,
+                        disable_comment: disableComment,
+                        disable_duet: disableDuet,
+                        disable_stitch: disableStitch,
+                        ...(brandedContent ? { brand_content_toggle: true } : {}),
+                        ...(aiGenerated ? { is_aigc: true } : {}),
+                    },
+                    source_info: { source: 'PULL_FROM_URL', video_url: cachedUrl },
+                }),
+            })
+            const bInitData = await bInitRes.json()
+            console.log('[TikTok] Init response (cached PULL):', JSON.stringify(bInitData))
+            if (bInitData.error?.code && bInitData.error.code !== 'ok') {
+                throw new Error(tiktokErrorMessage(bInitData.error.code, bInitData.error.message))
+            }
+            const bPublishId: string = bInitData.data?.publish_id
+            if (!bPublishId) throw new Error('TikTok: missing publish_id')
+            console.log('[TikTok] Video queued for pull, publish_id:', bPublishId)
+            return { externalId: bPublishId }
+        }
 
-            const uid = randomUUID()
-            const tmpPath = path.join(os.tmpdir(), `tiktok-raw-${uid}.mp4`)
-            const tmpPathEncoded = path.join(os.tmpdir(), `tiktok-enc-${uid}.mp4`)
+        // ── Path A: Fresh transcode → FILE_UPLOAD ────────────────────────────
+        const fs = await import('fs')
+        const fsPromises = await import('fs/promises')
+        const os = await import('os')
+        const path = await import('path')
+        const { randomUUID } = await import('crypto')
+        const { spawn } = await import('child_process')
 
-            try {
-                // Download original
-                console.log('[TikTok] Downloading video to transcode:', videoMedia.url)
-                const videoRes = await fetch(videoMedia.url)
-                if (!videoRes.ok) throw new Error(`TikTok: failed to download video (${videoRes.status})`)
-                const fileStream = fs.createWriteStream(tmpPath)
-                const reader = videoRes.body!.getReader()
-                await new Promise<void>((resolve, reject) => {
-                    const pump = async () => {
-                        try {
-                            while (true) {
-                                const { done, value } = await reader.read()
-                                if (done) { fileStream.end(); break }
-                                if (!fileStream.write(value)) await new Promise<void>(r => fileStream.once('drain', r))
-                            }
-                            fileStream.once('finish', resolve)
-                            fileStream.once('error', reject)
-                        } catch (err) { fileStream.destroy(); reject(err) }
-                    }
-                    pump()
+        const uid = randomUUID()
+        const tmpPath = path.join(os.tmpdir(), `tiktok-raw-${uid}.mp4`)
+        const tmpPathEncoded = path.join(os.tmpdir(), `tiktok-enc-${uid}.mp4`)
+
+        try {
+            // Download original
+            console.log('[TikTok] Downloading video to transcode:', videoMedia.url)
+            const videoRes = await fetch(videoMedia.url)
+            if (!videoRes.ok) throw new Error(`TikTok: failed to download video (${videoRes.status})`)
+            const fileStream = fs.createWriteStream(tmpPath)
+            const reader = videoRes.body!.getReader()
+            await new Promise<void>((resolve, reject) => {
+                const pump = async () => {
+                    try {
+                        while (true) {
+                            const { done, value } = await reader.read()
+                            if (done) { fileStream.end(); break }
+                            if (!fileStream.write(value)) await new Promise<void>(r => fileStream.once('drain', r))
+                        }
+                        fileStream.once('finish', resolve)
+                        fileStream.once('error', reject)
+                    } catch (err) { fileStream.destroy(); reject(err) }
+                }
+                pump()
+            })
+            const { size: rawSize } = await fsPromises.stat(tmpPath)
+            console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB`)
+
+            // Detect audio
+            const hasAudio = await new Promise<boolean>((resolve) => {
+                const ffprobe = spawn('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_streams', tmpPath])
+                let out = ''
+                ffprobe.stdout.on('data', (d: Buffer) => { out += d.toString() })
+                ffprobe.on('close', () => {
+                    try { resolve(JSON.parse(out).streams?.some((s: { codec_type: string }) => s.codec_type === 'audio') ?? false) }
+                    catch { resolve(false) }
                 })
-                const { size: rawSize } = await fsPromises.stat(tmpPath)
-                console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB`)
+                ffprobe.on('error', () => resolve(false))
+            })
+            console.log(`[TikTok] Has audio: ${hasAudio}`)
 
-                // Detect audio
-                const hasAudio = await new Promise<boolean>((resolve) => {
-                    const ffprobe = spawn('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_streams', tmpPath])
-                    let out = ''
-                    ffprobe.stdout.on('data', (d: Buffer) => { out += d.toString() })
-                    ffprobe.on('close', () => {
-                        try { resolve(JSON.parse(out).streams?.some((s: { codec_type: string }) => s.codec_type === 'audio') ?? false) }
-                        catch { resolve(false) }
-                    })
-                    ffprobe.on('error', () => resolve(false))
+            // FFmpeg transcode → H.264 30fps CFR + AAC (exactly 1 audio track)
+            // -fps_mode cfr replaces deprecated -vsync cfr (FFmpeg 5+)
+            await new Promise<void>((resolve, reject) => {
+                const ffmpegArgs = hasAudio
+                    ? ['-y', '-i', tmpPath,
+                        '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0',
+                        '-pix_fmt', 'yuv420p', '-preset', 'fast', '-crf', '23',
+                        '-r', '30', '-fps_mode', 'cfr',
+                        '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
+                        '-map', '0:v:0', '-map', '0:a:0',
+                        '-movflags', '+faststart', tmpPathEncoded]
+                    : ['-y',
+                        '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+                        '-i', tmpPath,
+                        '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0',
+                        '-pix_fmt', 'yuv420p', '-preset', 'fast', '-crf', '23',
+                        '-r', '30', '-fps_mode', 'cfr',
+                        '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
+                        '-map', '1:v:0', '-map', '0:a:0',
+                        '-shortest', '-movflags', '+faststart', tmpPathEncoded]
+                const ffmpeg = spawn('ffmpeg', ffmpegArgs)
+                let ffmpegErr = ''
+                ffmpeg.stderr.on('data', (d: Buffer) => { ffmpegErr += d.toString() })
+                ffmpeg.on('close', (code) => {
+                    if (code === 0) { console.log(`[TikTok] FFmpeg OK — H.264 30fps CFR, ${hasAudio ? 'original' : 'silent'} audio`); resolve() }
+                    else { console.error('[TikTok] FFmpeg error:', ffmpegErr.slice(-500)); reject(new Error(`FFmpeg failed (exit ${code})`)) }
                 })
-                console.log(`[TikTok] Has audio: ${hasAudio}`)
+                ffmpeg.on('error', (err) => reject(new Error(`FFmpeg spawn error: ${err.message}`)))
+            })
 
-                // FFmpeg transcode → H.264 30fps CFR + AAC (exactly 1 audio track)
-                // -fps_mode cfr replaces deprecated -vsync cfr (FFmpeg 5+)
-                await new Promise<void>((resolve, reject) => {
-                    const ffmpegArgs = hasAudio
-                        ? ['-y', '-i', tmpPath,
-                            '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0',
-                            '-pix_fmt', 'yuv420p', '-preset', 'fast', '-crf', '23',
-                            '-r', '30', '-fps_mode', 'cfr',
-                            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
-                            '-map', '0:v:0', '-map', '0:a:0',
-                            '-movflags', '+faststart', tmpPathEncoded]
-                        : ['-y',
-                            '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
-                            '-i', tmpPath,
-                            '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0',
-                            '-pix_fmt', 'yuv420p', '-preset', 'fast', '-crf', '23',
-                            '-r', '30', '-fps_mode', 'cfr',
-                            '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
-                            '-map', '1:v:0', '-map', '0:a:0',
-                            '-shortest', '-movflags', '+faststart', tmpPathEncoded]
-                    const ffmpeg = spawn('ffmpeg', ffmpegArgs)
-                    let ffmpegErr = ''
-                    ffmpeg.stderr.on('data', (d: Buffer) => { ffmpegErr += d.toString() })
-                    ffmpeg.on('close', (code) => {
-                        if (code === 0) { console.log(`[TikTok] FFmpeg OK — H.264 30fps CFR, ${hasAudio ? 'original' : 'silent'} audio`); resolve() }
-                        else { console.error('[TikTok] FFmpeg error:', ffmpegErr.slice(-500)); reject(new Error(`FFmpeg failed (exit ${code})`)) }
-                    })
-                    ffmpeg.on('error', (err) => reject(new Error(`FFmpeg spawn error: ${err.message}`)))
-                })
+            const { size: encSize } = await fsPromises.stat(tmpPathEncoded)
+            console.log(`[TikTok] Encoded: ${(encSize / 1024 / 1024).toFixed(2)} MB`)
 
-                const { size: encSize } = await fsPromises.stat(tmpPathEncoded)
-                console.log(`[TikTok] Encoded: ${(encSize / 1024 / 1024).toFixed(2)} MB`)
-
-                // Upload transcoded file to R2 → save as tiktokUrl for future cache hits
-                const { uploadToR2, generateR2Key } = await import('@/lib/r2')
-                const { prisma: dbClient } = await import('@/lib/prisma')
-                const encodedBuffer = await fsPromises.readFile(tmpPathEncoded)
-                const r2Key = generateR2Key(videoMedia.id || 'tmp', 'tiktok-encoded.mp4')
-                tiktokReadyUrl = await uploadToR2(encodedBuffer, r2Key, 'video/mp4')
-                console.log(`[TikTok] Uploaded transcoded file to R2: ${tiktokReadyUrl}`)
-
+            // Upload transcoded file to R2 in background (for caching future repeats)
+            // We do NOT await this — the primary publish happens via FILE_UPLOAD below.
+            const { uploadToR2, generateR2Key } = await import('@/lib/r2')
+            const { prisma: dbClient } = await import('@/lib/prisma')
+            const encodedBuffer = await fsPromises.readFile(tmpPathEncoded)
+            const r2Key = generateR2Key(videoMedia.id || 'tmp', 'tiktok-encoded.mp4')
+            uploadToR2(encodedBuffer, r2Key, 'video/mp4').then(async (uploadedUrl) => {
+                console.log(`[TikTok] Uploaded transcoded file to R2 (cache): ${uploadedUrl}`)
                 if (videoMedia.id) {
                     await dbClient.mediaItem.update({
                         where: { id: videoMedia.id },
-                        data: { tiktokUrl: tiktokReadyUrl } as { tiktokUrl: string },
+                        data: { tiktokUrl: uploadedUrl } as any,
                     }).catch((e: unknown) => console.warn('[TikTok] Failed to cache tiktokUrl:', e))
                 }
-            } finally {
-                try { await fsPromises.unlink(tmpPath) } catch { /* gone */ }
-                try { await fsPromises.unlink(tmpPathEncoded) } catch { /* gone */ }
+            }).catch((e: unknown) => console.warn('[TikTok] R2 background upload failed:', e))
+
+            // ── Publish via FILE_UPLOAD (binary sent directly to TikTok) ───────
+            // Avoids Cloudflare blocking TikTok crawler from pulling media.neeflow.com
+            const fEndpoint = publishMode === 'inbox'
+                ? 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
+                : 'https://open.tiktokapis.com/v2/post/publish/video/init/'
+            const fInitRes = await fetch(fEndpoint, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
+                body: JSON.stringify({
+                    post_info: {
+                        title: content.slice(0, 2200),
+                        privacy_level: privacy,
+                        disable_comment: disableComment,
+                        disable_duet: disableDuet,
+                        disable_stitch: disableStitch,
+                        ...(brandedContent ? { brand_content_toggle: true } : {}),
+                        ...(aiGenerated ? { is_aigc: true } : {}),
+                    },
+                    source_info: {
+                        source: 'FILE_UPLOAD',
+                        video_size: encSize,
+                        chunk_size: encSize,
+                        total_chunk_count: 1,
+                    },
+                }),
+            })
+            const fInitData = await fInitRes.json()
+            console.log('[TikTok] Init response (FILE_UPLOAD):', JSON.stringify(fInitData))
+            if (fInitData.error?.code && fInitData.error.code !== 'ok') {
+                throw new Error(tiktokErrorMessage(fInitData.error.code, fInitData.error.message))
             }
+            const fPublishId: string = fInitData.data?.publish_id
+            if (!fPublishId) throw new Error('TikTok: missing publish_id from FILE_UPLOAD init')
+            const fUploadUrl: string = fInitData.data?.upload_url
+            if (!fUploadUrl) throw new Error('TikTok: missing upload_url from FILE_UPLOAD init')
+
+            // Upload the transcoded file to TikTok's upload URL (single chunk)
+            console.log(`[TikTok] Uploading ${(encSize / 1024 / 1024).toFixed(2)} MB via FILE_UPLOAD...`)
+            const fileBuffer = await fsPromises.readFile(tmpPathEncoded)
+            const uploadRes = await fetch(fUploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'video/mp4',
+                    'Content-Range': `bytes 0-${encSize - 1}/${encSize}`,
+                    'Content-Length': String(encSize),
+                },
+                body: fileBuffer,
+            })
+            console.log(`[TikTok] FILE_UPLOAD response: ${uploadRes.status}, publish_id: ${fPublishId}`)
+            if (!uploadRes.ok && uploadRes.status !== 206) {
+                throw new Error(`TikTok FILE_UPLOAD failed: HTTP ${uploadRes.status}`)
+            }
+            console.log('[TikTok] FILE_UPLOAD complete, publish_id:', fPublishId)
+            return { externalId: fPublishId }
+
+        } finally {
+            try { await fsPromises.unlink(tmpPath) } catch { /* gone */ }
+            try { await fsPromises.unlink(tmpPathEncoded) } catch { /* gone */ }
         }
-
-        // ── Step 2: Submit via PULL_FROM_URL (transcoded R2 URL) ────────
-        console.log(`[TikTok] Publishing via PULL_FROM_URL: ${tiktokReadyUrl}`)
-
-        const endpoint = publishMode === 'inbox'
-            ? 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
-            : 'https://open.tiktokapis.com/v2/post/publish/video/init/'
-
-        const initBody: Record<string, unknown> = {
-            post_info: {
-                title: content.slice(0, 2200),
-                privacy_level: privacy,
-                disable_comment: disableComment,
-                disable_duet: disableDuet,
-                disable_stitch: disableStitch,
-                ...(brandedContent ? { brand_content_toggle: true } : {}),
-                ...(aiGenerated ? { is_aigc: true } : {}),
-            },
-            source_info: {
-                source: 'PULL_FROM_URL',
-                video_url: tiktokReadyUrl,
-            },
-        }
-
-        const initRes = await fetch(endpoint, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
-            body: JSON.stringify(initBody),
-        })
-        const initData = await initRes.json()
-        console.log('[TikTok] Init response:', JSON.stringify(initData))
-
-        if (initData.error?.code && initData.error.code !== 'ok') {
-            throw new Error(tiktokErrorMessage(initData.error.code, initData.error.message))
-        }
-
-        const publishId: string = initData.data?.publish_id
-        if (!publishId) throw new Error('TikTok: missing publish_id from init response')
-
-        console.log('[TikTok] Video queued for pull, publish_id:', publishId)
-        return { externalId: publishId }
     }
+
 
     // ── Photo/carousel post ─────────────────────────────────────────
     if (postType === 'carousel') {
