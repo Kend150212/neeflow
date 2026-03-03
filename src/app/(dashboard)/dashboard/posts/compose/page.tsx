@@ -71,6 +71,8 @@ import {
     ExternalLink,
     Building2,
     ZoomIn,
+    Music,
+    Plus,
 } from 'lucide-react'
 import { PlatformIcon } from '@/components/platform-icons'
 import { useTranslation } from '@/lib/i18n'
@@ -472,54 +474,113 @@ function InstagramPreview({ content, media, accountName, accountAvatar, mediaRat
     )
 }
 
-function TikTokPreview({ content, media, accountName, accountAvatar, mediaRatio }: {
-    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; mediaRatio: string
+function TikTokPreview({ content, media, accountName, accountAvatar }: {
+    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; mediaRatio?: string
 }) {
+    const hasVideo = media.some(m => isVideo(m))
+    const coverMedia = media[0]
+
     return (
-        <div className={`rounded-xl overflow-hidden bg-black text-white relative ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'
-            }`}>
-            {media.length > 0 ? (
-                <MediaElement media={media[0]} className="absolute inset-0 w-full h-full object-cover opacity-70" />
+        <div className="relative w-full h-full bg-black text-white overflow-hidden" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+            {/* Full-screen background media */}
+            {coverMedia ? (
+                <MediaElement media={coverMedia} className="absolute inset-0 w-full h-full object-cover" />
             ) : (
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900" />
             )}
-            <div className="relative z-10 flex h-full">
-                {/* Right sidebar */}
-                <div className="flex-1" />
-                <div className="flex flex-col items-center justify-end gap-4 p-3 pb-16">
-                    <div className="h-10 w-10 rounded-full border-2 border-white overflow-hidden">
-                        <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#333' }} />
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                        <Heart className="h-6 w-6" />
-                        <span className="text-[10px]">0</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                        <MessageCircle className="h-6 w-6" />
-                        <span className="text-[10px]">0</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                        <Bookmark className="h-6 w-6" />
-                        <span className="text-[10px]">0</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                        <Share2 className="h-6 w-6" />
-                        <span className="text-[10px]">0</span>
-                    </div>
+            {/* Dark overlay for readability */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70" />
+
+            {/* Top bar: TikTok logo + tabs */}
+            <div className="absolute top-0 left-0 right-0 z-20 pt-1 pb-2 flex items-center justify-center gap-0">
+                <button className="px-3 py-1 text-[11px] font-medium text-white/60">Following</button>
+                <div className="flex flex-col items-center">
+                    <button className="px-3 py-1 text-[12px] font-bold text-white">For You</button>
+                    <div className="w-6 h-[2px] bg-white rounded-full" />
                 </div>
-                {/* Bottom caption */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                    <p className="text-xs font-semibold mb-1">@{accountName}</p>
-                    <p className="text-xs leading-relaxed line-clamp-3">{content.slice(0, 150)}</p>
+                <button className="px-3 py-1 text-[11px] font-medium text-white/60">Explore</button>
+                {/* Search icon */}
+                <div className="absolute right-3 top-1.5">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                    </svg>
                 </div>
             </div>
-            {/* Play button */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <Play className="h-12 w-12 opacity-30" />
+
+            {/* Play icon center (only if no video) */}
+            {!hasVideo && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                    <div className="w-14 h-14 rounded-full bg-black/30 flex items-center justify-center backdrop-blur-sm">
+                        <Play className="h-7 w-7 fill-white text-white ml-1" />
+                    </div>
+                </div>
+            )}
+
+            {/* Right sidebar */}
+            <div className="absolute right-2 bottom-20 z-20 flex flex-col items-center gap-4">
+                {/* Avatar + follow */}
+                <div className="relative mb-1">
+                    <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
+                        <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#555' }} />
+                    </div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#FE2C55] flex items-center justify-center">
+                        <Plus className="h-2.5 w-2.5 text-white" />
+                    </div>
+                </div>
+                {/* Like */}
+                <div className="flex flex-col items-center gap-0.5">
+                    <div className="w-10 h-10 flex items-center justify-center">
+                        <Heart className="h-7 w-7 fill-white text-white" />
+                    </div>
+                    <span className="text-[10px] font-semibold">0</span>
+                </div>
+                {/* Comment */}
+                <div className="flex flex-col items-center gap-0.5">
+                    <div className="w-10 h-10 flex items-center justify-center">
+                        <MessageCircle className="h-7 w-7 fill-white text-white" />
+                    </div>
+                    <span className="text-[10px] font-semibold">0</span>
+                </div>
+                {/* Save/Bookmark */}
+                <div className="flex flex-col items-center gap-0.5">
+                    <div className="w-10 h-10 flex items-center justify-center">
+                        <Bookmark className="h-7 w-7 fill-white text-white" />
+                    </div>
+                    <span className="text-[10px] font-semibold">0</span>
+                </div>
+                {/* Share */}
+                <div className="flex flex-col items-center gap-0.5">
+                    <div className="w-10 h-10 flex items-center justify-center">
+                        <Share2 className="h-7 w-7 text-white" />
+                    </div>
+                    <span className="text-[10px] font-semibold">0</span>
+                </div>
+                {/* Spinning music disc */}
+                <div className="w-9 h-9 rounded-full border-4 border-zinc-800 bg-zinc-700 flex items-center justify-center overflow-hidden animate-spin" style={{ animationDuration: '4s' }}>
+                    <div className="w-4 h-4 rounded-full bg-zinc-900 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom: caption + music ticker */}
+            <div className="absolute bottom-3 left-0 right-14 z-20 px-3 space-y-1.5">
+                <p className="text-[11px] font-bold drop-shadow">@{accountName}</p>
+                <p className="text-[10px] leading-relaxed line-clamp-2 drop-shadow">{content.slice(0, 120) || 'Your caption will appear here…'}</p>
+                {/* Music ticker */}
+                <div className="flex items-center gap-1.5">
+                    <Music className="h-3 w-3 shrink-0 text-white" />
+                    <div className="overflow-hidden flex-1">
+                        <p className="text-[9px] text-white/80 whitespace-nowrap animate-marquee">
+                            ♫ original sound — @{accountName} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ♫ original sound — @{accountName}
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     )
 }
+
 
 function XPreview({ content, accountName, accountAvatar }: {
     content: string; accountName: string; accountAvatar?: string | null
@@ -2396,43 +2457,11 @@ export default function ComposePage() {
             }
             const post = await createRes.json()
 
-            // Await publish so we can surface per-platform errors
-            toast.loading('Publishing…', { id: 'publish-progress' })
-            try {
-                const pubRes = await fetch(`/api/admin/posts/${post.id}/publish`, { method: 'POST' })
-                const pubData = pubRes.ok ? await pubRes.json() : null
-                toast.dismiss('publish-progress')
-
-                if (pubData?.results) {
-                    const failures = (pubData.results as { success: boolean; platform: string; error?: string }[])
-                        .filter(r => !r.success)
-                    const successes = (pubData.results as { success: boolean; platform: string }[])
-                        .filter(r => r.success)
-
-                    if (successes.length > 0 && failures.length === 0) {
-                        toast.success('Published successfully!')
-                    } else if (failures.length > 0) {
-                        failures.forEach(r => {
-                            toast.error(
-                                `${r.platform.toUpperCase()}: ${r.error || 'Publish failed'}`,
-                                { duration: 10000 }
-                            )
-                        })
-                        if (successes.length > 0) {
-                            toast.success(`${successes.length} platform(s) published successfully`)
-                        }
-                    } else {
-                        toast.error('Publish failed — please try again')
-                    }
-                } else {
-                    toast.error('Publish failed — server error')
-                }
-            } catch {
-                toast.dismiss('publish-progress')
-                toast.error('Network error while publishing')
-            }
+            // Fire publish in background — don't block UX
+            fetch(`/api/admin/posts/${post.id}/publish`, { method: 'POST' }).catch(() => { /* background */ })
 
             savedRef.current = true
+            toast.success('Post saved! Publishing in background…', { duration: 5000 })
             router.push('/dashboard/posts')
         } catch {
             toast.error('Network error — failed to save post')
@@ -2440,6 +2469,7 @@ export default function ComposePage() {
             setPublishing(false)
         }
     }
+
 
     // Delete post
     const handleDeletePost = async () => {

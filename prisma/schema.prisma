@@ -638,6 +638,7 @@ model MediaItem {
   mimeType      String?  @map("mime_type")
   tags          Json?    @default("[]")
   aiMetadata    Json?    @map("ai_metadata") @default("{}") // provider, model, ratio, prompt
+  tiktokUrl     String?  @map("tiktok_url")                // H.264/AAC re-encoded version for TikTok (skip re-encode on repeat publishes)
   createdAt     DateTime @default(now()) @map("created_at")
 
   channel Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)

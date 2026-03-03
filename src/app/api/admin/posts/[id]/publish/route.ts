@@ -8,9 +8,11 @@ import crypto from 'crypto'
 // ─── Types ───────────────────────────────────────────────────────────
 
 interface MediaInfo {
+    id?: string          // MediaItem DB id — used to save tiktokUrl cache
     url: string
     type: string // 'image' | 'video' from database
     originalName?: string
+    tiktokUrl?: string  // cached H.264/AAC re-encoded URL — skip transcode on repeat TikTok publishes
 }
 
 // ─── Platform publishers ─────────────────────────────────────────────
@@ -1469,10 +1471,86 @@ async function publishToTikTok(
     // ── Video post — FILE_UPLOAD via temp disk file ───────────────────
     // Download to /tmp → re-encode to H.264/AAC with ffmpeg → upload → delete
     // TikTok requires H.264 video + AAC audio in MP4 container.
+    // If videoMedia.tiktokUrl is already set (cached from a previous publish),
+    // we skip download + transcode and stream directly from that URL.
     if (postType === 'video') {
         const videoMedia = mediaItems.find((m) => isVideoMedia(m))
         if (!videoMedia) throw new Error('TikTok requires a video. Please attach a video to your post.')
 
+        // ── Cache hit: already have a TikTok-encoded URL ────────────────
+        if (videoMedia.tiktokUrl) {
+            console.log('[TikTok] ✅ Using cached tiktokUrl — skipping download + transcode')
+
+            const fs = await import('fs')
+            const fsPromises = await import('fs/promises')
+            const os = await import('os')
+            const path = await import('path')
+            const { randomUUID } = await import('crypto')
+
+            const tmpCached = path.join(os.tmpdir(), `tiktok-cached-${randomUUID()}.mp4`)
+            try {
+                // Download cached encoded file
+                const cachedRes = await fetch(videoMedia.tiktokUrl)
+                if (!cachedRes.ok) throw new Error(`TikTok: failed to fetch cached video (${cachedRes.status})`)
+                const fileStream = fs.createWriteStream(tmpCached)
+                const reader = cachedRes.body!.getReader()
+                await new Promise<void>((resolve, reject) => {
+                    const pump = async () => {
+                        try {
+                            while (true) {
+                                const { done, value } = await reader.read()
+                                if (done) { fileStream.end(); break }
+                                if (!fileStream.write(value)) await new Promise<void>(r => fileStream.once('drain', r))
+                            }
+                            fileStream.once('finish', resolve)
+                            fileStream.once('error', reject)
+                        } catch (err) { fileStream.destroy(); reject(err) }
+                    }
+                    pump()
+                })
+
+                const { size: cachedSize } = await fsPromises.stat(tmpCached)
+
+                const endpoint = publishMode === 'inbox'
+                    ? 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
+                    : 'https://open.tiktokapis.com/v2/post/publish/video/init/'
+
+                const initRes = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({
+                        post_info: {
+                            title: content.slice(0, 2200), privacy_level: privacy,
+                            disable_comment: disableComment, disable_duet: disableDuet, disable_stitch: disableStitch,
+                            ...(brandedContent ? { brand_content_toggle: true } : {}),
+                            ...(aiGenerated ? { ai_generated_content: true } : {}),
+                        },
+                        source_info: { source: 'FILE_UPLOAD', video_size: cachedSize, chunk_size: cachedSize, total_chunk_count: 1 },
+                    }),
+                })
+                const initData = await initRes.json()
+                if (initData.error?.code && initData.error.code !== 'ok') throw new Error(tiktokErrorMessage(initData.error.code, initData.error.message))
+                const publishId: string = initData.data?.publish_id
+                const uploadUrl: string = initData.data?.upload_url
+                if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
+
+                const readStream = fs.createReadStream(tmpCached)
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    // @ts-expect-error Node.js ReadStream is valid as fetch body
+                    body: readStream,
+                    headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(cachedSize), 'Content-Range': `bytes 0-${cachedSize - 1}/${cachedSize}` },
+                    duplex: 'half',
+                })
+                if (!uploadRes.ok) { const errText = await uploadRes.text(); throw new Error(`TikTok video upload failed: ${uploadRes.status} ${errText}`) }
+                console.log('[TikTok] Cached video uploaded, publish_id:', publishId)
+                return { externalId: publishId }
+            } finally {
+                try { await fsPromises.unlink(tmpCached) } catch { /* already gone */ }
+            }
+        }
+
+        // ── Cache miss: download + transcode + upload to R2 + save cache ─
         const fs = await import('fs')
         const fsPromises = await import('fs/promises')
         const os = await import('os')
@@ -1623,7 +1701,30 @@ async function publishToTikTok(
             }
 
             console.log('[TikTok] Video uploaded, publish_id:', publishId)
+
+            // ── Step 4: Save encoded file to R2 for future cache hits ──
+            // Non-blocking — don't delay the publish result if this fails
+            if (videoMedia.id) {
+                try {
+                    const { uploadToR2, generateR2Key } = await import('@/lib/r2')
+                    const { prisma: dbClient } = await import('@/lib/prisma')
+                    const encodedBuffer = await fsPromises.readFile(tmpPathEncoded)
+                    const ext = 'mp4'
+                    const r2Key = generateR2Key(videoMedia.id, `tiktok-encoded.${ext}`)
+                    const cachedUrl = await uploadToR2(encodedBuffer, r2Key, 'video/mp4')
+                    await dbClient.mediaItem.update({
+                        where: { id: videoMedia.id },
+                        data: { tiktokUrl: cachedUrl } as { tiktokUrl: string },
+                    })
+                    console.log(`[TikTok] ✅ Cached tiktokUrl saved: ${cachedUrl}`)
+                } catch (cacheErr) {
+                    // Non-critical: log and continue
+                    console.warn('[TikTok] ⚠️ Failed to cache tiktokUrl:', cacheErr)
+                }
+            }
+
             return { externalId: publishId }
+
 
         } finally {
             // Always clean up both temp files
@@ -2155,9 +2256,11 @@ export async function POST(
             url = `${baseUrl}${url}`
         }
         return {
+            id: m.mediaItem.id,
             url,
             type: m.mediaItem.type || 'image',
             originalName: m.mediaItem.originalName || undefined,
+            tiktokUrl: (m.mediaItem as { tiktokUrl?: string | null }).tiktokUrl || undefined,
         }
     })
 
