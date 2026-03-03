@@ -456,66 +456,110 @@ export default function PlatformsTab({
                                                 <span className="text-sm font-semibold">{info?.label || platformKey}</span>
                                                 <Badge variant="secondary" className="text-[10px] ml-auto">{items.length}</Badge>
                                             </div>
-                                            <div className="divide-y">
-                                                {items.map((p) => (
-                                                    <div key={p.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                                                        <div className="flex items-center gap-3">
-                                                            {/* Avatar with platform icon overlay */}
-                                                            <div className="relative w-9 h-9 shrink-0">
-                                                                {p.avatarUrl ? (
-                                                                    <img
-                                                                        src={p.avatarUrl}
-                                                                        alt={p.accountName}
-                                                                        className="w-9 h-9 rounded-full object-cover border border-border"
-                                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                                                                    />
-                                                                ) : (
-                                                                    <div className="w-9 h-9 rounded-full bg-muted border border-border flex items-center justify-center text-sm font-semibold text-muted-foreground">
-                                                                        {p.accountName.charAt(0).toUpperCase()}
+                                            {/* Table */}
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="border-b bg-muted/30">
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground w-full">Account</th>
+                                                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Token Status</th>
+                                                        <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground whitespace-nowrap">Active</th>
+                                                        <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y">
+                                                    {items.map((p) => {
+                                                        const exp = p.tokenExpiresAt ? new Date(p.tokenExpiresAt) : null
+                                                        const now = Date.now()
+                                                        let tokenBadge: React.ReactNode
+                                                        if (!exp) {
+                                                            tokenBadge = (
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium inline-block w-fit">No expiry</span>
+                                                                </div>
+                                                            )
+                                                        } else if (exp.getTime() < now) {
+                                                            tokenBadge = (
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium inline-block w-fit">⚠ Expired</span>
+                                                                    <span className="text-[10px] text-muted-foreground pl-1">{exp.toLocaleDateString()}</span>
+                                                                </div>
+                                                            )
+                                                        } else if (exp.getTime() < now + 7 * 24 * 60 * 60 * 1000) {
+                                                            tokenBadge = (
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 font-medium inline-block w-fit">⏱ Expires soon</span>
+                                                                    <span className="text-[10px] text-muted-foreground pl-1">{exp.toLocaleDateString()}</span>
+                                                                </div>
+                                                            )
+                                                        } else {
+                                                            tokenBadge = (
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 font-medium inline-block w-fit">✓ Valid</span>
+                                                                    <span className="text-[10px] text-muted-foreground pl-1">{exp.toLocaleDateString()}</span>
+                                                                </div>
+                                                            )
+                                                        }
+                                                        return (
+                                                            <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                                                                {/* Account */}
+                                                                <td className="px-4 py-2.5">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="relative w-9 h-9 shrink-0">
+                                                                            {p.avatarUrl ? (
+                                                                                <img
+                                                                                    src={p.avatarUrl}
+                                                                                    alt={p.accountName}
+                                                                                    className="w-9 h-9 rounded-full object-cover border border-border"
+                                                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="w-9 h-9 rounded-full bg-muted border border-border flex items-center justify-center text-sm font-semibold text-muted-foreground">
+                                                                                    {p.accountName.charAt(0).toUpperCase()}
+                                                                                </div>
+                                                                            )}
+                                                                            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background border border-border flex items-center justify-center [&>svg]:w-2.5 [&>svg]:h-2.5">
+                                                                                {platformIcons[p.platform]}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-sm font-medium">{p.accountName}</p>
+                                                                            <p className="text-xs text-muted-foreground font-mono">{p.accountId}</p>
+                                                                        </div>
                                                                     </div>
-                                                                )}
-                                                                {/* Platform icon badge */}
-                                                                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background border border-border flex items-center justify-center [&>svg]:w-2.5 [&>svg]:h-2.5">
-                                                                    {platformIcons[p.platform]}
-                                                                </span>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-medium">{p.accountName}</p>
-                                                                <p className="text-xs text-muted-foreground font-mono">{p.accountId}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            {/* Token Status Badge */}
-                                                            {(() => {
-                                                                const exp = p.tokenExpiresAt ? new Date(p.tokenExpiresAt) : null
-                                                                const now = Date.now()
-                                                                if (!exp) return <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">No expiry</span>
-                                                                if (exp.getTime() < now) return <span title={exp.toLocaleString()} className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium">⚠ Expired</span>
-                                                                if (exp.getTime() < now + 7 * 24 * 60 * 60 * 1000) return <span title={exp.toLocaleString()} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 font-medium">⏱ Expires soon</span>
-                                                                return <span title={exp.toLocaleString()} className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 font-medium">✓ Token valid</span>
-                                                            })()}
-                                                            <Switch checked={p.isActive} onCheckedChange={(checked) => togglePlatformActive(p.id, checked)} />
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                                                                title="Reconnect to refresh token"
-                                                                onClick={() => openOAuthPopup(p.platform, p.accountName)}
-                                                            >
-                                                                <RefreshCw className="h-3 w-3" /> Reconnect
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                                onClick={() => deletePlatformConnection(p.id)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                                                </td>
+                                                                {/* Token Status Column */}
+                                                                <td className="px-4 py-2.5">{tokenBadge}</td>
+                                                                {/* Active */}
+                                                                <td className="px-4 py-2.5 text-center">
+                                                                    <Switch checked={p.isActive} onCheckedChange={(checked) => togglePlatformActive(p.id, checked)} />
+                                                                </td>
+                                                                {/* Actions */}
+                                                                <td className="px-4 py-2.5">
+                                                                    <div className="flex items-center gap-1 justify-end">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                                                                            title="Reconnect to refresh token"
+                                                                            onClick={() => openOAuthPopup(p.platform, p.accountName)}
+                                                                        >
+                                                                            <RefreshCw className="h-3 w-3" /> Reconnect
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                                            onClick={() => deletePlatformConnection(p.id)}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )
+                                                    })}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     )
                                 })
