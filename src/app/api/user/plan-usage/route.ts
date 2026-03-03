@@ -18,48 +18,47 @@ export async function GET() {
 
     const userId = session.user.id
     const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
-    const [limits, imageUsageRow, postCount, apiCallsUsage] = await Promise.all([
+    // Get user's subscription
+    const subscription = await db.subscription.findFirst({
+        where: { userId },
+        select: { id: true },
+    }).catch(() => null)
+
+    const [limits, usageRow] = await Promise.all([
         getEffectiveLimits(userId),
 
-        // AI Image usage — UsageRecord model not in schema yet, return 0
-        Promise.resolve({ _sum: { amount: 0 } }),
-
-        // Posts published this month
-        db.post.count({
-            where: {
-                channel: { userId },
-                status: 'PUBLISHED',
-                publishedAt: { gte: startOfMonth },
-            },
-        }).catch(() => 0),
-
-        // API Calls this month from Usage table
-        db.usage.findFirst({
-            where: {
-                subscription: { userId },
-                month: currentMonth,
-            },
-            select: { apiCalls: true },
-        }).catch(() => null),
+        // Read all usage fields from the Usage table for this month
+        subscription
+            ? db.usage.findUnique({
+                where: {
+                    subscriptionId_month: {
+                        subscriptionId: subscription.id,
+                        month: currentMonth,
+                    },
+                },
+                select: {
+                    imagesGenerated: true,
+                    postsCreated: true,
+                    apiCalls: true,
+                },
+            }).catch(() => null)
+            : Promise.resolve(null),
     ])
 
     return NextResponse.json({
         aiImage: {
-            used: imageUsageRow._sum?.amount ?? 0,
+            used: usageRow?.imagesGenerated ?? 0,
             limit: limits.maxAiImagesPerMonth,
         },
         posts: {
-            used: postCount,
+            used: usageRow?.postsCreated ?? 0,
             limit: limits.maxPostsPerMonth,
         },
         apiCalls: {
-            used: apiCallsUsage?.apiCalls ?? 0,
+            used: usageRow?.apiCalls ?? 0,
             limit: limits.maxApiCallsPerMonth,
         },
-        planName: null, // optional, can extend later
     })
 }
