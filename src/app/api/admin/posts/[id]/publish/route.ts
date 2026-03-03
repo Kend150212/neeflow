@@ -1453,6 +1453,44 @@ function tiktokErrorMessage(code: string, rawMessage: string): string {
     return map[code] || rawMessage || `TikTok lỗi: ${code}`
 }
 
+/**
+ * Upload a local file to a URL via HTTPS PUT with proper Content-Length/Content-Range.
+ * Uses Node.js https.request + ReadStream to avoid fetch/undici Buffer issues.
+ */
+async function httpsUpload(uploadUrl: string, filePath: string, fileSize: number): Promise<void> {
+    const https = await import('https')
+    const fs = await import('fs')
+    const url = new URL(uploadUrl)
+    return new Promise<void>((resolve, reject) => {
+        const req = https.request({
+            hostname: url.hostname,
+            port: url.port || 443,
+            path: url.pathname + url.search,
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'video/mp4',
+                'Content-Length': fileSize,
+                'Content-Range': `bytes 0-${fileSize - 1}/${fileSize}`,
+            },
+        }, (res) => {
+            let body = ''
+            res.on('data', (chunk) => { body += chunk })
+            res.on('end', () => {
+                console.log(`[TikTok] Upload response: ${res.statusCode} — ${body.slice(0, 200)}`)
+                if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                    resolve()
+                } else {
+                    reject(new Error(`TikTok video upload failed: ${res.statusCode} ${body}`))
+                }
+            })
+        })
+        req.on('error', reject)
+        const readStream = fs.createReadStream(filePath)
+        readStream.on('error', reject)
+        readStream.pipe(req)
+    })
+}
+
 async function publishToTikTok(
     accessToken: string,
     content: string,
@@ -1561,8 +1599,6 @@ async function publishToTikTok(
             if (!needsTranscode) {
                 // ── Fast path: already TikTok-compatible, skip FFmpeg ───
                 console.log('[TikTok] ✅ Video already H.264/AAC — skipping FFmpeg transcode')
-                // Use tmpPath directly as the upload file
-                const uploadBuffer = await fsPromises.readFile(tmpPath)
                 const uploadSize = rawSize
 
                 const endpoint = publishMode === 'inbox'
@@ -1589,14 +1625,8 @@ async function publishToTikTok(
                 const uploadUrl: string = initData.data?.upload_url
                 if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
 
-                const uploadRes = await fetch(uploadUrl, {
-                    method: 'PUT',
-                    body: uploadBuffer,
-                    headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(uploadSize), 'Content-Range': `bytes 0-${uploadSize - 1}/${uploadSize}` },
-                })
-                const uploadText = await uploadRes.text()
-                console.log(`[TikTok] Fast-path upload response: ${uploadRes.status} — ${uploadText.slice(0, 200)}`)
-                if (!uploadRes.ok) throw new Error(`TikTok video upload failed: ${uploadRes.status} ${uploadText}`)
+                // Use https.request with ReadStream — most reliable for large binary uploads
+                await httpsUpload(uploadUrl, tmpPath, uploadSize)
                 console.log('[TikTok] Video uploaded (fast path), publish_id:', publishId)
                 return { externalId: publishId }
             }
@@ -1690,27 +1720,8 @@ async function publishToTikTok(
             const uploadUrl: string = initData.data?.upload_url
             if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
 
-            // ── Step 3: Upload encoded file to TikTok (buffer for reliability) ─
-            // NOTE: ReadStream+fetch can silently drop bytes in Next.js.
-            // Reading into a Buffer guarantees all bytes are sent.
-            const videoBuffer = await fsPromises.readFile(tmpPathEncoded)
-            const uploadRes = await fetch(uploadUrl, {
-                method: 'PUT',
-                body: videoBuffer,
-                headers: {
-                    'Content-Type': 'video/mp4',
-                    'Content-Length': String(videoSize),
-                    'Content-Range': `bytes 0-${videoSize - 1}/${videoSize}`,
-                },
-            })
-
-            const uploadResText = await uploadRes.text()
-            console.log(`[TikTok] Upload response: ${uploadRes.status} — ${uploadResText.slice(0, 200)}`)
-
-            if (!uploadRes.ok) {
-                throw new Error(`TikTok video upload failed: ${uploadRes.status} ${uploadResText}`)
-            }
-
+            // ── Step 3: Upload encoded file to TikTok via https.request ─
+            await httpsUpload(uploadUrl, tmpPathEncoded, videoSize)
             console.log('[TikTok] Video uploaded, publish_id:', publishId)
 
             // ── Step 4: Save encoded file to R2 for future cache hits ──
