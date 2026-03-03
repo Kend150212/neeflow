@@ -1560,56 +1560,71 @@ async function publishToTikTok(
             })
 
             const { size: rawSize } = await fsPromises.stat(tmpPath)
-            console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB — transcoding to H.264/AAC CFR 30fps...`)
+            console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB`)
 
-            // ── Step 1b: Always transcode via FFmpeg ────────────────────
-            // TikTok requires: H.264 video + AAC audio + Constant Frame Rate (CFR).
-            // Many videos (even H.264) have Variable Frame Rate (VFR) from camera apps.
-            // VFR → frame_rate_check_failed on TikTok, so we ALWAYS force CFR here.
+            // ── Step 1b: ffprobe — detect audio track presence ──────────
+            const hasAudio = await new Promise<boolean>((resolve) => {
+                const ffprobe = spawn('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_streams', tmpPath])
+                let out = ''
+                ffprobe.stdout.on('data', (d: Buffer) => { out += d.toString() })
+                ffprobe.on('close', () => {
+                    try {
+                        const streams = JSON.parse(out).streams || []
+                        resolve(streams.some((s: { codec_type: string }) => s.codec_type === 'audio'))
+                    } catch { resolve(false) }
+                })
+                ffprobe.on('error', () => resolve(false))
+            })
+            console.log(`[TikTok] Has audio: ${hasAudio}`)
+
+            // ── Step 1c: Always transcode via FFmpeg ────────────────────
+            // TikTok requires: H.264 + AAC + Constant Frame Rate (CFR).
+            // IMPORTANT: output must have EXACTLY 1 audio track.
+            // OLD BUG: -map 0:a:0? + -map 1:a:0 = 2 audio tracks when original has audio → "could not play"
             await new Promise<void>((resolve, reject) => {
-                const ffmpegArgs = [
-                    '-y',
-                    '-i', tmpPath,
-                    // Silent audio fallback in case video has no audio track
-                    '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
-                    // Video: H.264 High profile, force CFR 30fps
-                    '-c:v', 'libx264',
-                    '-profile:v', 'high',
-                    '-level', '4.0',
-                    '-pix_fmt', 'yuv420p',
-                    '-preset', 'fast',
-                    '-crf', '23',
-                    '-r', '30',       // Force 30fps CFR — required by TikTok
-                    '-vsync', 'cfr',  // Explicitly force Constant Frame Rate
-                    // Audio: AAC stereo 128k
-                    '-c:a', 'aac',
-                    '-b:a', '128k',
-                    '-ar', '44100',
-                    // Map real video + prefer real audio, silent audio as fallback
-                    '-map', '0:v:0',
-                    '-map', '0:a:0?',
-                    '-map', '1:a:0',
-                    '-shortest',
-                    '-movflags', '+faststart',
-                    tmpPathEncoded,
-                ]
+                const ffmpegArgs = hasAudio
+                    ? [
+                        // Video has audio → map original audio only (1 track)
+                        '-y', '-i', tmpPath,
+                        '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0',
+                        '-pix_fmt', 'yuv420p', '-preset', 'fast', '-crf', '23',
+                        '-r', '30', '-vsync', 'cfr',
+                        '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
+                        '-map', '0:v:0', '-map', '0:a:0',
+                        '-movflags', '+faststart',
+                        tmpPathEncoded,
+                    ]
+                    : [
+                        // No audio → add single silent track from lavfi
+                        '-y',
+                        '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+                        '-i', tmpPath,
+                        '-c:v', 'libx264', '-profile:v', 'high', '-level', '4.0',
+                        '-pix_fmt', 'yuv420p', '-preset', 'fast', '-crf', '23',
+                        '-r', '30', '-vsync', 'cfr',
+                        '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2',
+                        '-map', '1:v:0', '-map', '0:a:0',
+                        '-shortest',
+                        '-movflags', '+faststart',
+                        tmpPathEncoded,
+                    ]
                 const ffmpeg = spawn('ffmpeg', ffmpegArgs)
                 let ffmpegErr = ''
                 ffmpeg.stderr.on('data', (d: Buffer) => { ffmpegErr += d.toString() })
                 ffmpeg.on('close', (code) => {
                     if (code === 0) {
-                        console.log('[TikTok] FFmpeg transcode complete (H.264 + AAC + CFR 30fps)')
+                        console.log(`[TikTok] FFmpeg done — H.264 CFR 30fps, ${hasAudio ? 'original' : 'silent'} audio`)
                         resolve()
                     } else {
                         console.error('[TikTok] FFmpeg error:', ffmpegErr.slice(-500))
-                        reject(new Error(`[TikTok] FFmpeg transcode failed (exit ${code})`))
+                        reject(new Error(`[TikTok] FFmpeg failed (exit ${code})`))
                     }
                 })
                 ffmpeg.on('error', (err) => reject(new Error(`[TikTok] FFmpeg spawn error: ${err.message}`)))
             })
 
             const { size: videoSize } = await fsPromises.stat(tmpPathEncoded)
-            console.log(`[TikTok] Encoded file: ${(videoSize / 1024 / 1024).toFixed(2)} MB`)
+            console.log(`[TikTok] Encoded: ${(videoSize / 1024 / 1024).toFixed(2)} MB`)
 
 
             // ── Step 2: Init upload ─────────────────────────────────────
