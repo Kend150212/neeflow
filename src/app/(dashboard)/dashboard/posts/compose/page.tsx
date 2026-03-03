@@ -2644,52 +2644,94 @@ export default function ComposePage() {
                                 </button>
                             )}
                         </div>
-                        <div className="space-y-1">
-                            {activePlatforms.length ? (
-                                activePlatforms.map((p) => {
-                                    const isChecked = selectedPlatformIds.has(p.id)
+                        <div className="space-y-3">
+                            {activePlatforms.length ? (() => {
+                                // Group by platform type, preserve order of first appearance
+                                const platformOrder: string[] = []
+                                const groups: Record<string, typeof activePlatforms> = {}
+                                activePlatforms.forEach((p) => {
+                                    if (!groups[p.platform]) { groups[p.platform] = []; platformOrder.push(p.platform) }
+                                    groups[p.platform].push(p)
+                                })
+                                return platformOrder.map((platformKey) => {
+                                    const accounts = groups[platformKey]
+                                    const label = platformLabels[platformKey] || platformKey
+                                    const groupCheckedCount = accounts.filter(p => selectedPlatformIds.has(p.id)).length
+                                    const allGroupChecked = groupCheckedCount === accounts.length
                                     return (
-                                        <div
-                                            key={p.id}
-                                            onClick={() => togglePlatform(p.id)}
-                                            className={`flex items-start gap-2 px-3 py-2.5 rounded-xl cursor-pointer select-none transition-all duration-150 ${isChecked
-                                                ? 'bg-primary/10 border border-primary/20'
-                                                : 'hover:bg-muted/50 border border-transparent'
-                                                }`}
-                                        >
-                                            {/* Avatar with platform icon overlay */}
-                                            <div className="relative shrink-0 mt-0.5">
-                                                {getPlatformAvatar(p) ? (
-                                                    <img
-                                                        src={getPlatformAvatar(p)!}
-                                                        alt={p.accountName}
-                                                        className="h-7 w-7 rounded-full object-cover border border-border/50"
-                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden') }}
-                                                    />
-                                                ) : null}
-                                                <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getPlatformAvatar(p) ? 'hidden' : ''}`}
-                                                    style={{ backgroundColor: platformColors[p.platform] || '#666' }}>
-                                                    {p.accountName?.[0]?.toUpperCase() || '?'}
-                                                </div>
-                                                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background border border-border flex items-center justify-center">
-                                                    {platformBadgeIcons[p.platform] ?? <PlatformIcon platform={p.platform} size="xs" />}
+                                        <div key={platformKey}>
+                                            {/* Group header */}
+                                            <div className="flex items-center gap-1.5 mb-1 px-1">
+                                                <span className="flex items-center justify-center w-3.5 h-3.5 shrink-0">
+                                                    {platformBadgeIcons[platformKey] ?? <PlatformIcon platform={platformKey} size="xs" />}
                                                 </span>
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex-1 truncate">{label}</span>
+                                                <span className="text-[9px] text-muted-foreground/60">{groupCheckedCount}/{accounts.length}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setSelectedPlatformIds(prev => {
+                                                            const next = new Set(prev)
+                                                            if (allGroupChecked) { accounts.forEach(p => next.delete(p.id)) }
+                                                            else { accounts.forEach(p => next.add(p.id)) }
+                                                            return next
+                                                        })
+                                                    }}
+                                                    className="text-[8px] font-medium text-primary/70 hover:text-primary transition-colors cursor-pointer shrink-0"
+                                                >
+                                                    {allGroupChecked ? '✕' : '✓'}
+                                                </button>
                                             </div>
-                                            {/* Name + platform label — grows, wraps, won't push toggle */}
-                                            <div className="flex-1 min-w-0">
-                                                <p className={`text-xs font-medium leading-tight line-clamp-2 break-words ${isChecked ? 'text-primary' : 'text-foreground'}`}>
-                                                    {p.accountName}
-                                                </p>
-                                                <p className="text-[9px] text-muted-foreground capitalize mt-0.5">{p.platform}</p>
-                                            </div>
-                                            {/* Toggle switch — always shrink-0, stays right */}
-                                            <div className={`w-8 h-4 rounded-full relative transition-colors shrink-0 mt-1.5 ${isChecked ? 'bg-primary' : 'bg-muted'}`}>
-                                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isChecked ? 'right-0.5 bg-background' : 'left-0.5 bg-muted-foreground/50'}`} />
+                                            {/* Accounts in group */}
+                                            <div className="space-y-0.5 pl-1">
+                                                {accounts.map((p) => {
+                                                    const isChecked = selectedPlatformIds.has(p.id)
+                                                    return (
+                                                        <div
+                                                            key={p.id}
+                                                            onClick={() => togglePlatform(p.id)}
+                                                            className={`flex items-start gap-2 px-2 py-2 rounded-xl cursor-pointer select-none transition-all duration-150 ${isChecked
+                                                                ? 'bg-primary/10 border border-primary/20'
+                                                                : 'hover:bg-muted/50 border border-transparent'
+                                                                }`}
+                                                        >
+                                                            {/* Avatar with platform icon overlay */}
+                                                            <div className="relative shrink-0 mt-0.5">
+                                                                {getPlatformAvatar(p) ? (
+                                                                    <img
+                                                                        src={getPlatformAvatar(p)!}
+                                                                        alt={p.accountName}
+                                                                        className="h-7 w-7 rounded-full object-cover border border-border/50"
+                                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden') }}
+                                                                    />
+                                                                ) : null}
+                                                                <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getPlatformAvatar(p) ? 'hidden' : ''}`}
+                                                                    style={{ backgroundColor: platformColors[p.platform] || '#666' }}>
+                                                                    {p.accountName?.[0]?.toUpperCase() || '?'}
+                                                                </div>
+                                                                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background border border-border flex items-center justify-center">
+                                                                    {platformBadgeIcons[p.platform] ?? <PlatformIcon platform={p.platform} size="xs" />}
+                                                                </span>
+                                                            </div>
+                                                            {/* Name */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={`text-xs font-medium leading-tight line-clamp-2 break-words ${isChecked ? 'text-primary' : 'text-foreground'}`}>
+                                                                    {p.accountName}
+                                                                </p>
+                                                            </div>
+                                                            {/* Toggle */}
+                                                            <div className={`w-8 h-4 rounded-full relative transition-colors shrink-0 mt-1.5 ${isChecked ? 'bg-primary' : 'bg-muted'}`}>
+                                                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isChecked ? 'right-0.5 bg-background' : 'left-0.5 bg-muted-foreground/50'}`} />
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         </div>
                                     )
                                 })
-                            ) : (
+                            })() : (
                                 <p className="text-xs text-muted-foreground px-1">{t('compose.noPlatforms')}</p>
                             )}
                         </div>
