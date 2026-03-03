@@ -1593,11 +1593,88 @@ async function publishToTikTok(
             })
 
             const { size: rawSize } = await fsPromises.stat(tmpPath)
-            console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB — transcoding to H.264/AAC...`)
+            console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB`)
 
-            // ── Step 1b: Re-encode with FFmpeg to TikTok-required spec ──
-            // H.264 video + AAC audio, yuv420p, fast encode, add silent
-            // audio if no audio track exists (anullsrc fallback).
+            // ── Step 1b: Check if already TikTok-compatible via ffprobe ──
+            // If video is already H.264 + AAC (or no audio), skip re-encode.
+            // Only transcode when needed (H.265, WebM, AVI, etc.)
+            const probeResult = await new Promise<{ videoCodec: string; audioCodec: string }>((resolve) => {
+                const ffprobe = spawn('ffprobe', [
+                    '-v', 'quiet',
+                    '-print_format', 'json',
+                    '-show_streams',
+                    tmpPath,
+                ])
+                let out = ''
+                ffprobe.stdout.on('data', (d: Buffer) => { out += d.toString() })
+                ffprobe.on('close', () => {
+                    try {
+                        const streams = JSON.parse(out).streams || []
+                        const video = streams.find((s: { codec_type: string }) => s.codec_type === 'video')
+                        const audio = streams.find((s: { codec_type: string }) => s.codec_type === 'audio')
+                        resolve({
+                            videoCodec: video?.codec_name || '',
+                            audioCodec: audio?.codec_name || 'none',
+                        })
+                    } catch {
+                        resolve({ videoCodec: '', audioCodec: '' })
+                    }
+                })
+                ffprobe.on('error', () => resolve({ videoCodec: '', audioCodec: '' }))
+            })
+
+            console.log(`[TikTok] Probe: video=${probeResult.videoCodec}, audio=${probeResult.audioCodec}`)
+
+            const isH264 = probeResult.videoCodec === 'h264'
+            const isAudioOk = probeResult.audioCodec === 'aac' || probeResult.audioCodec === 'none' || probeResult.audioCodec === ''
+            const needsTranscode = !isH264 || !isAudioOk
+
+            if (!needsTranscode) {
+                // ── Fast path: already TikTok-compatible, skip FFmpeg ───
+                console.log('[TikTok] ✅ Video already H.264/AAC — skipping FFmpeg transcode')
+                // Use tmpPath directly as the upload file
+                const uploadBuffer = await fsPromises.readFile(tmpPath)
+                const uploadSize = rawSize
+
+                const endpoint = publishMode === 'inbox'
+                    ? 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
+                    : 'https://open.tiktokapis.com/v2/post/publish/video/init/'
+
+                const initRes = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({
+                        post_info: {
+                            title: content.slice(0, 2200), privacy_level: privacy,
+                            disable_comment: disableComment, disable_duet: disableDuet, disable_stitch: disableStitch,
+                            ...(brandedContent ? { brand_content_toggle: true } : {}),
+                            ...(aiGenerated ? { ai_generated_content: true } : {}),
+                        },
+                        source_info: { source: 'FILE_UPLOAD', video_size: uploadSize, chunk_size: uploadSize, total_chunk_count: 1 },
+                    }),
+                })
+                const initData = await initRes.json()
+                console.log('[TikTok] Init response (fast path):', JSON.stringify(initData))
+                if (initData.error?.code && initData.error.code !== 'ok') throw new Error(tiktokErrorMessage(initData.error.code, initData.error.message))
+                const publishId: string = initData.data?.publish_id
+                const uploadUrl: string = initData.data?.upload_url
+                if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
+
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: uploadBuffer,
+                    headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(uploadSize), 'Content-Range': `bytes 0-${uploadSize - 1}/${uploadSize}` },
+                })
+                const uploadText = await uploadRes.text()
+                console.log(`[TikTok] Fast-path upload response: ${uploadRes.status} — ${uploadText.slice(0, 200)}`)
+                if (!uploadRes.ok) throw new Error(`TikTok video upload failed: ${uploadRes.status} ${uploadText}`)
+                console.log('[TikTok] Video uploaded (fast path), publish_id:', publishId)
+                return { externalId: publishId }
+            }
+
+            // ── Slow path: transcode needed ────────────────────────────
+            console.log(`[TikTok] 🔄 Transcoding required (video=${probeResult.videoCodec}, audio=${probeResult.audioCodec})`)
+
             await new Promise<void>((resolve, reject) => {
                 const ffmpegArgs = [
                     '-y',
