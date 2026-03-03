@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
 
                 for (const biz of bizData.data) {
                     try {
-                        let bizPagesUrl: string | null = `https://graph.facebook.com/v19.0/${biz.id}/owned_pages?fields=id,name,access_token&limit=100&access_token=${userAccessToken}`
+                        let bizPagesUrl: string | null = `https://graph.facebook.com/v19.0/${biz.id}/owned_pages?fields=id,name,access_token,picture{url}&limit=100&access_token=${userAccessToken}`
 
                         while (bizPagesUrl) {
                             const bizPagesRes: Response = await fetch(bizPagesUrl)
@@ -152,11 +152,11 @@ export async function GET(req: NextRequest) {
             if (meAccountIds.has(dbPage.accountId)) continue
             try {
                 const directRes: Response = await fetch(
-                    `https://graph.facebook.com/v19.0/${dbPage.accountId}?fields=id,name,access_token&access_token=${userAccessToken}`
+                    `https://graph.facebook.com/v19.0/${dbPage.accountId}?fields=id,name,access_token,picture{url}&access_token=${userAccessToken}`
                 )
-                const directData: { id?: string; name?: string; access_token?: string; error?: { message: string } } = await directRes.json()
+                const directData: { id?: string; name?: string; access_token?: string; picture?: { data?: { url?: string } }; error?: { message: string } } = await directRes.json()
                 if (directData.id && directData.access_token) {
-                    pages.push({ id: directData.id, name: directData.name || dbPage.accountName, access_token: directData.access_token })
+                    pages.push({ id: directData.id, name: directData.name || dbPage.accountName, access_token: directData.access_token, ...(directData.picture ? { picture: directData.picture } : {}) } as any)
                     meAccountIds.add(directData.id)
                     console.log(`[Facebook OAuth] 🔄 Recovered via direct access: ${directData.name} (${directData.id})`)
                 } else {
