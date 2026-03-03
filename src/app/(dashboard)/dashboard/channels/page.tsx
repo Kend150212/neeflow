@@ -176,8 +176,8 @@ export default function AdminChannelsPage() {
             >
                 <div className="flex">
                     {/* ── Left: Avatar ── */}
-                    <div className="w-24 shrink-0 bg-muted/40 flex items-center justify-center border-r border-border/50">
-                        <div className="h-16 w-16 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center">
+                    <div className="w-20 shrink-0 flex items-center justify-center pl-4">
+                        <div className="h-14 w-14 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
                             {channel.avatarUrl
                                 ? <img src={channel.avatarUrl} alt={channel.displayName} className="h-full w-full object-cover" />
                                 : <span className="text-primary font-bold text-2xl">{channel.displayName[0]?.toUpperCase()}</span>
