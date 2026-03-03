@@ -188,6 +188,9 @@ export async function GET(req: NextRequest) {
                     console.warn(`[Facebook OAuth] ⚠️ Token validation network error for ${page.name}`)
                 }
 
+                const fbAvatarUrl: string | undefined = (page as any).picture?.data?.url || undefined
+                console.log(`[Facebook OAuth] 🖼️ Avatar for ${page.name}: ${fbAvatarUrl || 'none'} (raw picture: ${JSON.stringify((page as any).picture || null)})`)
+
                 await prisma.channelPlatform.upsert({
                     where: {
                         channelId_platform_accountId: {
@@ -198,7 +201,7 @@ export async function GET(req: NextRequest) {
                     },
                     update: {
                         accountName: page.name,
-                        avatarUrl: (page as any).picture?.data?.url || undefined,
+                        avatarUrl: fbAvatarUrl,
                         accessToken: page.access_token,
                         connectedBy: state.userId || null,
                         isActive: true,
@@ -209,7 +212,7 @@ export async function GET(req: NextRequest) {
                         platform: 'facebook',
                         accountId: page.id,
                         accountName: page.name,
-                        avatarUrl: (page as any).picture?.data?.url || undefined,
+                        avatarUrl: fbAvatarUrl,
                         accessToken: page.access_token,
                         connectedBy: state.userId || null,
                         isActive: true,
@@ -227,8 +230,9 @@ export async function GET(req: NextRequest) {
                         },
                         data: {
                             accessToken: page.access_token,
+                            ...(fbAvatarUrl ? { avatarUrl: fbAvatarUrl } : {}),
                             config: { source: 'oauth', needsReconnect: false, tokenValidatedAt: new Date().toISOString() },
-                        },
+                        } as any,
                     })
                     if (updated.count > 0) {
                         console.log(`[Facebook OAuth] 🔄 Also updated token for ${updated.count} other channel(s) with page ${page.name}`)
