@@ -128,7 +128,8 @@ export async function GET(req: NextRequest) {
         for (const ch of channels) {
             const channelIdYT = ch.id
             const channelTitle = ch.snippet?.title || 'YouTube Channel'
-            const avatarUrl = ch.snippet?.thumbnails?.['default']?.url || ch.snippet?.thumbnails?.medium?.url || undefined
+            const thumbnails = ch.snippet?.thumbnails as any
+            const avatarUrl: string | undefined = thumbnails?.default?.url || thumbnails?.medium?.url || undefined
 
             await prisma.channelPlatform.upsert({
                 where: {
