@@ -1428,8 +1428,9 @@ async function publishToLinkedIn(
 function tiktokErrorMessage(code: string, rawMessage: string): string {
     const map: Record<string, string> = {
         'unaudited_client_can_only_post_to_private_accounts':
-            'TikTok yêu cầu tài khoản Business hoặc Creator để đăng bài công khai. Vui lòng chuyển tài khoản TikTok của bạn sang Business/Creator (TikTok App → Cài đặt → Quản lý tài khoản → Chuyển sang Business), sau đó ngắt kết nối và kết nối lại TikTok.'
-            + ' (Nếu tài khoản đã là Business, hãy chờ 24–48h sau khi TikTok approve app hoặc liên hệ TikTok support.)',
+            'TikTok app chưa được TikTok audit (review) cho phép đăng công khai. Trong thời gian chờ, bạn chỉ có thể đăng với chế độ "Self Only" (chỉ mình xem). '
+            + 'Vui lòng chọn privacy "Self Only" để test publish. Sau khi TikTok hoàn thành audit app, bạn có thể đăng công khai bình thường.',
+
         'access_token_invalid':
             'TikTok: Token đã hết hạn hoặc không hợp lệ. Vui lòng ngắt kết nối và kết nối lại tài khoản TikTok.',
         'access_token_expired':
