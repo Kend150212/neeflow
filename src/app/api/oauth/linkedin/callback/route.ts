@@ -75,10 +75,12 @@ export async function GET(req: NextRequest) {
         })
         let profileName = 'LinkedIn Profile'
         let profileId = 'unknown'
+        let profileAvatarUrl: string | undefined
         if (profileRes.ok) {
             const profile = await profileRes.json()
             profileName = profile.name || `${profile.given_name || ''} ${profile.family_name || ''}`.trim() || profileName
             profileId = profile.sub || profileId
+            profileAvatarUrl = profile.picture || undefined
         }
 
         // Save personal profile
@@ -90,12 +92,13 @@ export async function GET(req: NextRequest) {
                     accountId: profileId,
                 },
             },
-            update: { accountName: `👤 ${profileName}`, accessToken, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null, connectedBy: state.userId || null, isActive: true },
+            update: { accountName: `👤 ${profileName}`, avatarUrl: profileAvatarUrl, accessToken, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null, connectedBy: state.userId || null, isActive: true } as any,
             create: {
                 channelId: state.channelId, platform: 'linkedin', accountId: profileId, accountName: `👤 ${profileName}`,
+                avatarUrl: profileAvatarUrl,
                 accessToken, tokenExpiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
                 connectedBy: state.userId || null, isActive: true, config: { source: 'oauth', type: 'person' },
-            },
+            } as any,
         })
 
         // Fetch organizations the user manages (Company Pages) — only if org scopes were requested

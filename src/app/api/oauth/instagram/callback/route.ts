@@ -181,6 +181,7 @@ export async function GET(req: NextRequest) {
                 }
 
                 const accountName = igData.username || igData.name || page.name
+                const avatarUrl = igData.profile_picture_url || undefined
 
                 await prisma.channelPlatform.upsert({
                     where: {
@@ -192,21 +193,23 @@ export async function GET(req: NextRequest) {
                     },
                     update: {
                         accountName,
+                        avatarUrl,
                         accessToken: page.access_token,
                         connectedBy: state.userId || null,
                         isActive: true,
                         config: { source: 'oauth', pageId: page.id, pageName: page.name },
-                    },
+                    } as any,
                     create: {
                         channelId: state.channelId,
                         platform: 'instagram',
                         accountId: igData.id || igAccount.id,
                         accountName,
+                        avatarUrl,
                         accessToken: page.access_token,
                         connectedBy: state.userId || null,
                         isActive: true,
                         config: { source: 'oauth', pageId: page.id, pageName: page.name },
-                    },
+                    } as any,
                 })
                 imported++
                 console.log(`[Instagram OAuth]   ✅ Imported: @${accountName} (${igData.id}) linked to page ${page.name}`)

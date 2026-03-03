@@ -459,9 +459,30 @@ export default function PlatformsTab({
                                             <div className="divide-y">
                                                 {items.map((p) => (
                                                     <div key={p.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                                                        <div>
-                                                            <p className="text-sm font-medium">{p.accountName}</p>
-                                                            <p className="text-xs text-muted-foreground font-mono">{p.accountId}</p>
+                                                        <div className="flex items-center gap-3">
+                                                            {/* Avatar with platform icon overlay */}
+                                                            <div className="relative w-9 h-9 shrink-0">
+                                                                {p.avatarUrl ? (
+                                                                    <img
+                                                                        src={p.avatarUrl}
+                                                                        alt={p.accountName}
+                                                                        className="w-9 h-9 rounded-full object-cover border border-border"
+                                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-9 h-9 rounded-full bg-muted border border-border flex items-center justify-center text-sm font-semibold text-muted-foreground">
+                                                                        {p.accountName.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                )}
+                                                                {/* Platform icon badge */}
+                                                                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background border border-border flex items-center justify-center [&>svg]:w-2.5 [&>svg]:h-2.5">
+                                                                    {platformIcons[p.platform]}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-medium">{p.accountName}</p>
+                                                                <p className="text-xs text-muted-foreground font-mono">{p.accountId}</p>
+                                                            </div>
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <Switch checked={p.isActive} onCheckedChange={(checked) => togglePlatformActive(p.id, checked)} />

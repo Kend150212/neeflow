@@ -477,6 +477,41 @@ export default function PostsPage() {
         return groups
     }, [posts, viewMode])
 
+    // ─── Real-time publish status polling ────────────────────────────────────
+    // Track previous post statuses to detect PUBLISHING → PUBLISHED/FAILED transitions
+    const prevPostsRef = useRef<Map<string, string>>(new Map())
+
+    useEffect(() => {
+        // Compare new posts against previous to fire toasts
+        const prev = prevPostsRef.current
+        for (const post of posts) {
+            const prevStatus = prev.get(post.id)
+            if (prevStatus === 'PUBLISHING') {
+                const platforms = [...new Set(post.platformStatuses.map(ps => ps.platform))].join(', ')
+                if (post.status === 'PUBLISHED') {
+                    toast.success(`Published successfully${platforms ? ` · ${platforms}` : ''}`, {
+                        description: post.content ? post.content.slice(0, 60) + (post.content.length > 60 ? '…' : '') : undefined,
+                    })
+                } else if (post.status === 'FAILED') {
+                    toast.error(`Publish failed${platforms ? ` · ${platforms}` : ''}`, {
+                        description: 'Check post details for more info.',
+                    })
+                }
+            }
+        }
+        // Update ref with current statuses
+        prevPostsRef.current = new Map(posts.map(p => [p.id, p.status]))
+    }, [posts])
+
+    useEffect(() => {
+        const hasPublishing = posts.some(p => p.status === 'PUBLISHING')
+        if (!hasPublishing) return
+        // Poll every 4 seconds while any post is PUBLISHING
+        const interval = setInterval(() => { fetchPosts() }, 4000)
+        return () => clearInterval(interval)
+    }, [posts, fetchPosts])
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Count scheduled for today
     const todayScheduledCount = useMemo(() => {
         const today = new Date(); today.setHours(0, 0, 0, 0)

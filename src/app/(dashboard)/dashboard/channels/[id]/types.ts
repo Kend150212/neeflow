@@ -45,6 +45,7 @@ export interface ChannelPlatformEntry {
     platform: string
     accountId: string
     accountName: string
+    avatarUrl?: string | null
     isActive: boolean
     config?: Record<string, unknown>
 }

@@ -128,6 +128,7 @@ export async function GET(req: NextRequest) {
         for (const ch of channels) {
             const channelIdYT = ch.id
             const channelTitle = ch.snippet?.title || 'YouTube Channel'
+            const avatarUrl = ch.snippet?.thumbnails?.default?.url || ch.snippet?.thumbnails?.medium?.url || undefined
 
             await prisma.channelPlatform.upsert({
                 where: {
@@ -139,6 +140,7 @@ export async function GET(req: NextRequest) {
                 },
                 update: {
                     accountName: channelTitle,
+                    avatarUrl: avatarUrl || undefined,
                     accessToken,
                     refreshToken: refreshToken || undefined,
                     tokenExpiresAt: expiresIn
@@ -146,12 +148,13 @@ export async function GET(req: NextRequest) {
                         : null,
                     connectedBy: state.userId || null,
                     isActive: true,
-                },
+                } as any,
                 create: {
                     channelId: state.channelId,
                     platform: 'youtube',
                     accountId: channelIdYT,
                     accountName: channelTitle,
+                    avatarUrl: avatarUrl || undefined,
                     accessToken,
                     refreshToken: refreshToken || undefined,
                     tokenExpiresAt: expiresIn
@@ -160,7 +163,7 @@ export async function GET(req: NextRequest) {
                     connectedBy: state.userId || null,
                     isActive: true,
                     config: { source: 'oauth' },
-                },
+                } as any,
             })
             imported++
         }

@@ -95,9 +95,11 @@ export async function GET(req: NextRequest) {
         })
 
         let displayName = 'TikTok Account'
+        let avatarUrl: string | undefined
         if (userRes.ok) {
             const userData = await userRes.json()
             displayName = userData?.data?.user?.display_name || displayName
+            avatarUrl = userData?.data?.user?.avatar_url || undefined
         }
 
         // ── Check if account can post publicly ──────────────────────────────
@@ -137,6 +139,7 @@ export async function GET(req: NextRequest) {
             },
             update: {
                 accountName: displayName,
+                avatarUrl: avatarUrl || undefined,
                 accessToken,
                 refreshToken: refreshToken || undefined,
                 tokenExpiresAt: expiresIn
@@ -144,12 +147,13 @@ export async function GET(req: NextRequest) {
                     : null,
                 connectedBy: state.userId || null,
                 isActive: true,
-            },
+            } as any,
             create: {
                 channelId: state.channelId,
                 platform: 'tiktok',
                 accountId: openId,
                 accountName: displayName,
+                avatarUrl: avatarUrl || undefined,
                 accessToken,
                 refreshToken: refreshToken || undefined,
                 tokenExpiresAt: expiresIn
@@ -158,7 +162,7 @@ export async function GET(req: NextRequest) {
                 connectedBy: state.userId || null,
                 isActive: true,
                 config: { source: 'oauth' },
-            },
+            } as any,
         })
 
         // Build success URL (include warning param for redirect flow)

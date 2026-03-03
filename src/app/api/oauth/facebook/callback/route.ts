@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 
         // Get ALL user's Facebook pages (with pagination + explicit fields)
         let pages: Array<{ id: string; name: string; access_token: string }> = []
-        let pagesUrl: string | null = `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token&limit=100&access_token=${userAccessToken}`
+        let pagesUrl: string | null = `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,picture{url}&limit=100&access_token=${userAccessToken}`
         let pageNum = 0
         while (pagesUrl) {
             pageNum++
@@ -198,21 +198,23 @@ export async function GET(req: NextRequest) {
                     },
                     update: {
                         accountName: page.name,
+                        avatarUrl: (page as any).picture?.data?.url || undefined,
                         accessToken: page.access_token,
                         connectedBy: state.userId || null,
                         isActive: true,
                         config: { source: 'oauth', needsReconnect: false, tokenValidatedAt: new Date().toISOString() },
-                    },
+                    } as any,
                     create: {
                         channelId: state.channelId,
                         platform: 'facebook',
                         accountId: page.id,
                         accountName: page.name,
+                        avatarUrl: (page as any).picture?.data?.url || undefined,
                         accessToken: page.access_token,
                         connectedBy: state.userId || null,
                         isActive: true,
                         config: { source: 'oauth', needsReconnect: false, tokenValidatedAt: new Date().toISOString() },
-                    },
+                    } as any,
                 })
 
                 // Only update other channels' tokens if the new token is verified valid

@@ -346,6 +346,7 @@ model ChannelPlatform {
   platform        String    // facebook, instagram, x, linkedin, tiktok, youtube, pinterest, gbp, wistia, vimeo
   accountId       String    @map("account_id")
   accountName     String    @map("account_name")
+  avatarUrl       String?   @map("avatar_url") @db.Text
   config          Json?     @default("{}")
   isActive        Boolean   @default(true) @map("is_active")
   accessToken     String?   @map("access_token") @db.Text
