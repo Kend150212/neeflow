@@ -1272,8 +1272,8 @@ export default function ChannelDetailPage({
                             type="button"
                             onClick={() => setActiveTab(v)}
                             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs whitespace-nowrap transition-all shrink-0 ${activeTab === v
-                                    ? 'bg-primary text-primary-foreground font-medium shadow-sm'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                                ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                                 }`}
                         >
                             {icon}
@@ -1987,6 +1987,12 @@ export default function ChannelDetailPage({
                                                                                 toast.warning(t('channels.platformActions.fbCrossChannelToast'), { duration: 8000 })
                                                                             }, 1500)
                                                                         }
+                                                                        // Show account-type warning for TikTok personal accounts
+                                                                        if (key === 'tiktok' && e.data?.warning) {
+                                                                            setTimeout(() => {
+                                                                                toast.warning(e.data.warning, { duration: 12000 })
+                                                                            }, 1000)
+                                                                        }
                                                                         fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { })
                                                                     }
                                                                 }
@@ -2340,6 +2346,12 @@ export default function ChannelDetailPage({
                                                                                         if (e.data?.type === 'oauth-success' && e.data?.platform === key) {
                                                                                             window.removeEventListener('message', handler)
                                                                                             toast.success(`${p.accountName} reconnected!`)
+                                                                                            // Show account-type warning for TikTok personal accounts
+                                                                                            if (key === 'tiktok' && e.data?.warning) {
+                                                                                                setTimeout(() => {
+                                                                                                    toast.warning(e.data.warning, { duration: 12000 })
+                                                                                                }, 1000)
+                                                                                            }
                                                                                             fetch(`/api/admin/channels/${id}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { })
                                                                                         }
                                                                                     }

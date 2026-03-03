@@ -1467,8 +1467,8 @@ async function publishToTikTok(
     const aiGenerated = config?.aiGenerated === true
 
     // ── Video post — FILE_UPLOAD via temp disk file ───────────────────
-    // Download to /tmp → get size from disk → stream to TikTok → delete
-    // This avoids holding the entire video in RAM for concurrent requests.
+    // Download to /tmp → re-encode to H.264/AAC with ffmpeg → upload → delete
+    // TikTok requires H.264 video + AAC audio in MP4 container.
     if (postType === 'video') {
         const videoMedia = mediaItems.find((m) => isVideoMedia(m))
         if (!videoMedia) throw new Error('TikTok requires a video. Please attach a video to your post.')
@@ -1478,8 +1478,11 @@ async function publishToTikTok(
         const os = await import('os')
         const path = await import('path')
         const { randomUUID } = await import('crypto')
+        const { spawn } = await import('child_process')
 
-        const tmpPath = path.join(os.tmpdir(), `tiktok-${randomUUID()}.mp4`)
+        const uid = randomUUID()
+        const tmpPath = path.join(os.tmpdir(), `tiktok-raw-${uid}.mp4`)
+        const tmpPathEncoded = path.join(os.tmpdir(), `tiktok-enc-${uid}.mp4`)
         console.log('[TikTok] Downloading video to temp file:', tmpPath)
 
         try {
@@ -1510,8 +1513,52 @@ async function publishToTikTok(
                 pump()
             })
 
-            const { size: videoSize } = await fsPromises.stat(tmpPath)
-            console.log(`[TikTok] Downloaded ${(videoSize / 1024 / 1024).toFixed(2)} MB`)
+            const { size: rawSize } = await fsPromises.stat(tmpPath)
+            console.log(`[TikTok] Downloaded ${(rawSize / 1024 / 1024).toFixed(2)} MB — transcoding to H.264/AAC...`)
+
+            // ── Step 1b: Re-encode with FFmpeg to TikTok-required spec ──
+            // H.264 video + AAC audio, yuv420p, fast encode, add silent
+            // audio if no audio track exists (anullsrc fallback).
+            await new Promise<void>((resolve, reject) => {
+                const ffmpegArgs = [
+                    '-y',
+                    '-i', tmpPath,
+                    // Add a silent audio source as fallback (shortest wins if real audio exists)
+                    '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+                    '-c:v', 'libx264',
+                    '-profile:v', 'high',
+                    '-level', '4.0',
+                    '-pix_fmt', 'yuv420p',
+                    '-preset', 'fast',
+                    '-crf', '23',
+                    '-c:a', 'aac',
+                    '-b:a', '128k',
+                    '-ar', '44100',
+                    // Map real video + prefer real audio, fallback to anullsrc
+                    '-map', '0:v:0',
+                    '-map', '0:a:0?',
+                    '-map', '1:a:0',
+                    '-shortest',
+                    '-movflags', '+faststart',
+                    tmpPathEncoded,
+                ]
+                const ffmpeg = spawn('ffmpeg', ffmpegArgs)
+                let ffmpegErr = ''
+                ffmpeg.stderr.on('data', (d: Buffer) => { ffmpegErr += d.toString() })
+                ffmpeg.on('close', (code) => {
+                    if (code === 0) {
+                        console.log('[TikTok] FFmpeg transcode complete')
+                        resolve()
+                    } else {
+                        console.error('[TikTok] FFmpeg error:', ffmpegErr.slice(-500))
+                        reject(new Error(`[TikTok] FFmpeg transcode failed (exit ${code})`))
+                    }
+                })
+                ffmpeg.on('error', (err) => reject(new Error(`[TikTok] FFmpeg spawn error: ${err.message}`)))
+            })
+
+            const { size: videoSize } = await fsPromises.stat(tmpPathEncoded)
+            console.log(`[TikTok] Encoded file: ${(videoSize / 1024 / 1024).toFixed(2)} MB`)
 
             // ── Step 2: Init upload ─────────────────────────────────────
             const endpoint = publishMode === 'inbox'
@@ -1556,8 +1603,8 @@ async function publishToTikTok(
             const uploadUrl: string = initData.data?.upload_url
             if (!publishId || !uploadUrl) throw new Error('TikTok: missing publish_id or upload_url')
 
-            // ── Step 3: Stream from disk to TikTok ─────────────────────
-            const readStream = fs.createReadStream(tmpPath)
+            // ── Step 3: Stream encoded file to TikTok ──────────────────
+            const readStream = fs.createReadStream(tmpPathEncoded)
             const uploadRes = await fetch(uploadUrl, {
                 method: 'PUT',
                 // @ts-expect-error Node.js ReadStream is valid as fetch body
@@ -1579,10 +1626,12 @@ async function publishToTikTok(
             return { externalId: publishId }
 
         } finally {
-            // Always clean up temp file
+            // Always clean up both temp files
             try { await fsPromises.unlink(tmpPath) } catch { /* already gone */ }
+            try { await fsPromises.unlink(tmpPathEncoded) } catch { /* already gone */ }
         }
     }
+
 
     // ── Photo/carousel post ─────────────────────────────────────────
     if (postType === 'carousel') {

@@ -200,6 +200,12 @@ export default function PlatformsTab({
             if (e.data?.type === 'oauth-success' && e.data?.platform === key) {
                 window.removeEventListener('message', handler)
                 toast.success(`${label} connected successfully!`)
+                // Show account-type warning for TikTok personal accounts
+                if (key === 'tiktok' && e.data?.warning) {
+                    setTimeout(() => {
+                        toast.warning(e.data.warning, { duration: 12000 })
+                    }, 1000)
+                }
                 fetch(`/api/admin/channels/${channelId}/platforms`).then(r => r.ok ? r.json() : []).then(data => setPlatforms(data)).catch(() => { })
             }
         }

@@ -100,6 +100,32 @@ export async function GET(req: NextRequest) {
             displayName = userData?.data?.user?.display_name || displayName
         }
 
+        // ── Check if account can post publicly ──────────────────────────────
+        // Fetches creator_info to detect personal accounts that can only post
+        // to SELF_ONLY — we surface a warning immediately at connect time
+        // so users know they need a Business/Creator account.
+        let accountWarning = ''
+        try {
+            const creatorRes = await fetch('https://open.tiktokapis.com/v2/post/publish/creator_info/query/', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json; charset=UTF-8',
+                },
+                body: JSON.stringify({}),
+            })
+            if (creatorRes.ok) {
+                const creatorData = await creatorRes.json()
+                const privacyOptions: string[] = creatorData?.data?.privacy_level_options || []
+                // Only SELF_ONLY available → personal account, cannot post publicly
+                if (privacyOptions.length > 0 && privacyOptions.every((p: string) => p === 'SELF_ONLY')) {
+                    accountWarning = 'Tài khoản TikTok này là tài khoản cá nhân thông thường — chỉ có thể đăng bài riêng tư. Để đăng công khai, hãy chuyển sang Business hoặc Creator (TikTok App → Cài đặt → Quản lý tài khoản → Chuyển sang Business).'
+                }
+            }
+        } catch {
+            // Non-blocking — ignore creator_info errors
+        }
+
         // Upsert the TikTok channel platform entry
         await prisma.channelPlatform.upsert({
             where: {
@@ -135,8 +161,14 @@ export async function GET(req: NextRequest) {
             },
         })
 
-        // Redirect — close popup or redirect to channel page
-        const successUrl = `/dashboard/channels/${state.channelId}?tab=platforms&oauth=tiktok&imported=1`
+        // Build success URL (include warning param for redirect flow)
+        const warningParam = accountWarning ? `&tiktok_warning=${encodeURIComponent(accountWarning)}` : ''
+        const successUrl = `/dashboard/channels/${state.channelId}?tab=platforms&oauth=tiktok&imported=1${warningParam}`
+
+        // Build safe JS string for warning (escape for inline script)
+        const warningJs = accountWarning
+            ? `, warning: ${JSON.stringify(accountWarning)}`
+            : ''
 
         // Return HTML that closes popup and notifies parent window
         return new NextResponse(
@@ -145,7 +177,7 @@ export async function GET(req: NextRequest) {
             <body>
                 <script>
                     if (window.opener) {
-                        window.opener.postMessage({ type: 'oauth-success', platform: 'tiktok' }, '*');
+                        window.opener.postMessage({ type: 'oauth-success', platform: 'tiktok'${warningJs} }, '*');
                         window.close();
                     } else {
                         window.location.href = '${successUrl}';
