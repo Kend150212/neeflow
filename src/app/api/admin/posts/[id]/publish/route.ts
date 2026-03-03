@@ -1621,60 +1621,85 @@ async function publishToTikTok(
             const { size: encSize } = await fsPromises.stat(tmpPathEncoded)
             console.log(`[TikTok] Encoded: ${(encSize / 1024 / 1024).toFixed(2)} MB`)
 
-            // ── Publish via FILE_UPLOAD (binary sent directly to TikTok) ───────
+            // ── Publish via FILE_UPLOAD with retry (TikTok upload server can intermittently 500) ───
             // Avoids Cloudflare blocking TikTok crawler from pulling media.neeflow.com
             const fEndpoint = publishMode === 'inbox'
                 ? 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
                 : 'https://open.tiktokapis.com/v2/post/publish/video/init/'
-            const fInitRes = await fetch(fEndpoint, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
-                body: JSON.stringify({
-                    post_info: {
-                        title: content.slice(0, 2200),
-                        privacy_level: privacy,
-                        disable_comment: disableComment,
-                        disable_duet: disableDuet,
-                        disable_stitch: disableStitch,
-                        ...(brandedContent ? { brand_content_toggle: true } : {}),
-                        ...(aiGenerated ? { is_aigc: true } : {}),
-                    },
-                    source_info: {
-                        source: 'FILE_UPLOAD',
-                        video_size: encSize,
-                        chunk_size: encSize,
-                        total_chunk_count: 1,
-                    },
-                }),
-            })
-            const fInitData = await fInitRes.json()
-            console.log('[TikTok] Init response (FILE_UPLOAD):', JSON.stringify(fInitData))
-            if (fInitData.error?.code && fInitData.error.code !== 'ok') {
-                throw new Error(tiktokErrorMessage(fInitData.error.code, fInitData.error.message))
-            }
-            const fPublishId: string = fInitData.data?.publish_id
-            if (!fPublishId) throw new Error('TikTok: missing publish_id from FILE_UPLOAD init')
-            const fUploadUrl: string = fInitData.data?.upload_url
-            if (!fUploadUrl) throw new Error('TikTok: missing upload_url from FILE_UPLOAD init')
-
-            // Upload the transcoded file to TikTok's upload URL (single chunk)
-            console.log(`[TikTok] Uploading ${(encSize / 1024 / 1024).toFixed(2)} MB via FILE_UPLOAD...`)
             const fileBuffer = await fsPromises.readFile(tmpPathEncoded)
-            const uploadRes = await fetch(fUploadUrl, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'video/mp4',
-                    'Content-Range': `bytes 0-${encSize - 1}/${encSize}`,
-                    'Content-Length': String(encSize),
-                },
-                body: fileBuffer,
-            })
-            console.log(`[TikTok] FILE_UPLOAD response: ${uploadRes.status}, publish_id: ${fPublishId}`)
-            if (!uploadRes.ok && uploadRes.status !== 206) {
-                throw new Error(`TikTok FILE_UPLOAD failed: HTTP ${uploadRes.status}`)
+
+            const MAX_UPLOAD_ATTEMPTS = 3
+            let fPublishId: string | undefined
+            let lastUploadError: string | undefined
+
+            for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt++) {
+                if (attempt > 1) {
+                    console.log(`[TikTok] Retry attempt ${attempt}/${MAX_UPLOAD_ATTEMPTS} (waiting 2s)...`)
+                    await new Promise(r => setTimeout(r, 2000))
+                }
+
+                // Re-init each attempt to get a fresh upload_url
+                const fInitRes = await fetch(fEndpoint, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({
+                        post_info: {
+                            title: content.slice(0, 2200),
+                            privacy_level: privacy,
+                            disable_comment: disableComment,
+                            disable_duet: disableDuet,
+                            disable_stitch: disableStitch,
+                            ...(brandedContent ? { brand_content_toggle: true } : {}),
+                            ...(aiGenerated ? { is_aigc: true } : {}),
+                        },
+                        source_info: {
+                            source: 'FILE_UPLOAD',
+                            video_size: encSize,
+                            chunk_size: encSize,
+                            total_chunk_count: 1,
+                        },
+                    }),
+                })
+                const fInitData = await fInitRes.json()
+                console.log(`[TikTok] Init response (FILE_UPLOAD) attempt ${attempt}:`, JSON.stringify(fInitData))
+                if (fInitData.error?.code && fInitData.error.code !== 'ok') {
+                    // Auth/policy errors — no point retrying
+                    throw new Error(tiktokErrorMessage(fInitData.error.code, fInitData.error.message))
+                }
+                const attemptPublishId: string = fInitData.data?.publish_id
+                if (!attemptPublishId) throw new Error('TikTok: missing publish_id from FILE_UPLOAD init')
+                const fUploadUrl: string = fInitData.data?.upload_url
+                if (!fUploadUrl) throw new Error('TikTok: missing upload_url from FILE_UPLOAD init')
+
+                // Upload the transcoded file to TikTok's upload URL (single chunk)
+                console.log(`[TikTok] Uploading ${(encSize / 1024 / 1024).toFixed(2)} MB via FILE_UPLOAD (attempt ${attempt})...`)
+                const uploadRes = await fetch(fUploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'video/mp4',
+                        'Content-Range': `bytes 0-${encSize - 1}/${encSize}`,
+                        'Content-Length': String(encSize),
+                    },
+                    body: fileBuffer,
+                })
+                console.log(`[TikTok] FILE_UPLOAD response: ${uploadRes.status}, publish_id: ${attemptPublishId}`)
+
+                if (uploadRes.ok || uploadRes.status === 206 || uploadRes.status === 201) {
+                    fPublishId = attemptPublishId
+                    console.log('[TikTok] FILE_UPLOAD complete, publish_id:', fPublishId)
+                    break
+                }
+
+                // 5xx → retry
+                lastUploadError = `HTTP ${uploadRes.status}`
+                console.warn(`[TikTok] FILE_UPLOAD failed (attempt ${attempt}): ${lastUploadError}`)
             }
-            console.log('[TikTok] FILE_UPLOAD complete, publish_id:', fPublishId)
+
+            if (!fPublishId) {
+                throw new Error(`TikTok FILE_UPLOAD failed after ${MAX_UPLOAD_ATTEMPTS} attempts: ${lastUploadError}`)
+            }
             return { externalId: fPublishId }
+
 
         } finally {
             try { await fsPromises.unlink(tmpPath) } catch { /* gone */ }
