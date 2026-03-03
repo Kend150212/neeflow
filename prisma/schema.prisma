@@ -231,6 +231,7 @@ model Channel {
   name                    String
   displayName             String   @map("display_name")
   description             String?  @db.Text
+  avatarUrl               String?  @map("avatar_url") @db.Text
   isActive                Boolean  @default(true) @map("is_active")
   language                String   @default("vi")
   timezone                String   @default("UTC")

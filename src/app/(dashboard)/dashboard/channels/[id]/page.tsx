@@ -50,6 +50,7 @@ import {
     Bot,
     MessageSquareDot,
     Pencil,
+    Camera,
 } from 'lucide-react'
 import ChatBotTab from './ChatBotTab'
 import AutoContentTab from './AutoContentTab'
@@ -273,6 +274,9 @@ export default function ChannelDetailPage({
     // Editable fields
     const [displayName, setDisplayName] = useState('')
     const [description, setDescription] = useState('')
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+    const [uploadingAvatar, setUploadingAvatar] = useState(false)
+    const avatarInputRef = useRef<HTMLInputElement>(null)
     const [language, setLanguage] = useState('en')
     const [timezone, setTimezone] = useState('UTC')
     const [isActive, setIsActive] = useState(true)
@@ -474,6 +478,7 @@ export default function ChannelDetailPage({
                 setChannel(data)
                 setDisplayName(data.displayName)
                 setDescription(data.description || '')
+                setAvatarUrl(data.avatarUrl || null)
                 setLanguage(data.language)
                 setTimezone(data.timezone || 'UTC')
                 setIsActive(data.isActive)
@@ -668,6 +673,23 @@ export default function ChannelDetailPage({
     }, [imageProvider, userConfiguredProviders])
 
     // ─── Save General Settings ──────────────────────
+    const handleAvatarUpload = async (file: File) => {
+        setUploadingAvatar(true)
+        try {
+            const formData = new FormData()
+            formData.append('avatar', file)
+            const res = await fetch(`/api/admin/channels/${id}/avatar`, { method: 'POST', body: formData })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Upload failed')
+            setAvatarUrl(data.avatarUrl)
+            toast.success('Avatar updated')
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Upload failed')
+        } finally {
+            setUploadingAvatar(false)
+        }
+    }
+
     const handleSave = async () => {
         setSaving(true)
         try {
@@ -1326,6 +1348,57 @@ export default function ChannelDetailPage({
                                     <CardDescription>{t('channels.generalSettingsDesc')}</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
+                                    {/* ── Channel Avatar ────────────────────────────────── */}
+                                    <div className="flex items-center gap-4 pb-2 border-b border-border">
+                                        <div className="relative group">
+                                            <div className="h-16 w-16 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center shrink-0">
+                                                {avatarUrl
+                                                    ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                                                    : <span className="text-primary font-bold text-2xl">{displayName[0]?.toUpperCase()}</span>
+                                                }
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => avatarInputRef.current?.click()}
+                                                disabled={uploadingAvatar}
+                                                className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                                title="Change avatar"
+                                            >
+                                                {uploadingAvatar
+                                                    ? <Loader2 className="h-5 w-5 text-white animate-spin" />
+                                                    : <Camera className="h-5 w-5 text-white" />
+                                                }
+                                            </button>
+                                            <input
+                                                ref={avatarInputRef}
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0]
+                                                    if (file) handleAvatarUpload(file)
+                                                    e.target.value = ''
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium">Channel Avatar</p>
+                                            <p className="text-xs text-muted-foreground">JPEG, PNG, WebP or GIF · max 2MB</p>
+                                            {avatarUrl && (
+                                                <button
+                                                    type="button"
+                                                    className="text-xs text-destructive hover:underline mt-1"
+                                                    onClick={async () => {
+                                                        await fetch(`/api/admin/channels/${id}/avatar`, { method: 'DELETE' })
+                                                        setAvatarUrl(null)
+                                                        toast.success('Avatar removed')
+                                                    }}
+                                                >
+                                                    Remove avatar
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="space-y-2">
                                             <Label>{t('channels.displayName')}</Label>

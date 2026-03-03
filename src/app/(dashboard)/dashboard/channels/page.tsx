@@ -8,6 +8,7 @@ import {
     Plus, Search, Megaphone, Globe, Users, FileText, MoreHorizontal,
     Pencil, Trash2, Check, Clock,
     LayoutGrid, List, Crown, ShieldCheck, Mail,
+    Camera,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -45,6 +46,7 @@ interface Channel {
     id: string
     name: string
     displayName: string
+    avatarUrl?: string | null
     isActive: boolean
     language: string
     createdAt: string
@@ -174,14 +176,23 @@ export default function AdminChannelsPage() {
             >
                 <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="font-semibold text-base truncate text-primary">{channel.displayName}</h3>
-                                <Badge variant={channel.isActive ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                                    {channel.isActive ? 'Active' : 'Inactive'}
-                                </Badge>
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {/* Channel Avatar */}
+                            <div className="h-10 w-10 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+                                {channel.avatarUrl
+                                    ? <img src={channel.avatarUrl} alt={channel.displayName} className="h-full w-full object-cover" />
+                                    : <span className="text-primary font-bold text-sm">{channel.displayName[0]?.toUpperCase()}</span>
+                                }
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1 font-mono">/{channel.name}</p>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="font-semibold text-base truncate text-primary">{channel.displayName}</h3>
+                                    <Badge variant={channel.isActive ? 'default' : 'secondary'} className="text-[10px] shrink-0">
+                                        {channel.isActive ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5 font-mono">/{channel.name}</p>
+                            </div>
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -250,12 +261,21 @@ export default function AdminChannelsPage() {
             >
                 {/* Channel info */}
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-primary">{channel.displayName}</span>
-                        <span className="text-xs text-muted-foreground font-mono">/{channel.name}</span>
-                        <Badge variant={channel.isActive ? 'default' : 'secondary'} className="text-[10px]">
-                            {channel.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
+                    <div className="flex items-center gap-3">
+                        {/* Avatar */}
+                        <div className="h-8 w-8 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
+                            {channel.avatarUrl
+                                ? <img src={channel.avatarUrl} alt={channel.displayName} className="h-full w-full object-cover" />
+                                : <span className="text-primary font-bold text-xs">{channel.displayName[0]?.toUpperCase()}</span>
+                            }
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm text-primary">{channel.displayName}</span>
+                            <span className="text-xs text-muted-foreground font-mono">/{channel.name}</span>
+                            <Badge variant={channel.isActive ? 'default' : 'secondary'} className="text-[10px]">
+                                {channel.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                        </div>
                     </div>
                 </div>
 
