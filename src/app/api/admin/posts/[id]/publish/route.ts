@@ -1604,18 +1604,13 @@ async function publishToTikTok(
                     '-i', tmpPath,
                     // Silent audio fallback in case video has no audio track
                     '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
-                    // Video: H.264 High profile, cap to 1080p max width/height, 30fps
+                    // Video: H.264 High profile — simple, proven TikTok-compatible settings
                     '-c:v', 'libx264',
                     '-profile:v', 'high',
                     '-level', '4.0',
                     '-pix_fmt', 'yuv420p',
                     '-preset', 'fast',
                     '-crf', '23',
-                    '-maxrate', '10M',      // TikTok max recommended bitrate
-                    '-bufsize', '20M',
-                    // Scale: if width OR height > 1080, scale down to max 1080px keeping aspect ratio
-                    // "scale=w='if(gt(iw,ih),min(iw,1080),-2)':h='if(gt(iw,ih),-2,min(ih,1080))'"
-                    '-vf', "scale='if(gt(iw,ih),min(iw,1080),-2)':'if(gt(iw,ih),-2,min(ih,1080))',fps=fps=30",
                     // Audio: AAC stereo 128k
                     '-c:a', 'aac',
                     '-b:a', '128k',
