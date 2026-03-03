@@ -222,16 +222,7 @@ function QueueCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate, an
                         <PenSquare className="h-8 w-8 text-muted-foreground/20" />
                     </div>
                 )}
-                {/* Platform icons overlay */}
-                {platforms.length > 0 && (
-                    <div className="absolute top-1.5 left-1.5 flex gap-1">
-                        {platforms.map(p => (
-                            <div key={p} className="h-5 w-5 rounded bg-background/80 backdrop-blur-sm flex items-center justify-center">
-                                <PlatformIcon platform={p} size="sm" />
-                            </div>
-                        ))}
-                    </div>
-                )}
+
             </div>
 
             {/* Content */}
