@@ -816,10 +816,15 @@ export default function ComposePage() {
     // TikTok settings
     const [ttPostType, setTtPostType] = useState<'video' | 'carousel'>('video')
     const [ttPublishMode, setTtPublishMode] = useState<'direct' | 'inbox'>('direct')
-    const [ttVisibility, setTtVisibility] = useState<'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'SELF_ONLY'>('PUBLIC_TO_EVERYONE')
-    const [ttAllowComment, setTtAllowComment] = useState(true)
+    // No default — TikTok requires user to manually select privacy (guideline Point 2)
+    const [ttVisibility, setTtVisibility] = useState<'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'SELF_ONLY' | ''>('')
+    // All interaction settings must be unchecked by default (guideline Point 3)
+    const [ttAllowComment, setTtAllowComment] = useState(false)
     const [ttAllowDuet, setTtAllowDuet] = useState(false)
     const [ttAllowStitch, setTtAllowStitch] = useState(false)
+    // Commercial content disclosure (guideline Point 4): outer toggle + sub-checkboxes
+    const [ttCommercialDisclosure, setTtCommercialDisclosure] = useState(false)
+    const [ttYourBrand, setTtYourBrand] = useState(false)
     const [ttBrandedContent, setTtBrandedContent] = useState(false)
     const [ttAiGenerated, setTtAiGenerated] = useState(false)
     const [ttSettingsOpen, setTtSettingsOpen] = useState(true)
@@ -2229,6 +2234,8 @@ export default function ComposePage() {
                     allowComment: ttAllowComment,
                     allowDuet: ttAllowDuet,
                     allowStitch: ttAllowStitch,
+                    commercialDisclosure: ttCommercialDisclosure,
+                    yourBrand: ttYourBrand,
                     brandedContent: ttBrandedContent,
                     aiGenerated: ttAiGenerated,
                 } : {}),
@@ -2317,6 +2324,10 @@ export default function ComposePage() {
                 case 'tiktok':
                     if (!hasVideo) errors.push('🎵 TikTok requires a video. Please upload a video.')
                     else if (mediaRatio === '16:9') errors.push('🎵 TikTok videos should be vertical (9:16). Landscape videos will be rejected.')
+                    // Point 2: Privacy must be selected (no default allowed)
+                    if (!ttVisibility) errors.push('🎵 TikTok: Please select who can see your post (privacy setting is required).')
+                    // Point 4: If commercial disclosure is on, at least one sub-option must be checked
+                    if (ttCommercialDisclosure && !ttYourBrand && !ttBrandedContent) errors.push('🎵 TikTok: Please indicate if your content promotes yourself, a third party, or both.')
                     break
                 case 'youtube':
                     if (!hasVideo) errors.push('▶️ YouTube requires a video. Please upload a video.')
@@ -3818,154 +3829,285 @@ export default function ComposePage() {
                     )}
 
                     {/* TikTok Settings — only when TikTok platform is selected */}
-                    {selectedChannel?.platforms?.some(p => p.platform === 'tiktok' && selectedPlatformIds.has(p.id)) && (
-                        <Card>
-                            <CardHeader className="py-1.5 px-2.5">
-                                <button
-                                    type="button"
-                                    className="flex items-center justify-between w-full cursor-pointer"
-                                    onClick={() => setTtSettingsOpen(!ttSettingsOpen)}
-                                >
-                                    <CardTitle className="text-xs flex items-center gap-1.5">
-                                        <PlatformIcon platform="tiktok" size="sm" />
-                                        TikTok Settings
-                                    </CardTitle>
-                                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${ttSettingsOpen ? '' : '-rotate-90'}`} />
-                                </button>
-                            </CardHeader>
-                            {ttSettingsOpen && (
-                                <CardContent className="space-y-2 px-2.5 pb-2">
-                                    {/* Publish As */}
-                                    <div className="space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground">Publish As</Label>
-                                        <div className="grid grid-cols-2 gap-1">
-                                            {[
-                                                { value: 'direct' as const, label: 'Direct Publishing', icon: Send },
-                                                { value: 'inbox' as const, label: 'App Notification', icon: Bell },
-                                            ].map(opt => {
-                                                const isActive = ttPublishMode === opt.value
-                                                return (
-                                                    <button
-                                                        key={opt.value}
-                                                        type="button"
-                                                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
-                                                            ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-                                                            : 'border-border hover:border-cyan-300 text-muted-foreground hover:text-foreground'
-                                                            }`}
-                                                        onClick={() => setTtPublishMode(opt.value)}
-                                                    >
-                                                        <opt.icon className="h-3.5 w-3.5" />
-                                                        {opt.label}
-                                                    </button>
-                                                )
-                                            })}
+                    {selectedChannel?.platforms?.some(p => p.platform === 'tiktok' && selectedPlatformIds.has(p.id)) && (() => {
+                        // Detect if Branded Content + SELF_ONLY conflict
+                        const brandedContentConflict = ttCommercialDisclosure && ttBrandedContent && ttVisibility === 'SELF_ONLY'
+                        // Compute the TikTok account nickname for display
+                        const ttPlatform = selectedChannel?.platforms?.find(p => p.platform === 'tiktok' && selectedPlatformIds.has(p.id))
+                        const ttNickname = ttPlatform?.accountName || ttPlatform?.accountId || 'Your TikTok Account'
+
+                        // Compute disclaimer text based on commercial disclosure state
+                        const showBrandedDisclaimer = ttCommercialDisclosure && ttBrandedContent
+
+                        return (
+                            <Card className="border-[#00F2EA]/30">
+                                <CardHeader className="py-1.5 px-2.5">
+                                    <button
+                                        type="button"
+                                        className="flex items-center justify-between w-full cursor-pointer"
+                                        onClick={() => setTtSettingsOpen(!ttSettingsOpen)}
+                                    >
+                                        <CardTitle className="text-xs flex items-center gap-1.5">
+                                            <PlatformIcon platform="tiktok" size="sm" />
+                                            TikTok Settings
+                                        </CardTitle>
+                                        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${ttSettingsOpen ? '' : '-rotate-90'}`} />
+                                    </button>
+                                </CardHeader>
+                                {ttSettingsOpen && (
+                                    <CardContent className="space-y-3 px-2.5 pb-3">
+
+                                        {/* Point 1: Creator nickname — user must see which account will be posted to */}
+                                        <div className="flex items-center gap-2 p-2 rounded-md bg-[#00F2EA]/5 border border-[#00F2EA]/20">
+                                            <div className="h-6 w-6 rounded-full bg-[#00F2EA]/20 flex items-center justify-center text-[10px] font-bold text-[#00F2EA]">
+                                                {ttNickname.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <p className="text-[10px] text-muted-foreground">Posting to TikTok as</p>
+                                                <p className="text-xs font-semibold">{ttNickname}</p>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Post Type */}
-                                    <div className="space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground">Post Type</Label>
-                                        <div className="grid grid-cols-2 gap-1">
-                                            {[
-                                                { value: 'video' as const, label: 'Video', icon: Video },
-                                                { value: 'carousel' as const, label: 'Image Carousel', icon: Layers },
-                                            ].map(opt => {
-                                                const isActive = ttPostType === opt.value
-                                                return (
-                                                    <button
-                                                        key={opt.value}
-                                                        type="button"
-                                                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
-                                                            ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
-                                                            : 'border-border hover:border-cyan-300 text-muted-foreground hover:text-foreground'
-                                                            }`}
-                                                        onClick={() => setTtPostType(opt.value)}
-                                                    >
-                                                        <opt.icon className="h-3.5 w-3.5" />
-                                                        {opt.label}
-                                                    </button>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Visibility */}
-                                    <div className="space-y-1 border-t pt-1.5">
-                                        <Label className="text-[10px] text-muted-foreground">Who can see</Label>
-                                        <Select value={ttVisibility} onValueChange={(v) => setTtVisibility(v as typeof ttVisibility)}>
-                                            <SelectTrigger className="text-xs h-7">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="PUBLIC_TO_EVERYONE">
-                                                    <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Public To Everyone</span>
-                                                </SelectItem>
-                                                <SelectItem value="MUTUAL_FOLLOW_FRIENDS">
-                                                    <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Mutual Follow Friends</span>
-                                                </SelectItem>
-                                                <SelectItem value="SELF_ONLY">
-                                                    <span className="flex items-center gap-1.5"><Lock className="h-3 w-3" /> Self Only</span>
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Allow User to */}
-                                    <div className="border-t pt-1.5 space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground">Allow User to</Label>
+                                        {/* Publish As */}
                                         <div className="space-y-1">
-                                            {[
-                                                { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment },
-                                                { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet },
-                                                { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch },
-                                            ].map(opt => (
-                                                <div key={opt.label} className="flex items-center justify-between">
-                                                    <p className="text-xs font-medium">{opt.label}</p>
-                                                    <button
-                                                        type="button"
-                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${opt.value ? 'bg-cyan-500' : 'bg-muted'}`}
-                                                        onClick={() => opt.setter(!opt.value)}
-                                                    >
-                                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${opt.value ? 'translate-x-6' : 'translate-x-1'}`} />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                            <Label className="text-[10px] text-muted-foreground">Publish As</Label>
+                                            <div className="grid grid-cols-2 gap-1">
+                                                {[
+                                                    { value: 'direct' as const, label: 'Direct Publishing', icon: Send },
+                                                    { value: 'inbox' as const, label: 'App Notification', icon: Bell },
+                                                ].map(opt => {
+                                                    const isActive = ttPublishMode === opt.value
+                                                    return (
+                                                        <button
+                                                            key={opt.value}
+                                                            type="button"
+                                                            className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
+                                                                ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+                                                                : 'border-border hover:border-cyan-300 text-muted-foreground hover:text-foreground'
+                                                                }`}
+                                                            onClick={() => setTtPublishMode(opt.value)}
+                                                        >
+                                                            <opt.icon className="h-3.5 w-3.5" />
+                                                            {opt.label}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Branded Content & AI-Generated */}
-                                    <div className="border-t pt-1.5 space-y-1">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" />
-                                                <p className="text-xs font-medium">Branded content</p>
+                                        {/* Post Type */}
+                                        <div className="space-y-1">
+                                            <Label className="text-[10px] text-muted-foreground">Post Type</Label>
+                                            <div className="grid grid-cols-2 gap-1">
+                                                {[
+                                                    { value: 'video' as const, label: 'Video', icon: Video },
+                                                    { value: 'carousel' as const, label: 'Image Carousel', icon: Layers },
+                                                ].map(opt => {
+                                                    const isActive = ttPostType === opt.value
+                                                    return (
+                                                        <button
+                                                            key={opt.value}
+                                                            type="button"
+                                                            className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-md border transition-all cursor-pointer text-[11px] font-medium ${isActive
+                                                                ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+                                                                : 'border-border hover:border-cyan-300 text-muted-foreground hover:text-foreground'
+                                                                }`}
+                                                            onClick={() => setTtPostType(opt.value)}
+                                                        >
+                                                            <opt.icon className="h-3.5 w-3.5" />
+                                                            {opt.label}
+                                                        </button>
+                                                    )
+                                                })}
                                             </div>
-                                            <button
-                                                type="button"
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ttBrandedContent ? 'bg-cyan-500' : 'bg-muted'}`}
-                                                onClick={() => setTtBrandedContent(!ttBrandedContent)}
-                                            >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ttBrandedContent ? 'translate-x-6' : 'translate-x-1'}`} />
-                                            </button>
                                         </div>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
-                                                <p className="text-xs font-medium">AI-generated</p>
+
+                                        {/* Point 2: Visibility — no default, user must manually select */}
+                                        <div className="space-y-1 border-t pt-2">
+                                            <Label className="text-[10px] text-muted-foreground">Who can see <span className="text-destructive">*</span></Label>
+                                            <Select value={ttVisibility} onValueChange={(v) => {
+                                                const newVis = v as typeof ttVisibility
+                                                // If Branded Content is on, block SELF_ONLY
+                                                if (newVis === 'SELF_ONLY' && ttCommercialDisclosure && ttBrandedContent) return
+                                                setTtVisibility(newVis)
+                                            }}>
+                                                <SelectTrigger className={`text-xs h-7 ${ttVisibility === '' ? 'text-muted-foreground' : ''}`}>
+                                                    <SelectValue placeholder="Select privacy…" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="PUBLIC_TO_EVERYONE">
+                                                        <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Public To Everyone</span>
+                                                    </SelectItem>
+                                                    <SelectItem value="MUTUAL_FOLLOW_FRIENDS">
+                                                        <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Mutual Follow Friends</span>
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value="SELF_ONLY"
+                                                        disabled={ttCommercialDisclosure && ttBrandedContent}
+                                                    >
+                                                        <span className="flex items-center gap-1.5">
+                                                            <Lock className="h-3 w-3" /> Self Only
+                                                            {ttCommercialDisclosure && ttBrandedContent && (
+                                                                <span className="text-[9px] text-destructive ml-1">(unavailable for Branded Content)</span>
+                                                            )}
+                                                        </span>
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            {brandedContentConflict && (
+                                                <p className="text-[10px] text-destructive">Branded content visibility cannot be set to private.</p>
+                                            )}
+                                        </div>
+
+                                        {/* Point 3: Interaction settings — all unchecked by default */}
+                                        <div className="border-t pt-2 space-y-1.5">
+                                            <Label className="text-[10px] text-muted-foreground">Allow User to</Label>
+                                            <div className="space-y-1">
+                                                {[
+                                                    { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment },
+                                                    { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet },
+                                                    { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch },
+                                                ].map(opt => (
+                                                    <div key={opt.label} className="flex items-center justify-between">
+                                                        <p className="text-xs font-medium">{opt.label}</p>
+                                                        <button
+                                                            type="button"
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${opt.value ? 'bg-cyan-500' : 'bg-muted'}`}
+                                                            onClick={() => opt.setter(!opt.value)}
+                                                        >
+                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${opt.value ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                        </button>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <button
-                                                type="button"
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ttAiGenerated ? 'bg-cyan-500' : 'bg-muted'}`}
-                                                onClick={() => setTtAiGenerated(!ttAiGenerated)}
-                                            >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ttAiGenerated ? 'translate-x-6' : 'translate-x-1'}`} />
-                                            </button>
                                         </div>
-                                    </div>
-                                </CardContent>
-                            )}
-                        </Card>
-                    )}
+
+                                        {/* Point 4: Commercial Content Disclosure */}
+                                        <div className="border-t pt-2 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5">
+                                                    <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" />
+                                                    <div>
+                                                        <p className="text-xs font-medium">Disclose commercial content</p>
+                                                        <p className="text-[9px] text-muted-foreground">Indicate if this promotes yourself, a brand, product or service</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer flex-shrink-0 ${ttCommercialDisclosure ? 'bg-cyan-500' : 'bg-muted'}`}
+                                                    onClick={() => {
+                                                        const next = !ttCommercialDisclosure
+                                                        setTtCommercialDisclosure(next)
+                                                        if (!next) {
+                                                            setTtYourBrand(false)
+                                                            setTtBrandedContent(false)
+                                                        }
+                                                    }}
+                                                >
+                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ttCommercialDisclosure ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+
+                                            {/* Sub-checkboxes — only visible when disclosure is on */}
+                                            {ttCommercialDisclosure && (
+                                                <div className="ml-5 space-y-2 p-2 rounded-md bg-muted/40 border border-border">
+                                                    {/* Your Brand */}
+                                                    <label className="flex items-start gap-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="mt-0.5"
+                                                            checked={ttYourBrand}
+                                                            onChange={e => setTtYourBrand(e.target.checked)}
+                                                        />
+                                                        <div>
+                                                            <p className="text-xs font-medium">Your Brand</p>
+                                                            <p className="text-[9px] text-muted-foreground">You are promoting yourself or your own business (Brand Organic)</p>
+                                                            {ttYourBrand && !ttBrandedContent && (
+                                                                <p className="text-[9px] text-amber-500 mt-0.5">Your photo/video will be labeled as &apos;Promotional content&apos;</p>
+                                                            )}
+                                                        </div>
+                                                    </label>
+                                                    {/* Branded Content */}
+                                                    <label className="flex items-start gap-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="mt-0.5"
+                                                            checked={ttBrandedContent}
+                                                            onChange={e => {
+                                                                setTtBrandedContent(e.target.checked)
+                                                                // Auto-clear SELF_ONLY if branded content is turned on
+                                                                if (e.target.checked && ttVisibility === 'SELF_ONLY') {
+                                                                    setTtVisibility('PUBLIC_TO_EVERYONE')
+                                                                }
+                                                            }}
+                                                        />
+                                                        <div>
+                                                            <p className="text-xs font-medium">Branded Content</p>
+                                                            <p className="text-[9px] text-muted-foreground">You are promoting another brand or third party (must be public/friends)</p>
+                                                            {ttBrandedContent && (
+                                                                <p className="text-[9px] text-amber-500 mt-0.5">Your photo/video will be labeled as &apos;Paid partnership&apos;</p>
+                                                            )}
+                                                        </div>
+                                                    </label>
+                                                    {/* At-least-one validation hint */}
+                                                    {!ttYourBrand && !ttBrandedContent && (
+                                                        <p className="text-[9px] text-muted-foreground italic">You need to indicate if your content promotes yourself, a third party, or both.</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* AI-Generated toggle */}
+                                        <div className="border-t pt-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
+                                                    <p className="text-xs font-medium">AI-generated content</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${ttAiGenerated ? 'bg-cyan-500' : 'bg-muted'}`}
+                                                    onClick={() => setTtAiGenerated(!ttAiGenerated)}
+                                                >
+                                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${ttAiGenerated ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Point 5: Music Usage Confirmation disclaimer */}
+                                        <div className="border-t pt-2">
+                                            <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                By posting, you agree to TikTok&apos;s{' '}
+                                                {showBrandedDisclaimer && (
+                                                    <>
+                                                        <a
+                                                            href="https://www.tiktok.com/legal/page/global/bc-policy/en"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[#00F2EA] hover:underline"
+                                                        >
+                                                            Branded Content Policy
+                                                        </a>
+                                                        {' '}and{' '}
+                                                    </>
+                                                )}
+                                                <a
+                                                    href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[#00F2EA] hover:underline"
+                                                >
+                                                    Music Usage Confirmation
+                                                </a>
+                                                .
+                                            </p>
+                                        </div>
+
+                                    </CardContent>
+                                )}
+                            </Card>
+                        )
+                    })()}
 
                     {/* Pinterest Settings — only when Pinterest platform is selected */}
                     {activePlatforms.some(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest') && (
