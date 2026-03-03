@@ -497,13 +497,9 @@ export default function PostsPage() {
             if (prevStatus === 'PUBLISHING') {
                 const platforms = [...new Set(post.platformStatuses.map(ps => ps.platform))].join(', ')
                 if (post.status === 'PUBLISHED') {
-                    toast.success(`Published successfully${platforms ? ` · ${platforms}` : ''}`, {
-                        description: post.content ? post.content.slice(0, 60) + (post.content.length > 60 ? '…' : '') : undefined,
-                    })
+                    toast.success(`Published successfully${platforms ? ` · ${platforms}` : ''}`)
                 } else if (post.status === 'FAILED') {
-                    toast.error(`Publish failed${platforms ? ` · ${platforms}` : ''}`, {
-                        description: 'Check post details for more info.',
-                    })
+                    toast.error(`Publish failed${platforms ? ` · ${platforms}` : ''}`)
                 }
             }
         }
