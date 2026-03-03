@@ -2639,43 +2639,42 @@ export default function ComposePage() {
                                         <div
                                             key={p.id}
                                             onClick={() => togglePlatform(p.id)}
-                                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer select-none transition-all duration-150 ${isChecked
+                                            className={`flex items-start gap-2 px-3 py-2.5 rounded-xl cursor-pointer select-none transition-all duration-150 ${isChecked
                                                 ? 'bg-primary/10 border border-primary/20'
                                                 : 'hover:bg-muted/50 border border-transparent'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-2.5">
-                                                {/* Avatar with platform icon overlay */}
-                                                <div className="relative shrink-0">
-                                                    {getPlatformAvatar(p) ? (
-                                                        <img
-                                                            src={getPlatformAvatar(p)!}
-                                                            alt={p.accountName}
-                                                            className="h-7 w-7 rounded-full object-cover border border-border/50"
-                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden') }}
-                                                        />
-                                                    ) : null}
-                                                    <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getPlatformAvatar(p) ? 'hidden' : ''}`}
-                                                        style={{ backgroundColor: platformColors[p.platform] || '#666' }}>
-                                                        {p.accountName?.[0]?.toUpperCase() || '?'}
-                                                    </div>
-                                                    <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border border-background flex items-center justify-center"
-                                                        style={{ backgroundColor: platformColors[p.platform] || '#666' }}>
+                                            {/* Avatar with platform icon overlay */}
+                                            <div className="relative shrink-0 mt-0.5">
+                                                {getPlatformAvatar(p) ? (
+                                                    <img
+                                                        src={getPlatformAvatar(p)!}
+                                                        alt={p.accountName}
+                                                        className="h-7 w-7 rounded-full object-cover border border-border/50"
+                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden') }}
+                                                    />
+                                                ) : null}
+                                                <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getPlatformAvatar(p) ? 'hidden' : ''}`}
+                                                    style={{ backgroundColor: platformColors[p.platform] || '#666' }}>
+                                                    {p.accountName?.[0]?.toUpperCase() || '?'}
+                                                </div>
+                                                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border border-background flex items-center justify-center"
+                                                    style={{ backgroundColor: platformColors[p.platform] || '#666' }}>
+                                                    <span style={{ filter: 'brightness(0) invert(1)' }} className="flex items-center justify-center">
                                                         <PlatformIcon platform={p.platform} size="xs" />
                                                     </span>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className={`text-xs font-medium truncate ${isChecked ? 'text-primary' : 'text-foreground'}`}>
-                                                        {p.accountName}
-                                                    </p>
-                                                    <p className="text-[9px] text-muted-foreground capitalize">{p.platform}</p>
-                                                </div>
+                                                </span>
                                             </div>
-                                            {/* Toggle switch */}
-                                            <div className={`w-8 h-4 rounded-full relative transition-colors shrink-0 ${isChecked ? 'bg-primary' : 'bg-muted'
-                                                }`}>
-                                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isChecked ? 'right-0.5 bg-background' : 'left-0.5 bg-muted-foreground/50'
-                                                    }`} />
+                                            {/* Name + platform label — grows, wraps, won't push toggle */}
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-xs font-medium leading-tight line-clamp-2 break-words ${isChecked ? 'text-primary' : 'text-foreground'}`}>
+                                                    {p.accountName}
+                                                </p>
+                                                <p className="text-[9px] text-muted-foreground capitalize mt-0.5">{p.platform}</p>
+                                            </div>
+                                            {/* Toggle switch — always shrink-0, stays right */}
+                                            <div className={`w-8 h-4 rounded-full relative transition-colors shrink-0 mt-1.5 ${isChecked ? 'bg-primary' : 'bg-muted'}`}>
+                                                <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isChecked ? 'right-0.5 bg-background' : 'left-0.5 bg-muted-foreground/50'}`} />
                                             </div>
                                         </div>
                                     )
@@ -4778,7 +4777,9 @@ export default function ComposePage() {
                                                 className="flex items-center justify-center h-4 w-4 rounded-full shrink-0"
                                                 style={{ backgroundColor: platformColors[platform] || '#666' }}
                                             >
-                                                <PlatformIcon platform={platform} size="xs" />
+                                                <span style={{ filter: 'brightness(0) invert(1)' }} className="flex items-center justify-center">
+                                                    <PlatformIcon platform={platform} size="xs" />
+                                                </span>
                                             </span>
                                             <span className="capitalize">{platformLabels[platform] || platform}</span>
                                             {uniqueSelectedPlatforms.length > 1 && selectedEntries.filter((e) => e.platform === platform).length > 1 && (
