@@ -128,6 +128,7 @@ interface ChannelPlatformEntry {
     platform: string
     accountId: string
     accountName: string
+    avatarUrl?: string | null
     isActive: boolean
     config?: Record<string, unknown>
 }
@@ -2317,9 +2318,30 @@ export default function ChannelDetailPage({
                                                                         key={p.id}
                                                                         className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors"
                                                                     >
-                                                                        <div>
-                                                                            <p className="text-sm font-medium">{p.accountName}</p>
-                                                                            <p className="text-xs text-muted-foreground font-mono">{p.accountId}</p>
+                                                                        <div className="flex items-center gap-2.5">
+                                                                            {/* Avatar with platform icon overlay */}
+                                                                            <div className="relative shrink-0">
+                                                                                <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex items-center justify-center ring-1 ring-border">
+                                                                                    {p.avatarUrl ? (
+                                                                                        <img
+                                                                                            src={p.avatarUrl}
+                                                                                            alt={p.accountName}
+                                                                                            className="w-full h-full object-cover"
+                                                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('style') }}
+                                                                                        />
+                                                                                    ) : null}
+                                                                                    <span className={`text-xs font-semibold text-muted-foreground ${p.avatarUrl ? 'hidden' : ''}`}>
+                                                                                        {p.accountName.charAt(0).toUpperCase()}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center ring-1 ring-border">
+                                                                                    {platformIcons[p.platform] || <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: platformOptions.find(o => o.value === p.platform)?.color || '#888' }} />}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-sm font-medium">{p.accountName}</p>
+                                                                                <p className="text-xs text-muted-foreground font-mono">{p.accountId}</p>
+                                                                            </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-2">
                                                                             <Switch
