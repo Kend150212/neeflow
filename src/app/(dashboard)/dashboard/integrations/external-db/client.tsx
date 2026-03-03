@@ -297,7 +297,7 @@ export function ExternalDbSetupClient({ activeChannelId: serverChannelId, initia
                     </div>
                     {/* Explorer shortcut — visible when connection is confirmed */}
                     {testStatus === 'ok' && (
-                        <Link href={`/dashboard/integrations/external-db/explorer${activeChannelId ? `?channelId=${activeChannelId}` : ''}`} className="flex-shrink-0">
+                        <Link href={`/dashboard/integrations/external-db/explorer${channelId ? `?channelId=${channelId}` : ''}`} className="flex-shrink-0">
                             <Button className="gap-2 font-bold">
                                 <Activity className="h-4 w-4" />
                                 Open Data Explorer
