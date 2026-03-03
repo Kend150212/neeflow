@@ -93,36 +93,30 @@ interface ImageConfig {
     provider: string
     model?: string
     keySource?: string   // 'byok' | 'plan'
-    prompt: string
+    prompt?: string      // optional — if empty, post content is used as prompt
     width?: number
     height?: number
 }
 
 async function generateAiImageForPost(
     imageConfig: ImageConfig,
+    effectivePrompt: string,
     channelId: string,
     ownerId: string,
 ): Promise<string | null> {
-    const { provider, model: requestedModel, keySource, prompt, width = 1024, height = 1024 } = imageConfig
+    const { provider, model: requestedModel, keySource, width = 1024, height = 1024 } = imageConfig
     try {
         const keyResult = await resolveImageAIKey(channelId, provider, requestedModel, keySource)
-        if (!keyResult.ok) return null
-        const { apiKey, provider: resolvedProvider, usingPlatformKey } = keyResult.data
-
-        // Call the generate-image endpoint internally as a fetch — reuse all its logic
-        const res = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/admin/posts/generate-image`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-internal-call': '1' },
-            body: JSON.stringify({ channelId, prompt, width, height, provider: resolvedProvider, model: requestedModel, keySource, _apiKey: apiKey }),
-        }).catch(() => null)
-
-        if (!res || !res.ok) {
-            // Fallback: call provider directly and create a minimal MediaItem
-            return await generateImageDirectly(imageConfig, channelId, ownerId, apiKey, resolvedProvider, usingPlatformKey)
+        if (!keyResult.ok) {
+            console.warn('[generate-from-db] resolveImageAIKey failed:', keyResult)
+            return null
         }
-
-        const data = await res.json()
-        return data.mediaItem?.id ?? null
+        const { apiKey, provider: resolvedProvider, usingPlatformKey } = keyResult.data
+        console.log('[generate-from-db] Generating AI image via', resolvedProvider, 'prompt length:', effectivePrompt.length)
+        return await generateImageDirectly(
+            { ...imageConfig, prompt: effectivePrompt, width, height },
+            channelId, ownerId, apiKey, resolvedProvider, usingPlatformKey
+        )
     } catch (err) {
         console.warn('[generate-from-db] AI image generation failed:', err)
         return null
@@ -439,9 +433,13 @@ ${allHashtags.length > 0 ? `- You may use relevant hashtags from this list: ${al
 
         // ── Generate & attach AI image if requested ────────────────────────
         let aiImageAttached = false
-        if (imageConfig && typeof imageConfig === 'object' && imageConfig.prompt) {
+        if (imageConfig && typeof imageConfig === 'object' && imageConfig.provider) {
+            // Use user's prompt if provided, otherwise fall back to generated post content
+            const effectivePrompt = (imageConfig.prompt ?? '').trim() || firstContent
+            console.log('[generate-from-db] AI image requested, prompt source:', imageConfig.prompt ? 'user' : 'post-content')
             const aiMediaId = await generateAiImageForPost(
                 imageConfig as ImageConfig,
+                effectivePrompt,
                 channelId,
                 quotaUserId,
             )
@@ -450,6 +448,9 @@ ${allHashtags.length > 0 ? `- You may use relevant hashtags from this list: ${al
                     data: { postId: post.id, mediaItemId: aiMediaId, sortOrder: 0 },
                 }).catch(() => { /* non-fatal */ })
                 aiImageAttached = true
+                console.log('[generate-from-db] AI image attached to post', post.id)
+            } else {
+                console.warn('[generate-from-db] AI image generation returned null, skipping attachment')
             }
         }
 

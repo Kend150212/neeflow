@@ -344,14 +344,14 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         const singleScheduledAt = (enableSchedule && isSingleRow)
             ? distributeScheduleTimes(scheduleStart, scheduleEnd, 1, channelTimezone)[0] : null
 
-        // Build imageConfig payload — sent to generate-from-db API which generates the image server-side per row
-        const aiImagePayload = enableAiImage && imagePrompt.trim() && imageProvider
+        // Build imageConfig payload — server generates image per-row; prompt is optional (falls back to post content)
+        const aiImagePayload = enableAiImage && imageProvider
             ? {
                 imageConfig: {
                     provider: imageProvider.split(':').slice(1).join(':'),
                     model: imageModel || undefined,
                     keySource: imageProvider.split(':')[0],
-                    prompt: imagePrompt.trim(),
+                    prompt: imagePrompt.trim() || undefined,  // undefined = server uses post content
                     width: (ASPECT_RATIOS.find(a => a.label === selectedAspect) ?? ASPECT_RATIOS[0]).w,
                     height: (ASPECT_RATIOS.find(a => a.label === selectedAspect) ?? ASPECT_RATIOS[0]).h,
                 },
