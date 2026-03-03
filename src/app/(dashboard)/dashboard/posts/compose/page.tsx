@@ -124,6 +124,7 @@ interface ChannelPlatform {
     accountId: string
     accountName: string
     isActive: boolean
+    avatarUrl?: string | null
     config?: Record<string, unknown> | null
 }
 
@@ -230,9 +231,12 @@ const ACCEPTED_FILE_TYPES = [
 
 // ─── Realistic Preview Components ───────────────────
 
-// Helper: extract avatar URL from platform config (Facebook, Instagram, etc. store picture in config)
+// Helper: extract avatar URL — prefers the dedicated avatarUrl field, then falls back to config
 function getPlatformAvatar(platform: ChannelPlatform | undefined): string | null {
-    if (!platform?.config) return null
+    if (!platform) return null
+    // Prefer the top-level avatarUrl field (set by OAuth callbacks)
+    if (platform.avatarUrl) return platform.avatarUrl
+    if (!platform.config) return null
     const cfg = platform.config as Record<string, unknown>
     // Common fields: picture, avatar, profilePicture, profile_picture_url
     const url = cfg.picture || cfg.avatar || cfg.profilePicture || cfg.profile_picture_url
@@ -2641,8 +2645,24 @@ export default function ComposePage() {
                                                 }`}
                                         >
                                             <div className="flex items-center gap-2.5">
-                                                <div className="h-5 w-5 shrink-0 flex items-center justify-center">
-                                                    <PlatformIcon platform={p.platform} size="sm" />
+                                                {/* Avatar with platform icon overlay */}
+                                                <div className="relative shrink-0">
+                                                    {getPlatformAvatar(p) ? (
+                                                        <img
+                                                            src={getPlatformAvatar(p)!}
+                                                            alt={p.accountName}
+                                                            className="h-7 w-7 rounded-full object-cover border border-border/50"
+                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden') }}
+                                                        />
+                                                    ) : null}
+                                                    <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getPlatformAvatar(p) ? 'hidden' : ''}`}
+                                                        style={{ backgroundColor: platformColors[p.platform] || '#666' }}>
+                                                        {p.accountName?.[0]?.toUpperCase() || '?'}
+                                                    </div>
+                                                    <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border border-background flex items-center justify-center"
+                                                        style={{ backgroundColor: platformColors[p.platform] || '#666' }}>
+                                                        <PlatformIcon platform={p.platform} size="xs" />
+                                                    </span>
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className={`text-xs font-medium truncate ${isChecked ? 'text-primary' : 'text-foreground'}`}>

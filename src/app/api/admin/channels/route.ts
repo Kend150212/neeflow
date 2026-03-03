@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         include: {
             _count: { select: { members: true, posts: true, knowledgeBase: true, platforms: true } },
             platforms: {
-                select: { id: true, platform: true, accountId: true, accountName: true, isActive: true, config: true },
+                select: { id: true, platform: true, accountId: true, accountName: true, isActive: true, avatarUrl: true, config: true },
             },
             // Return OWNER first, fall back to ADMIN
             members: {
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
         include: {
             _count: { select: { members: true, posts: true, knowledgeBase: true, platforms: true } },
             platforms: {
-                select: { id: true, platform: true, accountId: true, accountName: true, isActive: true, config: true },
+                select: { id: true, platform: true, accountId: true, accountName: true, isActive: true, avatarUrl: true, config: true },
             },
         },
     })
