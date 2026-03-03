@@ -171,82 +171,82 @@ export default function AdminChannelsPage() {
         const owner = getOwner(channel.members)
         return (
             <Card
-                className="group cursor-pointer hover:border-primary/30 transition-all duration-200"
+                className="group cursor-pointer hover:border-primary/30 transition-all duration-200 overflow-hidden"
                 onClick={() => router.push(`/dashboard/channels/${channel.id}`)}
             >
-                <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                            {/* Channel Avatar */}
-                            <div className="h-10 w-10 rounded-full shrink-0 overflow-hidden bg-primary/10 flex items-center justify-center">
-                                {channel.avatarUrl
-                                    ? <img src={channel.avatarUrl} alt={channel.displayName} className="h-full w-full object-cover" />
-                                    : <span className="text-primary font-bold text-sm">{channel.displayName[0]?.toUpperCase()}</span>
-                                }
-                            </div>
-                            <div className="flex-1 min-w-0">
+                <div className="flex">
+                    {/* ── Left: Avatar ── */}
+                    <div className="w-24 shrink-0 bg-muted/40 flex items-center justify-center border-r border-border/50">
+                        <div className="h-16 w-16 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center">
+                            {channel.avatarUrl
+                                ? <img src={channel.avatarUrl} alt={channel.displayName} className="h-full w-full object-cover" />
+                                : <span className="text-primary font-bold text-2xl">{channel.displayName[0]?.toUpperCase()}</span>
+                            }
+                        </div>
+                    </div>
+
+                    {/* ── Right: Info ── */}
+                    <div className="flex-1 min-w-0 p-4 space-y-3">
+                        {/* Header row */}
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="font-semibold text-base truncate text-primary">{channel.displayName}</h3>
+                                    <h3 className="font-semibold text-sm truncate text-primary">{channel.displayName}</h3>
                                     <Badge variant={channel.isActive ? 'default' : 'secondary'} className="text-[10px] shrink-0">
                                         {channel.isActive ? 'Active' : 'Inactive'}
                                     </Badge>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5 font-mono">/{channel.name}</p>
+                                <p className="text-[11px] text-muted-foreground font-mono mt-0.5">/{channel.name}</p>
                             </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/channels/${channel.id}`) }}>
+                                        <Pencil className="h-4 w-4 mr-2" /> {t('channels.editSettings')}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(channel) }}
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" /> {t('channels.delete')}
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/channels/${channel.id}`) }}>
-                                    <Pencil className="h-4 w-4 mr-2" /> {t('channels.editSettings')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(channel) }}
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" /> {t('channels.delete')}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    {/* Owner info */}
-                    {owner && (
-                        <div className="flex items-center gap-2 text-xs p-2 rounded-lg bg-muted/50 border border-border/50">
-                            <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-bold shrink-0">
-                                {(owner.user.name || owner.user.email)[0]?.toUpperCase()}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1">
-                                    {owner.role === 'OWNER'
-                                        ? <Crown className="h-3 w-3 text-amber-500 shrink-0" />
-                                        : <ShieldCheck className="h-3 w-3 text-blue-500 shrink-0" />
-                                    }
-                                    <p className="font-medium text-foreground truncate text-xs">{owner.user.name || 'No name'}</p>
-                                </div>
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Mail className="h-2.5 w-2.5 shrink-0" />
-                                    <p className="truncate text-[10px]">{owner.user.email}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {!owner && (
-                        <div className="text-xs text-muted-foreground px-1 italic">No owner assigned</div>
-                    )}
 
-                    {/* Stats row */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
-                        <span className="flex items-center gap-1" title="Members"><Users className="h-3.5 w-3.5" />{channel._count.members}</span>
-                        <span className="flex items-center gap-1" title="Posts"><FileText className="h-3.5 w-3.5" />{channel._count.posts}</span>
-                        <span className="flex items-center gap-1" title="Language"><Globe className="h-3.5 w-3.5" />{channel.language.toUpperCase()}</span>
+                        {/* Owner info */}
+                        {owner ? (
+                            <div className="flex items-center gap-2 text-xs p-1.5 rounded-lg bg-muted/50 border border-border/50">
+                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[9px] font-bold shrink-0">
+                                    {(owner.user.name || owner.user.email)[0]?.toUpperCase()}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1">
+                                        {owner.role === 'OWNER'
+                                            ? <Crown className="h-2.5 w-2.5 text-amber-500 shrink-0" />
+                                            : <ShieldCheck className="h-2.5 w-2.5 text-blue-500 shrink-0" />
+                                        }
+                                        <p className="font-medium text-foreground truncate text-[11px]">{owner.user.name || 'No name'}</p>
+                                    </div>
+                                    <p className="truncate text-[10px] text-muted-foreground">{owner.user.email}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-xs text-muted-foreground italic">No owner assigned</div>
+                        )}
+
+                        {/* Stats row */}
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1" title="Members"><Users className="h-3 w-3" />{channel._count.members}</span>
+                            <span className="flex items-center gap-1" title="Posts"><FileText className="h-3 w-3" />{channel._count.posts}</span>
+                            <span className="flex items-center gap-1" title="Language"><Globe className="h-3 w-3" />{channel.language.toUpperCase()}</span>
+                        </div>
                     </div>
-                </CardContent>
+                </div>
             </Card>
         )
     }
