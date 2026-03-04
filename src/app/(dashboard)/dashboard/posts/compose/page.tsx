@@ -4544,35 +4544,39 @@ export default function ComposePage() {
                                                     <SelectValue placeholder="Select privacy…" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {/* Render only options returned by creator_info, or all 3 as fallback */}
-                                                    {(ttCreatorInfo?.privacy_level_options || ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY']).map(opt => {
-                                                        const labelMap: Record<string, { label: string; icon: React.ReactNode }> = {
-                                                            PUBLIC_TO_EVERYONE: { label: 'Public To Everyone', icon: <Globe className="h-3 w-3" /> },
-                                                            MUTUAL_FOLLOW_FRIENDS: { label: 'Mutual Follow Friends', icon: <Users className="h-3 w-3" /> },
-                                                            SELF_ONLY: { label: 'Self Only', icon: <Lock className="h-3 w-3" /> },
-                                                            FOLLOWER_OF_CREATOR: { label: 'Followers Only', icon: <Users className="h-3 w-3" /> },
-                                                        }
-                                                        const item = labelMap[opt] || { label: opt, icon: null }
-                                                        const isDisabled = opt === 'SELF_ONLY' && ttCommercialDisclosure && ttBrandedContent
-                                                        const selectItem = (
-                                                            <SelectItem key={opt} value={opt} disabled={isDisabled}>
-                                                                <span className="flex items-center gap-1.5">
-                                                                    {item.icon} {item.label}
-                                                                    {isDisabled && <span className="text-[9px] text-destructive ml-1">(unavailable for Branded Content)</span>}
-                                                                </span>
-                                                            </SelectItem>
-                                                        )
-                                                        // Point 3b: wrap disabled SELF_ONLY with tooltip per TikTok guidelines
-                                                        if (isDisabled) {
-                                                            return (
-                                                                <div key={opt} title="Branded content visibility cannot be set to private.">
-                                                                    {selectItem}
-                                                                </div>
+                                                    {/* Always show canonical TikTok order; API options gate which are available */}
+                                                    {(['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY', 'FOLLOWER_OF_CREATOR'] as const)
+                                                        .filter(opt => {
+                                                            const allowed = ttCreatorInfo?.privacy_level_options
+                                                            // If API provided options, only show those; otherwise show top 3
+                                                            return allowed ? allowed.includes(opt) : opt !== 'FOLLOWER_OF_CREATOR'
+                                                        })
+                                                        .map(opt => {
+                                                            const labelMap: Record<string, { label: string; icon: React.ReactNode }> = {
+                                                                PUBLIC_TO_EVERYONE: { label: 'Public To Everyone', icon: <Globe className="h-3 w-3" /> },
+                                                                MUTUAL_FOLLOW_FRIENDS: { label: 'Mutual Follow Friends', icon: <Users className="h-3 w-3" /> },
+                                                                SELF_ONLY: { label: 'Self Only', icon: <Lock className="h-3 w-3" /> },
+                                                                FOLLOWER_OF_CREATOR: { label: 'Followers Only', icon: <Users className="h-3 w-3" /> },
+                                                            }
+                                                            const item = labelMap[opt] || { label: opt, icon: null }
+                                                            const isDisabled = opt === 'SELF_ONLY' && ttCommercialDisclosure && ttBrandedContent
+                                                            const selectItem = (
+                                                                <SelectItem key={opt} value={opt} disabled={isDisabled}>
+                                                                    <span className="flex items-center gap-1.5">
+                                                                        {item.icon} {item.label}
+                                                                        {isDisabled && <span className="text-[9px] text-destructive ml-1">(unavailable for Branded Content)</span>}
+                                                                    </span>
+                                                                </SelectItem>
                                                             )
-                                                        }
-                                                        return selectItem
-
-                                                    })}
+                                                            if (isDisabled) {
+                                                                return (
+                                                                    <div key={opt} title="Branded content visibility cannot be set to private.">
+                                                                        {selectItem}
+                                                                    </div>
+                                                                )
+                                                            }
+                                                            return selectItem
+                                                        })}
                                                 </SelectContent>
                                             </Select>
                                             {brandedContentConflict && (
@@ -4589,37 +4593,37 @@ export default function ComposePage() {
                                             )}
                                         </div>
 
-                                        {/* Point 2c: Interaction settings — all unchecked by default, disabled per creator_info */}
+                                        {/* Point 2c: Interaction settings — horizontal row like TikTok UI (always visible) */}
                                         <div className="border-t pt-2 space-y-1.5">
                                             <Label className="text-[10px] text-muted-foreground">Allow User to</Label>
-                                            <div className="space-y-1">
+                                            <div className="flex items-center gap-3">
                                                 {[
                                                     { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment, apiDisabled: ttCreatorInfo?.comment_disabled },
-                                                    // Duet & Stitch only for video (not photo carousel)
-                                                    ...(ttPostType === 'video' ? [
-                                                        { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet, apiDisabled: ttCreatorInfo?.duet_disabled },
-                                                        { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch, apiDisabled: ttCreatorInfo?.stitch_disabled },
-                                                    ] : []),
+                                                    { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet, apiDisabled: ttCreatorInfo?.duet_disabled || ttPostType !== 'video' },
+                                                    { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch, apiDisabled: ttCreatorInfo?.stitch_disabled || ttPostType !== 'video' },
                                                 ].map(opt => {
                                                     const isDisabled = !!opt.apiDisabled
                                                     return (
-                                                        <div key={opt.label} className="flex items-center justify-between">
-                                                            <div>
-                                                                <p className={`text-xs font-medium ${isDisabled ? 'text-muted-foreground/50' : ''}`}>{opt.label}</p>
-                                                                {isDisabled && <p className="text-[9px] text-muted-foreground/50">Disabled in your TikTok settings</p>}
-                                                            </div>
-                                                            <button
-                                                                type="button"
+                                                        <label
+                                                            key={opt.label}
+                                                            className={`flex items-center gap-1.5 cursor-pointer select-none ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={opt.value && !isDisabled}
                                                                 disabled={isDisabled}
-                                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${opt.value && !isDisabled ? 'bg-cyan-500' : 'bg-muted'}`}
-                                                                onClick={() => !isDisabled && opt.setter(!opt.value)}
-                                                            >
-                                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${opt.value && !isDisabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                                            </button>
-                                                        </div>
+                                                                onChange={() => !isDisabled && opt.setter(!opt.value)}
+                                                                className="accent-cyan-500 h-3.5 w-3.5"
+                                                            />
+                                                            <span className={`text-xs ${isDisabled ? 'text-muted-foreground/50' : 'text-foreground'}`}>{opt.label}</span>
+                                                        </label>
                                                     )
                                                 })}
                                             </div>
+                                            {/* Duet/Stitch note when carousel */}
+                                            {ttPostType === 'carousel' && (
+                                                <p className="text-[9px] text-muted-foreground/60">Duet &amp; Stitch not available for Image Carousel</p>
+                                            )}
                                         </div>
 
                                         {/* Point 4: Commercial Content Disclosure */}
