@@ -1821,6 +1821,7 @@
     "successAll": "✅ Đã tạo xong {count} bài từ {table}!",
     "stop": "Dừng",
     "progressLabel": "{done}/{total}",
-    "runningInBackground": "Đang chạy nền"
+    "runningInBackground": "Đang chạy nền",
+    "leaveWarning": "⚠️ Đang tạo bài hàng loạt ({done}/{total} bài đã tạo xong).\n\nNếu bạn rời trang hoặc tải lại, các bài còn lại sẽ KHÔNG được tạo.\n\nBấm 'Ở lại trang' để tiếp tục tạo bài, hoặc 'Rời đi' để dừng."
   }
 }

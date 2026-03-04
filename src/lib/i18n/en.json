@@ -1821,6 +1821,7 @@
     "successAll": "✅ Created {count} posts from {table}!",
     "stop": "Stop",
     "progressLabel": "{done}/{total}",
-    "runningInBackground": "Running in background"
+    "runningInBackground": "Running in background",
+    "leaveWarning": "⚠️ Bulk post creation is still in progress ({done}/{total} posts created).\n\nIf you leave or refresh this page, the remaining posts will NOT be created.\n\nClick 'Stay on Page' to continue creating, or 'Leave' to stop."
   }
 }
