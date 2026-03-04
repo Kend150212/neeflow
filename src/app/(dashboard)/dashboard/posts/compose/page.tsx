@@ -2498,8 +2498,13 @@ export default function ComposePage() {
         for (const p of selectedPlatforms) {
             switch (p.platform) {
                 case 'tiktok':
-                    if (!hasVideo) errors.push('🎵 TikTok requires a video. Please upload a video.')
-                    else if (mediaRatio === '16:9') errors.push('🎵 TikTok videos should be vertical (9:16). Landscape videos will be rejected.')
+                    if (ttPostType === 'video') {
+                        if (!hasVideo) errors.push('🎵 TikTok (Video): Please upload a video.')
+                        else if (mediaRatio === '16:9') errors.push('🎵 TikTok videos should be vertical (9:16). Landscape videos will be rejected.')
+                    } else if (ttPostType === 'carousel') {
+                        const imgCount = attachedMedia.filter(m => !isVideo(m)).length
+                        if (imgCount < 2) errors.push('🎵 TikTok Carousel requires at least 2 images. Please add more images.')
+                    }
                     // Point 2: Privacy must be selected (no default allowed)
                     if (!ttVisibility) errors.push('🎵 TikTok: Please select who can see your post (privacy setting is required).')
                     // Point 4: If commercial disclosure is on, at least one sub-option must be checked

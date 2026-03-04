@@ -1713,7 +1713,7 @@ async function publishToTikTok(
     // ── Photo/carousel post ─────────────────────────────────────────
     if (postType === 'carousel') {
         const imageItems = mediaItems.filter((m) => !isVideoMedia(m))
-        if (imageItems.length === 0) throw new Error('TikTok carousel requires at least one image.')
+        if (imageItems.length < 2) throw new Error('TikTok carousel requires at least 2 images.')
 
         const photoBody: Record<string, unknown> = {
             media_type: 'PHOTO',
@@ -1721,6 +1721,10 @@ async function publishToTikTok(
                 title: postTitle,
                 privacy_level: privacy,
                 disable_comment: disableComment,
+                disable_duet: disableDuet,    // Point 2c
+                disable_stitch: disableStitch, // Point 2c
+                ...(brandedContent ? { brand_content_toggle: true } : {}),
+                ...(aiGenerated ? { is_aigc: true } : {}),
             },
             source_info: {
                 source: 'PULL_FROM_URL',
