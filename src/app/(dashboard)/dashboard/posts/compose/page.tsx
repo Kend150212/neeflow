@@ -1812,13 +1812,13 @@ export default function ComposePage() {
 
                 toast.loading('Waiting for Canva to save...', { id: 'canva-export' })
 
-                // Give Canva 3 seconds to save the design before exporting
-                await new Promise(r => setTimeout(r, 3000))
+                // Give Canva 5 seconds to save the design before exporting (was 3s)
+                await new Promise(r => setTimeout(r, 5000))
 
                 toast.loading('Exporting design from Canva...', { id: 'canva-export' })
 
-                // Retry up to 3 times with delays
-                for (let attempt = 0; attempt < 3; attempt++) {
+                // Retry up to 5 times with delays (was 3)
+                for (let attempt = 0; attempt < 5; attempt++) {
                     try {
                         const exportRes = await fetch(`/api/canva/designs?designId=${data.designId}`)
                         console.log('Canva export API response status:', exportRes.status)
@@ -1913,19 +1913,19 @@ export default function ComposePage() {
                         }
 
                         // If not success and not last attempt, wait and retry
-                        if (attempt < 2) {
-                            toast.loading(`Export pending, retrying... (${attempt + 2}/3)`, { id: 'canva-export' })
-                            await new Promise(r => setTimeout(r, 3000))
+                        if (attempt < 4) {
+                            toast.loading(`Export pending, retrying... (${attempt + 2}/5)`, { id: 'canva-export' })
+                            await new Promise(r => setTimeout(r, 4000))
                         } else {
                             toast.error(exportData.error || 'Export failed after retries', { id: 'canva-export' })
                         }
                     } catch (err: unknown) {
                         const errMsg = err instanceof Error ? err.message : String(err)
                         console.error('Canva export attempt error:', errMsg, err)
-                        if (attempt >= 2) {
+                        if (attempt >= 4) {
                             toast.error(`Export error: ${errMsg}`, { id: 'canva-export' })
                         } else {
-                            await new Promise(r => setTimeout(r, 3000))
+                            await new Promise(r => setTimeout(r, 4000))
                         }
                     }
                 }
@@ -1952,6 +1952,8 @@ export default function ComposePage() {
                 try {
                     if (popup && popup.location && popup.location.hostname === window.location.hostname) {
                         clearInterval(checkClosed)
+                        // Wait 2s for popup page to fully settle before writing to it
+                        await new Promise(r => setTimeout(r, 2000))
                         // Show processing UI in popup
                         writePopupStatus(popup, 'loading', 'Importing your design from Canva...')
                         // Run export (popup will be updated and closed on success)

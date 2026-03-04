@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { decrypt, encrypt } from '@/lib/encryption'
 
 // Helper: get Canva access token for the current user, auto-refresh if expired
-async function getCanvaToken(userId: string): Promise<{ token: string | null; connected: boolean }> {
+async function getCanvaToken(userId: string, forceRefresh = false): Promise<{ token: string | null; connected: boolean }> {
     const integration = await prisma.apiIntegration.findFirst({ where: { provider: 'canva' } })
     if (!integration) return { token: null, connected: false }
     const config = (integration.config || {}) as Record<string, string | null>
@@ -13,15 +13,14 @@ async function getCanvaToken(userId: string): Promise<{ token: string | null; co
 
     const token = decrypt(encryptedToken)
 
-    // Quick-check if token is still valid
-    const testRes = await fetch('https://api.canva.com/rest/v1/users/me', {
-        headers: { 'Authorization': `Bearer ${token}` },
-    })
+    if (!forceRefresh) {
+        // Return token directly — if it's expired, the calling code will get a 401
+        // and should call getCanvaToken(userId, true) to force a refresh
+        return { token, connected: true }
+    }
 
-    if (testRes.ok) return { token, connected: true }
-
-    // Token expired — try to refresh
-    console.log('Canva token expired for user', userId, '— attempting refresh')
+    // forceRefresh=true — token got a 401, try to refresh
+    console.log('Canva token refresh requested for user', userId)
     const encryptedRefresh = config[`canvaRefresh_${userId}`]
     if (!encryptedRefresh) {
         console.error('No Canva refresh token available')
@@ -30,7 +29,6 @@ async function getCanvaToken(userId: string): Promise<{ token: string | null; co
 
     const refreshToken = decrypt(encryptedRefresh)
     const clientId = config.canvaClientId || process.env.CANVA_CLIENT_ID || ''
-    // Get client secret the same way as the OAuth callback
     let clientSecret = process.env.CANVA_CLIENT_SECRET || ''
     if (!clientSecret && integration.apiKeyEncrypted) {
         clientSecret = decrypt(integration.apiKeyEncrypted)
@@ -243,7 +241,7 @@ export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { token, connected } = await getCanvaToken(session.user.id)
+    let { token, connected } = await getCanvaToken(session.user.id)
     if (!connected || !token) {
         return NextResponse.json({ error: 'Canva not connected' }, { status: 400 })
     }
@@ -251,8 +249,8 @@ export async function GET(req: NextRequest) {
     const designId = req.nextUrl.searchParams.get('designId')
     if (!designId) return NextResponse.json({ error: 'designId required' }, { status: 400 })
 
-    // Create export job
-    const exportRes = await fetch(`https://api.canva.com/rest/v1/exports`, {
+    // Create export job — with one retry if token expired (401)
+    let exportRes = await fetch(`https://api.canva.com/rest/v1/exports`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -263,6 +261,27 @@ export async function GET(req: NextRequest) {
             format: { type: 'png' },
         }),
     })
+
+    // If token expired, refresh and retry once
+    if (exportRes.status === 401) {
+        console.log('Canva export got 401 — refreshing token and retrying...')
+        const refreshed = await getCanvaToken(session.user.id, true)
+        if (!refreshed.token) {
+            return NextResponse.json({ error: 'Canva token expired and refresh failed' }, { status: 401 })
+        }
+        token = refreshed.token
+        exportRes = await fetch(`https://api.canva.com/rest/v1/exports`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                design_id: designId,
+                format: { type: 'png' },
+            }),
+        })
+    }
 
     if (!exportRes.ok) {
         const errorText = await exportRes.text()
@@ -277,8 +296,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'No export job ID returned' }, { status: 500 })
     }
 
-    // Poll for export completion (max 30 seconds)
-    for (let i = 0; i < 15; i++) {
+    // Poll for export completion (max 50 seconds = 25 × 2s)
+    for (let i = 0; i < 25; i++) {
         await new Promise(resolve => setTimeout(resolve, 2000))
 
         const statusRes = await fetch(`https://api.canva.com/rest/v1/exports/${jobId}`, {
@@ -338,3 +357,4 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ error: 'Export timed out' }, { status: 408 })
 }
+
