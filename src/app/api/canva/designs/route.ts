@@ -376,7 +376,7 @@ export async function GET(req: NextRequest) {
                                     uploadBuffer = await sharp(imgBuffer)
                                         .flatten({ background: { r: 255, g: 255, b: 255 } })
                                         .jpeg({ quality: 90, progressive: true })
-                                        .toBuffer()
+                                        .toBuffer() as Buffer
                                     uploadMime = 'image/jpeg'
                                     fileName = `${rawName}.jpg`
                                     console.log(`Canva page ${idx + 1}: converted to JPEG (${uploadBuffer.length} bytes)`)
