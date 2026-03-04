@@ -373,7 +373,7 @@ export async function GET(req: NextRequest) {
                                 let uploadMime = imgRes.headers.get('content-type') || 'image/png'
                                 let fileName = `${rawName}.png`
                                 try {
-                                    uploadBuffer = await sharp(imgBuffer)
+                                    uploadBuffer = await sharp(imgBuffer as Buffer)
                                         .flatten({ background: { r: 255, g: 255, b: 255 } })
                                         .jpeg({ quality: 90, progressive: true })
                                         .toBuffer() as Buffer
