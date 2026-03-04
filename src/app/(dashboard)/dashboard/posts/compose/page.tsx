@@ -147,6 +147,7 @@ interface MediaItem {
     thumbnailUrl: string | null
     type: string
     originalName: string | null
+    duration?: number          // seconds — populated from video metadata on attach
     // Canva import placeholder fields
     isCanvaLoading?: boolean
     canvaError?: string | null
@@ -1498,11 +1499,19 @@ export default function ComposePage() {
                 video.preload = 'metadata'
                 video.onloadedmetadata = () => {
                     onDimensions(video.videoWidth, video.videoHeight)
+                    // Also capture duration and write it back to the MediaItem
+                    const dur = video.duration
+                    if (dur && isFinite(dur)) {
+                        setAttachedMedia(prev => prev.map(m =>
+                            m.id === media.id ? { ...m, duration: Math.round(dur) } : m
+                        ))
+                    }
                     video.src = ''
                 }
                 video.onerror = () => console.warn(`[AutoRatio] Failed to load video: ${media.originalName}`)
                 video.src = fullUrl
             } else {
+
                 const img = new window.Image()
                 img.onload = () => onDimensions(img.naturalWidth, img.naturalHeight)
                 img.onerror = () => console.warn(`[AutoRatio] Failed to load image: ${media.originalName}`)
@@ -2492,13 +2501,16 @@ export default function ComposePage() {
             // Point 1c: check video duration
             if (ttPostType === 'video') {
                 const videoItem = attachedMedia.find(m => isVideo(m))
-                if (videoItem && (videoItem as any).duration && ttCreatorInfo.max_video_post_duration_sec) {
-                    const durationSec = (videoItem as any).duration
-                    if (durationSec > ttCreatorInfo.max_video_post_duration_sec) {
-                        toast.error(`TikTok: Video is too long. Maximum allowed duration is ${ttCreatorInfo.max_video_post_duration_sec}s for your account.`)
+                if (videoItem?.duration && ttCreatorInfo.max_video_post_duration_sec) {
+                    if (videoItem.duration > ttCreatorInfo.max_video_post_duration_sec) {
+                        const maxMin = Math.ceil(ttCreatorInfo.max_video_post_duration_sec / 60)
+                        const vidMin = Math.ceil(videoItem.duration / 60)
+                        toast.error(`TikTok: Video too long (${vidMin} min). Your account allows max ${maxMin} min.`)
+                        setPublishing(false)
                         return
                     }
                 }
+
             }
         }
 
@@ -4185,7 +4197,25 @@ export default function ComposePage() {
                                             </div>
                                         )}
 
-                                        {/* Publish As */}
+                                        {/* Point 1c: video duration warning — shown in real-time */}
+                                        {(() => {
+                                            if (!ttCreatorInfo?.max_video_post_duration_sec || ttPostType !== 'video') return null
+                                            const videoItem = attachedMedia.find(m => isVideo(m))
+                                            if (!videoItem?.duration) return null
+                                            if (videoItem.duration <= ttCreatorInfo.max_video_post_duration_sec) return null
+                                            const maxMin = Math.ceil(ttCreatorInfo.max_video_post_duration_sec / 60)
+                                            const vidMin = Math.ceil(videoItem.duration / 60)
+                                            return (
+                                                <div className="flex items-start gap-1.5 p-2 rounded-md bg-orange-500/10 border border-orange-500/30">
+                                                    <span className="text-orange-500 text-[11px] mt-0.5">⚠️</span>
+                                                    <p className="text-[10px] text-orange-600 dark:text-orange-400 leading-relaxed">
+                                                        Video too long: <strong>{vidMin} min</strong>. Your account allows max <strong>{maxMin} min</strong>. Please trim or use a shorter video.
+                                                    </p>
+                                                </div>
+                                            )
+                                        })()}
+
+
                                         <div className="space-y-1">
                                             <Label className="text-[10px] text-muted-foreground">Publish As</Label>
                                             <div className="grid grid-cols-2 gap-1">
