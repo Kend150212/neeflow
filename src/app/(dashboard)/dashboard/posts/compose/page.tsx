@@ -527,12 +527,35 @@ function TikTokPreview({ content, media, accountName, accountAvatar, mediaRatio 
     if (isCarousel) {
         // ── TikTok Photo / Image Carousel mode ──────────────────────
         return (
-            <div className="relative w-full bg-black text-white overflow-hidden" style={{ aspectRatio: '9/16', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                {/* Neutral dark background */}
-                <div className="absolute inset-0 bg-zinc-900" />
+            <div className="relative w-full text-white overflow-hidden" style={{ aspectRatio: '9/16', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#111' }}>
 
-                {/* Top bar */}
-                <div className="absolute top-0 left-0 right-0 z-20 pt-1 pb-2 flex items-center justify-center">
+                {/* ── Full-bleed scrollable carousel: top-bar-bottom to the very bottom ── */}
+                <div
+                    ref={scrollRef}
+                    onScroll={handleScroll}
+                    className="absolute flex overflow-x-auto snap-x snap-mandatory"
+                    style={{ top: '36px', bottom: 0, left: 0, right: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                    {media.length > 0 ? media.map((m, i) => (
+                        <div key={i} className="flex-none w-full h-full snap-center overflow-hidden bg-zinc-900">
+                            <img
+                                src={m.thumbnailUrl || m.url}
+                                alt={`Slide ${i + 1}`}
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                    )) : (
+                        <div className="flex-none w-full h-full snap-center bg-zinc-900 flex items-center justify-center">
+                            <p className="text-white/30 text-[11px]">No images</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Bottom gradient for readability of caption/sidebar */}
+                <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none z-10" />
+
+                {/* Top bar (always on top, z-20) */}
+                <div className="absolute top-0 left-0 right-0 z-20 pt-1 pb-1 flex items-center justify-center bg-gradient-to-b from-black/60 to-transparent">
                     <button className="px-3 py-1 text-[11px] font-medium text-white/60">Following</button>
                     <div className="flex flex-col items-center">
                         <button className="px-3 py-1 text-[12px] font-bold text-white">For You</button>
@@ -546,87 +569,61 @@ function TikTokPreview({ content, media, accountName, accountAvatar, mediaRatio 
                     </div>
                 </div>
 
-                {/* ── Scrollable carousel images — 1:1 square (TikTok photo mode) ── */}
-                {media.length > 0 ? (
-                    <div
-                        ref={scrollRef}
-                        onScroll={handleScroll}
-                        className="absolute inset-x-0 flex overflow-x-auto snap-x snap-mandatory"
-                        style={{ top: '28%', bottom: '30%', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                    >
-                        {media.map((m, i) => (
-                            <div key={i} className="flex-none w-full snap-center aspect-square overflow-hidden bg-zinc-800">
-                                <img
-                                    src={m.thumbnailUrl || m.url}
-                                    alt={`Slide ${i + 1}`}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="absolute inset-x-0" style={{ top: '28%', bottom: '30%' }}>
-                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                            <p className="text-white/40 text-xs">No images</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Slide counter badge (top-right of image area) */}
+                {/* Slide counter badge */}
                 {media.length > 1 && (
-                    <div className="absolute z-20 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ top: 'calc(28% + 8px)', right: '12px' }}>
+                    <div className="absolute z-20 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ top: '44px', right: '10px' }}>
                         {activeIdx + 1}/{media.length}
                     </div>
                 )}
 
-                {/* Dot indicators */}
+                {/* Right sidebar — overlaid on image */}
+                <div className="absolute right-2 bottom-16 z-20 flex flex-col items-center gap-3">
+                    <div className="relative mb-1">
+                        <div className="w-9 h-9 rounded-full border-2 border-white overflow-hidden">
+                            <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#555' }} />
+                        </div>
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#FE2C55] flex items-center justify-center">
+                            <Plus className="h-2.5 w-2.5 text-white" />
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                        <Heart className="h-6 w-6 fill-white text-white drop-shadow" />
+                        <span className="text-[9px] font-semibold drop-shadow">0</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                        <MessageCircle className="h-6 w-6 fill-white text-white drop-shadow" />
+                        <span className="text-[9px] font-semibold drop-shadow">0</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                        <Bookmark className="h-6 w-6 fill-white text-white drop-shadow" />
+                        <span className="text-[9px] font-semibold drop-shadow">0</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                        <Share2 className="h-6 w-6 text-white drop-shadow" />
+                        <span className="text-[9px] font-semibold drop-shadow">0</span>
+                    </div>
+                    <div className="w-8 h-8 rounded-full border-4 border-zinc-700 bg-zinc-600 flex items-center justify-center overflow-hidden animate-spin" style={{ animationDuration: '4s' }}>
+                        <div className="w-3 h-3 rounded-full bg-zinc-900 flex items-center justify-center">
+                            <div className="w-1 h-1 rounded-full bg-zinc-500" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Dot indicators — above caption, below image */}
                 {media.length > 1 && (
-                    <div className="absolute z-20 flex justify-center gap-1" style={{ bottom: '31%', left: 0, right: 0 }}>
+                    <div className="absolute z-20 flex justify-center gap-1" style={{ bottom: '52px', left: 0, right: '48px' }}>
                         {media.map((_, i) => (
                             <button
                                 key={i}
                                 onClick={() => goTo(i)}
-                                className={`h-1.5 rounded-full transition-all cursor-pointer ${i === activeIdx ? 'w-4 bg-[#FE2C55]' : 'w-1.5 bg-white/40'}`}
+                                className={`h-1 rounded-full transition-all cursor-pointer ${i === activeIdx ? 'w-4 bg-[#FE2C55]' : 'w-1 bg-white/50'}`}
                             />
                         ))}
                     </div>
                 )}
 
-                {/* Right sidebar */}
-                <div className="absolute right-2 bottom-20 z-20 flex flex-col items-center gap-4">
-                    <div className="relative mb-1">
-                        <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
-                            <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#555' }} />
-                        </div>
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#FE2C55] flex items-center justify-center">
-                            <Plus className="h-2.5 w-2.5 text-white" />
-                        </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5">
-                        <Heart className="h-7 w-7 fill-white text-white" />
-                        <span className="text-[10px] font-semibold">0</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5">
-                        <MessageCircle className="h-7 w-7 fill-white text-white" />
-                        <span className="text-[10px] font-semibold">0</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5">
-                        <Bookmark className="h-7 w-7 fill-white text-white" />
-                        <span className="text-[10px] font-semibold">0</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5">
-                        <Share2 className="h-7 w-7 text-white" />
-                        <span className="text-[10px] font-semibold">0</span>
-                    </div>
-                    <div className="w-9 h-9 rounded-full border-4 border-zinc-800 bg-zinc-700 flex items-center justify-center overflow-hidden animate-spin" style={{ animationDuration: '4s' }}>
-                        <div className="w-4 h-4 rounded-full bg-zinc-900 flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Bottom caption */}
-                <div className="absolute bottom-3 left-0 right-14 z-20 px-3 space-y-1.5">
+                {/* Bottom caption — overlaid on image */}
+                <div className="absolute bottom-2 left-0 right-12 z-20 px-3 space-y-1">
                     <p className="text-[11px] font-bold drop-shadow">@{accountName}</p>
                     <p className="text-[10px] leading-relaxed line-clamp-2 drop-shadow">{content.slice(0, 120) || 'Your caption will appear here…'}</p>
                     <div className="flex items-center gap-1.5">
@@ -639,6 +636,7 @@ function TikTokPreview({ content, media, accountName, accountAvatar, mediaRatio 
             </div>
         )
     }
+
 
     // ── Video / single-image mode ────────────────────────────────────
     const coverMedia = media[0]
