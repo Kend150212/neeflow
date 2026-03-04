@@ -19,6 +19,7 @@ export async function GET(
     const { searchParams } = new URL(req.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '100')
+    const markRead = searchParams.get('markRead') === 'true'
 
     // Verify user has access to this conversation's channel
     const conversation = await prisma.conversation.findUnique({
@@ -50,11 +51,13 @@ export async function GET(
     // Reverse so messages render chronologically (oldest at top, newest at bottom)
     const ordered = messages.reverse()
 
-    // Mark conversation as read when agent opens it
-    await prisma.conversation.update({
-        where: { id },
-        data: { unreadCount: 0 },
-    })
+    // Mark conversation as read only when the agent explicitly opens it (not during background polling)
+    if (markRead) {
+        await prisma.conversation.update({
+            where: { id },
+            data: { unreadCount: 0 },
+        })
+    }
 
     return NextResponse.json({
         messages: ordered.map(m => ({

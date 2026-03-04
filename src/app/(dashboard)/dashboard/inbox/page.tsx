@@ -708,11 +708,14 @@ export default function InboxPage() {
             const params = new URLSearchParams()
             params.set('limit', String(MSG_LIMIT))
             params.set('page', '1')
+            params.set('markRead', 'true') // Clear unreadCount on explicit open
             const res = await fetch(`/api/inbox/conversations/${convId}/messages?${params}`)
             if (res.ok) {
                 const data = await res.json()
                 const msgs = data.messages || []
                 updatePanel(panelIdx, { messages: msgs, msgHasMore: data.total > MSG_LIMIT })
+                // Immediately clear unread badge in conversation list
+                setConversations(prev => prev.map(c => c.id === convId ? { ...c, unreadCount: 0 } : c))
             }
         } catch (e) {
             console.error('Failed to fetch messages:', e)
@@ -1356,8 +1359,8 @@ export default function InboxPage() {
                                         </span>
                                         {/* Unread count bubble */}
                                         {conv.unreadCount > 0 && (
-                                            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none ring-2 ring-background">
-                                                {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
+                                            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-green-500 text-white text-[9px] font-bold leading-none ring-2 ring-background">
+                                                {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
                                             </span>
                                         )}
                                     </div>
