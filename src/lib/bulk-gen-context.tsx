@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useRef, useState, useCallback } from 'react'
+import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react'
 
 interface BulkGenState {
     running: boolean
@@ -32,6 +32,21 @@ const BulkGenContext = createContext<BulkGenContextValue>({
 export function BulkGenProvider({ children }: { children: React.ReactNode }) {
     const [state, setState] = useState<BulkGenState>(INIT)
     const stoppedRef = useRef(false)
+
+    // ── Warn user before refresh/close while bulk is running ──────────────
+    useEffect(() => {
+        if (!state.running) return
+
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault()
+            // Modern browsers show their own message; this text is for legacy browsers
+            e.returnValue = 'Đang tạo bài hàng loạt. Nếu bạn rời trang, quá trình sẽ bị dừng lại.'
+            return e.returnValue
+        }
+
+        window.addEventListener('beforeunload', handleBeforeUnload)
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    }, [state.running])
 
     const start = useCallback((total: number, label: string) => {
         stoppedRef.current = false
