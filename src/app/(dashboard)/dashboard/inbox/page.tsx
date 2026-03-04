@@ -1215,27 +1215,44 @@ export default function InboxPage() {
                 {/* Tabs */}
                 <div className="border-b">
                     <div className="flex">
-                        {inboxTabs.map(tab => (
-                            <button
-                                key={tab.key}
-                                onClick={() => {
-                                    setActiveTab(tab.key)
-                                    setSelectedConversation(null)
-                                    setMessages([])
-                                }}
-                                className={cn(
-                                    'flex-1 py-2.5 text-xs font-medium transition-colors relative cursor-pointer',
-                                    activeTab === tab.key
-                                        ? 'text-primary'
-                                        : 'text-muted-foreground hover:text-foreground'
-                                )}
-                            >
-                                {t(`inbox.tabs.${tab.labelKey}`)}
-                                {activeTab === tab.key && (
-                                    <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-primary rounded-full" />
-                                )}
-                            </button>
-                        ))}
+                        {inboxTabs.map(tab => {
+                            const tabUnread = conversations.reduce((sum, c) => {
+                                if ((c.unreadCount ?? 0) === 0) return sum
+                                if (tab.key === 'all') return sum + (c.unreadCount ?? 0)
+                                if (tab.key === 'messages' && c.type === 'message') return sum + (c.unreadCount ?? 0)
+                                if (tab.key === 'comments' && c.type === 'comment') return sum + (c.unreadCount ?? 0)
+                                if (tab.key === 'reviews' && c.type === 'review') return sum + (c.unreadCount ?? 0)
+                                return sum
+                            }, 0)
+                            return (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => {
+                                        setActiveTab(tab.key)
+                                        setSelectedConversation(null)
+                                        setMessages([])
+                                    }}
+                                    className={cn(
+                                        'flex-1 py-2.5 text-xs font-medium transition-colors relative cursor-pointer',
+                                        activeTab === tab.key
+                                            ? 'text-primary'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    )}
+                                >
+                                    <span className="inline-flex items-center gap-1">
+                                        {t(`inbox.tabs.${tab.labelKey}`)}
+                                        {tabUnread > 0 && (
+                                            <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none">
+                                                {tabUnread > 99 ? '99+' : tabUnread}
+                                            </span>
+                                        )}
+                                    </span>
+                                    {activeTab === tab.key && (
+                                        <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-primary rounded-full" />
+                                    )}
+                                </button>
+                            )
+                        })}
                     </div>
                 </div>
 
