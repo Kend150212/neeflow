@@ -296,13 +296,55 @@ async function generateImageDirectly(
     return null
 }
 
-const PLATFORM_HINTS: Record<string, string> = {
-    facebook: 'Facebook (feed post, max 2200 chars, can use longer storytelling, include 3-5 hashtags)',
-    instagram: 'Instagram (caption, max 2200 chars, heavy hashtags 10-20, visual-first language)',
-    twitter: 'X/Twitter (max 280 chars, punchy, 1-2 hashtags max)',
-    tiktok: 'TikTok (caption max 2200 chars, Gen-Z friendly, trending hooks, 3-5 hashtags)',
-    linkedin: 'LinkedIn (professional tone, max 3000 chars, insights-first, 2-3 hashtags)',
-    youtube: 'YouTube (video description, max 5000 chars, include timestamps if relevant, 5-10 hashtags)',
+// Rich per-platform instructions — same quality as compose route
+const PLATFORM_INSTRUCTIONS: Record<string, string> = {
+    facebook: `FACEBOOK:
+- Write like a REAL PERSON sharing a genuine thought, NOT like a brand posting an ad
+- Start with a bold statement, personal story, or thought-provoking question that stops scrolling
+- 2-4 paragraphs with blank line breaks between them for readability
+- Conversational tone — write as if talking to a friend
+- End with a question that genuinely invites discussion
+- Use 3-6 emojis naturally sprinkled throughout, NOT clustered at the start
+- Add 3-5 hashtags at the very end
+- Length: 300-1000 characters`,
+    instagram: `INSTAGRAM:
+- Start with a POWERFUL hook line (bold claim, surprising fact, or emotional statement)
+- Aesthetic, lifestyle-inspired tone with generous emoji use (8-15 emojis)
+- Include a CTA: "Save this 🔖" or "Comment below 👇"
+- End with 15-25 hashtags (mix of popular + niche + branded tags)
+- Keep main caption under 200 words (before hashtags)`,
+    tiktok: `TIKTOK:
+- ULTRA SHORT caption — under 150 characters total
+- Gen-Z / viral tone: authentic, raw, punchy
+- 1-2 emojis maximum
+- 3-5 trending/relevant hashtags
+- Hook examples: "POV: you finally..." / "Nobody talks about this..." / "This changed everything..."`,
+    twitter: `X (TWITTER):
+- MUST be under 280 characters TOTAL including hashtags
+- Strong opinion, hot take, or sharp insight
+- 1-2 hashtags maximum
+- No fluff — every word must earn its spot`,
+    x: `X (TWITTER):
+- MUST be under 280 characters TOTAL including hashtags
+- Strong opinion, hot take, or sharp insight
+- 1-2 hashtags maximum`,
+    linkedin: `LINKEDIN:
+- Start with a BOLD hook or contrarian take
+- Professional but human — thought-leadership tone
+- Short paragraphs (1-3 lines) with blank lines between them
+- End with a thought-provoking question
+- 3-5 industry-relevant hashtags
+- Length: 500-1500 characters`,
+    youtube: `YOUTUBE:
+- First 2 lines are CRITICAL — they show before "Show More" — make them compelling
+- Include value proposition and SEO keywords
+- Add subscribe CTA: "🔔 Subscribe for more!"
+- Length: 400-1000 characters`,
+    pinterest: `PINTEREST:
+- Keyword-rich, search-optimized description
+- 2-3 sentences explaining what the pin shows/teaches
+- Front-load important keywords in the first sentence
+- 3-5 hashtags that match search intent`,
 }
 
 /**
@@ -398,7 +440,7 @@ export async function POST(req: NextRequest) {
             }, { status: 402 })
         }
 
-        // Fetch channel details for context
+        // Fetch channel with ALL settings used by compose route
         const channel = await prisma.channel.findUnique({
             where: { id: channelId },
             select: {
@@ -406,11 +448,13 @@ export async function POST(req: NextRequest) {
                 displayName: true,
                 language: true,
                 vibeTone: true,
+                businessInfo: true,
+                brandProfile: true,
                 knowledgeBase: { take: 8, orderBy: { updatedAt: 'desc' } },
                 hashtagGroups: true,
+                contentTemplates: { take: 5 },
             },
         })
-
 
         const toneMap: Record<string, string> = {
             professional: 'professional and authoritative',
@@ -421,64 +465,151 @@ export async function POST(req: NextRequest) {
         }
         const toneDesc = toneMap[tone] ?? 'engaging'
 
-        // ── Build channel-aware prompt context (KB, vibeTone, hashtags) ──
+        // ── Build channel context (mirrors compose route) ──
         const kbItems = (channel?.knowledgeBase ?? []) as { title: string; content: string }[]
-        const kbContext = kbItems.map(kb => `[${kb.title}]: ${kb.content.slice(0, 600)}`).join('\n')
+        const kbContext = kbItems.map(kb => `[${kb.title}]: ${kb.content.slice(0, 500)}`).join('\n')
         const vibeTone = (channel?.vibeTone as Record<string, string> | null) ?? {}
         const vibeStr = Object.entries(vibeTone).map(([k, v]) => `${k}: ${v}`).join(', ')
         const allHashtags = (channel?.hashtagGroups ?? []).flatMap((g: { hashtags: unknown }) => (g.hashtags as string[]) || []).slice(0, 20)
         const brandName = channel?.displayName ?? 'Brand'
-        const langLabel = language === 'vi' ? 'Vietnamese' : language === 'en' ? 'English' : language
+        const langMap: Record<string, string> = { vi: 'Vietnamese', en: 'English', fr: 'French', de: 'German', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', es: 'Spanish' }
+        const langLabel = langMap[language] || langMap[channel?.language || ''] || 'English'
 
-        const systemPrompt = `You are a creative social media copywriter for the brand "${brandName}". Your job is to write unique, compelling posts that feel HUMAN — not like a template.
+        // Content templates
+        const templateContext = (channel?.contentTemplates ?? [])
+            .filter((t: { platform: string | null; name: string; templateContent: string }) => !t.platform || platformList.includes(t.platform))
+            .map((t: { platform: string | null; name: string; templateContent: string }) => `[Template: ${t.name}${t.platform ? ` (${t.platform})` : ''}]: ${t.templateContent.slice(0, 300)}`)
+            .join('\n')
+
+        // Brand profile (targetAudience, brandValues, communicationStyle)
+        const brandProfile = (channel as any)?.brandProfile as {
+            targetAudience?: string; brandValues?: string; communicationStyle?: string;
+        } | null
+        let brandProfileContext = ''
+        if (brandProfile) {
+            const parts: string[] = []
+            if (brandProfile.targetAudience) parts.push(`Target Audience: ${brandProfile.targetAudience}`)
+            if (brandProfile.brandValues) parts.push(`Brand Values: ${brandProfile.brandValues}`)
+            if (brandProfile.communicationStyle) parts.push(`Communication Style: ${brandProfile.communicationStyle}`)
+            if (parts.length > 0) brandProfileContext = parts.join('\n')
+        }
+
+        // Business info (phone, address, website, socials)
+        const bizInfo = (channel as any)?.businessInfo as {
+            phone?: string; address?: string; website?: string;
+            socials?: Record<string, string>;
+            custom?: { label: string; url: string }[]
+        } | null
+        let businessContext = ''
+        if (bizInfo) {
+            const parts: string[] = []
+            if (bizInfo.phone) parts.push(`Phone: ${bizInfo.phone}`)
+            if (bizInfo.address) parts.push(`Address: ${bizInfo.address}`)
+            if (bizInfo.website) parts.push(`Website: ${bizInfo.website}`)
+            const socialParts: string[] = []
+            if (bizInfo.socials) {
+                for (const [pl, url] of Object.entries(bizInfo.socials)) {
+                    if (url) socialParts.push(`${pl}: ${url}`)
+                }
+            }
+            if (bizInfo.custom) {
+                for (const c of bizInfo.custom) {
+                    if (c.label && c.url) socialParts.push(`${c.label}: ${c.url}`)
+                }
+            }
+            if (socialParts.length > 0) parts.push(`Social Links: ${socialParts.join(', ')}`)
+            if (parts.length > 0) businessContext = parts.join('\n')
+        }
+
+        // Platform rules (rich, like compose route)
+        const platformRulesText = platformList
+            .filter(p => PLATFORM_INSTRUCTIONS[p])
+            .map(p => PLATFORM_INSTRUCTIONS[p])
+            .join('\n\n')
+
+        // Creative angles rotate per row to ensure variety
+        const CREATIVE_ANGLES = [
+            'Start with a bold, surprising FACT or statistic about this product.',
+            'Write from the perspective of a GUEST who just stayed/used this — first-person review style.',
+            'Open with a vivid SENSORY description (what it looks, smells, feels like). Make the reader feel present.',
+            'Use a RELATABLE PROBLEM the reader has, then position this as the perfect solution.',
+            'Start with a short STORY — one sentence scene-setter, then unfold why this is special.',
+            'Write as a COMPARISON — "Most [category] are X... but this one is Y."',
+            'Lead with FOMO — what the reader is missing out on if they don\'t experience this.',
+            'Ask ONE provocative question that makes the reader stop scrolling.',
+            'Start with a specific DETAIL about the product — a feature, a number, a design element.',
+            'Write like you\'re telling a SECRET or insider tip not everyone knows.',
+            'Use a CONTRAST structure — Before vs After, Day vs Night, Alone vs Together.',
+            'Lead with EMOTION — what feeling does this product give? Name it immediately.',
+        ]
+        const rowAngle = CREATIVE_ANGLES[(Date.now() + Math.floor(Math.random() * 999)) % CREATIVE_ANGLES.length]
+
+        // Build JSON structure for all platforms in ONE call (same as compose)
+        const contentPerPlatformJson = platformList
+            .map(p => `    "${p}": "Complete ready-to-post content for ${p}"`)
+            .join(',\n')
+
+        const systemPrompt = `You are a world-class social media copywriter for the brand "${brandName}". You write authentic, platform-native content that drives ENGAGEMENT — never generic, never robotic. Respond ONLY with valid JSON.
 
 CRITICAL RULES:
-- Every post must have a DIFFERENT structure, hook, and angle
-- NEVER start with the same phrase twice
-- Do NOT use generic intros like "Nì ơi," or "Bạn đã bao giờ" every single time
-- Output ONLY the post content — no explanations, no labels
-${vibeStr ? `Brand voice: ${vibeStr}` : ''}
-${kbContext ? `\nBrand context:\n${kbContext}` : ''}`
+- Every platform version must be COMPLETELY DIFFERENT in structure, length, and tone
+- NEVER use the same opening phrase or structure across platforms
+- Sound like a real human posting — NOT like a corporation
+- Write ENTIRELY in ${langLabel}
+${vibeStr ? `Brand Voice: ${vibeStr}` : ''}
+${brandProfileContext ? `\n${brandProfileContext}` : ''}
+${kbContext ? `\nBrand Knowledge Base:\n${kbContext}` : ''}`
 
-        // Creative angles to rotate through — forces AI to take a different approach each call  
-        const CREATIVE_ANGLES = [
-            `Hook: Start with a bold, surprising FACT or statistic about this product/room.`,
-            `Hook: Write from the perspective of a GUEST who just stayed/used this — first-person review style.`,
-            `Hook: Open with a vivid SENSORY description (what it looks, smells, feels like). Make the reader feel present.`,
-            `Hook: Use a RELATABLE PROBLEM the reader has, then position this as the perfect solution.`,
-            `Hook: Start with a short STORY — one sentence scene-setter, then unfold why this is special.`,
-            `Hook: Write as a COMPARISON — "Most [category] are X... but this one is Y."`,
-            `Hook: Lead with FOMO — what the reader is missing out on if they don't try this.`,
-            `Hook: Ask ONE provocative question that makes the reader stop scrolling.`,
-            `Hook: Start with a specific DETAIL about the product (a feature, a number, a design element) — make it concrete.`,
-            `Hook: Write like you're telling a SECRET or insider tip not everyone knows about this place/product.`,
-            `Hook: Use a CONTRAST structure — "Before vs After" or "Day vs Night" or "Alone vs Together."`,
-            `Hook: Lead with EMOTION — what feeling does this product/room give you? Name it immediately.`,
-        ]
-        const rowIndex = (Date.now() + Math.floor(Math.random() * 1000)) % CREATIVE_ANGLES.length
+        const userPrompt = `Create platform-specific social media content based on this product/room data.
 
-        // Generate content per platform
-        const contentPerPlatform: Record<string, string> = {}
-        for (const [i, platform] of platformList.entries()) {
-            const hint = PLATFORM_HINTS[platform] || `${platform} (optimized for platform)`
-            // Rotate angle per platform so even same-row multi-platform posts feel different  
-            const angle = CREATIVE_ANGLES[(rowIndex + i) % CREATIVE_ANGLES.length]
-            const userPrompt = `Write a ${toneDesc} social media post for ${hint}.
+Writing angle for this post: ${rowAngle}
 
-${angle}
-
-Product/Room data:
+Product Data (from "${tableName}" table):
 ${dataText}
 
-Requirements:
-- Language: ${langLabel}
-- Follow platform length and format rules above
-${allHashtags.length > 0 ? `- Use 2-4 relevant hashtags from: ${allHashtags.join(' ')}` : ''}
-- NO generic intros — be original and specific to THIS product's unique details
-- Output ONLY the post content`
+Brand: ${brandName}
+Tone: ${toneDesc}
+Language: ${langLabel}
+${templateContext ? `\nContent Templates (use as style reference):\n${templateContext}` : ''}
+${businessContext ? `\nBusiness Info (include naturally in posts):\n${businessContext}` : ''}
+${allHashtags.length > 0 ? `\nAvailable hashtags: ${allHashtags.join(' ')}` : ''}
 
-            const result = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
-            contentPerPlatform[platform] = result.text.trim()
+PLATFORM RULES (follow EXACTLY):
+${platformRulesText || platformList.map(p => `${p}: write an optimized post for ${p}`).join('\n')}
+
+Respond with EXACT JSON:
+{
+  "contentPerPlatform": {
+${contentPerPlatformJson}
+  },
+  "visualIdea": "1-2 sentence description of ideal image to accompany this post (style, composition, mood)"
+}
+
+CRITICAL: Each platform version MUST be completely different. Use the writing angle above for the hook.
+${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available list in each version.` : ''}`
+
+        const result = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
+
+        // Parse JSON response (same as compose route)
+        let parsed: { contentPerPlatform?: Record<string, string>; visualIdea?: string } = {}
+        try {
+            let cleaned = result.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+            if (jsonMatch) cleaned = jsonMatch[0]
+            parsed = JSON.parse(cleaned)
+        } catch {
+            // Fallback: use raw text as content for all platforms
+            const fallback = result.text.trim()
+            parsed = { contentPerPlatform: Object.fromEntries(platformList.map(p => [p, fallback])) }
+        }
+
+        const contentPerPlatform = parsed.contentPerPlatform || {}
+        // Ensure all requested platforms have content
+        for (const p of platformList) {
+            if (!contentPerPlatform[p]) {
+                const anyContent = Object.values(contentPerPlatform)[0] || result.text.trim()
+                contentPerPlatform[p] = anyContent
+            }
         }
 
         // Save draft post with AI-generated content
