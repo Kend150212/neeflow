@@ -130,6 +130,8 @@ interface PanelState {
     messages: InboxMessage[]
     replyText: string
     replyToName: string | null
+    replyToMsgId: string | null   // externalId of the message being replied to
+    replyToContent: string | null // preview text of quoted message
     selectedImage: File | null
     dragOver: boolean
     showEmojiPicker: boolean
@@ -147,6 +149,8 @@ const initPanel = (): PanelState => ({
     messages: [],
     replyText: '',
     replyToName: null,
+    replyToMsgId: null,
+    replyToContent: null,
     selectedImage: null,
     dragOver: false,
     showEmojiPicker: false,
@@ -798,6 +802,7 @@ export default function InboxPage() {
 
             // Send via API in background
             const sendAsync = async () => {
+                const replyToExternalId = panel.replyToMsgId ?? undefined
                 let res: Response
                 if (imageToSend) {
                     const formData = new FormData()
@@ -808,7 +813,7 @@ export default function InboxPage() {
                     res = await fetch(`/api/inbox/conversations/${conv.id}/messages`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ content: contentToSend }),
+                        body: JSON.stringify({ content: contentToSend, ...(replyToExternalId && { replyToExternalId }) }),
                     })
                 }
                 if (res.ok) {
@@ -829,6 +834,8 @@ export default function InboxPage() {
                 messages: [...p.messages, optimisticMessage],
                 replyText: '',
                 replyToName: null,
+                replyToMsgId: null,
+                replyToContent: null,
                 selectedImage: null,
                 showEmojiPicker: false,
                 conversation: conv ? { ...conv, mode: 'AGENT' as const } : null,
@@ -1491,6 +1498,7 @@ export default function InboxPage() {
                                     const paneMsgs = pane.messages
                                     const paneReplyText = pane.replyText
                                     const paneReplyToName = pane.replyToName
+                                    const paneReplyToContent = pane.replyToContent
                                     const paneSelectedImage = pane.selectedImage
                                     const paneDragOver = pane.dragOver
                                     const paneShowEmojiPicker = pane.showEmojiPicker
@@ -1930,7 +1938,7 @@ export default function InboxPage() {
                                                             <div
                                                                 key={msg.id}
                                                                 className={cn(
-                                                                    'flex gap-2',
+                                                                    'flex gap-2 group',
                                                                     msg.direction === 'outbound' ? 'justify-end' : 'justify-start'
                                                                 )}
                                                             >
@@ -1948,7 +1956,7 @@ export default function InboxPage() {
                                                                     'max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed',
                                                                     msg.direction === 'outbound'
                                                                         ? msg.senderType === 'bot'
-                                                                            ? 'bg-green-500/10 text-foreground border border-green-200 dark:border-green-800'
+                                                                            ? 'bg-muted text-foreground'
                                                                             : 'bg-primary text-primary-foreground'
                                                                         : 'bg-muted'
                                                                 )}>
@@ -2011,6 +2019,69 @@ export default function InboxPage() {
                                                                         </AvatarFallback>
                                                                     </Avatar>
                                                                 )}
+                                                                {/* Hover action buttons: Reply + Reactions */}
+                                                                {msg.direction === 'inbound' && (
+                                                                    <div className="flex flex-col justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        {/* Reply button */}
+                                                                        <button
+                                                                            title="Reply"
+                                                                            onClick={() => updatePanel(paneIdx, {
+                                                                                replyToName: sc.externalUserName || 'Customer',
+                                                                                replyToMsgId: msg.externalId || null,
+                                                                                replyToContent: msg.content,
+                                                                            })}
+                                                                            className="flex items-center justify-center h-6 w-6 rounded-full bg-muted hover:bg-accent text-muted-foreground hover:text-foreground text-sm"
+                                                                        >
+                                                                            ↩
+                                                                        </button>
+                                                                        {/* Reaction picker */}
+                                                                        {msg.externalId && (
+                                                                            <div className="relative group/react">
+                                                                                <button
+                                                                                    title="React"
+                                                                                    className="flex items-center justify-center h-6 w-6 rounded-full bg-muted hover:bg-accent text-muted-foreground text-sm"
+                                                                                >
+                                                                                    😊
+                                                                                </button>
+                                                                                {/* Inline emoji popup on hover */}
+                                                                                <div className="absolute left-7 top-0 hidden group-hover/react:flex items-center gap-0.5 bg-popover border rounded-full px-1.5 py-1 shadow-lg z-50">
+                                                                                    {['👍', '❤️', '😂', '😮', '😢', '😡'].map(emoji => (
+                                                                                        <button
+                                                                                            key={emoji}
+                                                                                            title={emoji}
+                                                                                            onClick={async () => {
+                                                                                                await fetch(`/api/inbox/conversations/${sc?.id}/react`, {
+                                                                                                    method: 'POST',
+                                                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                                                    body: JSON.stringify({ externalId: msg.externalId, emoji }),
+                                                                                                })
+                                                                                            }}
+                                                                                            className="text-base hover:scale-125 transition-transform"
+                                                                                        >
+                                                                                            {emoji}
+                                                                                        </button>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                    </div>
+                                                                )}
+                                                                {msg.direction === 'outbound' && (
+                                                                    <div className="flex flex-col justify-center mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        <button
+                                                                            title="Reply"
+                                                                            onClick={() => updatePanel(paneIdx, {
+                                                                                replyToName: 'Agent',
+                                                                                replyToMsgId: msg.externalId || null,
+                                                                                replyToContent: msg.content,
+                                                                            })}
+                                                                            className="flex items-center justify-center h-6 w-6 rounded-full bg-muted hover:bg-accent text-muted-foreground hover:text-foreground text-sm"
+                                                                        >
+                                                                            ↩
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         ))}
                                                         <div ref={el => { messagesEndRefs.current[paneIdx] = el }} />
@@ -2020,16 +2091,18 @@ export default function InboxPage() {
 
                                             {/* Reply box */}
                                             <div className="border-t bg-card p-3 shrink-0">
-                                                {/* Reply-to indicator */}
+                                                {/* Reply-to quoted message indicator */}
                                                 {paneReplyToName && (
-                                                    <div className="flex items-center gap-2 mb-2 px-1">
-                                                        <Reply className="h-3 w-3 text-muted-foreground rotate-180" />
-                                                        <span className="text-[11px] text-muted-foreground">
-                                                            {t('inbox.chat.replyingTo')} <strong className="text-foreground">{paneReplyToName}</strong>
-                                                        </span>
+                                                    <div className="mb-2 rounded-lg border-l-2 border-primary bg-muted/60 px-2 py-1.5 flex items-start gap-2">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-[10px] font-semibold text-primary mb-0.5">{paneReplyToName}</div>
+                                                            <div className="text-[11px] text-muted-foreground truncate">
+                                                                {paneReplyToContent ? paneReplyToContent.replace(/^\[Attachment\]$/, '📎 Attachment').substring(0, 80) : '...'}
+                                                            </div>
+                                                        </div>
                                                         <button
-                                                            onClick={() => updatePanel(paneIdx, { replyToName: null })}
-                                                            className="text-[10px] text-muted-foreground hover:text-foreground ml-auto"
+                                                            onClick={() => updatePanel(paneIdx, { replyToName: null, replyToMsgId: null, replyToContent: null })}
+                                                            className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
                                                         >
                                                             ✕
                                                         </button>

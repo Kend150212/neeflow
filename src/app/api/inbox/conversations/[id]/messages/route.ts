@@ -100,6 +100,7 @@ export async function POST(
     let content = ''
     let senderType = 'agent'
     let imageFile: File | null = null
+    let replyToExternalId: string | null = null
 
     const contentType = req.headers.get('content-type') || ''
     if (contentType.includes('multipart/form-data')) {
@@ -111,6 +112,7 @@ export async function POST(
         const body = await req.json()
         content = body.content || ''
         senderType = body.senderType || 'agent'
+        replyToExternalId = body.replyToExternalId || null
     }
 
     if (!content?.trim() && !imageFile) {
@@ -338,17 +340,21 @@ export async function POST(
                             )
                         }
                     } else {
+                        const fbPayload: any = {
+                            recipient: { id: conv?.externalUserId },
+                            message: {
+                                text: cleanText,
+                                ...(replyToExternalId && { reply_to: { mid: replyToExternalId } }),
+                            },
+                            messaging_type: messagingType,
+                            ...(messageTag && { tag: messageTag }),
+                        }
                         const fbRes = await fetch(
                             `https://graph.facebook.com/v19.0/me/messages?access_token=${platformAccount.accessToken}`,
                             {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    recipient: { id: conv?.externalUserId },
-                                    message: { text: cleanText },
-                                    messaging_type: messagingType,
-                                    ...(messageTag && { tag: messageTag }),
-                                }),
+                                body: JSON.stringify(fbPayload),
                             }
                         )
                         const fbData = await fbRes.json()
