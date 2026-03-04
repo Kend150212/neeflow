@@ -323,27 +323,39 @@ export async function GET(req: NextRequest) {
         const statusData = await statusRes.json()
 
         if (statusData.job?.status === 'success') {
-            const urls = statusData.job.urls || []
+            const urls: string[] = statusData.job.urls || []
             console.log('Canva export job succeeded, urls count:', urls.length)
-            if (urls.length > 0) {
-                // Proxy-download the image to avoid CORS issues
+            if (urls.length === 0) continue
+
+            const isMultiPage = urls.length > 1
+            const LARGE_THRESHOLD = 1.5 * 1024 * 1024 // 1.5MB
+
+            // ── Multi-page OR large image → server-side R2 upload for all pages ──
+            if (channelId && (isMultiPage || true)) {
                 try {
-                    const imgUrl = urls[0]
-                    console.log('Proxy-downloading Canva export from:', imgUrl)
-                    const imgRes = await fetch(imgUrl)
-                    console.log('Proxy download response status:', imgRes.status, imgRes.statusText)
-                    if (imgRes.ok) {
-                        const imgBuffer = Buffer.from(await imgRes.arrayBuffer())
-                        console.log('Downloaded image size (bytes):', imgBuffer.length)
+                    const r2Ok = await isR2Configured()
+                    if (r2Ok) {
+                        // Download and upload all pages in parallel
+                        const pageResults = await Promise.all(
+                            urls.map(async (pageUrl, idx) => {
+                                try {
+                                    console.log(`Canva page ${idx + 1}/${urls.length}: downloading...`)
+                                    const imgRes = await fetch(pageUrl)
+                                    if (!imgRes.ok) {
+                                        console.error(`Canva page ${idx + 1}: download failed ${imgRes.status}`)
+                                        return null
+                                    }
+                                    const imgBuffer = Buffer.from(await imgRes.arrayBuffer())
+                                    console.log(`Canva page ${idx + 1}: ${imgBuffer.length} bytes`)
 
-                        const LARGE_THRESHOLD = 1.5 * 1024 * 1024 // 1.5MB
+                                    // Small single-page image → skip server upload, use base64 path below
+                                    if (!isMultiPage && imgBuffer.length <= LARGE_THRESHOLD) {
+                                        const base64 = imgBuffer.toString('base64')
+                                        return { base64, contentType: imgRes.headers.get('content-type') || 'image/png' }
+                                    }
 
-                        // Large image + channelId → upload to R2 server-side, return media record
-                        if (imgBuffer.length > LARGE_THRESHOLD && channelId) {
-                            try {
-                                const r2Ok = await isR2Configured()
-                                if (r2Ok) {
-                                    const fileName = `canva-design-${Date.now()}.png`
+                                    const suffix = urls.length > 1 ? `-page${idx + 1}` : ''
+                                    const fileName = `canva-design-${Date.now()}${suffix}.png`
                                     const r2Key = generateR2Key(channelId, fileName)
                                     const publicUrl = await uploadToR2(imgBuffer, r2Key, 'image/png')
                                     const mediaItem = await prisma.mediaItem.create({
@@ -357,44 +369,41 @@ export async function GET(req: NextRequest) {
                                             originalName: fileName,
                                             fileSize: imgBuffer.length,
                                             mimeType: 'image/png',
-                                            aiMetadata: { storage: 'r2', r2Key, source: 'canva' },
+                                            aiMetadata: { storage: 'r2', r2Key, source: 'canva', page: idx + 1 },
                                         },
                                     })
-                                    console.log('Canva export: server-side R2 upload done, mediaId:', mediaItem.id)
-                                    return NextResponse.json({ status: 'media_ready', media: mediaItem })
+                                    console.log(`Canva page ${idx + 1}: R2 upload done, mediaId=${mediaItem.id}`)
+                                    return { mediaItem }
+                                } catch (pageErr) {
+                                    console.error(`Canva page ${idx + 1}: error`, pageErr)
+                                    return null
                                 }
-                            } catch (r2Err) {
-                                console.error('Canva export: server-side R2 upload failed, falling back to base64:', r2Err)
-                                // fall through to base64 path
-                            }
+                            })
+                        )
+
+                        // Check if first (and only) page returned base64 (small single-page fallback)
+                        if (!isMultiPage && pageResults[0] && 'base64' in pageResults[0]) {
+                            const { base64, contentType } = pageResults[0]
+                            console.log(`Canva single page: returning base64 (${base64!.length} chars)`)
+                            return NextResponse.json({ status: 'success', imageBase64: base64, contentType })
                         }
 
-                        // Small image (or R2 not configured) — return as base64 for client upload
-                        if (imgBuffer.length > 8 * 1024 * 1024) {
-                            console.log('Image too large for base64, returning URL fallback')
-                            return NextResponse.json({ status: 'success', urls })
+                        // All pages uploaded to R2 — return as pages array
+                        const mediaItems = pageResults.filter(r => r && 'mediaItem' in r).map(r => (r as { mediaItem: unknown }).mediaItem)
+                        if (mediaItems.length > 0) {
+                            console.log(`Canva export: returning ${mediaItems.length} page(s) as media_ready`)
+                            return NextResponse.json({ status: 'media_ready', pages: mediaItems })
                         }
-
-                        const base64 = imgBuffer.toString('base64')
-                        console.log('Base64 string length:', base64.length, '— returning success response')
-                        return NextResponse.json({
-                            status: 'success',
-                            imageBase64: base64,
-                            contentType: imgRes.headers.get('content-type') || 'image/png',
-                        })
-                    } else {
-                        console.error('Failed to download exported image:', imgRes.status, imgRes.statusText)
+                        // All pages failed — fall through to URL fallback
                     }
-                } catch (err) {
-                    console.error('Error proxy-downloading Canva export:', err)
+                } catch (r2Err) {
+                    console.error('Canva multi-page R2 upload failed, falling back to URL:', r2Err)
                 }
             }
-            // Fallback: return URLs if proxy download fails
+
+            // Fallback: return raw URLs (CORS may block client-side fetch)
             console.log('Returning URL fallback for export')
-            return NextResponse.json({
-                status: 'success',
-                urls,
-            })
+            return NextResponse.json({ status: 'success', urls })
         }
 
         if (statusData.job?.status === 'failed') {

@@ -1949,10 +1949,23 @@ export default function ComposePage() {
                                 error: exportData.error,
                             })
 
-                            if (exportData.status === 'media_ready' && exportData.media) {
-                                // Large image was uploaded to R2 server-side — just slot it in
-                                replacePlaceholderWithMedia(exportData.media)
-                                toast.success('🎨 Canva design imported!', { id: 'canva-export' })
+                            if (exportData.status === 'media_ready') {
+                                // Server uploaded all pages to R2 — pages is always an array
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                const pages: any[] = exportData.pages ?? (exportData.media ? [exportData.media] : [])
+                                if (pages.length === 0) break // treat as failed attempt
+
+                                const [firstPage, ...restPages] = pages
+                                // Slot first page into the existing placeholder
+                                replacePlaceholderWithMedia(firstPage)
+                                // Append additional pages directly to the media list
+                                if (restPages.length > 0) {
+                                    setAttachedMedia(prev => [...prev, ...restPages])
+                                }
+                                const label = pages.length > 1
+                                    ? `🎨 Imported ${pages.length} pages from Canva!`
+                                    : '🎨 Canva design imported!'
+                                toast.success(label, { id: 'canva-export' })
                                 setCanvaLoading(false)
                                 return
                             }
