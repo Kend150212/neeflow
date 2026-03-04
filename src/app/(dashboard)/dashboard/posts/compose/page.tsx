@@ -1882,11 +1882,14 @@ export default function ComposePage() {
                         isCanvaLoading: true,
                         canvaError: null,
                     }
-                    if (existingMediaId) {
-                        // Replace existing item with placeholder
-                        return prev.map((m) => m.id === existingMediaId ? placeholder : m)
+                    // Replace if slot already exists (edit mode OR retry of failed import)
+                    const alreadyExists = prev.some(m => m.id === placeholderIdRef || m.id === existingMediaId)
+                    if (alreadyExists) {
+                        return prev.map((m) =>
+                            (m.id === placeholderIdRef || m.id === existingMediaId) ? placeholder : m
+                        )
                     }
-                    // New import → append placeholder
+                    // Brand-new import — append placeholder
                     return [...prev, placeholder]
                 })
             }
@@ -1926,7 +1929,7 @@ export default function ComposePage() {
                     // Retry up to 5 times with delays
                     for (let attempt = 0; attempt < 5; attempt++) {
                         try {
-                            const exportRes = await fetch(`/api/canva/designs?designId=${data.designId}`)
+                            const exportRes = await fetch(`/api/canva/designs?designId=${data.designId}&channelId=${encodeURIComponent(channelId)}`)
                             console.log('Canva export API response status:', exportRes.status)
                             const exportData = await exportRes.json()
 
@@ -1945,6 +1948,14 @@ export default function ComposePage() {
                                 urlsCount: exportData.urls?.length || 0,
                                 error: exportData.error,
                             })
+
+                            if (exportData.status === 'media_ready' && exportData.media) {
+                                // Large image was uploaded to R2 server-side — just slot it in
+                                replacePlaceholderWithMedia(exportData.media)
+                                toast.success('🎨 Canva design imported!', { id: 'canva-export' })
+                                setCanvaLoading(false)
+                                return
+                            }
 
                             if (exportData.status === 'success') {
                                 let blob: Blob | null = null

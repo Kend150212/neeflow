@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decrypt, encrypt } from '@/lib/encryption'
+import { uploadToR2, generateR2Key, isR2Configured } from '@/lib/r2'
 
 // Helper: get Canva access token for the current user, auto-refresh if expired
 async function getCanvaToken(userId: string, forceRefresh = false): Promise<{ token: string | null; connected: boolean }> {
@@ -255,6 +256,7 @@ export async function GET(req: NextRequest) {
     }
 
     const designId = req.nextUrl.searchParams.get('designId')
+    const channelId = req.nextUrl.searchParams.get('channelId') // optional: enables server-side R2 upload for large images
     if (!designId) return NextResponse.json({ error: 'designId required' }, { status: 400 })
 
     // Create export job — with one retry if token expired (401)
@@ -334,7 +336,40 @@ export async function GET(req: NextRequest) {
                         const imgBuffer = Buffer.from(await imgRes.arrayBuffer())
                         console.log('Downloaded image size (bytes):', imgBuffer.length)
 
-                        // If image is too large for JSON base64 (>8MB), return URL fallback
+                        const LARGE_THRESHOLD = 1.5 * 1024 * 1024 // 1.5MB
+
+                        // Large image + channelId → upload to R2 server-side, return media record
+                        if (imgBuffer.length > LARGE_THRESHOLD && channelId) {
+                            try {
+                                const r2Ok = await isR2Configured()
+                                if (r2Ok) {
+                                    const fileName = `canva-design-${Date.now()}.png`
+                                    const r2Key = generateR2Key(channelId, fileName)
+                                    const publicUrl = await uploadToR2(imgBuffer, r2Key, 'image/png')
+                                    const mediaItem = await prisma.mediaItem.create({
+                                        data: {
+                                            channelId,
+                                            url: publicUrl,
+                                            thumbnailUrl: publicUrl,
+                                            storageFileId: r2Key,
+                                            type: 'image',
+                                            source: 'upload',
+                                            originalName: fileName,
+                                            fileSize: imgBuffer.length,
+                                            mimeType: 'image/png',
+                                            aiMetadata: { storage: 'r2', r2Key, source: 'canva' },
+                                        },
+                                    })
+                                    console.log('Canva export: server-side R2 upload done, mediaId:', mediaItem.id)
+                                    return NextResponse.json({ status: 'media_ready', media: mediaItem })
+                                }
+                            } catch (r2Err) {
+                                console.error('Canva export: server-side R2 upload failed, falling back to base64:', r2Err)
+                                // fall through to base64 path
+                            }
+                        }
+
+                        // Small image (or R2 not configured) — return as base64 for client upload
                         if (imgBuffer.length > 8 * 1024 * 1024) {
                             console.log('Image too large for base64, returning URL fallback')
                             return NextResponse.json({ status: 'success', urls })
