@@ -162,21 +162,20 @@ function isVideo(media: MediaItem): boolean {
     return /\.(mp4|mov|webm|avi|mkv|ogg|3gp|flv|wmv|mpeg)$/.test(ext)
 }
 
-function MediaElement({ media, className }: { media: MediaItem; className?: string }) {
+function MediaElement({ media, className, videoControls }: { media: MediaItem; className?: string; videoControls?: boolean }) {
     if (isVideo(media)) {
         return (
-            <div className={`relative ${className || ''}`}>
-                <img
-                    src={media.thumbnailUrl || media.url}
-                    alt=""
-                    className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center">
-                        <Play className="h-4 w-4 text-white ml-0.5" />
-                    </div>
-                </div>
-            </div>
+            <video
+                src={media.url}
+                className={className}
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls={!!videoControls}
+                poster={media.thumbnailUrl || undefined}
+                style={{ objectFit: 'cover' }}
+            />
         )
     }
     return <img src={media.thumbnailUrl || media.url} alt="" className={className} />
@@ -508,7 +507,20 @@ function TikTokPreview({ content, media, accountName, accountAvatar }: {
         <div className="relative w-full h-full bg-black text-white overflow-hidden" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
             {/* Full-screen background media */}
             {coverMedia ? (
-                <MediaElement media={coverMedia} className="absolute inset-0 w-full h-full object-cover" />
+                isVideo(coverMedia) ? (
+                    <video
+                        key={coverMedia.url}
+                        src={coverMedia.url}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        poster={coverMedia.thumbnailUrl || undefined}
+                    />
+                ) : (
+                    <img src={coverMedia.thumbnailUrl || coverMedia.url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                )
             ) : (
                 <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900" />
             )}
