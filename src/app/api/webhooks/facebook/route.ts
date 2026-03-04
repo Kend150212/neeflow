@@ -738,12 +738,55 @@ async function upsertConversation(opts: {
         })
     }
 
-    // Check for duplicate message
+    // ── Duplicate guard ────────────────────────────────────────────────────
+    // Primary: check by externalId (covers most cases)
     if (opts.externalId) {
-        const existing = await prisma.inboxMessage.findFirst({
+        const existingById = await prisma.inboxMessage.findFirst({
             where: { externalId: opts.externalId },
         })
-        if (existing) return // Skip duplicate
+        if (existingById) {
+            console.log(`[Webhook] Skipping duplicate message (externalId match): ${opts.externalId}`)
+            return
+        }
+    }
+
+    // Secondary: race-condition guard for echoed outbound messages.
+    // When Neeflow sends a message, the echo from Facebook can arrive BEFORE
+    // our API finishes saving the externalId — so the primary check misses it.
+    // Guard: if outbound message with same content exists in this conversation within 60s, skip.
+    if (opts.direction === 'outbound') {
+        // We need conversation id — look it up again (already fetched above)
+        const conv = await prisma.conversation.findFirst({
+            where: {
+                channelId: opts.channelId,
+                platform: opts.platform,
+                externalUserId: opts.externalUserId,
+                type: opts.type || 'message',
+            },
+            select: { id: true },
+        })
+        if (conv) {
+            const sixtySecondsAgo = new Date(Date.now() - 60_000)
+            const recentOutbound = await prisma.inboxMessage.findFirst({
+                where: {
+                    conversationId: conv.id,
+                    direction: 'outbound',
+                    content: opts.content,
+                    sentAt: { gte: sixtySecondsAgo },
+                },
+            })
+            if (recentOutbound) {
+                // Update externalId if not set yet (echo brings the mid)
+                if (opts.externalId && !recentOutbound.externalId) {
+                    await prisma.inboxMessage.update({
+                        where: { id: recentOutbound.id },
+                        data: { externalId: opts.externalId },
+                    })
+                }
+                console.log(`[Webhook] Skipping echo duplicate (content+60s window match): "${opts.content?.substring(0, 50)}"`)
+                return
+            }
+        }
     }
 
     // Create message
