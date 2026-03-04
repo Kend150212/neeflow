@@ -2656,10 +2656,33 @@ export default function ComposePage() {
                                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
                                 {saving ? t('compose.saving') : t('compose.saveDraft')}
                             </Button>
-                            <Button size="sm" className="h-7 text-xs cursor-pointer" onClick={handlePublishNow} disabled={publishing || !content.trim() || selectedPlatformIds.size === 0}>
-                                {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
-                                {publishing ? t('compose.publishing') : t('compose.publish')}
-                            </Button>
+                            {(() => {
+                                // ── Compute publish block reason for tooltip ──
+                                const hasTikTokSelected = selectedChannel?.platforms?.some(p => p.platform === 'tiktok' && selectedPlatformIds.has(p.id))
+                                let publishBlockReason = ''
+                                if (hasTikTokSelected) {
+                                    if (ttCreatorInfo && !ttCreatorInfo.can_post)
+                                        publishBlockReason = '⛔ TikTok: This account has reached its posting limit.'
+                                    else if (!ttVisibility)
+                                        publishBlockReason = '🔒 TikTok: Please select a privacy setting before publishing.'
+                                    else if (ttCommercialDisclosure && !ttYourBrand && !ttBrandedContent)
+                                        publishBlockReason = '📋 TikTok: Please indicate if this promotes yourself or a third party (commercial content disclosure required).'
+                                }
+                                const isBlocked = publishing || !content.trim() || selectedPlatformIds.size === 0 || !!publishBlockReason
+                                return (
+                                    <div title={publishBlockReason || undefined} className="inline-flex">
+                                        <Button
+                                            size="sm"
+                                            className={`h-7 text-xs ${isBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                            onClick={handlePublishNow}
+                                            disabled={isBlocked}
+                                        >
+                                            {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
+                                            {publishing ? t('compose.publishing') : t('compose.publish')}
+                                        </Button>
+                                    </div>
+                                )
+                            })()}
                         </>
                     )}
                     {/* Approval indicator */}
