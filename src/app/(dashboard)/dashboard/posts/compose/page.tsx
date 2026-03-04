@@ -972,6 +972,7 @@ export default function ComposePage() {
     const libFileInputRef = useRef<HTMLInputElement>(null)
     const [loadingDrivePicker, setLoadingDrivePicker] = useState(false)
     const [canvaLoading, setCanvaLoading] = useState(false)
+    const [canvaExpiredModal, setCanvaExpiredModal] = useState<{ reconnectUrl: string } | null>(null)
     const handleFileUploadRef = useRef<((files: FileList | null) => Promise<void>) | null>(null)
     const selectedChannelRef = useRef<Channel | null>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1770,6 +1771,12 @@ export default function ComposePage() {
             })
             const data = await res.json()
             if (!res.ok) {
+                // Token expired (refresh token also failed) — show reconnect modal
+                if (data.error === 'canva_token_expired' && data.reconnectUrl) {
+                    setCanvaExpiredModal({ reconnectUrl: data.reconnectUrl })
+                    setCanvaLoading(false)
+                    return
+                }
                 // If user hasn't connected Canva yet, redirect to OAuth
                 if (data.error === 'canva_not_connected' && data.connectUrl) {
                     toast('🎨 Connecting to Canva...', { icon: '🔗' })
@@ -1922,6 +1929,15 @@ export default function ComposePage() {
                             const exportRes = await fetch(`/api/canva/designs?designId=${data.designId}`)
                             console.log('Canva export API response status:', exportRes.status)
                             const exportData = await exportRes.json()
+
+                            // Token expired during export — show reconnect modal
+                            if (exportRes.status === 401 && exportData.error === 'canva_token_expired') {
+                                toast.dismiss('canva-export')
+                                setCanvaExpiredModal({ reconnectUrl: exportData.reconnectUrl })
+                                setAttachedMedia(prev => prev.filter(m => m.id !== placeholderIdRef))
+                                setCanvaLoading(false)
+                                return
+                            }
                             console.log('Canva export API data:', {
                                 status: exportData.status,
                                 hasBase64: !!exportData.imageBase64,
@@ -5787,6 +5803,50 @@ export default function ComposePage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* ─── Canva Session Expired Modal ─────────────────────────── */}
+            {canvaExpiredModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-[#7d2ae8]/10 border border-[#7d2ae8]/30 flex items-center justify-center">
+                                <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-[#7d2ae8]" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                    <line x1="12" y1="9" x2="12" y2="13" strokeLinecap="round" />
+                                    <line x1="12" y1="17" x2="12.01" y2="17" strokeLinecap="round" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-foreground">Canva Session Expired</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">Your Canva connection needs to be refreshed</p>
+                            </div>
+                        </div>
+                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                Your Canva session has <strong className="text-foreground">expired</strong>. This usually happens after a period of inactivity. Click <strong className="text-foreground">Reconnect Canva</strong> to restore the connection — it only takes a few seconds and you will be brought back here.
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => { window.location.href = canvaExpiredModal.reconnectUrl }}
+                                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg bg-[#7d2ae8] hover:bg-[#6d22d0] text-white text-sm font-semibold transition-colors cursor-pointer"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Reconnect Canva
+                            </button>
+                            <button
+                                onClick={() => setCanvaExpiredModal(null)}
+                                className="w-full py-2 px-4 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     )
 }

@@ -210,7 +210,15 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
         const errorText = await res.text()
-        console.error('Canva create design failed:', errorText)
+        console.error('Canva create design failed:', res.status, errorText)
+        // Token expired and couldn't be refreshed → specific error for frontend modal
+        if (res.status === 401) {
+            return NextResponse.json({
+                error: 'canva_token_expired',
+                message: 'Your Canva session has expired. Please reconnect your account.',
+                reconnectUrl: `/api/oauth/canva?returnUrl=${encodeURIComponent('/dashboard/posts/compose')}`,
+            }, { status: 401 })
+        }
         return NextResponse.json({ error: 'Failed to create Canva design', detail: errorText }, { status: res.status })
     }
 
@@ -267,7 +275,11 @@ export async function GET(req: NextRequest) {
         console.log('Canva export got 401 — refreshing token and retrying...')
         const refreshed = await getCanvaToken(session.user.id, true)
         if (!refreshed.token) {
-            return NextResponse.json({ error: 'Canva token expired and refresh failed' }, { status: 401 })
+            return NextResponse.json({
+                error: 'canva_token_expired',
+                message: 'Your Canva session has expired. Please reconnect your account.',
+                reconnectUrl: `/api/oauth/canva?returnUrl=${encodeURIComponent('/dashboard/posts/compose')}`,
+            }, { status: 401 })
         }
         token = refreshed.token
         exportRes = await fetch(`https://api.canva.com/rest/v1/exports`, {
