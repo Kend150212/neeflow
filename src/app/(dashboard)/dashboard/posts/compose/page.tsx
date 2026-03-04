@@ -1791,9 +1791,7 @@ export default function ComposePage() {
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
                                 </div>
                                 <div class="logo-wrap">
-                                    <div class="canva-logo">
-                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5c4.142 0 7.5 3.358 7.5 7.5 0 .47-.044.93-.126 1.376-.43-.284-.96-.376-1.524-.2-.98.307-1.47 1.37-1.09 2.373.2.528.62.92 1.12 1.09-.96 1.824-2.7 3.11-4.74 3.474V17.5a1.5 1.5 0 00-3 0v2.613c-2.04-.364-3.78-1.65-4.74-3.474.5-.17.92-.562 1.12-1.09.38-1.003-.11-2.066-1.09-2.373-.564-.176-1.094-.084-1.524.2A7.46 7.46 0 014.5 12C4.5 7.858 7.858 4.5 12 4.5z"/></svg>
-                                    </div>
+                                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" />
                                     <span class="logo-name">Canva</span>
                                 </div>
                             </div>
