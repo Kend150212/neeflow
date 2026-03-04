@@ -1501,6 +1501,8 @@ async function publishToTikTok(
     const publishMode = (config?.publishMode as string) || 'direct'   // 'direct' | 'inbox'
     // UI saves 'visibility', fallback to 'privacy' for backward compat
     const privacy = (config?.visibility as string) || (config?.privacy as string) || 'PUBLIC_TO_EVERYONE'
+    // Point 2a: use separate title field if provided, otherwise use content as title
+    const postTitle = ((config?.title as string) || content).slice(0, 2200)
     const disableComment = config?.allowComment === false                  // allowComment=true → disable_comment=false
     const disableDuet = config?.allowDuet !== true                      // allowDuet=true → disable_duet=false
     const disableStitch = config?.allowStitch !== true                    // allowStitch=true → disable_stitch=false
@@ -1644,7 +1646,7 @@ async function publishToTikTok(
                     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
                     body: JSON.stringify({
                         post_info: {
-                            title: content.slice(0, 2200),
+                            title: postTitle,
                             privacy_level: privacy,
                             disable_comment: disableComment,
                             disable_duet: disableDuet,
@@ -1716,7 +1718,7 @@ async function publishToTikTok(
         const photoBody: Record<string, unknown> = {
             media_type: 'PHOTO',
             post_info: {
-                title: content.slice(0, 2200),
+                title: postTitle,
                 privacy_level: privacy,
                 disable_comment: disableComment,
             },

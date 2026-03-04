@@ -913,6 +913,20 @@ export default function ComposePage() {
     const [ttBrandedContent, setTtBrandedContent] = useState(false)
     const [ttAiGenerated, setTtAiGenerated] = useState(false)
     const [ttSettingsOpen, setTtSettingsOpen] = useState(true)
+    // Point 3b: track auto-switch so we can notify user
+    const [ttAutoSwitchedToPublic, setTtAutoSwitchedToPublic] = useState(false)
+    // Point 2a: separate title field for TikTok (editable, distinct from caption)
+    const [ttTitle, setTtTitle] = useState('')
+    // Points 1b,1c,2b,2c: live creator_info from TikTok API
+    const [ttCreatorInfo, setTtCreatorInfo] = useState<{
+        can_post: boolean
+        privacy_level_options: string[]
+        comment_disabled: boolean
+        duet_disabled: boolean
+        stitch_disabled: boolean
+        max_video_post_duration_sec: number
+    } | null>(null)
+    const [ttCreatorInfoLoading, setTtCreatorInfoLoading] = useState(false)
     // Pinterest settings
     const [pinBoardId, setPinBoardId] = useState('')
     const [pinTitle, setPinTitle] = useState('')
@@ -1128,6 +1142,18 @@ export default function ComposePage() {
 
     // Keep ref in sync for async callbacks (Canva export etc.)
     useEffect(() => { selectedChannelRef.current = selectedChannel }, [selectedChannel])
+
+    // ── Points 1b,1c,2b,2c: Fetch TikTok creator_info when TikTok is selected ──
+    useEffect(() => {
+        const ttPlatform = selectedChannel?.platforms?.find(p => p.platform === 'tiktok' && selectedPlatformIds.has(p.id))
+        if (!ttPlatform) { setTtCreatorInfo(null); return }
+        setTtCreatorInfoLoading(true)
+        fetch(`/api/tiktok/creator-info?platformId=${ttPlatform.id}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setTtCreatorInfo(data) })
+            .catch(() => { /* non-blocking */ })
+            .finally(() => setTtCreatorInfoLoading(false))
+    }, [selectedChannel, selectedPlatformIds])
 
     // ── Fetch image providers when Generate Image dialog opens ──
     useEffect(() => {
@@ -2360,6 +2386,7 @@ export default function ComposePage() {
                     postType: ttPostType,
                     publishMode: ttPublishMode,
                     visibility: ttVisibility,
+                    title: ttTitle || undefined,  // Point 2a: separate title field
                     allowComment: ttAllowComment,
                     allowDuet: ttAllowDuet,
                     allowStitch: ttAllowStitch,
@@ -2442,10 +2469,30 @@ export default function ComposePage() {
         if (!selectedChannel || !content.trim()) { toast.error('Select a channel and add content'); return }
         if (selectedPlatformIds.size === 0) { toast.error('Select at least one platform'); return }
 
+        // ── TikTok-specific pre-publish checks (Points 1b & 1c) ──
+        const selectedPlatforms = activePlatforms.filter(p => selectedPlatformIds.has(p.id))
+        const hasTikTok = selectedPlatforms.some(p => p.platform === 'tiktok')
+        if (hasTikTok && ttCreatorInfo) {
+            if (!ttCreatorInfo.can_post) {
+                toast.error('TikTok: This account has reached its posting limit. Please try again later.')
+                return
+            }
+            // Point 1c: check video duration
+            if (ttPostType === 'video') {
+                const videoItem = attachedMedia.find(m => isVideo(m))
+                if (videoItem && (videoItem as any).duration && ttCreatorInfo.max_video_post_duration_sec) {
+                    const durationSec = (videoItem as any).duration
+                    if (durationSec > ttCreatorInfo.max_video_post_duration_sec) {
+                        toast.error(`TikTok: Video is too long. Maximum allowed duration is ${ttCreatorInfo.max_video_post_duration_sec}s for your account.`)
+                        return
+                    }
+                }
+            }
+        }
+
         // ── Media validation per platform ──
         const hasVideo = attachedMedia.some(m => isVideo(m))
         const hasImage = attachedMedia.some(m => !isVideo(m))
-        const selectedPlatforms = activePlatforms.filter(p => selectedPlatformIds.has(p.id))
         const errors: string[] = []
 
         for (const p of selectedPlatforms) {
@@ -2530,6 +2577,13 @@ export default function ComposePage() {
 
             savedRef.current = true
             toast.success('Post saved! Publishing in background…', { duration: 5000 })
+            // Point 5d: notify user about TikTok processing time
+            const hasTikTokPlatform = selectedChannel?.platforms?.some(p => p.platform === 'tiktok' && selectedPlatformIds.has(p.id))
+            if (hasTikTokPlatform) {
+                setTimeout(() => {
+                    toast.info('⏱ TikTok: Content may take a few minutes to process and appear on your profile.', { duration: 8000 })
+                }, 600)
+            }
             router.push('/dashboard/posts')
         } catch {
             toast.error('Network error — failed to save post')
@@ -4069,7 +4123,7 @@ export default function ComposePage() {
                                 {ttSettingsOpen && (
                                     <CardContent className="space-y-3 px-2.5 pb-3">
 
-                                        {/* Point 1: Creator nickname — user must see which account will be posted to */}
+                                        {/* Point 1a: Creator nickname */}
                                         <div className="flex items-center gap-2 p-2 rounded-md bg-[#00F2EA]/5 border border-[#00F2EA]/20">
                                             <div className="h-6 w-6 rounded-full bg-[#00F2EA]/20 flex items-center justify-center text-[10px] font-bold text-[#00F2EA]">
                                                 {ttNickname.charAt(0).toUpperCase()}
@@ -4078,7 +4132,18 @@ export default function ComposePage() {
                                                 <p className="text-[10px] text-muted-foreground">Posting to TikTok as</p>
                                                 <p className="text-xs font-semibold">{ttNickname}</p>
                                             </div>
+                                            {ttCreatorInfoLoading && <span className="ml-auto text-[9px] text-muted-foreground animate-pulse">Loading…</span>}
                                         </div>
+
+                                        {/* Point 1b: can_post=false warning */}
+                                        {ttCreatorInfo && !ttCreatorInfo.can_post && (
+                                            <div className="flex items-start gap-1.5 p-2 rounded-md bg-destructive/10 border border-destructive/30">
+                                                <span className="text-destructive text-[11px] mt-0.5">⛔</span>
+                                                <p className="text-[10px] text-destructive leading-relaxed">
+                                                    This TikTok account has reached its posting limit. Please try again later.
+                                                </p>
+                                            </div>
+                                        )}
 
                                         {/* Publish As */}
                                         <div className="space-y-1">
@@ -4134,63 +4199,98 @@ export default function ComposePage() {
                                             </div>
                                         </div>
 
-                                        {/* Point 2: Visibility — no default, user must manually select */}
+                                        {/* Point 2a: Video Title — separate editable field */}
+                                        <div className="space-y-1 border-t pt-2">
+                                            <Label className="text-[10px] text-muted-foreground">Video Title <span className="text-muted-foreground/60">(optional, max 2200)</span></Label>
+                                            <input
+                                                type="text"
+                                                maxLength={2200}
+                                                value={ttTitle}
+                                                onChange={e => setTtTitle(e.target.value)}
+                                                placeholder="Leave blank to use caption as title"
+                                                className="w-full text-xs h-7 rounded-md border border-input bg-background px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                                            />
+                                        </div>
+
+                                        {/* Point 2b: Visibility — options from creator_info, no default */}
                                         <div className="space-y-1 border-t pt-2">
                                             <Label className="text-[10px] text-muted-foreground">Who can see <span className="text-destructive">*</span></Label>
                                             <Select value={ttVisibility} onValueChange={(v) => {
                                                 const newVis = v as typeof ttVisibility
                                                 // If Branded Content is on, block SELF_ONLY
                                                 if (newVis === 'SELF_ONLY' && ttCommercialDisclosure && ttBrandedContent) return
+                                                setTtAutoSwitchedToPublic(false) // user manually changed — dismiss banner
                                                 setTtVisibility(newVis)
                                             }}>
                                                 <SelectTrigger className={`text-xs h-7 ${ttVisibility === '' ? 'text-muted-foreground' : ''}`}>
                                                     <SelectValue placeholder="Select privacy…" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="PUBLIC_TO_EVERYONE">
-                                                        <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" /> Public To Everyone</span>
-                                                    </SelectItem>
-                                                    <SelectItem value="MUTUAL_FOLLOW_FRIENDS">
-                                                        <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Mutual Follow Friends</span>
-                                                    </SelectItem>
-                                                    <SelectItem
-                                                        value="SELF_ONLY"
-                                                        disabled={ttCommercialDisclosure && ttBrandedContent}
-                                                    >
-                                                        <span className="flex items-center gap-1.5">
-                                                            <Lock className="h-3 w-3" /> Self Only
-                                                            {ttCommercialDisclosure && ttBrandedContent && (
-                                                                <span className="text-[9px] text-destructive ml-1">(unavailable for Branded Content)</span>
-                                                            )}
-                                                        </span>
-                                                    </SelectItem>
+                                                    {/* Render only options returned by creator_info, or all 3 as fallback */}
+                                                    {(ttCreatorInfo?.privacy_level_options || ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY']).map(opt => {
+                                                        const labelMap: Record<string, { label: string; icon: React.ReactNode }> = {
+                                                            PUBLIC_TO_EVERYONE: { label: 'Public To Everyone', icon: <Globe className="h-3 w-3" /> },
+                                                            MUTUAL_FOLLOW_FRIENDS: { label: 'Mutual Follow Friends', icon: <Users className="h-3 w-3" /> },
+                                                            SELF_ONLY: { label: 'Self Only', icon: <Lock className="h-3 w-3" /> },
+                                                            FOLLOWER_OF_CREATOR: { label: 'Followers Only', icon: <Users className="h-3 w-3" /> },
+                                                        }
+                                                        const item = labelMap[opt] || { label: opt, icon: null }
+                                                        const isDisabled = opt === 'SELF_ONLY' && ttCommercialDisclosure && ttBrandedContent
+                                                        return (
+                                                            <SelectItem key={opt} value={opt} disabled={isDisabled}>
+                                                                <span className="flex items-center gap-1.5">
+                                                                    {item.icon} {item.label}
+                                                                    {isDisabled && <span className="text-[9px] text-destructive ml-1">(unavailable for Branded Content)</span>}
+                                                                </span>
+                                                            </SelectItem>
+                                                        )
+                                                    })}
                                                 </SelectContent>
                                             </Select>
                                             {brandedContentConflict && (
                                                 <p className="text-[10px] text-destructive">Branded content visibility cannot be set to private.</p>
                                             )}
+                                            {/* Point 3b — auto-switch notification banner */}
+                                            {ttAutoSwitchedToPublic && !brandedContentConflict && (
+                                                <div className="flex items-start gap-1.5 p-2 rounded-md bg-amber-500/10 border border-amber-500/30">
+                                                    <span className="text-amber-400 text-[11px] mt-0.5">⚠️</span>
+                                                    <p className="text-[10px] text-amber-400 leading-relaxed">
+                                                        Visibility automatically changed to <strong>Public</strong> — Branded Content cannot be set to private.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* Point 3: Interaction settings — all unchecked by default */}
+                                        {/* Point 2c: Interaction settings — all unchecked by default, disabled per creator_info */}
                                         <div className="border-t pt-2 space-y-1.5">
                                             <Label className="text-[10px] text-muted-foreground">Allow User to</Label>
                                             <div className="space-y-1">
                                                 {[
-                                                    { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment },
-                                                    { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet },
-                                                    { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch },
-                                                ].map(opt => (
-                                                    <div key={opt.label} className="flex items-center justify-between">
-                                                        <p className="text-xs font-medium">{opt.label}</p>
-                                                        <button
-                                                            type="button"
-                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${opt.value ? 'bg-cyan-500' : 'bg-muted'}`}
-                                                            onClick={() => opt.setter(!opt.value)}
-                                                        >
-                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${opt.value ? 'translate-x-6' : 'translate-x-1'}`} />
-                                                        </button>
-                                                    </div>
-                                                ))}
+                                                    { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment, apiDisabled: ttCreatorInfo?.comment_disabled },
+                                                    // Duet & Stitch only for video (not photo carousel)
+                                                    ...(ttPostType === 'video' ? [
+                                                        { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet, apiDisabled: ttCreatorInfo?.duet_disabled },
+                                                        { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch, apiDisabled: ttCreatorInfo?.stitch_disabled },
+                                                    ] : []),
+                                                ].map(opt => {
+                                                    const isDisabled = !!opt.apiDisabled
+                                                    return (
+                                                        <div key={opt.label} className="flex items-center justify-between">
+                                                            <div>
+                                                                <p className={`text-xs font-medium ${isDisabled ? 'text-muted-foreground/50' : ''}`}>{opt.label}</p>
+                                                                {isDisabled && <p className="text-[9px] text-muted-foreground/50">Disabled in your TikTok settings</p>}
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                disabled={isDisabled}
+                                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${opt.value && !isDisabled ? 'bg-cyan-500' : 'bg-muted'}`}
+                                                                onClick={() => !isDisabled && opt.setter(!opt.value)}
+                                                            >
+                                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${opt.value && !isDisabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
                                         </div>
 
@@ -4247,9 +4347,12 @@ export default function ComposePage() {
                                                             checked={ttBrandedContent}
                                                             onChange={e => {
                                                                 setTtBrandedContent(e.target.checked)
-                                                                // Auto-clear SELF_ONLY if branded content is turned on
+                                                                // Auto-switch to Public if branded content is turned on while private
                                                                 if (e.target.checked && ttVisibility === 'SELF_ONLY') {
                                                                     setTtVisibility('PUBLIC_TO_EVERYONE')
+                                                                    setTtAutoSwitchedToPublic(true) // show notification banner
+                                                                } else {
+                                                                    setTtAutoSwitchedToPublic(false)
                                                                 }
                                                             }}
                                                         />
