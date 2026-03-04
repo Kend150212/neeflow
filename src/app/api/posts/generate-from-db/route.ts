@@ -430,22 +430,51 @@ export async function POST(req: NextRequest) {
         const brandName = channel?.displayName ?? 'Brand'
         const langLabel = language === 'vi' ? 'Vietnamese' : language === 'en' ? 'English' : language
 
-        const systemPrompt = `You are a social media content creator for the brand "${brandName}". Write engaging posts that reflect the brand voice and style. Output only the post content, no explanations.
-${vibeStr ? `Brand tone & style: ${vibeStr}` : ''}
-${kbContext ? `\nBrand knowledge base:\n${kbContext}` : ''}`
+        const systemPrompt = `You are a creative social media copywriter for the brand "${brandName}". Your job is to write unique, compelling posts that feel HUMAN — not like a template.
+
+CRITICAL RULES:
+- Every post must have a DIFFERENT structure, hook, and angle
+- NEVER start with the same phrase twice
+- Do NOT use generic intros like "Nì ơi," or "Bạn đã bao giờ" every single time
+- Output ONLY the post content — no explanations, no labels
+${vibeStr ? `Brand voice: ${vibeStr}` : ''}
+${kbContext ? `\nBrand context:\n${kbContext}` : ''}`
+
+        // Creative angles to rotate through — forces AI to take a different approach each call  
+        const CREATIVE_ANGLES = [
+            `Hook: Start with a bold, surprising FACT or statistic about this product/room.`,
+            `Hook: Write from the perspective of a GUEST who just stayed/used this — first-person review style.`,
+            `Hook: Open with a vivid SENSORY description (what it looks, smells, feels like). Make the reader feel present.`,
+            `Hook: Use a RELATABLE PROBLEM the reader has, then position this as the perfect solution.`,
+            `Hook: Start with a short STORY — one sentence scene-setter, then unfold why this is special.`,
+            `Hook: Write as a COMPARISON — "Most [category] are X... but this one is Y."`,
+            `Hook: Lead with FOMO — what the reader is missing out on if they don't try this.`,
+            `Hook: Ask ONE provocative question that makes the reader stop scrolling.`,
+            `Hook: Start with a specific DETAIL about the product (a feature, a number, a design element) — make it concrete.`,
+            `Hook: Write like you're telling a SECRET or insider tip not everyone knows about this place/product.`,
+            `Hook: Use a CONTRAST structure — "Before vs After" or "Day vs Night" or "Alone vs Together."`,
+            `Hook: Lead with EMOTION — what feeling does this product/room give you? Name it immediately.`,
+        ]
+        const rowIndex = (Date.now() + Math.floor(Math.random() * 1000)) % CREATIVE_ANGLES.length
 
         // Generate content per platform
         const contentPerPlatform: Record<string, string> = {}
-        for (const platform of platformList) {
+        for (const [i, platform] of platformList.entries()) {
             const hint = PLATFORM_HINTS[platform] || `${platform} (optimized for platform)`
-            const userPrompt = `Based on the following product/data record from the "${tableName}" table, write a ${toneDesc} post for ${hint}.
+            // Rotate angle per platform so even same-row multi-platform posts feel different  
+            const angle = CREATIVE_ANGLES[(rowIndex + i) % CREATIVE_ANGLES.length]
+            const userPrompt = `Write a ${toneDesc} social media post for ${hint}.
 
-Data: ${dataText}
+${angle}
+
+Product/Room data:
+${dataText}
 
 Requirements:
 - Language: ${langLabel}
-- Follow platform-specific format and limits described above
-${allHashtags.length > 0 ? `- You may use relevant hashtags from this list: ${allHashtags.join(' ')}` : ''}
+- Follow platform length and format rules above
+${allHashtags.length > 0 ? `- Use 2-4 relevant hashtags from: ${allHashtags.join(' ')}` : ''}
+- NO generic intros — be original and specific to THIS product's unique details
 - Output ONLY the post content`
 
             const result = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
