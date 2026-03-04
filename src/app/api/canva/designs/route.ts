@@ -373,10 +373,12 @@ export async function GET(req: NextRequest) {
                                 let uploadMime = imgRes.headers.get('content-type') || 'image/png'
                                 let fileName = `${rawName}.png`
                                 try {
-                                    uploadBuffer = await sharp(imgBuffer as Buffer)
-                                        .flatten({ background: { r: 255, g: 255, b: 255 } })
-                                        .jpeg({ quality: 90, progressive: true })
-                                        .toBuffer() as Buffer
+                                    uploadBuffer = Buffer.from(
+                                        await sharp(imgBuffer)
+                                            .flatten({ background: { r: 255, g: 255, b: 255 } })
+                                            .jpeg({ quality: 90, progressive: true })
+                                            .toBuffer()
+                                    )
                                     uploadMime = 'image/jpeg'
                                     fileName = `${rawName}.jpg`
                                     console.log(`Canva page ${idx + 1}: converted to JPEG (${uploadBuffer.length} bytes)`)
