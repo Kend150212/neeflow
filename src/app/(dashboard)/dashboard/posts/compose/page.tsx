@@ -1760,19 +1760,43 @@ export default function ComposePage() {
                     ` : '<p style="color:#9ca3af;font-size:14px;margin-top:12px;">Please keep this window open...</p>'
 
                     win.document.open()
-                    win.document.write(`<!DOCTYPE html><html><head><title>${branding.appName} - Canva Export</title><style>
+                    win.document.write(`<!DOCTYPE html><html><head><title>${branding.appName} × Canva</title><style>
                         * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body { background: #0f1419; color: #e7e9ea; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }
-                        .container { padding: 48px; max-width: 480px; }
-                        .logo { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 32px; }
-                        .logo img { width: 40px; height: 40px; border-radius: 10px; }
-                        .logo span { font-size: 24px; font-weight: 700; color: #10b981; }
-                        .icon { font-size: 48px; margin-bottom: 16px; }
-                        .message { font-size: 18px; line-height: 1.6; color: #d1d5db; }
+                        body { background: #0d0f14; color: #e7e9ea; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }
+                        .container { padding: 48px 56px; max-width: 500px; }
+                        .logos { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 32px; }
+                        .logo-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+                        .logo-wrap img { width: 52px; height: 52px; border-radius: 14px; object-fit: contain; }
+                        .logo-name { font-size: 13px; font-weight: 600; color: #9ca3af; letter-spacing: 0.03em; }
+                        .link-badge {
+                          display: flex; align-items: center; justify-content: center;
+                          width: 32px; height: 32px; margin: 0 10px; margin-bottom: 22px;
+                          border-radius: 50%; background: #1e2330; border: 1px solid #2d3447;
+                        }
+                        .link-badge svg { width: 14px; height: 14px; color: #6b7280; }
+                        .canva-logo { width: 52px; height: 52px; border-radius: 14px; background: #7d2ae8; display: flex; align-items: center; justify-content: center; }
+                        .message { font-size: 17px; font-weight: 600; line-height: 1.5; color: #f3f4f6; margin-bottom: 8px; }
+                        .sub { font-size: 13px; color: #6b7280; }
                         ${spinnerCSS}
+                        .spinner { margin: 24px auto 20px; }
+                        .icon { font-size: 40px; margin: 20px 0 16px; }
                     </style></head><body>
                         <div class="container">
-                            <div class="logo"><img src="${branding.logoUrl}" alt="${branding.appName}" /><span>${branding.appName}</span></div>
+                            <div class="logos">
+                                <div class="logo-wrap">
+                                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="${branding.appName}" />
+                                    <span class="logo-name">${branding.appName}</span>
+                                </div>
+                                <div class="link-badge">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                                </div>
+                                <div class="logo-wrap">
+                                    <div class="canva-logo">
+                                        <svg viewBox="0 0 24 24" width="28" height="28" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5c4.142 0 7.5 3.358 7.5 7.5 0 .47-.044.93-.126 1.376-.43-.284-.96-.376-1.524-.2-.98.307-1.47 1.37-1.09 2.373.2.528.62.92 1.12 1.09-.96 1.824-2.7 3.11-4.74 3.474V17.5a1.5 1.5 0 00-3 0v2.613c-2.04-.364-3.78-1.65-4.74-3.474.5-.17.92-.562 1.12-1.09.38-1.003-.11-2.066-1.09-2.373-.564-.176-1.094-.084-1.524.2A7.46 7.46 0 014.5 12C4.5 7.858 7.858 4.5 12 4.5z"/></svg>
+                                    </div>
+                                    <span class="logo-name">Canva</span>
+                                </div>
+                            </div>
                             ${status === 'loading' ? '<div class="spinner"></div>' : `<div class="icon">${icon}</div>`}
                             <p class="message">${message}</p>
                             ${closeBtn}
