@@ -299,6 +299,7 @@ export default function InboxPage() {
     const [selectedPlatformIds, setSelectedPlatformIds] = useState<string[]>([])
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [channelMembers, setChannelMembers] = useState<any[]>([])
+    const [openReactMsgId, setOpenReactMsgId] = useState<string | null>(null)
     const [platformAccounts, setPlatformAccounts] = useState<PlatformAccount[]>([])
     const [counts, setCounts] = useState<StatusCounts>({ new: 0, open: 0, done: 0, archived: 0, mine: 0, all: 0 })
     const [loading, setLoading] = useState(true)
@@ -893,6 +894,14 @@ export default function InboxPage() {
         })
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [panels.map(p => p.messages.length).join(',')])
+
+    // Close reaction picker when clicking outside
+    useEffect(() => {
+        if (!openReactMsgId) return
+        const handler = () => setOpenReactMsgId(null)
+        document.addEventListener('click', handler)
+        return () => document.removeEventListener('click', handler)
+    }, [openReactMsgId])
 
     // Debounced search
     const handleSearchChange = (value: string) => {
@@ -2042,7 +2051,7 @@ export default function InboxPage() {
                                                                     msg.direction === 'outbound'
                                                                         ? msg.senderType === 'bot'
                                                                             ? 'bg-muted text-foreground'
-                                                                            : 'bg-primary text-primary-foreground'
+                                                                            : 'bg-muted text-foreground'
                                                                         : 'bg-muted'
                                                                 )}>
                                                                     {msg.senderType === 'bot' && (
@@ -2086,12 +2095,15 @@ export default function InboxPage() {
                                                                     )}
                                                                     {/* Only show text if it's not just the [Attachment] placeholder */}
                                                                     {(!msg.mediaUrl || msg.content !== '[Attachment]') && (
-                                                                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                                                                        <div className={cn(
+                                                                            'whitespace-pre-wrap',
+                                                                            msg.direction === 'outbound' && msg.senderType === 'agent' && 'text-green-400'
+                                                                        )}>{msg.content}</div>
                                                                     )}
                                                                     <div className={cn(
                                                                         'text-[9px] mt-1.5',
                                                                         msg.direction === 'outbound' && msg.senderType !== 'bot'
-                                                                            ? 'text-primary-foreground/70'
+                                                                            ? 'text-green-500'
                                                                             : 'text-muted-foreground'
                                                                     )}>
                                                                         {new Date(msg.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
@@ -2119,34 +2131,39 @@ export default function InboxPage() {
                                                                         >
                                                                             ↩
                                                                         </button>
-                                                                        {/* Reaction picker */}
+                                                                        {/* Reaction picker – click-based, stable */}
                                                                         {msg.externalId && (
-                                                                            <div className="relative group/react">
+                                                                            <div className="relative">
                                                                                 <button
                                                                                     title="React"
+                                                                                    onClick={e => { e.stopPropagation(); setOpenReactMsgId(v => v === msg.id ? null : msg.id) }}
                                                                                     className="flex items-center justify-center h-6 w-6 rounded-full bg-muted hover:bg-accent text-muted-foreground text-sm"
                                                                                 >
                                                                                     😊
                                                                                 </button>
-                                                                                {/* Inline emoji popup on hover */}
-                                                                                <div className="absolute left-7 top-0 hidden group-hover/react:flex items-center gap-0.5 bg-popover border rounded-full px-1.5 py-1 shadow-lg z-50">
-                                                                                    {['👍', '❤️', '😂', '😮', '😢', '😡'].map(emoji => (
-                                                                                        <button
-                                                                                            key={emoji}
-                                                                                            title={emoji}
-                                                                                            onClick={async () => {
-                                                                                                await fetch(`/api/inbox/conversations/${sc?.id}/react`, {
-                                                                                                    method: 'POST',
-                                                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                                                    body: JSON.stringify({ externalId: msg.externalId, emoji }),
-                                                                                                })
-                                                                                            }}
-                                                                                            className="text-base hover:scale-125 transition-transform"
-                                                                                        >
-                                                                                            {emoji}
-                                                                                        </button>
-                                                                                    ))}
-                                                                                </div>
+                                                                                {openReactMsgId === msg.id && (
+                                                                                    <div
+                                                                                        className="absolute left-7 top-0 flex items-center gap-0.5 bg-popover border rounded-full px-2 py-1.5 shadow-xl z-50"
+                                                                                        onClick={e => e.stopPropagation()}
+                                                                                    >
+                                                                                        {['👍', '❤️', '😂', '😮', '😢', '😡'].map(emoji => (
+                                                                                            <button
+                                                                                                key={emoji}
+                                                                                                onClick={async () => {
+                                                                                                    setOpenReactMsgId(null)
+                                                                                                    await fetch(`/api/inbox/conversations/${sc?.id}/react`, {
+                                                                                                        method: 'POST',
+                                                                                                        headers: { 'Content-Type': 'application/json' },
+                                                                                                        body: JSON.stringify({ externalId: msg.externalId, emoji }),
+                                                                                                    })
+                                                                                                }}
+                                                                                                className="text-lg hover:scale-125 transition-transform px-0.5"
+                                                                                            >
+                                                                                                {emoji}
+                                                                                            </button>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         )}
 
