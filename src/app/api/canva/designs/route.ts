@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decrypt, encrypt } from '@/lib/encryption'
 import { uploadToR2, generateR2Key, isR2Configured } from '@/lib/r2'
+import sharp from 'sharp'
 
 // Helper: get Canva access token for the current user, auto-refresh if expired
 async function getCanvaToken(userId: string, forceRefresh = false): Promise<{ token: string | null; connected: boolean }> {
@@ -363,9 +364,28 @@ export async function GET(req: NextRequest) {
                                 }
 
                                 const suffix = urls.length > 1 ? `-page${idx + 1}` : ''
-                                const fileName = `canva-design-${Date.now()}${suffix}.png`
+                                const rawName = `canva-design-${Date.now()}${suffix}`
+
+                                // Convert PNG → JPEG before R2 upload
+                                // TikTok PULL_FROM_URL requires JPEG/WebP. Storing as JPEG means
+                                // TikTok can pull directly from R2 without routing through our proxy.
+                                let uploadBuffer = imgBuffer
+                                let uploadMime = imgRes.headers.get('content-type') || 'image/png'
+                                let fileName = `${rawName}.png`
+                                try {
+                                    uploadBuffer = await sharp(imgBuffer)
+                                        .flatten({ background: { r: 255, g: 255, b: 255 } })
+                                        .jpeg({ quality: 90, progressive: true })
+                                        .toBuffer()
+                                    uploadMime = 'image/jpeg'
+                                    fileName = `${rawName}.jpg`
+                                    console.log(`Canva page ${idx + 1}: converted to JPEG (${uploadBuffer.length} bytes)`)
+                                } catch (convErr) {
+                                    console.warn(`Canva page ${idx + 1}: JPEG conversion failed, uploading original PNG`, convErr)
+                                }
+
                                 const r2Key = generateR2Key(channelId, fileName)
-                                const publicUrl = await uploadToR2(imgBuffer, r2Key, 'image/png')
+                                const publicUrl = await uploadToR2(uploadBuffer, r2Key, uploadMime)
                                 const mediaItem = await prisma.mediaItem.create({
                                     data: {
                                         channelId,
@@ -375,8 +395,8 @@ export async function GET(req: NextRequest) {
                                         type: 'image',
                                         source: 'upload',
                                         originalName: fileName,
-                                        fileSize: imgBuffer.length,
-                                        mimeType: 'image/png',
+                                        fileSize: uploadBuffer.length,
+                                        mimeType: uploadMime,
                                         aiMetadata: { storage: 'r2', r2Key, source: 'canva', page: idx + 1 },
                                     },
                                 })
