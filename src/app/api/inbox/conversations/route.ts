@@ -77,7 +77,6 @@ export async function GET(req: NextRequest) {
         prisma.conversation.findMany({
             where,
             orderBy: [
-                { unreadCount: 'desc' },
                 { lastMessageAt: 'desc' },
             ],
             skip: (page - 1) * limit,
