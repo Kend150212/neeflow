@@ -4544,8 +4544,9 @@ export default function ComposePage() {
                                                     <SelectValue placeholder="Select privacy…" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {/* Always PUBLIC_TO_EVERYONE first, then the rest from API (deduped) */}
-                                                    {(['PUBLIC_TO_EVERYONE', ...((ttCreatorInfo?.privacy_level_options || ['MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY']).filter((o: string) => o !== 'PUBLIC_TO_EVERYONE'))] as string[])
+                                                    {/* Strictly only the 3 standard TikTok options, per creator_info — no FOLLOWER_OF_CREATOR */}
+                                                    {(['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'] as const)
+                                                        .filter(opt => !ttCreatorInfo || ttCreatorInfo.privacy_level_options.includes(opt) || opt === 'PUBLIC_TO_EVERYONE')
                                                         .map(opt => {
                                                             const labelMap: Record<string, { label: string; icon: React.ReactNode }> = {
                                                                 PUBLIC_TO_EVERYONE: { label: 'Public To Everyone', icon: <Globe className="h-3 w-3" /> },
@@ -4588,20 +4589,17 @@ export default function ComposePage() {
                                             )}
                                         </div>
 
-                                        {/* Point 2c: Interaction settings — toggle switches, always all 3 visible */}
+                                        {/* Point 2c: Interaction settings — horizontal 3-col, toggles, always all 3 visible */}
                                         <div className="border-t pt-2 space-y-1.5">
                                             <Label className="text-[10px] text-muted-foreground">Allow User to</Label>
-                                            <div className="space-y-1">
+                                            <div className="grid grid-cols-3 gap-2">
                                                 {[
                                                     { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment, isDisabled: false },
                                                     { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet, isDisabled: ttPostType !== 'video' },
                                                     { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch, isDisabled: ttPostType !== 'video' },
                                                 ].map(opt => (
-                                                    <div key={opt.label} className="flex items-center justify-between">
-                                                        <div>
-                                                            <p className={`text-xs font-medium ${opt.isDisabled ? 'text-muted-foreground/50' : ''}`}>{opt.label}</p>
-                                                            {opt.isDisabled && <p className="text-[9px] text-muted-foreground/50">Not available for Image Carousel</p>}
-                                                        </div>
+                                                    <div key={opt.label} className="flex flex-col items-center gap-1">
+                                                        <p className={`text-[10px] font-medium ${opt.isDisabled ? 'text-muted-foreground/40' : 'text-muted-foreground'}`}>{opt.label}</p>
                                                         <button
                                                             type="button"
                                                             disabled={opt.isDisabled}
