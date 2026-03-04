@@ -36,7 +36,7 @@ interface Channel { id: string; displayName: string }
 interface PostMedia {
     mediaItem: { id: string; url: string; thumbnailUrl: string | null; type: string; originalName: string | null }
 }
-interface PlatformStatus { platform: string; status: string }
+interface PlatformStatus { id: string; platform: string; status: string; externalId?: string | null; accountId: string }
 interface Post {
     id: string; content: string | null; status: string
     scheduledAt: string | null; publishedAt: string | null; createdAt: string
@@ -167,6 +167,65 @@ function AnalyticsRow({ postId }: { postId: string }) {
     )
 }
 
+// ─── TikTok Publishing Status Badge ────────────────────────────────────────
+// Polls TikTok publish/status/fetch API per TikTok guideline 5e
+type TkStatus = 'checking' | 'processing' | 'live' | 'failed' | 'idle'
+
+function TikTokProcessingBadge({ platformStatuses }: { platformStatuses: PlatformStatus[] }) {
+    const tikTokPps = platformStatuses.filter(ps => ps.platform === 'tiktok' && ps.externalId)
+    const [statuses, setStatuses] = useState<Record<string, TkStatus>>(() =>
+        Object.fromEntries(tikTokPps.map(ps => [ps.id, 'checking' as TkStatus]))
+    )
+    const stopRef = useRef(false)
+
+    useEffect(() => {
+        if (tikTokPps.length === 0) return
+        stopRef.current = false
+        const poll = async () => {
+            if (stopRef.current) return
+            const updates: Record<string, TkStatus> = {}
+            await Promise.all(tikTokPps.map(async ps => {
+                try {
+                    const res = await fetch(`/api/tiktok/publish-status?postPlatformStatusId=${ps.id}`)
+                    const data = await res.json()
+                    const tk = data.tiktokStatus as string | null
+                    if (tk === 'PUBLISH_COMPLETE') updates[ps.id] = 'live'
+                    else if (tk === 'FAILED') updates[ps.id] = 'failed'
+                    else if (tk === 'PROCESSING_UPLOAD' || tk === 'SEND_TO_USER_INBOX') updates[ps.id] = 'processing'
+                    else updates[ps.id] = 'idle'
+                } catch { updates[ps.id] = 'idle' }
+            }))
+            if (!stopRef.current) setStatuses(prev => ({ ...prev, ...updates }))
+        }
+        poll()
+        const interval = setInterval(poll, 8000)
+        return () => { stopRef.current = true; clearInterval(interval) }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    if (tikTokPps.length === 0) return null
+    const allLive = tikTokPps.every(ps => statuses[ps.id] === 'live')
+    const anyFailed = tikTokPps.some(ps => statuses[ps.id] === 'failed')
+    const anyProcessing = tikTokPps.some(ps => statuses[ps.id] === 'processing' || statuses[ps.id] === 'checking')
+
+    if (allLive) return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            ✓ Live on TikTok
+        </span>
+    )
+    if (anyFailed) return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+            ✗ TikTok Failed
+        </span>
+    )
+    if (anyProcessing) return (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20 animate-pulse">
+            <Loader2 className="h-2.5 w-2.5 animate-spin" /> TikTok Processing…
+        </span>
+    )
+    return null
+}
+
 // ─── Queue Card ──────────────────────────────────────
 
 function QueueCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate, analyticsOpen, onToggleAnalytics }: {
@@ -283,7 +342,7 @@ function QueueCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate, an
 
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-2.5 border-t border-border/40 mt-auto">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-muted-foreground">{post.channel.displayName}</span>
                         <SourceBadge metadata={post.metadata} />
                         {post.scheduledAt && (
@@ -292,6 +351,8 @@ function QueueCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate, an
                                 {formatDate(post.scheduledAt)}
                             </span>
                         )}
+                        {/* TikTok 5e: real-time processing status badge */}
+                        {isPublished && <TikTokProcessingBadge platformStatuses={post.platformStatuses} />}
                     </div>
                     <div className="flex items-center gap-2">
                         {isPublished && (
@@ -763,6 +824,8 @@ export default function PostsPage() {
                                             <div className="flex items-center gap-1">
                                                 {platforms.map(p => <PlatformIcon key={p} platform={p} size="sm" />)}
                                             </div>
+                                            {/* TikTok 5e: real-time processing status in list view */}
+                                            {isPublished && <TikTokProcessingBadge platformStatuses={post.platformStatuses} />}
                                             {isPublished && (
                                                 <button
                                                     onClick={e => { e.stopPropagation(); toggleAnalytics(post.id) }}
