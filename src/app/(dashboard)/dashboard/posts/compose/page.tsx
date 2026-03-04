@@ -2979,22 +2979,48 @@ export default function ComposePage() {
 
             {/* Mobile Tab Bar — hidden on lg+ */}
             <div className="lg:hidden flex items-center gap-0 border-b shrink-0 px-1 bg-background">
-                {(['settings', 'editor', 'preview'] as const).map((tab) => {
-                    const labels: Record<string, string> = { settings: '⚙️ Cài đặt', editor: '✏️ Soạn', preview: '👁 Xem trước' }
-                    return (
-                        <button
-                            key={tab}
-                            type="button"
-                            onClick={() => setMobileTab(tab)}
-                            className={`flex-1 py-2 text-xs font-medium transition-colors border-b-2 cursor-pointer ${mobileTab === tab
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground'
-                                }`}
-                        >
-                            {labels[tab]}
-                        </button>
-                    )
-                })}
+                {([
+                    {
+                        id: 'settings' as const,
+                        label: t('compose.channel'),
+                        icon: (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                            </svg>
+                        ),
+                    },
+                    {
+                        id: 'editor' as const,
+                        label: t('compose.content'),
+                        icon: (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                        ),
+                    },
+                    {
+                        id: 'preview' as const,
+                        label: t('compose.preview'),
+                        icon: (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+                            </svg>
+                        ),
+                    },
+                ]).map(({ id, label, icon }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        onClick={() => setMobileTab(id)}
+                        className={`flex-1 py-2 flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors border-b-2 cursor-pointer ${mobileTab === id
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                            }`}
+                    >
+                        {icon}
+                        {label}
+                    </button>
+                ))}
             </div>
 
             {/* 3-Column Layout — fills remaining height */}
