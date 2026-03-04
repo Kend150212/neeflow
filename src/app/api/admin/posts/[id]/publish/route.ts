@@ -1716,6 +1716,7 @@ async function publishToTikTok(
         if (imageItems.length < 2) throw new Error('TikTok carousel requires at least 2 images.')
 
         const photoBody: Record<string, unknown> = {
+            post_mode: 'DIRECT_POST',
             media_type: 'PHOTO',
             post_info: {
                 title: postTitle,

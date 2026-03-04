@@ -4269,6 +4269,21 @@ export default function ComposePage() {
                                             </div>
                                         </div>
 
+                                        {/* Real-time warning: TikTok carousel needs ≥ 2 images */}
+                                        {ttPostType === 'carousel' && (() => {
+                                            const imgCount = attachedMedia.filter(m => !isVideo(m)).length
+                                            if (imgCount >= 2) return null
+                                            return (
+                                                <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/30">
+                                                    <span className="text-amber-400 text-[11px]">⚠️</span>
+                                                    <p className="text-[10px] text-amber-400 leading-relaxed">
+                                                        TikTok Carousel requires at least <strong>2 images</strong>.
+                                                        {imgCount === 0 ? ' No images attached yet.' : ` Only ${imgCount} image attached.`}
+                                                    </p>
+                                                </div>
+                                            )
+                                        })()}
+
                                         {/* Point 2a: Video Title — separate editable field */}
                                         <div className="space-y-1 border-t pt-2">
                                             <Label className="text-[10px] text-muted-foreground">Video Title <span className="text-muted-foreground/60">(optional, max 2200)</span></Label>

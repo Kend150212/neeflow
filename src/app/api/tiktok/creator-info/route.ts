@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         where: {
             id: platformId,
             platform: 'tiktok',
-            channel: { userId: session.user.id },
+            channel: { members: { some: { userId: session.user.id } } },
         },
         select: { accessToken: true, accountName: true },
     })
