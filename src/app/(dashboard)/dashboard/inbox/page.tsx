@@ -23,6 +23,7 @@ import {
     MoreVertical,
     Tag,
     UserPlus,
+    UserX,
     CheckCircle2,
     Archive,
     Mail,
@@ -297,6 +298,7 @@ export default function InboxPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedPlatformIds, setSelectedPlatformIds] = useState<string[]>([])
     const [conversations, setConversations] = useState<Conversation[]>([])
+    const [channelMembers, setChannelMembers] = useState<any[]>([])
     const [platformAccounts, setPlatformAccounts] = useState<PlatformAccount[]>([])
     const [counts, setCounts] = useState<StatusCounts>({ new: 0, open: 0, done: 0, archived: 0, mine: 0, all: 0 })
     const [loading, setLoading] = useState(true)
@@ -1615,6 +1617,72 @@ export default function InboxPage() {
                                                         <CheckCircle2 className="h-3.5 w-3.5" />
                                                         {t('inbox.actions.resolve')}
                                                     </Button>
+                                                    {/* Assign to member */}
+                                                    <DropdownMenu onOpenChange={async (open) => {
+                                                        if (open && sc?.channelId) {
+                                                            try {
+                                                                const r = await fetch(`/api/inbox/channels/${sc.channelId}/members`)
+                                                                if (r.ok) {
+                                                                    const d = await r.json()
+                                                                    setChannelMembers(d.members || [])
+                                                                }
+                                                            } catch { /* ignore */ }
+                                                        }
+                                                    }}>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className={cn(
+                                                                    'h-7 text-xs gap-1.5',
+                                                                    sc.assignedTo && 'border-blue-500/50 text-blue-500'
+                                                                )}
+                                                            >
+                                                                <UserPlus className="h-3.5 w-3.5" />
+                                                                {sc.agent?.name
+                                                                    ? sc.agent.name.split(' ')[0]
+                                                                    : t('inbox.actions.assign') || 'Assign'}
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-52">
+                                                            <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                                                {t('inbox.actions.assignTo') || 'Assign to'}
+                                                            </div>
+                                                            {channelMembers.length === 0 ? (
+                                                                <div className="px-2 py-2 text-xs text-muted-foreground">Loading...</div>
+                                                            ) : (
+                                                                <>
+                                                                    {channelMembers.map((member: any) => (
+                                                                        <DropdownMenuItem
+                                                                            key={member.id}
+                                                                            className="text-xs cursor-pointer gap-2"
+                                                                            onClick={() => updateConversation(sc.id, { assignedTo: sc.assignedTo === member.id ? null : member.id }, paneIdx)}
+                                                                        >
+                                                                            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                                                {member.name?.charAt(0) || member.email?.charAt(0) || '?'}
+                                                                            </div>
+                                                                            <span className="flex-1 truncate">{member.name || member.email}</span>
+                                                                            {sc.assignedTo === member.id && (
+                                                                                <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                                                            )}
+                                                                        </DropdownMenuItem>
+                                                                    ))}
+                                                                    {sc.assignedTo && (
+                                                                        <>
+                                                                            <div className="my-1 border-t" />
+                                                                            <DropdownMenuItem
+                                                                                className="text-xs cursor-pointer text-muted-foreground"
+                                                                                onClick={() => updateConversation(sc.id, { assignedTo: null }, paneIdx)}
+                                                                            >
+                                                                                <UserX className="h-3.5 w-3.5 mr-2" />
+                                                                                {t('inbox.actions.unassign') || 'Unassign'}
+                                                                            </DropdownMenuItem>
+                                                                        </>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-7 w-7">
