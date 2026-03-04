@@ -2061,26 +2061,36 @@ export default function ComposePage() {
                 await doExport()
             }
 
+            let returnedToApp = false // true ONLY when popup navigates to our domain (user clicked "Return to NeeFlow")
+
             const checkClosed = setInterval(async () => {
                 if (exported) { clearInterval(checkClosed); return }
 
-                // Case 1: Popup was closed by user manually — trigger export
-                if (popup && popup.closed) {
-                    clearInterval(checkClosed)
-                    await triggerExport()
-                    return
-                }
-
-                // Case 2: Popup navigated back to our domain (user clicked "Publish/Share")
-                // Close popup immediately and run export in background with inline placeholder
+                // Case 1: Popup navigated back to our domain → user clicked "Return to NeeFlow"
                 try {
                     if (popup && popup.location && popup.location.hostname === window.location.hostname) {
+                        returnedToApp = true
                         clearInterval(checkClosed)
                         await triggerExport()
                         return
                     }
                 } catch {
-                    // Cross-origin — popup is still on canva.com, that's fine
+                    // Cross-origin — popup still on canva.com, not ready yet
+                }
+
+                // Case 2: Popup closed — check HOW it was closed
+                if (popup && popup.closed) {
+                    clearInterval(checkClosed)
+                    if (returnedToApp) {
+                        // Already handled above (race: popup closed right after navigation)
+                        if (!exported) await triggerExport()
+                    } else {
+                        // User clicked native X — cancel silently, remove any loading placeholder
+                        setAttachedMedia(prev => prev.filter(m => m.id !== placeholderIdRef))
+                        setCanvaLoading(false)
+                        console.log('Canva popup closed via X — export cancelled')
+                    }
+                    return
                 }
             }, 1000)
 
