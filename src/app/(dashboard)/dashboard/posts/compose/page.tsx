@@ -498,37 +498,194 @@ function InstagramPreview({ content, media, accountName, accountAvatar, mediaRat
     )
 }
 
-function TikTokPreview({ content, media, accountName, accountAvatar }: {
-    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; mediaRatio?: string
+function TikTokPreview({ content, media, accountName, accountAvatar, mediaRatio = '9:16', postType = 'video' }: {
+    content: string; media: MediaItem[]; accountName: string; accountAvatar?: string | null; mediaRatio?: string; postType?: 'video' | 'carousel'
 }) {
+    const [activeIdx, setActiveIdx] = useState(0)
+    const scrollRef = useRef<HTMLDivElement>(null)
     const hasVideo = media.some(m => isVideo(m))
-    const coverMedia = media[0]
+    const isCarousel = postType === 'carousel'
 
+    // Sync dot indicator when user scrolls
+    const handleScroll = useCallback(() => {
+        const el = scrollRef.current
+        if (!el) return
+        const idx = Math.round(el.scrollLeft / el.offsetWidth)
+        setActiveIdx(idx)
+    }, [])
+
+    const goTo = (idx: number) => {
+        const el = scrollRef.current
+        if (!el) return
+        el.scrollTo({ left: idx * el.offsetWidth, behavior: 'smooth' })
+        setActiveIdx(idx)
+    }
+
+    // Aspect ratio class for video mode image container
+    const videoRatioClass = mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '1:1' ? 'aspect-square' : '' /* 9:16 → fill */
+
+    if (isCarousel) {
+        // ── TikTok Photo / Image Carousel mode ──────────────────────
+        return (
+            <div className="relative w-full bg-black text-white overflow-hidden" style={{ aspectRatio: '9/16', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                {/* Neutral dark background */}
+                <div className="absolute inset-0 bg-zinc-900" />
+
+                {/* Top bar */}
+                <div className="absolute top-0 left-0 right-0 z-20 pt-1 pb-2 flex items-center justify-center">
+                    <button className="px-3 py-1 text-[11px] font-medium text-white/60">Following</button>
+                    <div className="flex flex-col items-center">
+                        <button className="px-3 py-1 text-[12px] font-bold text-white">For You</button>
+                        <div className="w-6 h-[2px] bg-white rounded-full" />
+                    </div>
+                    <button className="px-3 py-1 text-[11px] font-medium text-white/60">Explore</button>
+                    <div className="absolute right-3 top-1.5">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                        </svg>
+                    </div>
+                </div>
+
+                {/* ── Scrollable carousel images — 1:1 square (TikTok photo mode) ── */}
+                {media.length > 0 ? (
+                    <div
+                        ref={scrollRef}
+                        onScroll={handleScroll}
+                        className="absolute inset-x-0 flex overflow-x-auto snap-x snap-mandatory"
+                        style={{ top: '28%', bottom: '30%', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                        {media.map((m, i) => (
+                            <div key={i} className="flex-none w-full snap-center aspect-square overflow-hidden bg-zinc-800">
+                                <img
+                                    src={m.thumbnailUrl || m.url}
+                                    alt={`Slide ${i + 1}`}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="absolute inset-x-0" style={{ top: '28%', bottom: '30%' }}>
+                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                            <p className="text-white/40 text-xs">No images</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Slide counter badge (top-right of image area) */}
+                {media.length > 1 && (
+                    <div className="absolute z-20 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ top: 'calc(28% + 8px)', right: '12px' }}>
+                        {activeIdx + 1}/{media.length}
+                    </div>
+                )}
+
+                {/* Dot indicators */}
+                {media.length > 1 && (
+                    <div className="absolute z-20 flex justify-center gap-1" style={{ bottom: '31%', left: 0, right: 0 }}>
+                        {media.map((_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => goTo(i)}
+                                className={`h-1.5 rounded-full transition-all cursor-pointer ${i === activeIdx ? 'w-4 bg-[#FE2C55]' : 'w-1.5 bg-white/40'}`}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* Right sidebar */}
+                <div className="absolute right-2 bottom-20 z-20 flex flex-col items-center gap-4">
+                    <div className="relative mb-1">
+                        <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
+                            <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#555' }} />
+                        </div>
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#FE2C55] flex items-center justify-center">
+                            <Plus className="h-2.5 w-2.5 text-white" />
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                        <Heart className="h-7 w-7 fill-white text-white" />
+                        <span className="text-[10px] font-semibold">0</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                        <MessageCircle className="h-7 w-7 fill-white text-white" />
+                        <span className="text-[10px] font-semibold">0</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                        <Bookmark className="h-7 w-7 fill-white text-white" />
+                        <span className="text-[10px] font-semibold">0</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                        <Share2 className="h-7 w-7 text-white" />
+                        <span className="text-[10px] font-semibold">0</span>
+                    </div>
+                    <div className="w-9 h-9 rounded-full border-4 border-zinc-800 bg-zinc-700 flex items-center justify-center overflow-hidden animate-spin" style={{ animationDuration: '4s' }}>
+                        <div className="w-4 h-4 rounded-full bg-zinc-900 flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom caption */}
+                <div className="absolute bottom-3 left-0 right-14 z-20 px-3 space-y-1.5">
+                    <p className="text-[11px] font-bold drop-shadow">@{accountName}</p>
+                    <p className="text-[10px] leading-relaxed line-clamp-2 drop-shadow">{content.slice(0, 120) || 'Your caption will appear here…'}</p>
+                    <div className="flex items-center gap-1.5">
+                        <Music className="h-3 w-3 shrink-0 text-white" />
+                        <p className="text-[9px] text-white/80 whitespace-nowrap animate-marquee">
+                            ♫ original sound — @{accountName}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ♫ original sound — @{accountName}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // ── Video / single-image mode ────────────────────────────────────
+    const coverMedia = media[0]
+    const isFullScreen = !mediaRatio || mediaRatio === '9:16'
     return (
         <div className="relative w-full h-full bg-black text-white overflow-hidden" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-            {/* Full-screen background media */}
-            {coverMedia ? (
-                isVideo(coverMedia) ? (
-                    <video
-                        key={coverMedia.url}
-                        src={coverMedia.url}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        poster={coverMedia.thumbnailUrl || undefined}
-                    />
+            {/* Background: full-screen for 9:16, gradient otherwise */}
+            {isFullScreen ? (
+                coverMedia ? (
+                    isVideo(coverMedia) ? (
+                        <video
+                            key={coverMedia.url}
+                            src={coverMedia.url}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            autoPlay muted loop playsInline
+                            poster={coverMedia.thumbnailUrl || undefined}
+                        />
+                    ) : (
+                        <img src={coverMedia.thumbnailUrl || coverMedia.url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    )
                 ) : (
-                    <img src={coverMedia.thumbnailUrl || coverMedia.url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900" />
                 )
             ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900" />
+                // Non-9:16 ratio — dark background + centred image box
+                <div className="absolute inset-0 bg-zinc-900">
+                    {coverMedia && (
+                        <div className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 mx-0 ${videoRatioClass} overflow-hidden`}>
+                            {isVideo(coverMedia) ? (
+                                <video
+                                    key={coverMedia.url}
+                                    src={coverMedia.url}
+                                    className="w-full h-full object-cover"
+                                    autoPlay muted loop playsInline
+                                    poster={coverMedia.thumbnailUrl || undefined}
+                                />
+                            ) : (
+                                <img src={coverMedia.thumbnailUrl || coverMedia.url} alt="" className="w-full h-full object-cover" />
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
-            {/* Dark overlay for readability */}
+            {/* Dark overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/70" />
 
-            {/* Top bar: TikTok logo + tabs */}
+            {/* Top bar */}
             <div className="absolute top-0 left-0 right-0 z-20 pt-1 pb-2 flex items-center justify-center gap-0">
                 <button className="px-3 py-1 text-[11px] font-medium text-white/60">Following</button>
                 <div className="flex flex-col items-center">
@@ -536,7 +693,6 @@ function TikTokPreview({ content, media, accountName, accountAvatar }: {
                     <div className="w-6 h-[2px] bg-white rounded-full" />
                 </div>
                 <button className="px-3 py-1 text-[11px] font-medium text-white/60">Explore</button>
-                {/* Search icon */}
                 <div className="absolute right-3 top-1.5">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -544,7 +700,7 @@ function TikTokPreview({ content, media, accountName, accountAvatar }: {
                 </div>
             </div>
 
-            {/* Play icon center (only if no video) */}
+            {/* Play icon (images only) */}
             {!hasVideo && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                     <div className="w-14 h-14 rounded-full bg-black/30 flex items-center justify-center backdrop-blur-sm">
@@ -555,7 +711,6 @@ function TikTokPreview({ content, media, accountName, accountAvatar }: {
 
             {/* Right sidebar */}
             <div className="absolute right-2 bottom-20 z-20 flex flex-col items-center gap-4">
-                {/* Avatar + follow */}
                 <div className="relative mb-1">
                     <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
                         <AccountAvatar name={accountName} avatarUrl={accountAvatar} style={{ backgroundColor: '#555' }} />
@@ -564,35 +719,30 @@ function TikTokPreview({ content, media, accountName, accountAvatar }: {
                         <Plus className="h-2.5 w-2.5 text-white" />
                     </div>
                 </div>
-                {/* Like */}
                 <div className="flex flex-col items-center gap-0.5">
                     <div className="w-10 h-10 flex items-center justify-center">
                         <Heart className="h-7 w-7 fill-white text-white" />
                     </div>
                     <span className="text-[10px] font-semibold">0</span>
                 </div>
-                {/* Comment */}
                 <div className="flex flex-col items-center gap-0.5">
                     <div className="w-10 h-10 flex items-center justify-center">
                         <MessageCircle className="h-7 w-7 fill-white text-white" />
                     </div>
                     <span className="text-[10px] font-semibold">0</span>
                 </div>
-                {/* Save/Bookmark */}
                 <div className="flex flex-col items-center gap-0.5">
                     <div className="w-10 h-10 flex items-center justify-center">
                         <Bookmark className="h-7 w-7 fill-white text-white" />
                     </div>
                     <span className="text-[10px] font-semibold">0</span>
                 </div>
-                {/* Share */}
                 <div className="flex flex-col items-center gap-0.5">
                     <div className="w-10 h-10 flex items-center justify-center">
                         <Share2 className="h-7 w-7 text-white" />
                     </div>
                     <span className="text-[10px] font-semibold">0</span>
                 </div>
-                {/* Spinning music disc */}
                 <div className="w-9 h-9 rounded-full border-4 border-zinc-800 bg-zinc-700 flex items-center justify-center overflow-hidden animate-spin" style={{ animationDuration: '4s' }}>
                     <div className="w-4 h-4 rounded-full bg-zinc-900 flex items-center justify-center">
                         <div className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
@@ -600,16 +750,15 @@ function TikTokPreview({ content, media, accountName, accountAvatar }: {
                 </div>
             </div>
 
-            {/* Bottom: caption + music ticker */}
+            {/* Bottom caption */}
             <div className="absolute bottom-3 left-0 right-14 z-20 px-3 space-y-1.5">
                 <p className="text-[11px] font-bold drop-shadow">@{accountName}</p>
                 <p className="text-[10px] leading-relaxed line-clamp-2 drop-shadow">{content.slice(0, 120) || 'Your caption will appear here…'}</p>
-                {/* Music ticker */}
                 <div className="flex items-center gap-1.5">
                     <Music className="h-3 w-3 shrink-0 text-white" />
                     <div className="overflow-hidden flex-1">
                         <p className="text-[9px] text-white/80 whitespace-nowrap animate-marquee">
-                            ♫ original sound — @{accountName} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ♫ original sound — @{accountName}
+                            ♫ original sound — @{accountName}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ♫ original sound — @{accountName}
                         </p>
                     </div>
                 </div>
@@ -5210,7 +5359,7 @@ export default function ComposePage() {
                                                         case 'instagram':
                                                             return <InstagramPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
                                                         case 'tiktok':
-                                                            return <TikTokPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} />
+                                                            return <TikTokPreview content={previewContent} media={attachedMedia} accountName={name} accountAvatar={accountAvatar} mediaRatio={mediaRatio} postType={ttPostType} />
                                                         case 'x':
                                                         case 'twitter':
                                                             return <XPreview content={previewContent} accountName={name} accountAvatar={accountAvatar} />
