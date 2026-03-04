@@ -1354,12 +1354,18 @@ export default function InboxPage() {
                                         <span className="absolute -bottom-0.5 -right-0.5">
                                             <PlatformIcon platform={conv.platform} size={14} />
                                         </span>
+                                        {/* Unread count bubble */}
+                                        {conv.unreadCount > 0 && (
+                                            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none ring-2 ring-background">
+                                                {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
+                                            </span>
+                                        )}
                                     </div>
 
                                     {/* Content */}
                                     <div className="flex-1 min-w-0 overflow-hidden">
                                         <div className="flex items-center gap-1.5">
-                                            <span className="text-xs font-semibold truncate">
+                                            <span className={cn('text-xs truncate', conv.unreadCount > 0 ? 'font-bold text-foreground' : 'font-semibold')}>
                                                 {conv.externalUserName || t('inbox.unknown')}
                                             </span>
                                             <span className={cn(
@@ -1398,11 +1404,7 @@ export default function InboxPage() {
                                                 {conv.mode === 'AGENT' && (conv.status === 'done' || conv.status === 'archived') && (
                                                     <UserCircle className="h-3 w-3 text-blue-500" />
                                                 )}
-                                                {conv.unreadCount > 0 && (
-                                                    <Badge className="h-4 min-w-[16px] px-1 text-[9px] bg-primary">
-                                                        {conv.unreadCount}
-                                                    </Badge>
-                                                )}
+
                                             </div>
                                         </div>
                                         {/* Tags + sentiment */}
