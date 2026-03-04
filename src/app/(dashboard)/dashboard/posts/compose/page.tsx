@@ -4615,13 +4615,10 @@ export default function ComposePage() {
 
                                         {/* Point 4: Commercial Content Disclosure */}
                                         <div className="border-t pt-2 space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-1.5">
-                                                    <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" />
-                                                    <div>
-                                                        <p className="text-xs font-medium">Disclose commercial content</p>
-                                                        <p className="text-[9px] text-muted-foreground">Indicate if this promotes yourself, a brand, product or service</p>
-                                                    </div>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <p className="text-xs font-medium">Disclose video content</p>
+                                                    <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">Turn on to disclose that this video promotes goods or services in exchange for something of value. Your video could promote yourself, a third party, or both.</p>
                                                 </div>
                                                 <button
                                                     type="button"
@@ -4639,30 +4636,35 @@ export default function ComposePage() {
                                                 </button>
                                             </div>
 
-                                            {/* Sub-checkboxes — only visible when disclosure is on */}
+                                            {/* Sub-options — visible when disclosure is on */}
                                             {ttCommercialDisclosure && (
-                                                <div className="ml-5 space-y-2 p-2 rounded-md bg-muted/40 border border-border">
+                                                <div className="space-y-2">
+                                                    {/* Info banner */}
+                                                    <div className="flex items-start gap-1.5 p-2 rounded-md bg-blue-500/10 border border-blue-500/30">
+                                                        <span className="text-blue-400 text-[11px] mt-0.5 flex-shrink-0">ℹ️</span>
+                                                        <p className="text-[10px] text-blue-400 leading-relaxed">
+                                                            Your video will be labeled &quot;Promotional content&quot;.<br />
+                                                            This cannot be changed once your video is posted.
+                                                        </p>
+                                                    </div>
                                                     {/* Your Brand */}
                                                     <label className="flex items-start gap-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
-                                                            className="mt-0.5"
+                                                            className="mt-0.5 accent-cyan-500"
                                                             checked={ttYourBrand}
                                                             onChange={e => setTtYourBrand(e.target.checked)}
                                                         />
                                                         <div>
-                                                            <p className="text-xs font-medium">Your Brand</p>
-                                                            <p className="text-[9px] text-muted-foreground">You are promoting yourself or your own business (Brand Organic)</p>
-                                                            {ttYourBrand && !ttBrandedContent && (
-                                                                <p className="text-[9px] text-amber-500 mt-0.5">Your photo/video will be labeled as &apos;Promotional content&apos;</p>
-                                                            )}
+                                                            <p className="text-xs font-semibold">Your brand</p>
+                                                            <p className="text-[10px] text-muted-foreground leading-relaxed">You are promoting yourself or your own business. This video will be classified as Brand Organic.</p>
                                                         </div>
                                                     </label>
                                                     {/* Branded Content */}
                                                     <label className="flex items-start gap-2 cursor-pointer">
                                                         <input
                                                             type="checkbox"
-                                                            className="mt-0.5"
+                                                            className="mt-0.5 accent-cyan-500"
                                                             checked={ttBrandedContent}
                                                             onChange={e => {
                                                                 setTtBrandedContent(e.target.checked)
@@ -4676,11 +4678,8 @@ export default function ComposePage() {
                                                             }}
                                                         />
                                                         <div>
-                                                            <p className="text-xs font-medium">Branded Content</p>
-                                                            <p className="text-[9px] text-muted-foreground">You are promoting another brand or third party (must be public/friends)</p>
-                                                            {ttBrandedContent && (
-                                                                <p className="text-[9px] text-amber-500 mt-0.5">Your photo/video will be labeled as &apos;Paid partnership&apos;</p>
-                                                            )}
+                                                            <p className="text-xs font-semibold">Branded content</p>
+                                                            <p className="text-[10px] text-muted-foreground leading-relaxed">You are promoting another brand or a third party. This video will be classified as Branded Content.</p>
                                                         </div>
                                                     </label>
                                                     {/* At-least-one validation hint */}
