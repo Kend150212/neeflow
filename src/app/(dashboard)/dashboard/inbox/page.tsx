@@ -1238,7 +1238,7 @@ export default function InboxPage() {
 
             {/* ═══ CENTER — Conversation List ═══ */}
             <div className={cn(
-                "w-[320px] border-r flex-col shrink-0 bg-background overflow-hidden",
+                "w-[320px] border-r flex-col shrink-0 bg-background overflow-hidden flex",
                 selectedConversation ? 'hidden md:flex' : 'flex'
             )}>
                 {/* Tabs */}
@@ -1368,7 +1368,7 @@ export default function InboxPage() {
                 </div>
 
                 {/* Conversation list */}
-                <ScrollArea className="flex-1">
+                <div className="flex-1 overflow-y-auto min-h-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {loading ? (
                         <div className="p-8 text-center">
                             <Loader2 className="h-6 w-6 text-muted-foreground/50 mx-auto mb-2 animate-spin" />
@@ -1505,7 +1505,7 @@ export default function InboxPage() {
                             )}
                         </div>
                     )}
-                </ScrollArea>
+                </div>
             </div>
 
             {/* ═══ RIGHT — Multi-Pane Detail Area ═══ */}
