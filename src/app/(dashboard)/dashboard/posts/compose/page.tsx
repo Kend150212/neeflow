@@ -503,6 +503,9 @@ function TikTokPreview({ content, media, accountName, accountAvatar, mediaRatio 
 }) {
     const [activeIdx, setActiveIdx] = useState(0)
     const scrollRef = useRef<HTMLDivElement>(null)
+    const isDraggingRef = useRef(false)
+    const dragStartXRef = useRef(0)
+    const dragScrollLeftRef = useRef(0)
     const hasVideo = media.some(m => isVideo(m))
     const isCarousel = postType === 'carousel'
 
@@ -521,20 +524,46 @@ function TikTokPreview({ content, media, accountName, accountAvatar, mediaRatio 
         setActiveIdx(idx)
     }
 
+    // Mouse drag handlers for desktop carousel swipe
+    const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        const el = scrollRef.current
+        if (!el) return
+        isDraggingRef.current = true
+        dragStartXRef.current = e.pageX - el.offsetLeft
+        dragScrollLeftRef.current = el.scrollLeft
+        el.style.cursor = 'grabbing'
+    }, [])
+    const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isDraggingRef.current) return
+        const el = scrollRef.current
+        if (!el) return
+        e.preventDefault()
+        const walk = (e.pageX - el.offsetLeft) - dragStartXRef.current
+        el.scrollLeft = dragScrollLeftRef.current - walk
+    }, [])
+    const onMouseUpOrLeave = useCallback(() => {
+        isDraggingRef.current = false
+        if (scrollRef.current) scrollRef.current.style.cursor = 'grab'
+    }, [])
+
     // Aspect ratio class for video mode image container
     const videoRatioClass = mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '1:1' ? 'aspect-square' : '' /* 9:16 → fill */
 
     if (isCarousel) {
         // ── TikTok Photo / Image Carousel mode ──────────────────────
         return (
-            <div className="relative w-full text-white overflow-hidden" style={{ aspectRatio: '9/16', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#111' }}>
+            <div className="relative w-full h-full text-white overflow-hidden" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', background: '#111' }}>
 
-                {/* ── Full-bleed scrollable carousel: top-bar-bottom to the very bottom ── */}
+                {/* ── Full-bleed scrollable carousel ── */}
                 <div
                     ref={scrollRef}
                     onScroll={handleScroll}
-                    className="absolute flex overflow-x-auto snap-x snap-mandatory"
-                    style={{ top: '36px', bottom: 0, left: 0, right: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    onMouseDown={onMouseDown}
+                    onMouseMove={onMouseMove}
+                    onMouseUp={onMouseUpOrLeave}
+                    onMouseLeave={onMouseUpOrLeave}
+                    className="absolute flex overflow-x-scroll snap-x snap-mandatory select-none"
+                    style={{ top: '36px', bottom: 0, left: 0, right: 0, scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: 'grab' }}
                 >
                     {media.length > 0 ? media.map((m, i) => (
                         <div key={i} className="flex-none w-full h-full snap-center overflow-hidden bg-zinc-900">
@@ -5339,8 +5368,8 @@ export default function ComposePage() {
                                         </div>
                                     </div>
                                 </div>
-                                {/* Screen content — scrollable inside phone */}
-                                <div className="px-2 pb-6 overflow-y-auto absolute inset-0 top-[44px]">
+                                {/* Screen content — scrollable inside phone. TikTok = full-bleed (no padding). Others get px-2 pb-6. */}
+                                <div className={`overflow-y-auto absolute inset-0 top-[44px] ${effectivePreviewPlatform === 'tiktok' ? '' : 'px-2 pb-6'}`}>
                                     {(content.trim() || attachedMedia.length > 0 || Object.values(contentPerPlatform).some(v => v.trim())) && effectivePreviewPlatform ? (() => {
                                         const entry = selectedEntries.find((e) => e.platform === effectivePreviewPlatform)
                                         if (!entry) return null
