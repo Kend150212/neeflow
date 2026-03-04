@@ -1963,6 +1963,7 @@ export default function InboxPage() {
                                                                             )}
                                                                         </div>
                                                                     )}
+                                                                    {/* --- Attachment renderers --- */}
                                                                     {msg.mediaUrl && msg.mediaType === 'image' && (
                                                                         <img
                                                                             src={msg.mediaUrl}
@@ -1970,7 +1971,30 @@ export default function InboxPage() {
                                                                             className="max-w-[200px] rounded-lg mb-1.5"
                                                                         />
                                                                     )}
-                                                                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                                                                    {msg.mediaUrl && msg.mediaType === 'audio' && (
+                                                                        <div className="mb-1.5 min-w-[200px]">
+                                                                            <audio controls src={msg.mediaUrl} className="w-full h-8" style={{ colorScheme: 'dark' }} />
+                                                                        </div>
+                                                                    )}
+                                                                    {msg.mediaUrl && msg.mediaType === 'video' && (
+                                                                        <div className="mb-1.5 max-w-[260px]">
+                                                                            <video controls src={msg.mediaUrl} className="rounded-lg w-full" />
+                                                                        </div>
+                                                                    )}
+                                                                    {msg.mediaUrl && !['image', 'audio', 'video'].includes(msg.mediaType || '') && (
+                                                                        <a
+                                                                            href={msg.mediaUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex items-center gap-1.5 mb-1.5 px-2 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] underline"
+                                                                        >
+                                                                            📎 {msg.mediaType ? `File (${msg.mediaType})` : 'Attachment'}
+                                                                        </a>
+                                                                    )}
+                                                                    {/* Only show text if it's not just the [Attachment] placeholder */}
+                                                                    {(!msg.mediaUrl || msg.content !== '[Attachment]') && (
+                                                                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                                                                    )}
                                                                     <div className={cn(
                                                                         'text-[9px] mt-1.5',
                                                                         msg.direction === 'outbound' && msg.senderType !== 'bot'
