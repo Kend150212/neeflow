@@ -327,8 +327,9 @@ export async function GET(req: NextRequest) {
             console.log('Canva export job succeeded, urls count:', urls.length)
             if (urls.length === 0) continue
 
-            // Limit to 20 pages max to avoid memory / R2 overload
-            const PAGE_LIMIT = 20
+            // ── Hard cap: 5 pages max ────────────────────────────────────
+            const PAGE_LIMIT = 5
+            const CONCURRENCY = 2 // process N pages at a time (queue mode)
             const totalPages = urls.length
             if (urls.length > PAGE_LIMIT) {
                 console.warn(`Canva export: design has ${urls.length} pages — capping at ${PAGE_LIMIT}`)
@@ -338,58 +339,67 @@ export async function GET(req: NextRequest) {
             const isMultiPage = urls.length > 1
             const LARGE_THRESHOLD = 1.5 * 1024 * 1024 // 1.5MB
 
-            // ── Multi-page OR large image → server-side R2 upload for all pages ──
-            if (channelId && (isMultiPage || true)) {
+            // ── R2 path: server-side download + upload in queued batches ──
+            if (channelId) {
                 try {
                     const r2Ok = await isR2Configured()
                     if (r2Ok) {
-                        // Download and upload all pages in parallel
-                        const pageResults = await Promise.all(
-                            urls.map(async (pageUrl, idx) => {
-                                try {
-                                    console.log(`Canva page ${idx + 1}/${urls.length}: downloading...`)
-                                    const imgRes = await fetch(pageUrl)
-                                    if (!imgRes.ok) {
-                                        console.error(`Canva page ${idx + 1}: download failed ${imgRes.status}`)
-                                        return null
-                                    }
-                                    const imgBuffer = Buffer.from(await imgRes.arrayBuffer())
-                                    console.log(`Canva page ${idx + 1}: ${imgBuffer.length} bytes`)
-
-                                    // Small single-page image → skip server upload, use base64 path below
-                                    if (!isMultiPage && imgBuffer.length <= LARGE_THRESHOLD) {
-                                        const base64 = imgBuffer.toString('base64')
-                                        return { base64, contentType: imgRes.headers.get('content-type') || 'image/png' }
-                                    }
-
-                                    const suffix = urls.length > 1 ? `-page${idx + 1}` : ''
-                                    const fileName = `canva-design-${Date.now()}${suffix}.png`
-                                    const r2Key = generateR2Key(channelId, fileName)
-                                    const publicUrl = await uploadToR2(imgBuffer, r2Key, 'image/png')
-                                    const mediaItem = await prisma.mediaItem.create({
-                                        data: {
-                                            channelId,
-                                            url: publicUrl,
-                                            thumbnailUrl: publicUrl,
-                                            storageFileId: r2Key,
-                                            type: 'image',
-                                            source: 'upload',
-                                            originalName: fileName,
-                                            fileSize: imgBuffer.length,
-                                            mimeType: 'image/png',
-                                            aiMetadata: { storage: 'r2', r2Key, source: 'canva', page: idx + 1 },
-                                        },
-                                    })
-                                    console.log(`Canva page ${idx + 1}: R2 upload done, mediaId=${mediaItem.id}`)
-                                    return { mediaItem }
-                                } catch (pageErr) {
-                                    console.error(`Canva page ${idx + 1}: error`, pageErr)
+                        // Helper: process a single page URL
+                        const processPage = async (pageUrl: string, idx: number) => {
+                            try {
+                                console.log(`Canva page ${idx + 1}/${urls.length}: downloading...`)
+                                const imgRes = await fetch(pageUrl)
+                                if (!imgRes.ok) {
+                                    console.error(`Canva page ${idx + 1}: download failed ${imgRes.status}`)
                                     return null
                                 }
-                            })
-                        )
+                                const imgBuffer = Buffer.from(await imgRes.arrayBuffer())
+                                console.log(`Canva page ${idx + 1}: ${imgBuffer.length} bytes`)
 
-                        // Check if first (and only) page returned base64 (small single-page fallback)
+                                // Small single-page → return base64, let client upload
+                                if (!isMultiPage && imgBuffer.length <= LARGE_THRESHOLD) {
+                                    const base64 = imgBuffer.toString('base64')
+                                    return { base64, contentType: imgRes.headers.get('content-type') || 'image/png' }
+                                }
+
+                                const suffix = urls.length > 1 ? `-page${idx + 1}` : ''
+                                const fileName = `canva-design-${Date.now()}${suffix}.png`
+                                const r2Key = generateR2Key(channelId, fileName)
+                                const publicUrl = await uploadToR2(imgBuffer, r2Key, 'image/png')
+                                const mediaItem = await prisma.mediaItem.create({
+                                    data: {
+                                        channelId,
+                                        url: publicUrl,
+                                        thumbnailUrl: publicUrl,
+                                        storageFileId: r2Key,
+                                        type: 'image',
+                                        source: 'upload',
+                                        originalName: fileName,
+                                        fileSize: imgBuffer.length,
+                                        mimeType: 'image/png',
+                                        aiMetadata: { storage: 'r2', r2Key, source: 'canva', page: idx + 1 },
+                                    },
+                                })
+                                console.log(`Canva page ${idx + 1}: R2 upload done, mediaId=${mediaItem.id}`)
+                                return { mediaItem }
+                            } catch (pageErr) {
+                                console.error(`Canva page ${idx + 1}: error`, pageErr)
+                                return null
+                            }
+                        }
+
+                        // ── Queue: process CONCURRENCY pages at a time ──────────
+                        const pageResults: (Awaited<ReturnType<typeof processPage>>)[] = []
+                        for (let batchStart = 0; batchStart < urls.length; batchStart += CONCURRENCY) {
+                            const batchUrls = urls.slice(batchStart, batchStart + CONCURRENCY)
+                            console.log(`Canva queue: processing pages ${batchStart + 1}–${batchStart + batchUrls.length} of ${urls.length}`)
+                            const batchResults = await Promise.all(
+                                batchUrls.map((url, i) => processPage(url, batchStart + i))
+                            )
+                            pageResults.push(...batchResults)
+                        }
+
+                        // Small single-page base64 fallback
                         if (!isMultiPage && pageResults[0] && 'base64' in pageResults[0]) {
                             const { base64, contentType } = pageResults[0]
                             console.log(`Canva single page: returning base64 (${base64!.length} chars)`)
@@ -397,9 +407,11 @@ export async function GET(req: NextRequest) {
                         }
 
                         // All pages uploaded to R2 — return as pages array
-                        const mediaItems = pageResults.filter(r => r && 'mediaItem' in r).map(r => (r as { mediaItem: unknown }).mediaItem)
+                        const mediaItems = pageResults
+                            .filter(r => r && 'mediaItem' in r)
+                            .map(r => (r as { mediaItem: unknown }).mediaItem)
                         if (mediaItems.length > 0) {
-                            console.log(`Canva export: returning ${mediaItems.length} page(s) as media_ready`)
+                            console.log(`Canva export: returning ${mediaItems.length}/${urls.length} page(s) as media_ready`)
                             return NextResponse.json({
                                 status: 'media_ready',
                                 pages: mediaItems,
