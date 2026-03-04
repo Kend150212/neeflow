@@ -76,6 +76,7 @@ interface BotConfigData {
     enableSmartMemory: boolean
     sessionTimeoutHours: number
     summariesBeforeMerge: number
+    botAvatarUrl: string | null
 }
 
 interface ChatBotTabProps {
@@ -127,6 +128,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
         enableSmartMemory: false,
         sessionTimeoutHours: 8,
         summariesBeforeMerge: 5,
+        botAvatarUrl: null,
     })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -503,6 +505,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         sessionTimeoutHours: data.sessionTimeoutHours ?? 8,
                         summariesBeforeMerge: data.summariesBeforeMerge ?? 5,
                         botModel: data.botModel || null,
+                        botAvatarUrl: data.botAvatarUrl || null,
                     })
                 }
             } catch { /* ignore */ }
@@ -748,6 +751,69 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                                 </select>
                             </div>
                         </div>
+
+                        {/* Bot Avatar */}
+                        <div>
+                            <Label className="text-xs">Bot Avatar</Label>
+                            <div className="mt-2 flex items-center gap-4">
+                                {/* Preview */}
+                                <div className="relative h-16 w-16 rounded-full overflow-hidden border-2 border-muted bg-muted flex items-center justify-center shrink-0">
+                                    {config.botAvatarUrl ? (
+                                        <img src={config.botAvatarUrl} alt="Bot avatar" className="h-full w-full object-cover" />
+                                    ) : (
+                                        <Bot className="h-8 w-8 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="cursor-pointer">
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp,image/gif"
+                                            className="sr-only"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0]
+                                                if (!file) return
+                                                const fd = new FormData()
+                                                fd.append('avatar', file)
+                                                const res = await fetch(`/api/admin/channels/${channelId}/bot-config/avatar`, { method: 'POST', body: fd })
+                                                if (res.ok) {
+                                                    const d = await res.json()
+                                                    setConfig(prev => prev ? { ...prev, botAvatarUrl: d.avatarUrl } : prev)
+                                                    toast.success('Bot avatar updated')
+                                                } else {
+                                                    const d = await res.json().catch(() => ({}))
+                                                    toast.error(d.error || 'Upload failed')
+                                                }
+                                                e.target.value = ''
+                                            }}
+                                        />
+                                        <Button size="sm" variant="outline" className="text-xs gap-1.5 pointer-events-none">
+                                            <Upload className="h-3.5 w-3.5" />
+                                            Upload Avatar
+                                        </Button>
+                                    </label>
+                                    {config.botAvatarUrl && (
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-xs text-destructive hover:text-destructive gap-1.5"
+                                            onClick={async () => {
+                                                const res = await fetch(`/api/admin/channels/${channelId}/bot-config/avatar`, { method: 'DELETE' })
+                                                if (res.ok) {
+                                                    setConfig(prev => prev ? { ...prev, botAvatarUrl: null } : prev)
+                                                    toast.success('Bot avatar removed')
+                                                }
+                                            }}
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                            Remove
+                                        </Button>
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground">Max 2MB · JPG, PNG, WebP, GIF</p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Bot AI Model */}
                         <div>
                             <Label className="text-xs flex items-center gap-1.5"><span>🤖</span> AI Model</Label>

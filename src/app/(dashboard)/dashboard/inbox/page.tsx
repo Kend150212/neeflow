@@ -300,6 +300,7 @@ export default function InboxPage() {
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [channelMembers, setChannelMembers] = useState<any[]>([])
     const [openReactMsgId, setOpenReactMsgId] = useState<string | null>(null)
+    const [botAvatarByChannel, setBotAvatarByChannel] = useState<Record<string, string | null>>({})
     const [platformAccounts, setPlatformAccounts] = useState<PlatformAccount[]>([])
     const [counts, setCounts] = useState<StatusCounts>({ new: 0, open: 0, done: 0, archived: 0, mine: 0, all: 0 })
     const [loading, setLoading] = useState(true)
@@ -902,6 +903,23 @@ export default function InboxPage() {
         document.addEventListener('click', handler)
         return () => document.removeEventListener('click', handler)
     }, [openReactMsgId])
+
+    // Load bot avatar for each channel seen in panels
+    useEffect(() => {
+        const channelIds = panels.map(p => p.conversation?.channelId).filter(Boolean) as string[]
+        const unseen = channelIds.filter(id => !(id in botAvatarByChannel))
+        if (unseen.length === 0) return
+        unseen.forEach(async (cid) => {
+            try {
+                const res = await fetch(`/api/admin/channels/${cid}/bot-config`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setBotAvatarByChannel(prev => ({ ...prev, [cid]: data.botAvatarUrl || null }))
+                }
+            } catch { /* ignore */ }
+        })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [panels.map(p => p.conversation?.channelId).join(',')])
 
     // Debounced search
     const handleSearchChange = (value: string) => {
@@ -2056,7 +2074,11 @@ export default function InboxPage() {
                                                                 )}>
                                                                     {msg.senderType === 'bot' && (
                                                                         <div className="flex items-center gap-1 mb-1.5 text-green-600 dark:text-green-400 text-[10px] font-medium">
-                                                                            <Bot className="h-3 w-3" />
+                                                                            {botAvatarByChannel[sc.channelId] ? (
+                                                                                <img src={botAvatarByChannel[sc.channelId]!} alt="bot" className="h-4 w-4 rounded-full object-cover" />
+                                                                            ) : (
+                                                                                <Bot className="h-3 w-3" />
+                                                                            )}
                                                                             AI Bot
                                                                             {msg.confidence != null && (
                                                                                 <span className="text-muted-foreground">

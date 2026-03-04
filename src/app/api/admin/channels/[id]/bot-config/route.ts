@@ -79,7 +79,7 @@ export async function PUT(
 
     // Allowed fields
     const allowedFields = [
-        'isEnabled', 'botName', 'greeting', 'greetingMode', 'greetingImages', 'personality', 'language',
+        'isEnabled', 'botName', 'botAvatarUrl', 'greeting', 'greetingMode', 'greetingImages', 'personality', 'language',
         'imageFolderId', 'consultVideos',
         'confidenceThreshold', 'maxBotReplies', 'botModel',
         'autoTagEnabled', 'sentimentEnabled', 'spamFilterEnabled', 'autoTranslate', 'smartAssignEnabled',

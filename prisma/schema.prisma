@@ -1040,6 +1040,7 @@ model BotConfig {
   channelId       String  @unique @map("channel_id")
   isEnabled       Boolean @default(true) @map("is_enabled")
   botName         String  @default("AI Assistant") @map("bot_name")
+  botAvatarUrl    String? @map("bot_avatar_url") @db.Text
   greeting        String? @db.Text
   greetingMode    String  @default("template") @map("greeting_mode") // template | auto
   greetingImages  Json?   @default("[]") @map("greeting_images") // Array of image URLs
