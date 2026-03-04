@@ -1966,6 +1966,13 @@ export default function ComposePage() {
                                     ? `🎨 Imported ${pages.length} pages from Canva!`
                                     : '🎨 Canva design imported!'
                                 toast.success(label, { id: 'canva-export' })
+                                // Warn if server capped the page count
+                                if (exportData.truncated) {
+                                    toast(`⚠️ Only ${exportData.truncated.imported} of ${exportData.truncated.total} pages imported (max 20).`, {
+                                        duration: 6000,
+                                        style: { background: '#92400e', color: '#fef3c7' },
+                                    })
+                                }
                                 setCanvaLoading(false)
                                 return
                             }

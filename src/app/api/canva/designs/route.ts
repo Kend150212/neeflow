@@ -323,9 +323,17 @@ export async function GET(req: NextRequest) {
         const statusData = await statusRes.json()
 
         if (statusData.job?.status === 'success') {
-            const urls: string[] = statusData.job.urls || []
+            let urls: string[] = statusData.job.urls || []
             console.log('Canva export job succeeded, urls count:', urls.length)
             if (urls.length === 0) continue
+
+            // Limit to 20 pages max to avoid memory / R2 overload
+            const PAGE_LIMIT = 20
+            const totalPages = urls.length
+            if (urls.length > PAGE_LIMIT) {
+                console.warn(`Canva export: design has ${urls.length} pages — capping at ${PAGE_LIMIT}`)
+                urls = urls.slice(0, PAGE_LIMIT)
+            }
 
             const isMultiPage = urls.length > 1
             const LARGE_THRESHOLD = 1.5 * 1024 * 1024 // 1.5MB
@@ -392,7 +400,11 @@ export async function GET(req: NextRequest) {
                         const mediaItems = pageResults.filter(r => r && 'mediaItem' in r).map(r => (r as { mediaItem: unknown }).mediaItem)
                         if (mediaItems.length > 0) {
                             console.log(`Canva export: returning ${mediaItems.length} page(s) as media_ready`)
-                            return NextResponse.json({ status: 'media_ready', pages: mediaItems })
+                            return NextResponse.json({
+                                status: 'media_ready',
+                                pages: mediaItems,
+                                truncated: totalPages > PAGE_LIMIT ? { imported: PAGE_LIMIT, total: totalPages } : null,
+                            })
                         }
                         // All pages failed — fall through to URL fallback
                     }
