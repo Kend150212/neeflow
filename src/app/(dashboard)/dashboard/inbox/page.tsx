@@ -582,14 +582,17 @@ export default function InboxPage() {
                 }
                 prevUnreadRef.current = totalUnread
 
-                // 3. Smart merge — update existing convs, prepend new ones, preserve extra-loaded pages
+                // 3. Merge + re-sort — server already returns page-1 sorted by lastMessageAt desc.
+                // Keep extra-loaded (page 2+) convs at bottom, re-sort first-page items by lastMessageAt.
                 setCounts(freshCounts)
                 setConversations(prev => {
                     const freshMap = new Map(freshConversations.map((c: Conversation) => [c.id, c]))
-                    const updated = prev.map(c => freshMap.has(c.id) ? (freshMap.get(c.id) as Conversation) : c)
-                    const existingIds = new Set(prev.map(c => c.id))
-                    const brandNew = freshConversations.filter((c: Conversation) => !existingIds.has(c.id))
-                    return brandNew.length > 0 ? [...brandNew, ...updated] : updated
+                    const freshIds = new Set(freshConversations.map((c: Conversation) => c.id))
+                    // Conversations only in prev (older pages loaded via "load more")
+                    const extraOlder = prev.filter(c => !freshIds.has(c.id))
+                    // Fresh page-1 conversations in server sort order, merged with any local-only updates
+                    const freshSorted = freshConversations.map((c: Conversation) => freshMap.get(c.id) as Conversation)
+                    return [...freshSorted, ...extraOlder]
                 })
 
                 // 4. Refresh messages for all open panels
