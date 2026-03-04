@@ -4306,7 +4306,7 @@ export default function ComposePage() {
                                                         }
                                                         const item = labelMap[opt] || { label: opt, icon: null }
                                                         const isDisabled = opt === 'SELF_ONLY' && ttCommercialDisclosure && ttBrandedContent
-                                                        return (
+                                                        const selectItem = (
                                                             <SelectItem key={opt} value={opt} disabled={isDisabled}>
                                                                 <span className="flex items-center gap-1.5">
                                                                     {item.icon} {item.label}
@@ -4314,6 +4314,16 @@ export default function ComposePage() {
                                                                 </span>
                                                             </SelectItem>
                                                         )
+                                                        // Point 3b: wrap disabled SELF_ONLY with tooltip per TikTok guidelines
+                                                        if (isDisabled) {
+                                                            return (
+                                                                <div key={opt} title="Branded content visibility cannot be set to private.">
+                                                                    {selectItem}
+                                                                </div>
+                                                            )
+                                                        }
+                                                        return selectItem
+
                                                     })}
                                                 </SelectContent>
                                             </Select>
