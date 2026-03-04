@@ -1784,7 +1784,7 @@ export default function ComposePage() {
                         <div class="container">
                             <div class="logos">
                                 <div class="logo-wrap">
-                                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="${branding.appName}" />
+                                    <img src="${branding.logoUrl}" alt="${branding.appName}" />
                                     <span class="logo-name">${branding.appName}</span>
                                 </div>
                                 <div class="link-badge">
@@ -3392,7 +3392,7 @@ export default function ComposePage() {
                                                     title="Edit in Canva"
                                                     className="absolute top-1 left-1 h-5 w-5 rounded-full bg-violet-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                                 >
-                                                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5c4.142 0 7.5 3.358 7.5 7.5 0 .47-.044.93-.126 1.376-.43-.284-.96-.376-1.524-.2-.98.307-1.47 1.37-1.09 2.373.2.528.62.92 1.12 1.09-.96 1.824-2.7 3.11-4.74 3.474V17.5a1.5 1.5 0 00-3 0v2.613c-2.04-.364-3.78-1.65-4.74-3.474.5-.17.92-.562 1.12-1.09.38-1.003-.11-2.066-1.09-2.373-.564-.176-1.094-.084-1.524.2A7.46 7.46 0 014.5 12C4.5 7.858 7.858 4.5 12 4.5z" /></svg>
+                                                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3 w-3 object-contain" />
                                                 </button>
                                             )}
                                         </div>
@@ -3488,7 +3488,7 @@ export default function ComposePage() {
                                     <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 to-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                     <div className="relative flex items-center gap-2">
                                         <div className="flex-shrink-0 h-7 w-7 rounded-md bg-violet-500/20 flex items-center justify-center">
-                                            {canvaLoading ? <Loader2 className="h-3.5 w-3.5 text-violet-400 animate-spin" /> : <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-violet-400" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5c4.142 0 7.5 3.358 7.5 7.5 0 .47-.044.93-.126 1.376-.43-.284-.96-.376-1.524-.2-.98.307-1.47 1.37-1.09 2.373.2.528.62.92 1.12 1.09-.96 1.824-2.7 3.11-4.74 3.474V17.5a1.5 1.5 0 00-3 0v2.613c-2.04-.364-3.78-1.65-4.74-3.474.5-.17.92-.562 1.12-1.09.38-1.003-.11-2.066-1.09-2.373-.564-.176-1.094-.084-1.524.2A7.46 7.46 0 014.5 12C4.5 7.858 7.858 4.5 12 4.5z" /></svg>}
+                                            {canvaLoading ? <Loader2 className="h-3.5 w-3.5 text-violet-400 animate-spin" /> : <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3.5 w-3.5 object-contain" />}
                                         </div>
                                         <div className="text-left">
                                             <div className="text-xs font-semibold text-foreground group-hover:text-foreground/80 transition-colors">Canva</div>

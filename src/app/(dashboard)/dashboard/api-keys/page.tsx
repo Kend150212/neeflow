@@ -859,7 +859,7 @@ export default function UserApiKeysPage() {
             {/* ─── Canva Design Tools Section ─── */}
             <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5c4.142 0 7.5 3.358 7.5 7.5 0 .47-.044.93-.126 1.376-.43-.284-.96-.376-1.524-.2-.98.307-1.47 1.37-1.09 2.373.2.528.62.92 1.12 1.09-.96 1.824-2.7 3.11-4.74 3.474V17.5a1.5 1.5 0 00-3 0v2.613c-2.04-.364-3.78-1.65-4.74-3.474.5-.17.92-.562 1.12-1.09.38-1.003-.11-2.066-1.09-2.373-.564-.176-1.094-.084-1.524.2A7.46 7.46 0 014.5 12C4.5 7.858 7.858 4.5 12 4.5z" /></svg>
+                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-5 w-5 object-contain" />
                     <h2 className="text-xl font-semibold">Canva Design</h2>
                     {canvaStatus?.connected && (
                         <Badge variant="default" className="ml-2 gap-1 bg-violet-500/10 text-violet-600 border-violet-500/20">
@@ -876,7 +876,7 @@ export default function UserApiKeysPage() {
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="space-y-3 flex-1">
                                         <div className="flex items-center gap-2 text-sm">
-                                            <svg viewBox="0 0 24 24" className="h-4 w-4 text-muted-foreground" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5c4.142 0 7.5 3.358 7.5 7.5 0 .47-.044.93-.126 1.376-.43-.284-.96-.376-1.524-.2-.98.307-1.47 1.37-1.09 2.373.2.528.62.92 1.12 1.09-.96 1.824-2.7 3.11-4.74 3.474V17.5a1.5 1.5 0 00-3 0v2.613c-2.04-.364-3.78-1.65-4.74-3.474.5-.17.92-.562 1.12-1.09.38-1.003-.11-2.066-1.09-2.373-.564-.176-1.094-.084-1.524.2A7.46 7.46 0 014.5 12C4.5 7.858 7.858 4.5 12 4.5z" /></svg>
+                                            <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-4 w-4 object-contain" />
                                             <span className="text-muted-foreground">{t('apiKeys.account')}</span>
                                             <span className="font-medium">{canvaStatus.userName}</span>
                                         </div>
@@ -912,7 +912,7 @@ export default function UserApiKeysPage() {
                         ) : (
                             <div className="text-center py-4 space-y-4">
                                 <div className="mx-auto w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center">
-                                    <svg viewBox="0 0 24 24" className="h-6 w-6 text-violet-500" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5c4.142 0 7.5 3.358 7.5 7.5 0 .47-.044.93-.126 1.376-.43-.284-.96-.376-1.524-.2-.98.307-1.47 1.37-1.09 2.373.2.528.62.92 1.12 1.09-.96 1.824-2.7 3.11-4.74 3.474V17.5a1.5 1.5 0 00-3 0v2.613c-2.04-.364-3.78-1.65-4.74-3.474.5-.17.92-.562 1.12-1.09.38-1.003-.11-2.066-1.09-2.373-.564-.176-1.094-.084-1.524.2A7.46 7.46 0 014.5 12C4.5 7.858 7.858 4.5 12 4.5z" /></svg>
+                                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-6 w-6 object-contain" />
                                 </div>
                                 <div>
                                     <h3 className="font-semibold">{t('apiKeys.connectCanva')}</h3>
@@ -930,7 +930,7 @@ export default function UserApiKeysPage() {
                                         {canvaConnecting ? (
                                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                         ) : (
-                                            <svg viewBox="0 0 24 24" className="h-4 w-4 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5c4.142 0 7.5 3.358 7.5 7.5 0 .47-.044.93-.126 1.376-.43-.284-.96-.376-1.524-.2-.98.307-1.47 1.37-1.09 2.373.2.528.62.92 1.12 1.09-.96 1.824-2.7 3.11-4.74 3.474V17.5a1.5 1.5 0 00-3 0v2.613c-2.04-.364-3.78-1.65-4.74-3.474.5-.17.92-.562 1.12-1.09.38-1.003-.11-2.066-1.09-2.373-.564-.176-1.094-.084-1.524.2A7.46 7.46 0 014.5 12C4.5 7.858 7.858 4.5 12 4.5z" /></svg>
+                                            <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-4 w-4 mr-2 object-contain" />
                                         )}
                                         {canvaConnecting ? t('apiKeys.connecting') : t('apiKeys.connectCanva')}
                                     </Button>
