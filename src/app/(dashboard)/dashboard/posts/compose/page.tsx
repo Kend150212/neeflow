@@ -147,6 +147,11 @@ interface MediaItem {
     thumbnailUrl: string | null
     type: string
     originalName: string | null
+    // Canva import placeholder fields
+    isCanvaLoading?: boolean
+    canvaError?: string | null
+    canvaDesignId?: string
+    canvaRetryFn?: () => void
 }
 
 // ─── Media helper ────────────────────────────────────
@@ -1806,136 +1811,161 @@ export default function ComposePage() {
                 }
             }
 
-            const triggerExport = async (popupRef?: Window | null) => {
+            // Unique ID for this import's placeholder in the media grid
+            const placeholderIdRef = existingMediaId
+                ? existingMediaId  // editing existing image → reuse its slot
+                : `canva-placeholder-${Date.now()}`
+
+            // Insert or update the placeholder item in the media list
+            const setPlaceholderLoading = () => {
+                setAttachedMedia((prev) => {
+                    const placeholder: MediaItem = {
+                        id: placeholderIdRef,
+                        url: '',
+                        thumbnailUrl: null,
+                        type: 'image',
+                        originalName: null,
+                        isCanvaLoading: true,
+                        canvaError: null,
+                    }
+                    if (existingMediaId) {
+                        // Replace existing item with placeholder
+                        return prev.map((m) => m.id === existingMediaId ? placeholder : m)
+                    }
+                    // New import → append placeholder
+                    return [...prev, placeholder]
+                })
+            }
+
+            const setPlaceholderError = (errMsg: string, retryFn: () => void) => {
+                setAttachedMedia((prev) =>
+                    prev.map((m) => m.id === placeholderIdRef
+                        ? { ...m, isCanvaLoading: false, canvaError: errMsg, canvaRetryFn: retryFn }
+                        : m
+                    )
+                )
+            }
+
+            const replacePlaceholderWithMedia = (newMedia: MediaItem) => {
+                setAttachedMedia((prev) =>
+                    prev.map((m) => m.id === placeholderIdRef ? newMedia : m)
+                )
+            }
+
+            const triggerExport = async () => {
                 if (exported) return // prevent double-trigger
                 exported = true
 
-                toast.loading('Waiting for Canva to save...', { id: 'canva-export' })
+                // 1) Close the popup immediately — user doesn't need to wait on it
+                if (popup && !popup.closed) {
+                    try { popup.close() } catch { /* ignore */ }
+                }
 
-                // Give Canva 5 seconds to save the design before exporting (was 3s)
+                // 2) Show branded placeholder in compose grid right away
+                setPlaceholderLoading()
+                toast.loading('Importing from Canva...', { id: 'canva-export' })
+
+                // Give Canva 5 seconds to save the design before exporting
                 await new Promise(r => setTimeout(r, 5000))
 
-                toast.loading('Exporting design from Canva...', { id: 'canva-export' })
+                const doExport = async (): Promise<void> => {
+                    // Retry up to 5 times with delays
+                    for (let attempt = 0; attempt < 5; attempt++) {
+                        try {
+                            const exportRes = await fetch(`/api/canva/designs?designId=${data.designId}`)
+                            console.log('Canva export API response status:', exportRes.status)
+                            const exportData = await exportRes.json()
+                            console.log('Canva export API data:', {
+                                status: exportData.status,
+                                hasBase64: !!exportData.imageBase64,
+                                base64Length: exportData.imageBase64?.length || 0,
+                                urlsCount: exportData.urls?.length || 0,
+                                error: exportData.error,
+                            })
 
-                // Retry up to 5 times with delays (was 3)
-                for (let attempt = 0; attempt < 5; attempt++) {
-                    try {
-                        const exportRes = await fetch(`/api/canva/designs?designId=${data.designId}`)
-                        console.log('Canva export API response status:', exportRes.status)
-                        const exportData = await exportRes.json()
-                        console.log('Canva export API data:', {
-                            status: exportData.status,
-                            hasBase64: !!exportData.imageBase64,
-                            base64Length: exportData.imageBase64?.length || 0,
-                            urlsCount: exportData.urls?.length || 0,
-                            error: exportData.error,
-                        })
+                            if (exportData.status === 'success') {
+                                let blob: Blob | null = null
 
-                        if (exportData.status === 'success') {
-                            let blob: Blob | null = null
-
-                            // Prefer server-proxied base64 (avoids CORS issues)
-                            if (exportData.imageBase64) {
-                                console.log('Decoding base64 image...')
-                                const binary = atob(exportData.imageBase64)
-                                const bytes = new Uint8Array(binary.length)
-                                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-                                blob = new Blob([bytes], { type: exportData.contentType || 'image/png' })
-                                console.log('Blob created, size:', blob.size)
-                            } else if (exportData.urls?.length > 0) {
-                                // Fallback: try fetching URL directly
-                                try {
-                                    const imgRes = await fetch(exportData.urls[0])
-                                    if (imgRes.ok) blob = await imgRes.blob()
-                                } catch { /* CORS likely blocked */ }
-                            }
-
-                            if (blob && blob.size > 0) {
-                                const file = new File([blob], `canva-design-${Date.now()}.png`, { type: 'image/png' })
-
-                                // Upload the file to the server
-                                const formData = new FormData()
-                                formData.append('file', file)
-                                formData.append('channelId', channelId)
-
-                                // Log to server for debugging (client console.log not visible in PM2)
-                                fetch(`/api/canva/designs?_debug=1&step=uploading&channelId=${channelId}&fileSize=${file.size}&mediaId=${existingMediaId || 'new'}`).catch(() => { })
-
-                                const uploadRes = await fetch('/api/admin/media', {
-                                    method: 'POST',
-                                    body: formData,
-                                })
-
-                                // Debug beacon: upload result
-                                fetch(`/api/canva/designs?_debug=1&step=upload_result&status=${uploadRes.status}&ok=${uploadRes.ok}`).catch(() => { })
-
-                                if (uploadRes.ok) {
-                                    const newMedia = await uploadRes.json()
-                                    // Debug beacon: media received
-                                    fetch(`/api/canva/designs?_debug=1&step=media_received&mediaId=${newMedia.id}&url=${encodeURIComponent(newMedia.url || '')}&existingId=${existingMediaId || 'new'}`).catch(() => { })
-
-                                    if (existingMediaId) {
-                                        // REPLACE the original media at the same position
-                                        setAttachedMedia((prev) => {
-                                            const updated = prev.map((m) => m.id === existingMediaId ? newMedia : m)
-                                            fetch(`/api/canva/designs?_debug=1&step=replace_done&prevLen=${prev.length}&updatedLen=${updated.length}&foundMatch=${prev.some(m => m.id === existingMediaId)}`).catch(() => { })
-                                            return updated
-                                        })
-                                    } else {
-                                        // NEW design — add to list
-                                        setAttachedMedia((prev) => {
-                                            fetch(`/api/canva/designs?_debug=1&step=append_done&prevLen=${prev.length}&newLen=${prev.length + 1}`).catch(() => { })
-                                            return [...prev, newMedia]
-                                        })
-                                    }
-                                    toast.success('🎨 Canva design imported!', { id: 'canva-export' })
-
-                                    // Show success + close button in popup
-                                    if (popupRef && !popupRef.closed) {
-                                        writePopupStatus(popupRef, 'success', 'Design imported successfully! 🎉')
-                                    }
-                                } else {
-                                    const err = await uploadRes.json().catch(() => ({}))
-                                    fetch(`/api/canva/designs?_debug=1&step=upload_failed&error=${encodeURIComponent(err.error || 'unknown')}`).catch(() => { })
-                                    toast.error(err.error || 'Failed to upload design', { id: 'canva-export' })
-
-                                    if (popupRef && !popupRef.closed) {
-                                        writePopupStatus(popupRef, 'error', err.error || 'Upload failed')
-                                    }
+                                // Prefer server-proxied base64 (avoids CORS issues)
+                                if (exportData.imageBase64) {
+                                    console.log('Decoding base64 image...')
+                                    const binary = atob(exportData.imageBase64)
+                                    const bytes = new Uint8Array(binary.length)
+                                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+                                    blob = new Blob([bytes], { type: exportData.contentType || 'image/png' })
+                                    console.log('Blob created, size:', blob.size)
+                                } else if (exportData.urls?.length > 0) {
+                                    // Fallback: try fetching URL directly
+                                    try {
+                                        const imgRes = await fetch(exportData.urls[0])
+                                        if (imgRes.ok) blob = await imgRes.blob()
+                                    } catch { /* CORS likely blocked */ }
                                 }
 
-                                setCanvaLoading(false)
-                                return // success — exit
+                                if (blob && blob.size > 0) {
+                                    const file = new File([blob], `canva-design-${Date.now()}.png`, { type: 'image/png' })
+
+                                    // Upload the file to the server
+                                    const formData = new FormData()
+                                    formData.append('file', file)
+                                    formData.append('channelId', channelId)
+
+                                    fetch(`/api/canva/designs?_debug=1&step=uploading&channelId=${channelId}&fileSize=${file.size}&mediaId=${placeholderIdRef}`).catch(() => { })
+
+                                    const uploadRes = await fetch('/api/admin/media', {
+                                        method: 'POST',
+                                        body: formData,
+                                    })
+
+                                    fetch(`/api/canva/designs?_debug=1&step=upload_result&status=${uploadRes.status}&ok=${uploadRes.ok}`).catch(() => { })
+
+                                    if (uploadRes.ok) {
+                                        const newMedia = await uploadRes.json()
+                                        fetch(`/api/canva/designs?_debug=1&step=media_received&mediaId=${newMedia.id}`).catch(() => { })
+
+                                        // 3) Replace placeholder with real media
+                                        replacePlaceholderWithMedia(newMedia)
+                                        toast.success('🎨 Canva design imported!', { id: 'canva-export' })
+                                        setCanvaLoading(false)
+                                        return
+                                    } else {
+                                        const err = await uploadRes.json().catch(() => ({}))
+                                        const errMsg = err.error || 'Upload failed'
+                                        fetch(`/api/canva/designs?_debug=1&step=upload_failed&error=${encodeURIComponent(errMsg)}`).catch(() => { })
+                                        toast.dismiss('canva-export')
+                                        // 4a) Switch placeholder to error state with retry button
+                                        setPlaceholderError(errMsg, doExport)
+                                        setCanvaLoading(false)
+                                        return
+                                    }
+                                }
+                                // Blob empty — try next attempt
+                                console.warn('Canva export blob was empty, attempt:', attempt + 1)
                             }
 
-                            // Blob was empty — treat as failure for retry
-                            console.warn('Canva export blob was empty, attempt:', attempt + 1)
-                        }
-
-                        // If not success and not last attempt, wait and retry
-                        if (attempt < 4) {
-                            toast.loading(`Export pending, retrying... (${attempt + 2}/5)`, { id: 'canva-export' })
-                            await new Promise(r => setTimeout(r, 4000))
-                        } else {
-                            toast.error(exportData.error || 'Export failed after retries', { id: 'canva-export' })
-                        }
-                    } catch (err: unknown) {
-                        const errMsg = err instanceof Error ? err.message : String(err)
-                        console.error('Canva export attempt error:', errMsg, err)
-                        if (attempt >= 4) {
-                            toast.error(`Export error: ${errMsg}`, { id: 'canva-export' })
-                        } else {
-                            await new Promise(r => setTimeout(r, 4000))
+                            // Not success yet — retry
+                            if (attempt < 4) {
+                                toast.loading(`Importing... (${attempt + 2}/5)`, { id: 'canva-export' })
+                                await new Promise(r => setTimeout(r, 4000))
+                            }
+                        } catch (err: unknown) {
+                            const errMsg = err instanceof Error ? err.message : String(err)
+                            console.error('Canva export attempt error:', errMsg, err)
+                            if (attempt < 4) {
+                                await new Promise(r => setTimeout(r, 4000))
+                            }
                         }
                     }
-                }
-                // Show failure in popup — include hint to check browser console
-                if (popupRef && !popupRef.closed) {
-                    writePopupStatus(popupRef, 'error', 'Export failed. Check browser console (F12) for details.')
-                }
-                setCanvaLoading(false)
-            }
 
+                    // All retries exhausted
+                    toast.dismiss('canva-export')
+                    // 4b) Switch placeholder to error state with retry button
+                    setPlaceholderError('Export failed after retries. Tap Retry.', doExport)
+                    setCanvaLoading(false)
+                }
+
+                await doExport()
+            }
 
             const checkClosed = setInterval(async () => {
                 if (exported) { clearInterval(checkClosed); return }
@@ -1947,17 +1977,12 @@ export default function ComposePage() {
                     return
                 }
 
-                // Case 2: Popup navigated back to our domain (user clicked "Return to app")
-                // Keep popup OPEN — show status UI, run export, close popup only after success
+                // Case 2: Popup navigated back to our domain (user clicked "Publish/Share")
+                // Close popup immediately and run export in background with inline placeholder
                 try {
                     if (popup && popup.location && popup.location.hostname === window.location.hostname) {
                         clearInterval(checkClosed)
-                        // Wait 2s for popup page to fully settle before writing to it
-                        await new Promise(r => setTimeout(r, 2000))
-                        // Show processing UI in popup
-                        writePopupStatus(popup, 'loading', 'Importing your design from Canva...')
-                        // Run export (popup will be updated and closed on success)
-                        await triggerExport(popup)
+                        await triggerExport()
                         return
                     }
                 } catch {
@@ -3344,59 +3369,90 @@ export default function ComposePage() {
                             {(attachedMedia.length > 0 || aiImageBgGenerating) && (
                                 <div className={`grid gap-2 ${mediaRatio === '9:16' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
                                     }`}>
-                                    {attachedMedia.map((media, index) => (
-                                        <div
-                                            key={media.id}
-                                            className={`relative group rounded-lg overflow-hidden bg-muted ${mediaRatio === '16:9' ? 'aspect-video'
-                                                : mediaRatio === '9:16' ? 'aspect-[9/16]'
-                                                    : 'aspect-square'
-                                                } ${aiImageJustCompleted && index === attachedMedia.length - 1 ? 'animate-ai-reveal' : ''}`}
-                                        >
-                                            {isVideo(media) ? (
-                                                <div className="relative h-full w-full bg-muted">
-                                                    <img
-                                                        src={media.thumbnailUrl || media.url}
-                                                        alt={media.originalName || ''}
-                                                        className="h-full w-full object-cover"
-                                                    />
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                        <div className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center">
-                                                            <Play className="h-4 w-4 text-white ml-0.5" />
+                                    {attachedMedia.map((media, index) => {
+                                        // ── Canva import placeholder ──────────────────────────
+                                        if (media.isCanvaLoading || media.canvaError) {
+                                            return (
+                                                <div
+                                                    key={media.id}
+                                                    className={`relative group rounded-lg overflow-hidden border ${media.canvaError ? 'border-red-500/40 bg-red-950/20' : 'border-violet-500/30 bg-gradient-to-br from-violet-950/40 via-black/60 to-indigo-950/40'} ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}
+                                                >
+                                                    {media.isCanvaLoading && (
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
+                                                    )}
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-2">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <img src="/logo.png" alt="NeeFlow" className="h-6 w-6 object-contain" />
+                                                            <span className="text-[10px] text-muted-foreground">×</span>
+                                                            <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-6 w-6 object-contain" />
                                                         </div>
+                                                        {media.isCanvaLoading ? (
+                                                            <>
+                                                                <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />
+                                                                <p className="text-[9px] text-violet-300 text-center leading-tight">Importing from Canva...</p>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <p className="text-[9px] text-red-400 text-center leading-tight">{media.canvaError}</p>
+                                                                {media.canvaRetryFn && (
+                                                                    <button onClick={media.canvaRetryFn} className="text-[9px] px-2 py-0.5 rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors cursor-pointer">
+                                                                        Retry
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
                                                     </div>
-                                                    <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white px-1 rounded">{media.originalName}</span>
+                                                    <button onClick={() => removeMedia(media.id)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                        <X className="h-3 w-3" />
+                                                    </button>
                                                 </div>
-                                            ) : (
-                                                <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover cursor-pointer" onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)} />
-                                            )}
-                                            <button
-                                                onClick={() => removeMedia(media.id)}
-                                                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                            )
+                                        }
+                                        // ── Normal media item ─────────────────────────────────
+                                        return (
+                                            <div
+                                                key={media.id}
+                                                className={`relative group rounded-lg overflow-hidden bg-muted ${mediaRatio === '16:9' ? 'aspect-video'
+                                                    : mediaRatio === '9:16' ? 'aspect-[9/16]'
+                                                        : 'aspect-square'
+                                                    } ${aiImageJustCompleted && index === attachedMedia.length - 1 ? 'animate-ai-reveal' : ''}`}
                                             >
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                            {/* Zoom button */}
-                                            {!isVideo(media) && (
+                                                {isVideo(media) ? (
+                                                    <div className="relative h-full w-full bg-muted">
+                                                        <img
+                                                            src={media.thumbnailUrl || media.url}
+                                                            alt={media.originalName || ''}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                            <div className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center">
+                                                                <Play className="h-4 w-4 text-white ml-0.5" />
+                                                            </div>
+                                                        </div>
+                                                        <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white px-1 rounded">{media.originalName}</span>
+                                                    </div>
+                                                ) : (
+                                                    <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover cursor-pointer" onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)} />
+                                                )}
                                                 <button
-                                                    onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)}
-                                                    title="View full size"
-                                                    className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/80"
+                                                    onClick={() => removeMedia(media.id)}
+                                                    className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                                 >
-                                                    <ZoomIn className="h-3 w-3" />
+                                                    <X className="h-3 w-3" />
                                                 </button>
-                                            )}
-                                            {/* Edit in Canva — only for images */}
-                                            {!isVideo(media) && (
-                                                <button
-                                                    onClick={() => openCanvaDesign(media.url, media.id)}
-                                                    title="Edit in Canva"
-                                                    className="absolute top-1 left-1 h-5 w-5 rounded-full bg-violet-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                                >
-                                                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3 w-3 object-contain" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
+                                                {!isVideo(media) && (
+                                                    <button onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)} title="View full size" className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/80">
+                                                        <ZoomIn className="h-3 w-3" />
+                                                    </button>
+                                                )}
+                                                {!isVideo(media) && (
+                                                    <button onClick={() => openCanvaDesign(media.url, media.id)} title="Edit in Canva" className="absolute top-1 left-1 h-5 w-5 rounded-full bg-violet-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                        <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3 w-3 object-contain" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
                                     {/* AI Image Generating Placeholder — inside grid as a cell */}
                                     {aiImageBgGenerating && (
                                         <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
