@@ -911,9 +911,7 @@ export default function UserApiKeysPage() {
                             </div>
                         ) : (
                             <div className="text-center py-4 space-y-4">
-                                <div className="mx-auto w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center">
-                                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-6 w-6 object-contain" />
-                                </div>
+                                <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="mx-auto h-12 w-12 object-contain" />
                                 <div>
                                     <h3 className="font-semibold">{t('apiKeys.connectCanva')}</h3>
                                     <p className="text-sm text-muted-foreground mt-1">
