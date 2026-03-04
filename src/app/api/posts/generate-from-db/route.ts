@@ -132,7 +132,9 @@ async function generateImageDirectly(
     resolvedProvider: string,
     usingPlatformKey: boolean,
 ): Promise<string | null> {
-    const { prompt, width = 1024, height = 1024, model: requestedModel } = imageConfig
+    const { width = 1024, height = 1024, model: requestedModel } = imageConfig
+    // effectivePrompt is passed via imageConfig.prompt (set earlier by caller)
+    const prompt = imageConfig.prompt || ''
 
     let imageUrl: string
     let mimeType = 'image/png'
@@ -145,56 +147,102 @@ async function generateImageDirectly(
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify([{ taskType: 'imageInference', taskUUID: randomUUID(), positivePrompt: prompt, model, width, height, numberResults: 1, outputFormat: 'PNG' }]),
             })
-            if (!res.ok) return null
-            const data = await res.json(); imageUrl = data.data?.[0]?.imageURL
-            if (!imageUrl) return null
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                throw new Error(`Runware error: ${err.error || res.statusText}`)
+            }
+            const data = await res.json()
+            imageUrl = data.data?.[0]?.imageURL
+            if (!imageUrl) throw new Error('Runware returned no image URL')
+
         } else if (resolvedProvider === 'openai') {
             const model = requestedModel || 'dall-e-3'
-            const size = width > height ? '1792x1024' : height > width ? '1024x1792' : '1024x1024'
+            const isGptImage1 = model === 'gpt-image-1'
+            let size = '1024x1024'
+            if (isGptImage1) {
+                if (width > height) size = '1536x1024'
+                else if (height > width) size = '1024x1536'
+            } else {
+                if (width > height) size = '1792x1024'
+                else if (height > width) size = '1024x1792'
+            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const reqBody: Record<string, any> = { model, prompt, n: 1, size }
+            if (!isGptImage1) reqBody.response_format = 'url'
             const res = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({ model, prompt, n: 1, size, response_format: 'url' }),
+                body: JSON.stringify(reqBody),
             })
-            if (!res.ok) return null
-            const data = await res.json(); imageUrl = data.data?.[0]?.url
-            if (!imageUrl) return null
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                throw new Error(`OpenAI error: ${err.error?.message || res.statusText}`)
+            }
+            const data = await res.json()
+            const item = data.data?.[0]
+            if (!item) throw new Error('OpenAI returned no image data')
+            imageUrl = item.b64_json ? `data:image/png;base64,${item.b64_json}` : item.url
+            if (!imageUrl) throw new Error('OpenAI returned no image URL')
+
         } else if (resolvedProvider === 'gemini') {
-            const model = requestedModel || 'gemini-3.1-flash-image-preview'
+            let model = requestedModel || 'gemini-3.1-flash-image-preview'
+            // Reject text-only models — only image/imagen models support image generation
+            if (!model.includes('image') && !model.includes('imagen')) {
+                console.warn(`[generate-from-db] Gemini model "${model}" doesn't support image gen — using default`)
+                model = 'gemini-3.1-flash-image-preview'
+            }
             const ratio = width / height
             let geminiAspect = '1:1'
             if (Math.abs(ratio - 16 / 9) < 0.05) geminiAspect = '16:9'
             else if (Math.abs(ratio - 9 / 16) < 0.05) geminiAspect = '9:16'
             else if (Math.abs(ratio - 4 / 3) < 0.05) geminiAspect = '4:3'
             else if (Math.abs(ratio - 3 / 4) < 0.05) geminiAspect = '3:4'
+            else if (Math.abs(ratio - 4 / 5) < 0.05) geminiAspect = '4:5'
 
             const isImagen = model.includes('imagen')
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${isImagen ? 'predict' : 'generateContent'}`
-            const res = await fetch(url, {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${isImagen ? 'predict' : 'generateContent'}`
+            const res = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
                 body: JSON.stringify(isImagen
                     ? { instances: [{ prompt }], parameters: { sampleCount: 1, aspectRatio: geminiAspect } }
-                    : { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['Text', 'Image'], imageConfig: { aspectRatio: geminiAspect } } }
+                    : {
+                        contents: [{ parts: [{ text: `Create a visually striking image that represents this concept:\n\n${prompt}` }] }],
+                        generationConfig: { responseModalities: ['Text', 'Image'], imageConfig: { aspectRatio: geminiAspect } },
+                    }
                 ),
             })
-            if (!res.ok) return null
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}))
+                throw new Error(`Gemini error: ${err.error?.message || res.statusText}`)
+            }
             const data = await res.json()
+
+            if (data.promptFeedback?.blockReason) throw new Error(`Gemini blocked: ${data.promptFeedback.blockReason}`)
+
             if (isImagen) {
                 const p = data.predictions?.[0]
-                if (!p?.bytesBase64Encoded) return null
+                if (!p?.bytesBase64Encoded) throw new Error('Gemini Imagen returned no image')
                 mimeType = p.mimeType || 'image/png'
                 imageUrl = `data:${mimeType};base64,${p.bytesBase64Encoded}`
             } else {
-                const parts = data.candidates?.[0]?.content?.parts
-                if (!parts) return null
-                const part = parts.find((p: { inlineData?: { mimeType: string; data: string } }) => p.inlineData)
-                if (!part) return null
-                mimeType = part.inlineData.mimeType || 'image/png'
-                imageUrl = `data:${mimeType};base64,${part.inlineData.data}`
+                const candidates = data.candidates
+                if (!candidates?.[0]?.content?.parts) {
+                    const reason = candidates?.[0]?.finishReason || 'unknown'
+                    throw new Error(`Gemini returned no content (finishReason: ${reason}). Model: ${model}`)
+                }
+                const imagePart = candidates[0].content.parts.find((p: { inlineData?: { mimeType: string; data: string } }) => p.inlineData)
+                if (!imagePart) throw new Error(`Gemini returned no image part. Model: ${model}`)
+                mimeType = imagePart.inlineData.mimeType || 'image/png'
+                imageUrl = `data:${mimeType};base64,${imagePart.inlineData.data}`
             }
-        } else { return null }
-    } catch { return null }
+        } else {
+            throw new Error(`Unsupported image provider: ${resolvedProvider}`)
+        }
+    } catch (err) {
+        console.error('[generate-from-db] Provider call failed:', err instanceof Error ? err.message : err)
+        return null
+    }
 
     // Upload to R2
     const tmpPath = path.join(os.tmpdir(), `asoc_dbimg_${randomUUID()}.png`)
@@ -204,41 +252,44 @@ async function generateImageDirectly(
             fs.writeFileSync(tmpPath, Buffer.from(base64Data, 'base64'))
         } else {
             const dlRes = await fetch(imageUrl)
-            if (!dlRes.ok || !dlRes.body) return null
+            if (!dlRes.ok || !dlRes.body) throw new Error('Failed to download image from URL')
             const writer = fs.createWriteStream(tmpPath)
             await pipeline(Readable.fromWeb(dlRes.body as Parameters<typeof Readable.fromWeb>[0]), writer)
         }
         const fileBuffer = fs.readFileSync(tmpPath)
         const fileSize = fs.statSync(tmpPath).size
-        const ext = mimeType.includes('jpg') || mimeType.includes('jpeg') ? 'jpg' : 'png'
+        const ext = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png'
         const shortId = randomUUID().slice(0, 6)
-        const dateStr = new Date().toISOString().slice(0, 10)
+        const now = new Date()
+        const dateStr = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${now.getFullYear()}`
         const uniqueName = `ai-image ${shortId} - ${dateStr}.${ext}`
 
         const useR2 = await isR2Configured()
-        let publicUrl: string
-        if (useR2) {
-            const r2Key = generateR2Key(channelId, uniqueName)
-            publicUrl = await uploadToR2(fileBuffer, r2Key, mimeType)
-            const mediaItem = await prisma.mediaItem.create({
-                data: {
-                    channelId,
-                    url: publicUrl,
-                    thumbnailUrl: publicUrl,
-                    storageFileId: r2Key,
-                    type: 'image',
-                    source: 'ai_generated',
-                    originalName: uniqueName,
-                    fileSize,
-                    mimeType,
-                    aiMetadata: { storage: 'r2', r2Key, provider: resolvedProvider },
-                },
-            })
-            if (usingPlatformKey) await incrementImageUsage(ownerId).catch(() => { })
-            return mediaItem.id
+        if (!useR2) {
+            console.error('[generate-from-db] R2 not configured, cannot upload AI image')
+            return null
         }
+        const r2Key = generateR2Key(channelId, uniqueName)
+        const publicUrl = await uploadToR2(fileBuffer, r2Key, mimeType)
+        const mediaItem = await prisma.mediaItem.create({
+            data: {
+                channelId,
+                url: publicUrl,
+                thumbnailUrl: publicUrl,
+                storageFileId: r2Key,
+                type: 'image',
+                source: 'ai_generated',
+                originalName: uniqueName,
+                fileSize,
+                mimeType,
+                aiMetadata: { storage: 'r2', r2Key, provider: resolvedProvider },
+            },
+        })
+        if (usingPlatformKey) await incrementImageUsage(ownerId).catch(() => { })
+        console.log('[generate-from-db] AI image uploaded to R2:', publicUrl)
+        return mediaItem.id
     } catch (err) {
-        console.warn('[generate-from-db] Image upload failed:', err)
+        console.error('[generate-from-db] Image upload to R2 failed:', err instanceof Error ? err.message : err)
     } finally {
         fs.unlink(tmpPath, () => { })
     }
