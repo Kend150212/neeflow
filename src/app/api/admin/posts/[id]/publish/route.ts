@@ -1715,6 +1715,16 @@ async function publishToTikTok(
         const imageItems = mediaItems.filter((m) => !isVideoMedia(m))
         if (imageItems.length < 2) throw new Error('TikTok carousel requires at least 2 images.')
 
+        // TikTok PULL_FROM_URL only accepts JPEG and WebP.
+        // Route any non-JPEG/WebP image (e.g. PNG from R2/Canva) through our
+        // /api/media/tiktok-image proxy which converts it to JPEG via Sharp.
+        const ttAppBase = process.env.NEXTAUTH_URL || 'https://neeflow.com'
+        function toTikTokSafeUrl(url: string): string {
+            const lower = url.toLowerCase().split('?')[0]
+            if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.webp')) return url
+            return `${ttAppBase}/api/media/tiktok-image?url=${encodeURIComponent(url)}`
+        }
+
         const photoBody: Record<string, unknown> = {
             post_mode: 'DIRECT_POST',
             media_type: 'PHOTO',
@@ -1729,7 +1739,7 @@ async function publishToTikTok(
             },
             source_info: {
                 source: 'PULL_FROM_URL',
-                photo_images: imageItems.slice(0, 35).map((m) => m.url),
+                photo_images: imageItems.slice(0, 35).map((m) => toTikTokSafeUrl(m.url)),
                 photo_cover_index: 0,
             },
         }
