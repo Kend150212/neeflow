@@ -1934,7 +1934,7 @@ export default function ComposePage() {
                                         fetch(`/api/canva/designs?_debug=1&step=upload_failed&error=${encodeURIComponent(errMsg)}`).catch(() => { })
                                         toast.dismiss('canva-export')
                                         // 4a) Switch placeholder to error state with retry button
-                                        setPlaceholderError(errMsg, doExport)
+                                        setPlaceholderError(errMsg, () => { setPlaceholderLoading(); doExport() })
                                         setCanvaLoading(false)
                                         return
                                     }
@@ -1960,7 +1960,7 @@ export default function ComposePage() {
                     // All retries exhausted
                     toast.dismiss('canva-export')
                     // 4b) Switch placeholder to error state with retry button
-                    setPlaceholderError('Export failed after retries. Tap Retry.', doExport)
+                    setPlaceholderError('Export failed after retries. Tap Retry.', () => { setPlaceholderLoading(); doExport() })
                     setCanvaLoading(false)
                 }
 
