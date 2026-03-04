@@ -606,7 +606,8 @@ export default function InboxPage() {
                                 if (freshMsgs.length === 0) return p
                                 if (freshMsgs[freshMsgs.length - 1]?.id === p.messages[p.messages.length - 1]?.id) return p
                                 const freshIds = new Set(freshMsgs.map(m => m.id))
-                                const olderMsgs = p.messages.filter(m => !freshIds.has(m.id))
+                                // Also strip any temp- optimistic messages that have now been persisted in freshMsgs
+                                const olderMsgs = p.messages.filter(m => !freshIds.has(m.id) && !m.id.startsWith('temp-'))
                                 return { ...p, messages: [...olderMsgs, ...freshMsgs] }
                             }))
                         }
