@@ -4544,13 +4544,8 @@ export default function ComposePage() {
                                                     <SelectValue placeholder="Select privacy…" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {/* Always show canonical TikTok order; API options gate which are available */}
-                                                    {(['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY', 'FOLLOWER_OF_CREATOR'] as const)
-                                                        .filter(opt => {
-                                                            const allowed = ttCreatorInfo?.privacy_level_options
-                                                            // If API provided options, only show those; otherwise show top 3
-                                                            return allowed ? allowed.includes(opt) : opt !== 'FOLLOWER_OF_CREATOR'
-                                                        })
+                                                    {/* Always PUBLIC_TO_EVERYONE first, then the rest from API (deduped) */}
+                                                    {(['PUBLIC_TO_EVERYONE', ...((ttCreatorInfo?.privacy_level_options || ['MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY']).filter((o: string) => o !== 'PUBLIC_TO_EVERYONE'))] as string[])
                                                         .map(opt => {
                                                             const labelMap: Record<string, { label: string; icon: React.ReactNode }> = {
                                                                 PUBLIC_TO_EVERYONE: { label: 'Public To Everyone', icon: <Globe className="h-3 w-3" /> },
@@ -4593,37 +4588,31 @@ export default function ComposePage() {
                                             )}
                                         </div>
 
-                                        {/* Point 2c: Interaction settings — horizontal row like TikTok UI (always visible) */}
+                                        {/* Point 2c: Interaction settings — toggle switches, always all 3 visible */}
                                         <div className="border-t pt-2 space-y-1.5">
                                             <Label className="text-[10px] text-muted-foreground">Allow User to</Label>
-                                            <div className="flex items-center gap-3">
+                                            <div className="space-y-1">
                                                 {[
-                                                    { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment, apiDisabled: ttCreatorInfo?.comment_disabled },
-                                                    { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet, apiDisabled: ttCreatorInfo?.duet_disabled || ttPostType !== 'video' },
-                                                    { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch, apiDisabled: ttCreatorInfo?.stitch_disabled || ttPostType !== 'video' },
-                                                ].map(opt => {
-                                                    const isDisabled = !!opt.apiDisabled
-                                                    return (
-                                                        <label
-                                                            key={opt.label}
-                                                            className={`flex items-center gap-1.5 cursor-pointer select-none ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                                    { label: 'Comment', value: ttAllowComment, setter: setTtAllowComment, isDisabled: false },
+                                                    { label: 'Duet', value: ttAllowDuet, setter: setTtAllowDuet, isDisabled: ttPostType !== 'video' },
+                                                    { label: 'Stitch', value: ttAllowStitch, setter: setTtAllowStitch, isDisabled: ttPostType !== 'video' },
+                                                ].map(opt => (
+                                                    <div key={opt.label} className="flex items-center justify-between">
+                                                        <div>
+                                                            <p className={`text-xs font-medium ${opt.isDisabled ? 'text-muted-foreground/50' : ''}`}>{opt.label}</p>
+                                                            {opt.isDisabled && <p className="text-[9px] text-muted-foreground/50">Not available for Image Carousel</p>}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            disabled={opt.isDisabled}
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${opt.isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${opt.value && !opt.isDisabled ? 'bg-cyan-500' : 'bg-muted'}`}
+                                                            onClick={() => !opt.isDisabled && opt.setter(!opt.value)}
                                                         >
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={opt.value && !isDisabled}
-                                                                disabled={isDisabled}
-                                                                onChange={() => !isDisabled && opt.setter(!opt.value)}
-                                                                className="accent-cyan-500 h-3.5 w-3.5"
-                                                            />
-                                                            <span className={`text-xs ${isDisabled ? 'text-muted-foreground/50' : 'text-foreground'}`}>{opt.label}</span>
-                                                        </label>
-                                                    )
-                                                })}
+                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${opt.value && !opt.isDisabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                        </button>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            {/* Duet/Stitch note when carousel */}
-                                            {ttPostType === 'carousel' && (
-                                                <p className="text-[9px] text-muted-foreground/60">Duet &amp; Stitch not available for Image Carousel</p>
-                                            )}
                                         </div>
 
                                         {/* Point 4: Commercial Content Disclosure */}
