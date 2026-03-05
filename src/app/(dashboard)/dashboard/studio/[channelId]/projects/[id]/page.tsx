@@ -23,6 +23,8 @@ import {
     Image as ImageIcon, Plus, ExternalLink,
     CheckCircle2, AlertCircle, Clock, User, Type,
     ShoppingBag, ArrowUpCircle, Scissors, Video, Send,
+    UserRound, Paintbrush2, Eraser, Layers, ScanLine,
+    Crop, MessageSquareText, AudioLines,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -35,6 +37,15 @@ import { ImageGenNode } from '@/components/studio/nodes/ImageGenNode'
 import { UpscaleNode } from '@/components/studio/nodes/UpscaleNode'
 import { BgRemoveNode } from '@/components/studio/nodes/BgRemoveNode'
 import { VideoGenNode } from '@/components/studio/nodes/VideoGenNode'
+import { FaceSwapNode } from '@/components/studio/nodes/FaceSwapNode'
+import { Img2ImgNode } from '@/components/studio/nodes/Img2ImgNode'
+import { InpaintNode } from '@/components/studio/nodes/InpaintNode'
+import { TextOverlayNode } from '@/components/studio/nodes/TextOverlayNode'
+import { IPAdapterNode } from '@/components/studio/nodes/IPAdapterNode'
+import { ControlNetNode } from '@/components/studio/nodes/ControlNetNode'
+import { CropResizeNode } from '@/components/studio/nodes/CropResizeNode'
+import { CaptionGenNode } from '@/components/studio/nodes/CaptionGenNode'
+import { LipSyncNode } from '@/components/studio/nodes/LipSyncNode'
 
 interface StudioAvatar {
     id: string; name: string; coverImage: string | null; prompt: string; style: string
@@ -262,8 +273,44 @@ export default function ProjectCanvasPage() {
         videoGenNode: withDelete((props: any) => (
             <VideoGenNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        faceSwapNode: withDelete((props: any) => (
+            <FaceSwapNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        img2imgNode: withDelete((props: any) => (
+            <Img2ImgNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        inpaintNode: withDelete((props: any) => (
+            <InpaintNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        textOverlayNode: withDelete((props: any) => (
+            <TextOverlayNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ipAdapterNode: withDelete((props: any) => (
+            <IPAdapterNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        controlNetNode: withDelete((props: any) => (
+            <ControlNetNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cropResizeNode: withDelete((props: any) => (
+            <CropResizeNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        captionGenNode: withDelete((props: any) => (
+            <CaptionGenNode {...props} data={{ ...props.data, channelId, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        lipSyncNode: withDelete((props: any) => (
+            <LipSyncNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [withDelete, handleOpenAvatarPicker, handleRun, handleAISuggest, updateNodeData, running, enhancingNode])
+    }), [withDelete, handleOpenAvatarPicker, handleRun, handleAISuggest, updateNodeData, running, enhancingNode, channelId])
 
     useEffect(() => {
         fetchProject()
@@ -346,6 +393,15 @@ export default function ProjectCanvasPage() {
         { type: 'upscaleNode', icon: ArrowUpCircle, color: 'text-cyan-400 hover:bg-cyan-400/10', title: 'Upscale' },
         { type: 'bgRemoveNode', icon: Scissors, color: 'text-fuchsia-400 hover:bg-fuchsia-400/10', title: 'Rm BG' },
         { type: 'videoGenNode', icon: Video, color: 'text-orange-400 hover:bg-orange-400/10', title: 'Video' },
+        { type: 'faceSwapNode', icon: UserRound, color: 'text-yellow-400 hover:bg-yellow-400/10', title: 'Face Swap' },
+        { type: 'img2imgNode', icon: Paintbrush2, color: 'text-sky-400 hover:bg-sky-400/10', title: 'Img2Img' },
+        { type: 'inpaintNode', icon: Eraser, color: 'text-rose-400 hover:bg-rose-400/10', title: 'Inpaint' },
+        { type: 'textOverlayNode', icon: Type, color: 'text-lime-400 hover:bg-lime-400/10', title: 'Text' },
+        { type: 'ipAdapterNode', icon: Layers, color: 'text-violet-400 hover:bg-violet-400/10', title: 'IP-Adapt' },
+        { type: 'controlNetNode', icon: ScanLine, color: 'text-teal-400 hover:bg-teal-400/10', title: 'Control' },
+        { type: 'cropResizeNode', icon: Crop, color: 'text-amber-400 hover:bg-amber-400/10', title: 'Crop' },
+        { type: 'captionGenNode', icon: MessageSquareText, color: 'text-indigo-400 hover:bg-indigo-400/10', title: 'Caption' },
+        { type: 'lipSyncNode', icon: AudioLines, color: 'text-orange-400 hover:bg-orange-400/10', title: 'Lip Sync' },
     ]
 
     return (
