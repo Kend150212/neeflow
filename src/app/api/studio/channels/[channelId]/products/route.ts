@@ -6,7 +6,8 @@ async function verifyMembership(userId: string, channelId: string) {
     return !!(await prisma.channelMember.findFirst({ where: { userId, channelId } }))
 }
 
-// GET /api/studio/channels/[channelId]/products?source=chatbot|externaldb
+// GET /api/studio/channels/[channelId]/products?q=searchTerm
+// Returns products from the channel's ProductCatalog (synced from External DB or manually added)
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ channelId: string }> },
@@ -19,68 +20,29 @@ export async function GET(
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const source = req.nextUrl.searchParams.get('source') || 'chatbot'
     const q = req.nextUrl.searchParams.get('q') || ''
 
-    if (source === 'chatbot') {
-        // Pull from BotConfig product catalog JSON
-        const botConfig = await prisma.botConfig.findFirst({
-            where: { channelId },
-            select: { products: true },
-        })
+    const catalogItems = await prisma.productCatalog.findMany({
+        where: {
+            channelId,
+            ...(q ? {
+                OR: [
+                    { name: { contains: q, mode: 'insensitive' } },
+                    { description: { contains: q, mode: 'insensitive' } },
+                ],
+            } : {}),
+        },
+        take: 100,
+        orderBy: { createdAt: 'desc' },
+    })
 
-        let products: unknown[] = []
-        if (botConfig?.products) {
-            try {
-                const raw = typeof botConfig.products === 'string'
-                    ? JSON.parse(botConfig.products as string)
-                    : botConfig.products
-                products = Array.isArray(raw) ? raw : []
-            } catch {
-                products = []
-            }
-        }
+    const products = catalogItems.map(c => ({
+        id: c.id,
+        name: c.name,
+        price: c.price,
+        description: c.description,
+        image: c.images?.[0] ?? null,
+    }))
 
-        // Filter by query if provided
-        if (q) {
-            const lower = q.toLowerCase()
-            products = products.filter((p: unknown) => {
-                const prod = p as { name?: string; description?: string }
-                return prod.name?.toLowerCase().includes(lower) ||
-                    prod.description?.toLowerCase().includes(lower)
-            })
-        }
-
-        return NextResponse.json({ products, source: 'chatbot' })
-    }
-
-    if (source === 'externaldb') {
-        // Pull from ProductCatalog table (synced from external DB)
-        const catalogs = await prisma.productCatalog.findMany({
-            where: { channelId },
-            take: 100,
-            orderBy: { createdAt: 'desc' },
-        })
-
-        let products = catalogs.map(c => ({
-            id: c.id,
-            name: c.name,
-            price: c.price,
-            description: c.description,
-            image: c.imageUrl,
-            source: 'externaldb',
-        }))
-
-        if (q) {
-            const lower = q.toLowerCase()
-            products = products.filter(p =>
-                p.name?.toLowerCase().includes(lower) ||
-                p.description?.toLowerCase().includes(lower)
-            )
-        }
-
-        return NextResponse.json({ products, source: 'externaldb' })
-    }
-
-    return NextResponse.json({ error: 'Invalid source' }, { status: 400 })
+    return NextResponse.json({ products })
 }
