@@ -113,15 +113,18 @@ export default function ProjectCanvasPage() {
     const withDelete = useCallback((Component: React.ComponentType<any>) => (props: any) => (
         <div className="group/node relative">
             <button
-                onMouseDown={(e) => { e.stopPropagation(); handleDeleteNode(props.id) }}
+                className="nodrag absolute -top-2.5 -right-2.5 z-50 w-5 h-5 rounded-full bg-red-500 border border-[#080d0b] flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-opacity hover:bg-red-400 shadow-md"
+                style={{ pointerEvents: 'all' }}
                 title="Delete node"
-                className="absolute -top-2.5 -right-2.5 z-50 w-5 h-5 rounded-full bg-red-500 border border-[#080d0b] flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-opacity hover:bg-red-400 shadow-md"
+                onMouseDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); e.preventDefault(); handleDeleteNode(props.id) }}
             >
-                <span className="text-white text-[10px] font-bold leading-none">×</span>
+                <span className="text-white text-[10px] font-bold leading-none select-none">×</span>
             </button>
             <Component {...props} />
         </div>
     ), [handleDeleteNode])
+
 
     // AI Suggest for PromptNode
     const handleAISuggest = useCallback(async (nodeId: string) => {
@@ -256,7 +259,11 @@ export default function ProjectCanvasPage() {
                 enhancing: enhancingNode === props.id,
             }} />
         )),
-        productNode: withDelete(ProductNode),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        productNode: withDelete((props: any) => (
+            <ProductNode {...props} data={{ ...props.data, channelId, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        )),
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         imageGenNode: withDelete((props: any) => (
             <ImageGenNode {...props} data={{ ...props.data, running, onRun: handleRun, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
