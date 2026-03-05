@@ -60,6 +60,8 @@ model User {
   appApiKeys     AppApiKey[]
   assignedConversations Conversation[]
   subscription   Subscription?
+  studioAvatars  StudioAvatar[]
+  studioProjects StudioProject[]
 
   // NextAuth
   accounts Account[]
@@ -1267,4 +1269,106 @@ model ExternalDbChannelLink {
 
   @@id([configId, channelId])
   @@map("external_db_channel_links")
+}
+
+// ==========================================
+// NEEFLOW STUDIO
+// ==========================================
+
+// Relations on User model (added via separate migration)
+// user.studioAvatars  StudioAvatar[]
+// user.studioProjects StudioProject[]
+
+// Avatar: global per user — shared across all projects & channels
+model StudioAvatar {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  name            String
+  description     String?  @db.Text
+  prompt          String   @db.Text
+  style           String   @default("realistic") // realistic, anime, cartoon, 3d
+  referenceImages Json     @default("[]") @map("reference_images") // array of image URLs (up to 4 angles)
+  coverImage      String?  @map("cover_image")
+  falJobId        String?  @map("fal_job_id")
+  status          String   @default("idle") // idle, generating, done, failed
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("studio_avatars")
+}
+
+// Project: container for 1 campaign / product line
+model StudioProject {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  name        String
+  description String?   @db.Text
+  coverImage  String?   @map("cover_image")
+  status      String    @default("active") // active, draft, archived
+  lastRunAt   DateTime? @map("last_run_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workflow StudioWorkflow?
+  jobs     StudioJob[]
+  outputs  StudioOutput[]
+
+  @@index([userId])
+  @@map("studio_projects")
+}
+
+// Workflow: node editor state per project (1 project = 1 active workflow)
+model StudioWorkflow {
+  id        String   @id @default(cuid())
+  projectId String   @unique @map("project_id")
+  nodesJson Json     @default("[]") @map("nodes_json")
+  edgesJson Json     @default("[]") @map("edges_json")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("studio_workflows")
+}
+
+// Job: one execution run of a workflow
+model StudioJob {
+  id         String    @id @default(cuid())
+  projectId  String    @map("project_id")
+  status     String    @default("pending") // pending, running, done, failed
+  provider   String    @default("fal_ai")
+  costUsd    Float?    @map("cost_usd")
+  error      String?   @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at")
+  finishedAt DateTime? @map("finished_at")
+
+  project StudioProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outputs StudioOutput[]
+
+  @@index([projectId])
+  @@map("studio_jobs")
+}
+
+// Output: individual generated image or video
+model StudioOutput {
+  id           String   @id @default(cuid())
+  projectId    String   @map("project_id")
+  jobId        String   @map("job_id")
+  type         String   @default("image") // image, video
+  url          String   @db.Text
+  thumbnailUrl String?  @map("thumbnail_url") @db.Text
+  prompt       String?  @db.Text
+  metadata     Json?    @default("{}")
+  pushedToPost Boolean  @default(false) @map("pushed_to_post")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  project StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  job     StudioJob     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("studio_outputs")
 }

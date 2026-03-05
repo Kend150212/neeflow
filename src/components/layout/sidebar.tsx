@@ -55,6 +55,7 @@ import {
     BookOpen,
     Tag,
     Sparkles,
+    Clapperboard,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -84,6 +85,7 @@ const mainNav: NavItem[] = [
     { titleKey: 'nav.approvals', href: '/dashboard/posts/approvals', icon: CheckCircle2 },
     { titleKey: 'nav.media', href: '/dashboard/media', icon: Image },
     { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Zap },
+    { titleKey: 'nav.studio', href: '/dashboard/studio', icon: Clapperboard },
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
     { titleKey: 'nav.reports', href: '/dashboard/reports', icon: BarChart3 },
     { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },

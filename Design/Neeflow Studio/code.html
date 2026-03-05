@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#0f231b",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .node-connector {
+            stroke: rgba(0, 255, 149, 0.4);
+            stroke-width: 1.5;
+            fill: none;
+        }
+        .canvas-grid {
+            background-image: 
+                linear-gradient(to right, rgba(0, 255, 149, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 255, 149, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-color: #050a08;
+        }
+        .node-pro {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 149, 0.2);
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 overflow-hidden h-screen w-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between border-b border-primary/20 bg-background-dark px-6 py-3 z-20">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">hub</span>
+<h2 class="text-slate-100 text-xl font-bold tracking-tight">Neeflow <span class="text-primary">Media Lab</span></h2>
+</div>
+<div class="flex items-center gap-6">
+<nav class="flex items-center gap-6 text-sm font-medium text-slate-400">
+<a class="hover:text-primary transition-colors" href="#">Workflows</a>
+<a class="hover:text-primary transition-colors" href="#">Models</a>
+<a class="hover:text-primary transition-colors" href="#">History</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex bg-primary/10 border border-primary/20 rounded-lg px-3 py-1.5 items-center gap-2">
+<span class="size-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs font-semibold text-primary uppercase tracking-widest">GPU Active</span>
+</div>
+<button class="flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-background-dark text-sm font-bold hover:brightness-110 transition-all">
+                Queue Prompt
+            </button>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined">person</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex flex-1 overflow-hidden relative">
+<!-- Left Sidebar: Node Library -->
+<aside class="w-16 bg-background-dark/95 border-r border-primary/10 flex flex-col items-center py-6 z-10">
+<div class="flex flex-col gap-6">
+<button class="p-3 rounded-lg text-primary hover:bg-primary/10" title="Search">
+<span class="material-symbols-outlined">search</span>
+</button>
+<div class="h-px w-8 bg-primary/10 mx-auto"></div>
+<div class="flex flex-col gap-4">
+<button class="p-3 rounded-lg bg-primary/10 text-primary border border-primary/20" title="Text Prompt">
+<span class="material-symbols-outlined">text_fields</span>
+</button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-all" title="Image Gen">
+<span class="material-symbols-outlined">auto_fix_high</span>
+</button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-all" title="Image-to-Image">
+<span class="material-symbols-outlined">image</span>
+</button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-all" title="ControlNet">
+<span class="material-symbols-outlined">tune</span>
+</button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-all" title="Upscaler">
+<span class="material-symbols-outlined">aspect_ratio</span>
+</button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-all" title="Face Restorer">
+<span class="material-symbols-outlined">face_retouching_natural</span>
+</button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5 transition-all" title="Video Gen">
+<span class="material-symbols-outlined">movie</span>
+</button>
+</div>
+</div>
+<div class="mt-auto mb-4">
+<button class="p-3 rounded-lg text-primary/40 hover:text-primary" title="Active Model: SDXL">
+<span class="material-symbols-outlined">memory</span>
+</button>
+</div>
+</aside>
+<!-- Central Canvas Area -->
+<section class="flex-1 relative bg-background-dark canvas-grid overflow-hidden">
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-0">
+<!-- Dynamic Fluid Paths -->
+<path class="node-connector" d="M280,220 C350,220 350,180 420,180"></path>
+<path class="node-connector" d="M740,180 C800,180 800,280 860,280"></path>
+<path class="node-connector" d="M740,180 C800,180 800,80 860,80"></path>
+<path class="node-connector" d="M280,500 C400,500 400,220 420,220"></path>
+<path class="node-connector" d="M1120,80 C1180,80 1180,180 1240,180"></path>
+<path class="node-connector" d="M1120,280 C1180,280 1180,220 1240,220"></path>
+</svg>
+<!-- Node 1: Text Prompt -->
+<div class="absolute left-40 top-40 w-60 node-pro rounded-xl z-10">
+<div class="p-2 border-b border-primary/10 flex items-center justify-between opacity-70">
+<span class="text-[9px] font-bold uppercase tracking-widest">Text Prompt</span>
+<span class="material-symbols-outlined text-xs">more_horiz</span>
+</div>
+<div class="p-3">
+<textarea class="w-full h-16 bg-transparent border-none text-[11px] text-slate-300 resize-none focus:ring-0 p-0">Cinematic product shot, high-end skincare, mint green aesthetic, 8k.</textarea>
+<div class="flex justify-end mt-2">
+<div class="size-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+</div>
+</div>
+</div>
+<!-- Node 2: Image Gen (SDXL) -->
+<div class="absolute left-[420px] top-32 w-80 node-pro rounded-xl border-primary/40 z-10">
+<div class="p-2 bg-primary/5 border-b border-primary/20 flex items-center justify-between">
+<span class="text-[9px] font-bold uppercase tracking-widest text-primary">SDXL Base</span>
+<span class="material-symbols-outlined text-xs text-primary">bolt</span>
+</div>
+<div class="p-4 flex gap-4">
+<div class="flex flex-col justify-between">
+<div class="size-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+<div class="size-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+</div>
+<div class="flex-1 aspect-square bg-black/40 rounded border border-white/5 overflow-hidden">
+<img class="w-full h-full object-cover" src="https://placeholder.pics/svg/300"/>
+</div>
+<div class="flex flex-col justify-center">
+<div class="size-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+</div>
+</div>
+</div>
+<!-- Node 3: Face Restorer -->
+<div class="absolute left-[860px] top-20 w-64 node-pro rounded-xl z-10">
+<div class="p-2 border-b border-primary/10 flex items-center justify-between">
+<span class="text-[9px] font-bold uppercase tracking-widest opacity-70">Face Restorer</span>
+</div>
+<div class="p-4 space-y-3">
+<div class="flex items-center gap-2">
+<div class="size-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+<span class="text-[10px] text-slate-400">Input Frame</span>
+</div>
+<div class="flex justify-between items-center bg-black/20 p-2 rounded">
+<span class="text-[10px]">Visibility</span>
+<span class="text-[10px] text-primary">0.85</span>
+</div>
+</div>
+</div>
+<!-- Node 4: ControlNet -->
+<div class="absolute left-40 top-[450px] w-60 node-pro rounded-xl z-10">
+<div class="p-2 border-b border-primary/10 flex items-center justify-between">
+<span class="text-[9px] font-bold uppercase tracking-widest opacity-70">ControlNet Depth</span>
+</div>
+<div class="p-4">
+<div class="h-24 bg-black/40 rounded border border-white/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-700 text-3xl">layers</span>
+</div>
+<div class="flex justify-end mt-4">
+<div class="size-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+</div>
+</div>
+</div>
+<!-- Node 5: Video Gen -->
+<div class="absolute left-[860px] top-[250px] w-64 node-pro rounded-xl z-10">
+<div class="p-2 border-b border-primary/10 flex items-center justify-between">
+<span class="text-[9px] font-bold uppercase tracking-widest opacity-70">SVD Video</span>
+</div>
+<div class="p-4">
+<div class="flex items-center gap-2 mb-4">
+<div class="size-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+<span class="text-[10px] text-slate-400">Reference Image</span>
+</div>
+<div class="text-[10px] text-primary/60 italic font-mono">Motion Bucket: 127</div>
+</div>
+</div>
+<!-- Node 6: Upscaler -->
+<div class="absolute left-[1240px] top-150 w-60 node-pro rounded-xl z-10">
+<div class="p-2 border-b border-primary/10 flex items-center justify-between">
+<span class="text-[9px] font-bold uppercase tracking-widest opacity-70">4x-UltraSharp</span>
+</div>
+<div class="p-4 space-y-4">
+<div class="size-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+<div class="h-1.5 bg-primary/10 rounded-full overflow-hidden">
+<div class="w-full h-full bg-primary/40"></div>
+</div>
+</div>
+</div>
+<!-- Canvas Controls -->
+<div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-2xl border border-white/5 p-1 rounded-full shadow-2xl">
+<button class="p-2 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><span class="material-symbols-outlined text-sm">zoom_in</span></button>
+<button class="p-2 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><span class="material-symbols-outlined text-sm">zoom_out</span></button>
+<div class="w-px h-4 bg-white/10 mx-1"></div>
+<button class="p-2 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><span class="material-symbols-outlined text-sm">pan_tool</span></button>
+<button class="p-2 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-all"><span class="material-symbols-outlined text-sm">grid_view</span></button>
+</div>
+</section>
+<!-- Right Sidebar: Configuration Panel -->
+<aside class="w-72 bg-[#050a08]/90 backdrop-blur-xl border-l border-primary/10 flex flex-col z-10">
+<div class="p-6 overflow-y-auto">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-slate-100 text-sm font-bold uppercase tracking-widest">Configuration</h3>
+<span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">NODE ID: #SDXL-001</span>
+</div>
+<div class="space-y-6">
+<!-- Config Section -->
+<div>
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Model Parameters</label>
+<div class="space-y-4">
+<div class="space-y-2">
+<div class="flex justify-between text-xs">
+<span class="text-slate-300">Seed</span>
+<span class="text-primary font-mono">4294967295</span>
+</div>
+<input class="w-full bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none focus:border-primary" type="text" value="4294967295"/>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs">
+<span class="text-slate-300">Sampling Steps</span>
+<span class="text-primary">30</span>
+</div>
+<input class="w-full accent-primary bg-primary/20 h-1.5 rounded-lg appearance-none cursor-pointer" type="range"/>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs">
+<span class="text-slate-300">CFG Scale</span>
+<span class="text-primary">7.5</span>
+</div>
+<input class="w-full accent-primary bg-primary/20 h-1.5 rounded-lg appearance-none cursor-pointer" type="range"/>
+</div>
+</div>
+</div>
+<!-- Aspect Ratio Section -->
+<div>
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Aspect Ratio</label>
+<div class="grid grid-cols-3 gap-2">
+<button class="bg-primary/20 border border-primary text-primary rounded-lg py-3 flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-sm">crop_portrait</span>
+<span class="text-[10px] font-bold">9:16</span>
+</button>
+<button class="bg-primary/5 border border-primary/10 text-slate-400 rounded-lg py-3 flex flex-col items-center gap-1 hover:border-primary/40">
+<span class="material-symbols-outlined text-sm">crop_square</span>
+<span class="text-[10px] font-bold">1:1</span>
+</button>
+<button class="bg-primary/5 border border-primary/10 text-slate-400 rounded-lg py-3 flex flex-col items-center gap-1 hover:border-primary/40">
+<span class="material-symbols-outlined text-sm">crop_landscape</span>
+<span class="text-[10px] font-bold">16:9</span>
+</button>
+</div>
+</div>
+<!-- Sampler Selection -->
+<div>
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Sampler Method</label>
+<select class="w-full bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 text-sm text-slate-100 outline-none appearance-none focus:border-primary">
+<option>DPM++ 2M Karras</option>
+<option>Euler a</option>
+<option>Heun</option>
+<option>DDIM</option>
+</select>
+</div>
+<!-- Social Media Presets -->
+<div>
+<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Post Presets</label>
+<div class="space-y-2">
+<button class="w-full flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-sm">retweet</span>
+<span class="text-xs font-medium text-slate-200">Instagram Reel</span>
+</div>
+<span class="material-symbols-outlined text-sm text-slate-500 group-hover:text-primary">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-sm">youtube_trending</span>
+<span class="text-xs font-medium text-slate-200">TikTok Video</span>
+</div>
+<span class="material-symbols-outlined text-sm text-slate-500 group-hover:text-primary">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto p-6 border-t border-primary/10">
+<button class="w-full bg-primary/10 border border-primary/20 text-primary font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined text-sm">save</span> Save Workflow
+                </button>
+</div>
+</aside>
+</main>
+<!-- Footer Status Bar -->
+<footer class="h-8 bg-background-dark border-t border-primary/10 flex items-center justify-between px-4 z-20">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5">
+<span class="size-1.5 rounded-full bg-primary"></span>
+<span class="text-[10px] text-slate-400 font-medium">System Ready</span>
+</div>
+<div class="h-3 w-px bg-primary/20"></div>
+<div class="flex items-center gap-1.5">
+<span class="text-[10px] text-slate-400 font-medium">Memory:</span>
+<span class="text-[10px] text-primary font-bold">12.4 / 24 GB</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5">
+<span class="text-[10px] text-slate-400 font-medium">Render Time:</span>
+<span class="text-[10px] text-slate-200 font-bold">1.2s</span>
+</div>
+<div class="h-3 w-px bg-primary/20"></div>
+<span class="text-[10px] text-slate-500 font-mono">v1.4.2-stable</span>
+</div>
+</footer>
+</body></html>

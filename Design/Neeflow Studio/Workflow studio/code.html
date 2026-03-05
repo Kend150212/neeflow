@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | Workflow Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#080d0b",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #080d0b;
+            background-image: radial-gradient(circle at 2px 2px, rgba(0, 255, 149, 0.05) 1px, transparent 0);
+            background-size: 32px 32px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 149, 0.2);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation (Filters/Categories) -->
+<aside class="w-72 border-r border-primary/10 bg-background-dark p-6 flex flex-col gap-8">
+<div class="flex items-center gap-3 px-2">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-background-dark font-bold">bolt</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight text-white">Neeflow</h1>
+</div>
+<div class="flex flex-col gap-1">
+<p class="px-2 text-xs font-semibold text-primary/40 uppercase tracking-widest mb-2">Categories</p>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-medium" href="#">
+<span class="material-symbols-outlined text-sm">grid_view</span>
+                    All Workflows
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-sm">share</span>
+                    Social
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-sm">database</span>
+                    Database
+                </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-sm">psychology</span>
+                    AI Intelligence
+                </a>
+</div>
+<div class="flex flex-col gap-1">
+<p class="px-2 text-xs font-semibold text-primary/40 uppercase tracking-widest mb-2">Popular Tags</p>
+<div class="flex flex-wrap gap-2 px-2">
+<span class="px-2 py-1 rounded bg-white/5 text-[10px] text-slate-300 border border-white/10 uppercase tracking-wider">Automation</span>
+<span class="px-2 py-1 rounded bg-white/5 text-[10px] text-slate-300 border border-white/10 uppercase tracking-wider">Growth</span>
+<span class="px-2 py-1 rounded bg-white/5 text-[10px] text-slate-300 border border-white/10 uppercase tracking-wider">Sync</span>
+<span class="px-2 py-1 rounded bg-white/5 text-[10px] text-slate-300 border border-white/10 uppercase tracking-wider">API</span>
+</div>
+</div>
+<div class="mt-auto p-4 rounded-xl bg-primary/5 border border-primary/10">
+<p class="text-sm font-medium text-white mb-1">Standard Plan</p>
+<div class="w-full bg-white/10 h-1 rounded-full mb-3">
+<div class="bg-primary h-full w-3/4 rounded-full"></div>
+</div>
+<p class="text-[11px] text-slate-400">75% of operations used</p>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="flex-1 flex flex-col min-w-0 bg-background-dark/50 backdrop-blur-sm overflow-y-auto custom-scrollbar">
+<!-- Page Header Area -->
+<header class="px-8 pt-8 pb-6 flex items-center justify-between sticky top-0 bg-background-dark/80 backdrop-blur-md z-10">
+<div>
+<h2 class="text-3xl font-black text-white tracking-tight">Workflow Manager</h2>
+<p class="text-slate-400 text-sm mt-1">Manage and monitor your automation pipelines</p>
+</div>
+<button class="flex items-center gap-2 px-6 py-3 bg-primary text-background-dark font-bold rounded-xl hover:shadow-[0_0_20px_rgba(0,255,149,0.3)] transition-all active:scale-95">
+<span class="material-symbols-outlined font-bold">add</span>
+                    Create New Workflow
+                </button>
+</header>
+<div class="px-8 pb-12">
+<!-- Insights Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+<div class="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors group">
+<p class="text-slate-400 text-sm font-medium mb-1">System Throughput</p>
+<div class="flex items-end gap-3">
+<h3 class="text-3xl font-bold text-white">12.4k</h3>
+<span class="text-primary text-sm font-medium mb-1">+14% ↑</span>
+</div>
+<div class="mt-4 h-12 w-full">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+<path class="opacity-50 group-hover:opacity-100 transition-opacity" d="M0,35 Q20,5 40,30 T80,10 T100,20" fill="none" stroke="#00ff95" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors group">
+<p class="text-slate-400 text-sm font-medium mb-1">Avg Success Rate</p>
+<div class="flex items-end gap-3">
+<h3 class="text-3xl font-bold text-white">96.8%</h3>
+<span class="text-primary text-sm font-medium mb-1">+2% ↑</span>
+</div>
+<div class="mt-4 flex gap-1 items-end h-12">
+<div class="bg-primary/20 w-full h-2/3 rounded-sm group-hover:bg-primary/40"></div>
+<div class="bg-primary/20 w-full h-3/4 rounded-sm group-hover:bg-primary/40"></div>
+<div class="bg-primary/20 w-full h-1/2 rounded-sm group-hover:bg-primary/40"></div>
+<div class="bg-primary/20 w-full h-full rounded-sm group-hover:bg-primary/40"></div>
+<div class="bg-primary/20 w-full h-2/3 rounded-sm group-hover:bg-primary/40"></div>
+<div class="bg-primary/20 w-full h-5/6 rounded-sm group-hover:bg-primary/40"></div>
+</div>
+</div>
+<div class="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-primary/30 transition-colors group">
+<p class="text-slate-400 text-sm font-medium mb-1">Active Runners</p>
+<div class="flex items-end gap-3">
+<h3 class="text-3xl font-bold text-white">42</h3>
+<span class="text-slate-500 text-sm font-medium mb-1">Stable</span>
+</div>
+<div class="mt-6 flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-background-dark bg-slate-800 flex items-center justify-center text-[10px] font-bold">JS</div>
+<div class="w-8 h-8 rounded-full border-2 border-background-dark bg-slate-700 flex items-center justify-center text-[10px] font-bold">PY</div>
+<div class="w-8 h-8 rounded-full border-2 border-background-dark bg-slate-600 flex items-center justify-center text-[10px] font-bold">AI</div>
+<div class="w-8 h-8 rounded-full border-2 border-background-dark bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">+8</div>
+</div>
+</div>
+</div>
+<!-- Workflows Table/Grid -->
+<div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+<div class="px-6 py-4 border-b border-white/10 bg-white/5 flex items-center justify-between">
+<h4 class="text-lg font-bold text-white">Active Workflows</h4>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg hover:bg-white/10 text-slate-400"><span class="material-symbols-outlined text-sm">search</span></button>
+<button class="p-2 rounded-lg hover:bg-white/10 text-slate-400"><span class="material-symbols-outlined text-sm">filter_list</span></button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="text-[11px] text-slate-500 uppercase tracking-widest border-b border-white/5">
+<tr>
+<th class="px-6 py-4 font-semibold">Workflow Name</th>
+<th class="px-6 py-4 font-semibold">Status</th>
+<th class="px-6 py-4 font-semibold">Last Run</th>
+<th class="px-6 py-4 font-semibold">Success Rate</th>
+<th class="px-6 py-4 font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<!-- Row 1 -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">movie</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Viral Reel Gen</p>
+<p class="text-xs text-slate-500">Auto-generation from long-form content</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                            Active
+                                        </span>
+</td>
+<td class="px-6 py-5 text-sm text-slate-400">2 mins ago</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 98%;"></div>
+</div>
+<span class="text-sm font-medium text-white">98%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="px-4 py-1.5 rounded-lg border border-primary/20 text-primary text-xs font-bold hover:bg-primary hover:text-background-dark transition-all">Quick Edit</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">sync</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Product Catalog Sync</p>
+<p class="text-xs text-slate-500">ERP to Shopify real-time update</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                                            Paused
+                                        </span>
+</td>
+<td class="px-6 py-5 text-sm text-slate-400">1 hour ago</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 100%;"></div>
+</div>
+<span class="text-sm font-medium text-white">100%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="px-4 py-1.5 rounded-lg border border-primary/20 text-primary text-xs font-bold hover:bg-primary hover:text-background-dark transition-all">Quick Edit</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">forum</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Twitter Thread Automation</p>
+<p class="text-xs text-slate-500">Weekly tech roundup digest</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                            Active
+                                        </span>
+</td>
+<td class="px-6 py-5 text-sm text-slate-400">15 mins ago</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-amber-500 rounded-full" style="width: 92%;"></div>
+</div>
+<span class="text-sm font-medium text-white">92%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="px-4 py-1.5 rounded-lg border border-primary/20 text-primary text-xs font-bold hover:bg-primary hover:text-background-dark transition-all">Quick Edit</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Right Side Activity Panel -->
+<aside class="w-80 border-l border-primary/10 bg-background-dark p-6 flex flex-col overflow-y-auto custom-scrollbar">
+<h5 class="text-lg font-bold text-white mb-6">Recent Activity</h5>
+<div class="flex flex-col gap-6">
+<div class="flex gap-4 relative">
+<div class="flex-none w-px bg-primary/20 absolute left-[15px] top-8 bottom-[-24px]"></div>
+<div class="w-8 h-8 rounded-full bg-primary/20 border border-primary flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[14px] text-primary">check_circle</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Viral Reel Gen</p>
+<p class="text-xs text-slate-400">Successfully processed 4 reels</p>
+<p class="text-[10px] text-slate-600 mt-1 uppercase font-bold tracking-widest">2 MINS AGO</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="flex-none w-px bg-primary/20 absolute left-[15px] top-8 bottom-[-24px]"></div>
+<div class="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[14px] text-slate-400">pause</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Workflow Paused</p>
+<p class="text-xs text-slate-400">Product Catalog Sync manually stopped</p>
+<p class="text-[10px] text-slate-600 mt-1 uppercase font-bold tracking-widest">1 HOUR AGO</p>
+</div>
+</div>
+<div class="flex gap-4 relative">
+<div class="flex-none w-px bg-primary/20 absolute left-[15px] top-8 bottom-[-24px]"></div>
+<div class="w-8 h-8 rounded-full bg-red-500/20 border border-red-500/50 flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[14px] text-red-500">warning</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Rate Limit Error</p>
+<p class="text-xs text-slate-400">Twitter API reached limit. Retrying...</p>
+<p class="text-[10px] text-slate-600 mt-1 uppercase font-bold tracking-widest">4 HOURS AGO</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-full bg-primary/20 border border-primary flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[14px] text-primary">add_link</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">New Connection</p>
+<p class="text-xs text-slate-400">Added Google Drive as data source</p>
+<p class="text-[10px] text-slate-600 mt-1 uppercase font-bold tracking-widest">YESTERDAY</p>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-10">
+<div class="rounded-xl p-4 bg-white/5 border border-white/10">
+<p class="text-xs text-slate-400 leading-relaxed italic">"Simplicity is the soul of efficiency."</p>
+<p class="text-[10px] text-primary font-bold mt-2">— NEEFLOW AI</p>
+</div>
+</div>
+</aside>
+</div>
+</body></html>
