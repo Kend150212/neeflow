@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/studio/avatars — list all avatars for the current user
 export async function GET() {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const avatars = await prisma.studioAvatar.findMany({
@@ -18,7 +17,7 @@ export async function GET() {
 
 // POST /api/studio/avatars — create a new avatar (metadata only, generate separately)
 export async function POST(req: NextRequest) {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
@@ -41,7 +40,6 @@ export async function POST(req: NextRequest) {
 
     // If numAngles is provided, kick off generation immediately
     if (numAngles && numAngles > 0) {
-        // Non-blocking generation (don't await)
         generateAvatarAsync(avatar.id, session.user.id, prompt, style || 'realistic', numAngles).catch(console.error)
     }
 

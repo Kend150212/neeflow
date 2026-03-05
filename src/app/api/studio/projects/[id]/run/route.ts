@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // POST /api/studio/projects/[id]/run — execute the workflow
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const project = await prisma.studioProject.findFirst({
@@ -76,8 +75,8 @@ async function executeWorkflow(opts: {
     try {
         // Build prompt: combine avatar description + user prompt
         let finalPrompt = opts.prompt
-        if (opts.avatarNodeData?.prompt) {
-            finalPrompt = `${opts.avatarNodeData.prompt as string}, ${finalPrompt}`
+        if (opts.avatarNodeData?.avatarPrompt) {
+            finalPrompt = `${opts.avatarNodeData.avatarPrompt as string}, ${finalPrompt}`
         }
 
         const result = await falRunSync({
