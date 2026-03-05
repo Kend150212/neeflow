@@ -8,15 +8,7 @@
 import { prisma } from '@/lib/prisma'
 import { getConnector } from '@/lib/external-db'
 import type { ExternalDBConfig } from '@/lib/external-db/interface'
-
-// Simple base64 decode (same as in API route)
-function decodePassword(encoded: string): string {
-    try {
-        return Buffer.from(encoded, 'base64').toString('utf-8')
-    } catch {
-        return encoded
-    }
-}
+import { decrypt } from '@/lib/encryption'
 
 function formatRowsAsText(tableName: string, rows: Record<string, unknown>[], fields: string[]): string {
     if (rows.length === 0) return ''
@@ -56,8 +48,8 @@ export async function buildExternalDbContext(
         const config = link.config
         if (!config.botQueryEnabled) return ''
 
-        // Decode password
-        const password = config.password ? decodePassword(config.password) : ''
+        // Decrypt password (AES-256, consistent with API routes)
+        const password = config.password ? decrypt(config.password) : ''
 
         const dbConfig: ExternalDBConfig = {
             dbType: config.dbType,
