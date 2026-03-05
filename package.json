@@ -38,6 +38,7 @@
     "@tiptap/pm": "^3.19.0",
     "@tiptap/react": "^3.19.0",
     "@tiptap/starter-kit": "^3.19.0",
+    "@xyflow/react": "^12.10.1",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.69.2",
     "class-variance-authority": "^0.7.1",
