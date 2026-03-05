@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
     User, Plus, Loader2, Sparkles, ChevronLeft,
-    CheckCircle2, AlertCircle, Trash2, RefreshCw
+    CheckCircle2, AlertCircle, Trash2, RefreshCw, ChevronDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -36,6 +36,32 @@ const STYLES = [
     { value: '3d', label: '3D Render', hint: 'Pixar / cinema 3D style' },
 ]
 
+const GEN_PROVIDERS = [
+    {
+        value: 'fal_ai', label: 'Fal.ai',
+        models: [
+            { value: 'fal-ai/flux/schnell', label: 'FLUX Schnell (fast)' },
+            { value: 'fal-ai/flux/dev', label: 'FLUX Dev (quality)' },
+            { value: 'fal-ai/stable-diffusion-v3-medium', label: 'SD3 Medium' },
+        ],
+    },
+    {
+        value: 'runware', label: 'Runware',
+        models: [
+            { value: 'runware:100@1', label: 'Runware Fast FLUX' },
+            { value: 'civitai:4201@501240', label: 'DreamShaper XL' },
+            { value: 'civitai:36520@76907', label: 'DREAMIX' },
+        ],
+    },
+    {
+        value: 'openai', label: 'OpenAI (DALL-E)',
+        models: [
+            { value: 'dall-e-3', label: 'DALL-E 3' },
+            { value: 'dall-e-2', label: 'DALL-E 2' },
+        ],
+    },
+]
+
 export default function ChannelAvatarsPage() {
     const { channelId } = useParams<{ channelId: string }>()
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
@@ -51,6 +77,11 @@ export default function ChannelAvatarsPage() {
     const [style, setStyle] = useState('realistic')
     const [creating, setCreating] = useState(false)
     const [generating, setGenerating] = useState<string | null>(null)
+
+    // Provider/model picker for generation
+    const [genProvider, setGenProvider] = useState('fal_ai')
+    const [genModel, setGenModel] = useState('fal-ai/flux/schnell')
+    const [showProviderPicker, setShowProviderPicker] = useState(false)
 
     useEffect(() => { fetchAvatars() }, [channelId])
 
@@ -94,14 +125,24 @@ export default function ChannelAvatarsPage() {
 
     async function generateAvatar(avatar: StudioAvatar) {
         setGenerating(avatar.id)
+        setShowProviderPicker(false)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider: genProvider, model: genModel }),
             })
             if (res.ok) {
-                toast.success('Generation started! Takes ~30 seconds.')
-                setAvatars(prev => prev.map(a => a.id === avatar.id ? { ...a, status: 'generating' } : a))
-                pollAvatarStatus(avatar.id)
+                const data = await res.json()
+                if (data.status === 'done') {
+                    // Runware / DALL-E respond synchronously
+                    toast.success('Image generated!')
+                    fetchAvatars()
+                } else {
+                    toast.success('Generation started! Takes ~30 seconds.')
+                    setAvatars(prev => prev.map(a => a.id === avatar.id ? { ...a, status: 'generating' } : a))
+                    pollAvatarStatus(avatar.id)
+                }
             } else {
                 const d = await res.json()
                 toast.error(d.error || 'Failed to start generation')
@@ -306,19 +347,61 @@ export default function ChannelAvatarsPage() {
                                 <span className="text-[10px] text-violet-400 font-medium">Shared avatar</span>
                             )}
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 items-start">
                             {!selectedAvatar._shared && selectedAvatar.status !== 'generating' && (
-                                <Button
-                                    variant="ghost" size="sm"
-                                    className="h-7 gap-1.5 text-emerald-400 hover:bg-emerald-400/10 text-xs"
-                                    onClick={() => generateAvatar(selectedAvatar)}
-                                    disabled={generating === selectedAvatar.id}
-                                >
-                                    {generating === selectedAvatar.id
-                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        : <Sparkles className="h-3.5 w-3.5" />}
-                                    Generate
-                                </Button>
+                                <div className="flex flex-col gap-1">
+                                    {/* Provider + model mini-picker */}
+                                    <button
+                                        onClick={() => setShowProviderPicker(v => !v)}
+                                        className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+                                    >
+                                        <span className="font-medium">{GEN_PROVIDERS.find(p => p.value === genProvider)?.label}</span>
+                                        <span className="text-slate-600">·</span>
+                                        <span>{GEN_PROVIDERS.find(p => p.value === genProvider)?.models.find(m => m.value === genModel)?.label}</span>
+                                        <ChevronDown className="h-3 w-3" />
+                                    </button>
+                                    {showProviderPicker && (
+                                        <div className="absolute right-4 top-16 z-50 bg-[#0f1a14] border border-emerald-400/20 rounded-xl p-3 w-64 shadow-xl space-y-3">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Provider</p>
+                                                <div className="grid grid-cols-3 gap-1">
+                                                    {GEN_PROVIDERS.map(p => (
+                                                        <button key={p.value} onClick={() => { setGenProvider(p.value); setGenModel(p.models[0].value) }}
+                                                            className={`py-1 rounded-lg text-[10px] font-bold transition-colors ${genProvider === p.value ? 'bg-emerald-400/20 text-emerald-400' : 'bg-white/5 text-slate-500 hover:text-slate-300'
+                                                                }`}>
+                                                            {p.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Model</p>
+                                                <Select value={genModel} onValueChange={setGenModel}>
+                                                    <SelectTrigger className="h-7 text-xs bg-white/5 border-white/10 text-white">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {(GEN_PROVIDERS.find(p => p.value === genProvider)?.models || []).map(m => (
+                                                            <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <p className="text-[10px] text-slate-600">Add keys in Dashboard → API Keys → Studio Image Generation</p>
+                                        </div>
+                                    )}
+                                    <Button
+                                        variant="ghost" size="sm"
+                                        className="h-7 gap-1.5 text-emerald-400 hover:bg-emerald-400/10 text-xs"
+                                        onClick={() => generateAvatar(selectedAvatar)}
+                                        disabled={generating === selectedAvatar.id}
+                                    >
+                                        {generating === selectedAvatar.id
+                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            : <Sparkles className="h-3.5 w-3.5" />}
+                                        Generate
+                                    </Button>
+                                </div>
                             )}
                             {!selectedAvatar._shared && (
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-red-400" onClick={() => deleteAvatar(selectedAvatar.id)}>

@@ -33,6 +33,7 @@ import {
     Calendar,
     AlertCircle,
     Palette,
+    ImageIcon,
 } from 'lucide-react'
 import {
     Dialog,
@@ -115,16 +116,17 @@ const providerGuides: Record<string, ProviderGuide> = {
             { title: 'Create and copy', detail: 'Create new key and copy' },
         ],
     },
-    synthetic: {
-        description: 'AI video and image generation',
-        placeholder: 'Enter API key...',
-        guideUrl: 'https://synthetic.new/api-keys',
-        guideLabel: 'Open Synthetic Dashboard',
+    fal_ai: {
+        description: 'FLUX, Kling, Stable Diffusion — used by Neeflow Studio',
+        placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:xxx...',
+        guideUrl: 'https://fal.ai/keys',
+        guideLabel: 'Open Fal.ai Dashboard',
         guideSteps: [
-            { title: 'Sign up', detail: 'Sign up at synthetic.new' },
-            { title: 'Get API Key', detail: 'Go to API Keys section' },
-            { title: 'Copy key', detail: 'Create and copy your key' },
+            { title: 'Sign up at fal.ai', detail: 'Go to fal.ai and create a free account' },
+            { title: 'Go to Keys section', detail: 'Navigate to your account → API Keys' },
+            { title: 'Create and copy', detail: 'Click "Create Key", copy immediately — it won\'t be shown again' },
         ],
+        tips: ['Fal.ai powers Studio image generation, face swap, img2img', 'Free credits on signup'],
     },
 }
 
@@ -135,6 +137,7 @@ const providerColors: Record<string, string> = {
     openrouter: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
     runware: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
     synthetic: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
+    fal_ai: 'bg-violet-500/10 text-violet-500 border-violet-500/20',
 }
 
 // ─── Types ─────────────────────────────────────────────────
@@ -992,6 +995,57 @@ export default function UserApiKeysPage() {
                         })}
                     </div>
                 )}
+            </div>
+
+            <Separator />
+
+            {/* ─── Studio Image Generation Section ─── */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    <h2 className="text-xl font-semibold">Studio Image Generation</h2>
+                    <Badge variant="outline" className="ml-2 text-[10px]">For Neeflow Studio</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                    These keys are used by <strong>Neeflow Studio</strong> for AI image generation, face swap, style transfer, and more.
+                    Add your own key to use your own quota.
+                </p>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    {[
+                        { id: 'fal_ai', provider: 'fal_ai', name: 'Fal.ai', status: 'active' },
+                        { id: 'runware', provider: 'runware', name: 'Runware', status: 'active' },
+                        { id: 'openai', provider: 'openai', name: 'OpenAI (DALL-E)', status: 'active' },
+                    ].map(prov => {
+                        const existingKey = keys.find(k => k.provider === prov.provider)
+                        return (
+                            <ProviderCard
+                                key={prov.id}
+                                provider={prov}
+                                existingKey={existingKey}
+                                apiKeyValue={apiKeyValues[prov.provider] || ''}
+                                showKey={showKeys[prov.provider] || false}
+                                isSaving={saving[prov.provider] || false}
+                                isDeleting={deleting[prov.provider] || false}
+                                isTesting={testing[prov.provider] || false}
+                                testResult={testResults[prov.provider]}
+                                showGuide={showGuide[prov.provider] || false}
+                                models={models[prov.provider] || []}
+                                isLoadingModels={loadingModels[prov.provider] || false}
+                                selectedModel={selectedModels[prov.provider] || ''}
+                                onApiKeyChange={val => setApiKeyValues(v => ({ ...v, [prov.provider]: val }))}
+                                onToggleShow={() => setShowKeys(s => ({ ...s, [prov.provider]: !s[prov.provider] }))}
+                                onSave={() => handleSave(prov.provider)}
+                                onDelete={() => handleDelete(prov.provider)}
+                                onTest={() => handleTest(prov.provider)}
+                                onToggleGuide={() => setShowGuide(s => ({ ...s, [prov.provider]: !s[prov.provider] }))}
+                                onFetchModels={() => handleFetchModels(prov.provider)}
+                                onModelSelect={modelId => handleModelSelect(prov.provider, modelId)}
+                                onSetDefault={() => handleSetDefault(prov.provider)}
+                            />
+                        )
+                    })}
+                </div>
             </div>
         </div>
     )
