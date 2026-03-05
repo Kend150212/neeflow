@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { Handle, Position, NodeProps } from '@xyflow/react'
+import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { Image as ImageIcon, Play, Settings2, Loader2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
@@ -32,10 +32,12 @@ const SIZES = [
     { value: 'portrait_16_9', label: '9:16 Reel' },
 ]
 
-export const ImageGenNode = memo(({ data, selected }: NodeProps<ImageGenNodeData>) => {
-    const model = data.model || 'fal-ai/flux/schnell'
-    const imageSize = data.imageSize || 'landscape_4_3'
-    const numImages = data.numImages || 1
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const ImageGenNode = memo(({ data, selected }: NodeProps<any>) => {
+    const d = (data as ImageGenNodeData)
+    const model = d.model || 'fal-ai/flux/schnell'
+    const imageSize = d.imageSize || 'landscape_4_3'
+    const numImages = d.numImages || 1
 
     return (
         <div className={cn(
@@ -55,7 +57,7 @@ export const ImageGenNode = memo(({ data, selected }: NodeProps<ImageGenNodeData
             <div className="p-3 space-y-2.5">
                 <div>
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Model</p>
-                    <Select value={model} onValueChange={v => data.onChange?.('model', v)}>
+                    <Select value={model} onValueChange={v => d.onChange?.('model', v)}>
                         <SelectTrigger className="h-7 text-[11px] bg-white/5 border-white/10 text-white">
                             <SelectValue />
                         </SelectTrigger>
@@ -72,7 +74,7 @@ export const ImageGenNode = memo(({ data, selected }: NodeProps<ImageGenNodeData
 
                 <div>
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Size</p>
-                    <Select value={imageSize} onValueChange={v => data.onChange?.('imageSize', v)}>
+                    <Select value={imageSize} onValueChange={v => d.onChange?.('imageSize', v)}>
                         <SelectTrigger className="h-7 text-[11px] bg-white/5 border-white/10 text-white">
                             <SelectValue />
                         </SelectTrigger>
@@ -91,7 +93,7 @@ export const ImageGenNode = memo(({ data, selected }: NodeProps<ImageGenNodeData
                             {[1, 2, 4].map(n => (
                                 <button
                                     key={n}
-                                    onClick={() => data.onChange?.('numImages', n)}
+                                    onClick={() => d.onChange?.('numImages', n)}
                                     className={cn(
                                         'w-7 h-7 rounded-lg text-xs font-bold transition-colors',
                                         numImages === n ? 'bg-pink-400 text-[#0d0a14]' : 'bg-white/5 text-slate-400 hover:bg-white/10'
@@ -105,9 +107,9 @@ export const ImageGenNode = memo(({ data, selected }: NodeProps<ImageGenNodeData
                 </div>
 
                 {/* Preview of last output */}
-                {data.lastOutput && (
+                {d.lastOutput && (
                     <div className="rounded-lg overflow-hidden border border-white/10 mt-1">
-                        <img src={data.lastOutput} alt="last output" className="w-full aspect-video object-cover" />
+                        <img src={d.lastOutput} alt="last output" className="w-full aspect-video object-cover" />
                     </div>
                 )}
             </div>
@@ -115,16 +117,16 @@ export const ImageGenNode = memo(({ data, selected }: NodeProps<ImageGenNodeData
             {/* Run button */}
             <div className="px-3 pb-3">
                 <button
-                    onClick={data.onRun}
-                    disabled={data.running}
+                    onClick={d.onRun}
+                    disabled={d.running}
                     className={cn(
                         'w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all',
-                        data.running
+                        d.running
                             ? 'bg-pink-400/20 text-pink-400 cursor-not-allowed'
                             : 'bg-pink-400 text-[#0d0a14] hover:bg-pink-300 shadow-[0_0_12px_rgba(244,114,182,0.3)]'
                     )}
                 >
-                    {data.running
+                    {d.running
                         ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generating...</>
                         : <><Play className="h-3.5 w-3.5" />Generate</>
                     }

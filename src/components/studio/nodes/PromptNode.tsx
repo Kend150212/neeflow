@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { Handle, Position, NodeProps } from '@xyflow/react'
+import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { Type, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -12,7 +12,9 @@ interface PromptNodeData {
     enhancing?: boolean
 }
 
-export const PromptNode = memo(({ data, selected }: NodeProps<PromptNodeData>) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const PromptNode = memo(({ data, selected }: NodeProps<any>) => {
+    const d = data as PromptNodeData
     return (
         <div className={cn(
             'w-64 rounded-xl border bg-[#0d0d1a] transition-all',
@@ -25,20 +27,20 @@ export const PromptNode = memo(({ data, selected }: NodeProps<PromptNodeData>) =
                 </div>
                 <span className="text-[11px] font-bold text-violet-400 uppercase tracking-wide">Prompt</span>
                 <button
-                    onClick={data.onEnhance}
-                    disabled={data.enhancing}
+                    onClick={d.onEnhance}
+                    disabled={d.enhancing}
                     className="ml-auto flex items-center gap-1 text-[10px] text-violet-400 hover:text-white transition-colors disabled:opacity-50"
                     title="AI Enhance"
                 >
-                    <Sparkles className={cn('h-3 w-3', data.enhancing && 'animate-pulse')} />
-                    {data.enhancing ? 'Enhancing...' : 'AI Enhance'}
+                    <Sparkles className={cn('h-3 w-3', d.enhancing && 'animate-pulse')} />
+                    {d.enhancing ? 'Enhancing...' : 'AI Enhance'}
                 </button>
             </div>
             {/* Text area */}
             <div className="p-3">
                 <textarea
-                    value={data.prompt || ''}
-                    onChange={e => data.onChange?.(e.target.value)}
+                    value={d.prompt || ''}
+                    onChange={e => d.onChange?.(e.target.value)}
                     placeholder="Describe your image..."
                     rows={4}
                     className="w-full bg-transparent text-xs text-slate-300 placeholder:text-slate-600 resize-none outline-none leading-relaxed"

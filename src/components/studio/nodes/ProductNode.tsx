@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { Handle, Position, NodeProps } from '@xyflow/react'
+import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { ShoppingBag, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -13,7 +13,9 @@ interface ProductNodeData {
     onSelect?: () => void
 }
 
-export const ProductNode = memo(({ data, selected }: NodeProps<ProductNodeData>) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const ProductNode = memo(({ data, selected }: NodeProps<any>) => {
+    const d = data as ProductNodeData
     return (
         <div className={cn(
             'w-52 rounded-xl border bg-[#0d100a] transition-all',
@@ -28,22 +30,22 @@ export const ProductNode = memo(({ data, selected }: NodeProps<ProductNodeData>)
             </div>
             {/* Content */}
             <div className="p-3">
-                {data.productId ? (
+                {d.productId ? (
                     <div className="flex items-center gap-2">
                         <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-white/5">
-                            {data.productImage
-                                ? <img src={data.productImage} alt={data.productName} className="w-full h-full object-cover" />
+                            {d.productImage
+                                ? <img src={d.productImage} alt={d.productName} className="w-full h-full object-cover" />
                                 : <ShoppingBag className="h-4 w-4 m-3 text-slate-600" />
                             }
                         </div>
                         <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate">{data.productName}</p>
-                            {data.price && <p className="text-[10px] text-amber-400">{data.price.toLocaleString()}đ</p>}
+                            <p className="text-xs font-bold text-white truncate">{d.productName}</p>
+                            {d.price && <p className="text-[10px] text-amber-400">{d.price.toLocaleString()}đ</p>}
                         </div>
                     </div>
                 ) : (
                     <button
-                        onClick={data.onSelect}
+                        onClick={d.onSelect}
                         className="w-full flex items-center justify-between text-slate-400 hover:text-white text-xs py-1 transition-colors"
                     >
                         <span>Select product...</span>
