@@ -136,12 +136,17 @@ export default function ChannelAvatarsPage() {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars`)
             if (res.ok) {
                 const data = await res.json()
-                setAvatars(data.avatars || [])
+                const allFetched: StudioAvatar[] = data.avatars || []
+                setAvatars(allFetched)
                 setSharedAvatars(data.sharedAvatars || [])
+                // sync selectedAvatar so new image shows up in panel
+                setSelectedAvatar(prev => prev ? (allFetched.find(a => a.id === prev.id) ?? prev) : null)
+                return allFetched
             }
         } finally {
             setLoading(false)
         }
+        return []
     }
 
     async function createAvatar() {
@@ -170,6 +175,7 @@ export default function ChannelAvatarsPage() {
 
     async function generateAvatar(avatar: StudioAvatar) {
         setGenerating(avatar.id)
+        const toastId = toast.loading(`Generating image for "${avatar.name}"...`)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
                 method: 'POST',
@@ -179,17 +185,22 @@ export default function ChannelAvatarsPage() {
             if (res.ok) {
                 const data = await res.json()
                 if (data.status === 'done') {
-                    toast.success('Image generated!')
-                    fetchAvatars()
+                    toast.success(`✅ Image generated for "${avatar.name}"!`, { id: toastId })
+                    await fetchAvatars()
                 } else {
-                    toast.success('Generation started! Takes ~30 seconds.')
+                    toast.success('⏳ Generating... will finish in ~30 seconds.', { id: toastId })
                     setAvatars(prev => prev.map(a => a.id === avatar.id ? { ...a, status: 'generating' } : a))
+                    if (selectedAvatar?.id === avatar.id) {
+                        setSelectedAvatar(prev => prev ? { ...prev, status: 'generating' } : null)
+                    }
                     pollAvatarStatus(avatar.id)
                 }
             } else {
                 const d = await res.json()
-                toast.error(d.error || 'Failed to start generation')
+                toast.error(`❌ ${d.error || 'Failed to start generation'}`, { id: toastId })
             }
+        } catch (err) {
+            toast.error(`❌ Network error: ${err instanceof Error ? err.message : String(err)}`, { id: toastId })
         } finally {
             setGenerating(null)
         }
@@ -199,17 +210,27 @@ export default function ChannelAvatarsPage() {
         let attempts = 0
         const interval = setInterval(async () => {
             attempts++
-            if (attempts > 60) { clearInterval(interval); return }
+            if (attempts > 60) {
+                clearInterval(interval)
+                toast.error('Generation timed out. Please try again.')
+                return
+            }
             try {
                 const res = await fetch(`/api/studio/channels/${channelId}/avatars`)
                 if (res.ok) {
                     const data = await res.json()
-                    const updated = data.avatars?.find((a: StudioAvatar) => a.id === id)
+                    const allFetched: StudioAvatar[] = data.avatars || []
+                    const updated = allFetched.find((a: StudioAvatar) => a.id === id)
                     if (updated && updated.status !== 'generating') {
                         clearInterval(interval)
-                        setAvatars(data.avatars || [])
-                        if (updated.status === 'done') toast.success(`Avatar "${updated.name}" is ready!`)
-                        else if (updated.status === 'failed') toast.error('Avatar generation failed')
+                        setAvatars(allFetched)
+                        // Replace selectedAvatar with updated data so image shows immediately
+                        setSelectedAvatar(prev => prev?.id === id ? updated : prev)
+                        if (updated.status === 'done') {
+                            toast.success(`✅ Avatar "${updated.name}" is ready!`)
+                        } else if (updated.status === 'failed') {
+                            toast.error(`❌ Avatar "${updated.name}" generation failed. Check your API key.`)
+                        }
                     }
                 }
             } catch { }
@@ -570,14 +591,31 @@ export default function ChannelAvatarsPage() {
                         </div>
 
                         {/* ── Generated Image ── */}
-                        {selectedAvatar.coverImage && (
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Generated Image</p>
-                                <div className="rounded-xl overflow-hidden border border-white/10">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Generated Image</p>
+                            <div className="rounded-xl overflow-hidden border border-white/10 relative">
+                                {selectedAvatar.coverImage ? (
                                     <img src={selectedAvatar.coverImage} alt="generated" className="w-full object-cover" />
-                                </div>
+                                ) : (
+                                    <div className="w-full aspect-video bg-white/5 flex flex-col items-center justify-center gap-2">
+                                        {selectedAvatar.status === 'generating' ? null : (
+                                            <>
+                                                <Sparkles className="h-6 w-6 text-slate-700" />
+                                                <span className="text-[11px] text-slate-600">No image yet — click Generate</span>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                                {/* Overlay while generating */}
+                                {selectedAvatar.status === 'generating' && (
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+                                        <Loader2 className="h-7 w-7 text-emerald-400 animate-spin" />
+                                        <span className="text-xs text-emerald-400 font-medium">Generating...</span>
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </div>
+
 
                         {/* ── Prompt ── */}
                         <div>
