@@ -41,6 +41,14 @@ function inferProviderFromModel(model: string): string | null {
 const recentBotReplies = new Map<string, number>()
 const DEDUP_TTL_MS = 5_000 // 5 seconds — reduced from 30s to avoid silently dropping rapid customer messages
 
+/**
+ * Detect if the customer is asking to see images/photos/media.
+ * Only when true will we inject image library and product photos.
+ */
+function isVisualRequest(text: string): boolean {
+    return /ảnh|hình|xem|photo|image|picture|hình\s*ảnh|gallery|media|show|cho\s*xem|có\s*ảnh|ảnh\s*không/i.test(text)
+}
+
 interface BotReplyResult {
     replied: boolean
     reason?: string
@@ -240,32 +248,46 @@ export async function botAutoReply(
             })
 
             if (agentConversations.length > 0) {
-                // Load agent reply pairs from these conversations
-                const agentMessages = await prisma.inboxMessage.findMany({
-                    where: {
-                        conversationId: { in: agentConversations.map(c => c.id) },
-                        direction: 'outbound',
-                        senderType: 'agent',
-                    },
-                    select: { conversationId: true, content: true, sentAt: true },
-                    orderBy: { sentAt: 'desc' },
-                    take: 50,
-                })
+                const convIds = agentConversations.map(c => c.id)
 
-                // For each agent reply, find the preceding customer message
-                for (const agentMsg of agentMessages.slice(0, 20)) {
-                    const customerMsg = await prisma.inboxMessage.findFirst({
+                // FIX: Batch load BOTH agent messages AND all inbound messages in 2 queries
+                // instead of N+1 individual findFirst calls
+                const [agentMessages, allInboundMessages] = await Promise.all([
+                    prisma.inboxMessage.findMany({
                         where: {
-                            conversationId: agentMsg.conversationId,
-                            direction: 'inbound',
-                            sentAt: { lt: agentMsg.sentAt },
+                            conversationId: { in: convIds },
+                            direction: 'outbound',
+                            senderType: 'agent',
                         },
+                        select: { conversationId: true, content: true, sentAt: true },
                         orderBy: { sentAt: 'desc' },
-                        select: { content: true },
-                    })
+                        take: 50,
+                    }),
+                    prisma.inboxMessage.findMany({
+                        where: {
+                            conversationId: { in: convIds },
+                            direction: 'inbound',
+                        },
+                        select: { conversationId: true, content: true, sentAt: true },
+                        orderBy: { sentAt: 'desc' },
+                    }),
+                ])
+
+                // Build map: conversationId → inbound messages (sorted desc)
+                const inboundByConv = new Map<string, Array<{ content: string; sentAt: Date }>>()
+                for (const msg of allInboundMessages) {
+                    if (!inboundByConv.has(msg.conversationId)) inboundByConv.set(msg.conversationId, [])
+                    inboundByConv.get(msg.conversationId)!.push({ content: msg.content, sentAt: msg.sentAt })
+                }
+
+                for (const agentMsg of agentMessages.slice(0, 20)) {
+                    // Find the most recent inbound msg BEFORE this agent reply (in-memory, zero extra queries)
+                    const inbounds = inboundByConv.get(agentMsg.conversationId) || []
+                    const customerMsg = inbounds
+                        .filter(m => m.sentAt < agentMsg.sentAt)
+                        .sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime())[0]
 
                     if (customerMsg?.content) {
-                        // Score relevance by keyword overlap
                         const custLower = customerMsg.content.toLowerCase()
                         const score = keywords.filter(kw => custLower.includes(kw)).length
                         if (score > 0) {
@@ -286,9 +308,10 @@ export async function botAutoReply(
             select: { platform: true, accountName: true },
         })
 
-        // Load image library metadata
+        // Load image library metadata — ONLY when customer is explicitly asking for images/photos
+        const wantsImages = isVisualRequest(inboundContent)
         let imageLibrary: { originalName: string | null; url: string }[] = []
-        if (botConfig?.imageFolderId) {
+        if (wantsImages && botConfig?.imageFolderId) {
             imageLibrary = await prisma.mediaItem.findMany({
                 where: {
                     channelId: channel.id,
@@ -296,7 +319,7 @@ export async function botAutoReply(
                     type: 'image',
                 },
                 select: { originalName: true, url: true },
-                take: 100,
+                take: 50, // reduced from 100 — 50 images is already ~2500 tokens
             })
         }
 
@@ -325,13 +348,20 @@ export async function botAutoReply(
             ? connectedPlatforms.map(p => `${p.platform}: ${p.accountName}`).join(', ')
             : 'No platforms connected yet'
 
-        systemPrompt += `\n\n## About NeeFlow (the platform you are part of):
+        // Only inject full platform list when customer asks about platforms/features — saves ~500 tokens
+        const asksPlatform = /neeflow|platform|tính\s*năng|feature|kết\s*nối|connect|hỗ\s*trợ|support|dùng\s*được|đăng\s*lên|app/i.test(inboundContent)
+        if (asksPlatform) {
+            systemPrompt += `\n\n## About NeeFlow (the platform you are part of):
 - NeeFlow is an AI-powered social media management platform
 - Website: https://neeflow.com
 - NeeFlow supports ${allSupportedPlatforms.length} platforms: ${allSupportedPlatforms.join(', ')}
 - Key features: Schedule posts, generate content with AI, manage Facebook/Instagram/YouTube/TikTok/LinkedIn/Pinterest/Threads/Google Business/X/Bluesky, unified inbox, AI auto-reply bot, media library, analytics
 - This channel currently has these platforms connected: ${connectedList}
 - When customers ask about platforms or features, use this information to answer accurately`
+        } else if (connectedPlatforms.length > 0) {
+            // Brief mention — does not waste tokens
+            systemPrompt += `\n\n## Connected platforms: ${connectedList}`
+        }
 
         if (botConfig?.personality) {
             systemPrompt += `\n\n## Your personality and instructions:\n${botConfig.personality}`
@@ -404,8 +434,15 @@ export async function botAutoReply(
                 if (p.features?.length) systemPrompt += `\nFeatures: ${p.features.join(', ')}`
                 const imgs = (p.images || []).slice(0, 3)
                 if (imgs.length > 0) {
-                    systemPrompt += `\nImages (include these in your reply using [IMAGE: url] format, placed at the END after your text):`
-                    for (const img of imgs) systemPrompt += `\n[IMAGE: ${img}]`
+                    if (wantsImages) {
+                        // Customer explicitly asked to see images — inject and instruct bot to include them
+                        systemPrompt += `\nImages (INCLUDE in reply using [IMAGE: url] at the END after your text):`
+                        for (const img of imgs) systemPrompt += `\n[IMAGE: ${img}]`
+                    } else {
+                        // Images available but customer didn't ask — do NOT send, just note for bot awareness
+                        systemPrompt += `\nImages available (DO NOT include unless customer specifically asks to see them):`
+                        for (const img of imgs) systemPrompt += `\n[IMAGE: ${img}]`
+                    }
                 }
             }
             systemPrompt += `\n--- END MATCHED PRODUCTS ---`
@@ -483,13 +520,22 @@ export async function botAutoReply(
             systemPrompt += `\n--- END IMAGE LIBRARY ---`
         }
 
+        // Only inject videos relevant to the current message (keyword overlap)
         if (consultVideos.length > 0) {
-            systemPrompt += `\n\n--- CONSULTATION VIDEOS ---`
-            systemPrompt += `\nWhen a customer asks something related to a video below, include the full URL in your reply so they can watch it. Send the URL as plain text directly in your message.`
-            for (const vid of consultVideos) {
-                systemPrompt += `\n- "${vid.title}": ${vid.url}${vid.description ? ` — ${vid.description}` : ''}`
+            const msgLower = inboundContent.toLowerCase()
+            const msgWords = msgLower.split(/\s+/).filter(w => w.length > 2)
+            const relevantVideos = consultVideos.filter(vid => {
+                const haystack = `${vid.title} ${vid.description || ''}`.toLowerCase()
+                return msgWords.some(w => haystack.includes(w))
+            })
+            if (relevantVideos.length > 0) {
+                systemPrompt += `\n\n--- CONSULTATION VIDEOS ---`
+                systemPrompt += `\nInclude the full URL in your reply for relevant videos below. Send as plain text.`
+                for (const vid of relevantVideos) {
+                    systemPrompt += `\n- "${vid.title}": ${vid.url}${vid.description ? ` — ${vid.description}` : ''}`
+                }
+                systemPrompt += `\n--- END CONSULTATION VIDEOS ---`
             }
-            systemPrompt += `\n--- END CONSULTATION VIDEOS ---`
         }
 
         // Inject active promotions / holiday pricing
@@ -517,7 +563,7 @@ export async function botAutoReply(
         systemPrompt += `\n\n## Communication Style:\n- You are a REAL person on the team, not a bot. Chat naturally like a helpful colleague would over Messenger.\n- Keep messages SHORT (1-3 sentences max). Nobody likes walls of text in chat.\n- Use casual, warm language. It's okay to use emoji sparingly 😊\n- NEVER repeat yourself or say the same thing in two different ways.\n- NEVER generate multiple greeting options or alternatives.\n- ONE clear, direct response per message.`
         systemPrompt += `\n\n## Intelligence:\n- Analyze the customer's intent, sentiment, and urgency from their messages.\n- If they seem frustrated, be empathetic first before offering solutions.\n- If they ask for pricing/services, give specific information from the knowledge base.\n- If something is outside your knowledge, be honest and offer to connect them with the team.\n- Anticipate follow-up questions and proactively address them.\n- Remember context from earlier in the conversation and reference it naturally.`
         systemPrompt += `\n\n## Language:\n- Default: ${langLabel}\n- CRITICAL: Always reply in the SAME language the customer is writing in. If they switch languages, you switch too.`
-        systemPrompt += `\n\n## Strict Rules:\n- NEVER say you are an AI, bot, or automated system\n- NEVER prefix with "Bot:" or any label\n- NEVER wrap reply in JSON, arrays, code blocks, or brackets\n- NEVER use { } characters in your reply\n- NEVER reveal any names of staff, members, or owners\n- NEVER guess or invent social media handles — use only the Official Links provided\n- PLAIN TEXT ONLY — EXCEPTION: use [IMAGE: url] format (and ONLY this format) to send images from the Image Library\n- If you don't know something, say "Let me check with the team and get back to you" or connect them with a human`
+        systemPrompt += `\n\n## Strict Rules:\n- NEVER say you are an AI, bot, or automated system\n- NEVER prefix with "Bot:" or any label\n- NEVER wrap reply in JSON, arrays, code blocks, or brackets\n- NEVER use { } characters in your reply\n- NEVER reveal any names of staff, members, or owners\n- NEVER guess or invent social media handles — use only the Official Links provided\n- IMAGES: Only include [IMAGE: url] tokens when the customer EXPLICITLY asks to see photos/images ("cho xem ảnh", "có ảnh không", "show me", etc.). If they just ask about price or info, reply with text ONLY — no images.\n- PLAIN TEXT ONLY — EXCEPTION: use [IMAGE: url] format (and ONLY this format) when sending images\n- If you don't know something, say "Let me check with the team and get back to you" or connect them with a human`
 
 
         // ─── 9b. Send read receipt + typing indicator ─────────────
