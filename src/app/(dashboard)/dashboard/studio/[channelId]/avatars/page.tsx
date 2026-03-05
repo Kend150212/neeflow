@@ -60,7 +60,16 @@ const GEN_PROVIDERS = [
             { value: 'dall-e-2', label: 'DALL-E 2' },
         ],
     },
+    {
+        value: 'gemini', label: 'Gemini Imagen',
+        models: [
+            { value: 'imagen-3.0-generate-001', label: 'Imagen 3 (best quality)' },
+            { value: 'imagen-3.0-fast-generate-001', label: 'Imagen 3 Fast' },
+            { value: 'imagen-2.0-generate-001', label: 'Imagen 2' },
+        ],
+    },
 ]
+
 
 export default function ChannelAvatarsPage() {
     const { channelId } = useParams<{ channelId: string }>()

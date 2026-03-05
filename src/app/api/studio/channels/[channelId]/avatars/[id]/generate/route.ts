@@ -7,33 +7,28 @@ async function verifyMembership(userId: string, channelId: string) {
     return !!(await prisma.channelMember.findFirst({ where: { userId, channelId } }))
 }
 
-// Resolve image generation key for a provider: user Studio key → env fallback
-// Studio keys use provider prefix: fal_ai, studio_runware, studio_openai
+// Unified key resolution — reads from userApiKey (shared with AI Providers section)
+// provider names: fal_ai | runware | openai | gemini
 async function resolveKey(userId: string, provider: string): Promise<string | null> {
-    // Map provider → userApiKey provider field (Studio-specific keys don't collide with AI text keys)
-    const dbProvider = provider === 'runware' ? 'studio_runware'
-        : provider === 'openai' ? 'studio_openai'
-            : provider // fal_ai stays as fal_ai
-
     const userKey = await prisma.userApiKey.findFirst({
-        where: { userId, provider: dbProvider },
+        where: { userId, provider },
         select: { apiKeyEncrypted: true },
     })
     if (userKey?.apiKeyEncrypted) {
         try { return decrypt(userKey.apiKeyEncrypted) } catch { /* fall through */ }
     }
-
     // env fallbacks
     const envMap: Record<string, string | undefined> = {
         fal_ai: process.env.FAL_AI_KEY,
         runware: process.env.RUNWARE_API_KEY,
         openai: process.env.OPENAI_API_KEY,
+        gemini: process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY,
     }
-    return envMap[provider] || null
+    return envMap[provider] ?? null
 }
 
 // POST /api/studio/channels/[channelId]/avatars/[id]/generate
-// Supports: fal_ai (default), runware, openai (DALL-E 3)
+// Supported providers: fal_ai | runware | openai | gemini
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ channelId: string; id: string }> },
@@ -59,7 +54,7 @@ export async function POST(
     const apiKey = await resolveKey(session.user.id, provider)
     if (!apiKey) {
         return NextResponse.json({
-            error: `No API key found for ${provider}. Go to Dashboard → API Keys → Studio Image Generation.`,
+            error: `No API key found for "${provider}". Go to Dashboard → API Keys and add your key.`,
         }, { status: 400 })
     }
 
@@ -68,8 +63,7 @@ export async function POST(
     await prisma.studioAvatar.update({ where: { id }, data: { status: 'generating' } })
 
     try {
-        let jobId: string
-
+        // ─── Fal.ai (async queue) ───────────────────────────────────
         if (provider === 'fal_ai') {
             const falModel = model || 'fal-ai/flux/schnell'
             const falRes = await fetch(`https://queue.fal.run/${falModel}`, {
@@ -88,11 +82,13 @@ export async function POST(
                 return NextResponse.json({ error: `Fal.ai error: ${err}` }, { status: 500 })
             }
             const falData = await falRes.json()
-            jobId = falData.request_id || falData.id || 'unknown'
+            const jobId = falData.request_id || falData.id || 'unknown'
             await prisma.studioAvatar.update({ where: { id }, data: { falJobId: jobId, status: 'generating' } })
             return NextResponse.json({ jobId, status: 'generating' })
+        }
 
-        } else if (provider === 'runware') {
+        // ─── Runware (sync) ─────────────────────────────────────────
+        if (provider === 'runware') {
             const runwareModel = model || 'runware:100@1'
             const rwRes = await fetch('https://api.runware.ai/v1', {
                 method: 'POST',
@@ -114,14 +110,20 @@ export async function POST(
                 return NextResponse.json({ error: `Runware error: ${err}` }, { status: 500 })
             }
             const rwData = await rwRes.json()
+            if (rwData.errors?.length) {
+                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                return NextResponse.json({ error: `Runware error: ${JSON.stringify(rwData.errors)}` }, { status: 500 })
+            }
             const imageUrls: string[] = (rwData.data || []).map((r: { imageURL?: string }) => r.imageURL).filter(Boolean)
             await prisma.studioAvatar.update({
                 where: { id },
                 data: { coverImage: imageUrls[0] || null, status: 'idle' },
             })
             return NextResponse.json({ status: 'done', imageUrls })
+        }
 
-        } else if (provider === 'openai') {
+        // ─── OpenAI DALL-E (sync) ────────────────────────────────────
+        if (provider === 'openai') {
             const dalleModel = model || 'dall-e-3'
             const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
@@ -146,11 +148,48 @@ export async function POST(
                 data: { coverImage: imageUrl || null, status: 'idle' },
             })
             return NextResponse.json({ status: 'done', imageUrls: [imageUrl] })
-
-        } else {
-            await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
-            return NextResponse.json({ error: `Unsupported provider: ${provider}` }, { status: 400 })
         }
+
+        // ─── Gemini Imagen (sync) ────────────────────────────────────
+        if (provider === 'gemini') {
+            const imagenModel = model || 'imagen-3.0-generate-001'
+            const gemRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${imagenModel}:predict?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        instances: [{ prompt: basePrompt.slice(0, 2000) }],
+                        parameters: {
+                            sampleCount: numAngles <= 2 ? 2 : 4,
+                            aspectRatio: '4:3',
+                        },
+                    }),
+                }
+            )
+            if (!gemRes.ok) {
+                const err = await gemRes.text()
+                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                return NextResponse.json({ error: `Gemini Imagen error: ${err}` }, { status: 500 })
+            }
+            const gemData = await gemRes.json()
+            // Imagen returns base64 images
+            const predictions = gemData.predictions || []
+            const imageUrls: string[] = predictions.map((p: { bytesBase64Encoded?: string; mimeType?: string }) =>
+                p.bytesBase64Encoded
+                    ? `data:${p.mimeType || 'image/png'};base64,${p.bytesBase64Encoded}`
+                    : ''
+            ).filter(Boolean)
+            await prisma.studioAvatar.update({
+                where: { id },
+                data: { coverImage: imageUrls[0] || null, status: 'idle' },
+            })
+            return NextResponse.json({ status: 'done', imageUrls })
+        }
+
+        // ─── Unknown provider ────────────────────────────────────────
+        await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+        return NextResponse.json({ error: `Unsupported provider: ${provider}` }, { status: 400 })
 
     } catch (err) {
         await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
