@@ -81,19 +81,19 @@ const GEN_PROVIDERS = [
         value: 'gemini', label: 'Gemini Imagen',
         models: [
             // ── Gemini native image gen (generateContent API) ──
-            { value: 'gemini-3.1-flash-image-generation', label: 'Gemini 3.1 Flash 🆕 (Feb 2026)' },
-            { value: 'gemini-3-pro-image-generation', label: 'Gemini 3 Pro Image' },
-            { value: 'gemini-2.5-flash-preview-image-generation', label: 'Gemini 2.5 Flash Image' },
-            { value: 'gemini-2.0-flash-preview-image-generation', label: 'Gemini 2.0 Flash Image' },
-            // ── Imagen 4 (predict API, GA) ──
-            { value: 'imagen-4.0-ultra-generate-001', label: 'Imagen 4 Ultra (max quality)' },
-            { value: 'imagen-4.0-generate-001', label: 'Imagen 4' },
-            { value: 'imagen-4.0-fast-generate-001', label: 'Imagen 4 Fast' },
-            // ── Imagen 3 (predict API) ──
-            { value: 'imagen-3.0-generate-001', label: 'Imagen 3' },
-            { value: 'imagen-3.0-fast-generate-001', label: 'Imagen 3 Fast' },
+            { value: 'gemini-3.1-flash-image-generation', label: '⚡ Flash 2 (Banana 2) — mới nhất 2026' },
+            { value: 'gemini-3-pro-image-generation', label: '✨ Gemini 3 Pro — chất lượng cao nhất' },
+            { value: 'gemini-2.5-flash-preview-image-generation', label: '⚡ Flash 1.5 (Banana) — nhanh & ổn định' },
+            { value: 'gemini-2.0-flash-preview-image-generation', label: '⚡ Flash 1 — thế hệ đầu' },
+            // ── Imagen 4 (predict API) ──
+            { value: 'imagen-4.0-ultra-generate-001', label: '🏆 Imagen 4 Ultra — đỉnh nhất, 2K' },
+            { value: 'imagen-4.0-generate-001', label: '🎨 Imagen 4 — tiêu chuẩn 2025' },
+            { value: 'imagen-4.0-fast-generate-001', label: '🚀 Imagen 4 Fast — nhanh, số lượng lớn' },
+            // ── Imagen 3 ──
+            { value: 'imagen-3.0-generate-001', label: '🎨 Imagen 3 — ổn định, phổ biến' },
+            { value: 'imagen-3.0-fast-generate-001', label: '🚀 Imagen 3 Fast' },
             // ── Legacy ──
-            { value: 'imagen-2.0-generate-001', label: 'Imagen 2' },
+            { value: 'imagen-2.0-generate-001', label: '📷 Imagen 2 — thế hệ cũ' },
         ],
     },
 ]
