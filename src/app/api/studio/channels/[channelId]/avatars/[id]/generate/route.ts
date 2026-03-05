@@ -122,27 +122,42 @@ export async function POST(
             return NextResponse.json({ status: 'done', imageUrls })
         }
 
-        // ─── OpenAI DALL-E (sync) ────────────────────────────────────
+        // ─── OpenAI Images (sync) ────────────────────────────────────
         if (provider === 'openai') {
-            const dalleModel = model || 'dall-e-3'
-            const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
+            const oaiModel = model || 'gpt-image-1'
+            const isGptImage = oaiModel === 'gpt-image-1'
+            const body: Record<string, unknown> = {
+                model: oaiModel,
+                prompt: basePrompt.slice(0, 4000),
+                n: 1,
+            }
+            if (isGptImage) {
+                // gpt-image-1: quality=high, no size constraint (auto)
+                body.quality = 'high'
+            } else if (oaiModel === 'dall-e-3') {
+                body.size = '1792x1024'
+                body.quality = 'standard'
+            } else {
+                // dall-e-2
+                body.size = '1024x1024'
+            }
+            const oaiRes = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: dalleModel,
-                    prompt: basePrompt.slice(0, 4000),
-                    n: 1,
-                    size: '1792x1024',
-                    quality: 'standard',
-                }),
+                body: JSON.stringify(body),
             })
-            if (!dalleRes.ok) {
-                const err = await dalleRes.text()
+            if (!oaiRes.ok) {
+                const err = await oaiRes.text()
                 await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
                 return NextResponse.json({ error: `OpenAI error: ${err}` }, { status: 500 })
             }
-            const dalleData = await dalleRes.json()
-            const imageUrl: string = dalleData.data?.[0]?.url || ''
+            const oaiData = await oaiRes.json()
+            // gpt-image-1 may return b64_json, DALL-E returns url
+            const item = oaiData.data?.[0]
+            let imageUrl = item?.url || ''
+            if (!imageUrl && item?.b64_json) {
+                imageUrl = `data:image/png;base64,${item.b64_json}`
+            }
             await prisma.studioAvatar.update({
                 where: { id },
                 data: { coverImage: imageUrl || null, status: 'idle' },
@@ -150,36 +165,65 @@ export async function POST(
             return NextResponse.json({ status: 'done', imageUrls: [imageUrl] })
         }
 
-        // ─── Gemini Imagen (sync) ────────────────────────────────────
+        // ─── Gemini Imagen / Flash native image gen ──────────────────
         if (provider === 'gemini') {
-            const imagenModel = model || 'imagen-3.0-generate-001'
-            const gemRes = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${imagenModel}:predict?key=${apiKey}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        instances: [{ prompt: basePrompt.slice(0, 2000) }],
-                        parameters: {
-                            sampleCount: numAngles <= 2 ? 2 : 4,
-                            aspectRatio: '4:3',
-                        },
-                    }),
+            const gemModel = model || 'imagen-3.0-generate-001'
+            const isFlash = gemModel.startsWith('gemini-')
+
+            let imageUrls: string[] = []
+
+            if (isFlash) {
+                // Gemini 2.0 Flash: uses generateContent with responseModalities: ['IMAGE','TEXT']
+                const flashRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:generateContent?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: basePrompt.slice(0, 2000) }] }],
+                            generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+                        }),
+                    }
+                )
+                if (!flashRes.ok) {
+                    const err = await flashRes.text()
+                    await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                    return NextResponse.json({ error: `Gemini Flash error: ${err}` }, { status: 500 })
                 }
-            )
-            if (!gemRes.ok) {
-                const err = await gemRes.text()
-                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
-                return NextResponse.json({ error: `Gemini Imagen error: ${err}` }, { status: 500 })
+                const flashData = await flashRes.json()
+                const parts = flashData.candidates?.[0]?.content?.parts || []
+                for (const part of parts) {
+                    if (part.inlineData?.data) {
+                        imageUrls.push(`data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`)
+                    }
+                }
+            } else {
+                // Imagen models: use :predict endpoint
+                const imagenRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:predict?key=${apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            instances: [{ prompt: basePrompt.slice(0, 2000) }],
+                            parameters: { sampleCount: 1, aspectRatio: '1:1' },
+                        }),
+                    }
+                )
+                if (!imagenRes.ok) {
+                    const err = await imagenRes.text()
+                    await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                    return NextResponse.json({ error: `Gemini Imagen error: ${err}` }, { status: 500 })
+                }
+                const imagenData = await imagenRes.json()
+                const predictions = imagenData.predictions || []
+                imageUrls = predictions
+                    .map((p: { bytesBase64Encoded?: string; mimeType?: string }) =>
+                        p.bytesBase64Encoded ? `data:${p.mimeType || 'image/png'};base64,${p.bytesBase64Encoded}` : ''
+                    )
+                    .filter(Boolean)
             }
-            const gemData = await gemRes.json()
-            // Imagen returns base64 images
-            const predictions = gemData.predictions || []
-            const imageUrls: string[] = predictions.map((p: { bytesBase64Encoded?: string; mimeType?: string }) =>
-                p.bytesBase64Encoded
-                    ? `data:${p.mimeType || 'image/png'};base64,${p.bytesBase64Encoded}`
-                    : ''
-            ).filter(Boolean)
+
             await prisma.studioAvatar.update({
                 where: { id },
                 data: { coverImage: imageUrls[0] || null, status: 'idle' },

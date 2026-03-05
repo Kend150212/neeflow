@@ -70,8 +70,9 @@ const GEN_PROVIDERS = [
         ],
     },
     {
-        value: 'openai', label: 'OpenAI DALL-E',
+        value: 'openai', label: 'OpenAI Images',
         models: [
+            { value: 'gpt-image-1', label: 'GPT Image 1 (newest)' },
             { value: 'dall-e-3', label: 'DALL-E 3 (1792×1024)' },
             { value: 'dall-e-2', label: 'DALL-E 2 (1024×1024)' },
         ],
@@ -79,6 +80,7 @@ const GEN_PROVIDERS = [
     {
         value: 'gemini', label: 'Gemini Imagen',
         models: [
+            { value: 'gemini-2.0-flash-preview-image-generation', label: 'Gemini 2.0 Flash (native)' },
             { value: 'imagen-3.0-generate-001', label: 'Imagen 3 (best quality)' },
             { value: 'imagen-3.0-fast-generate-001', label: 'Imagen 3 Fast' },
             { value: 'imagen-2.0-generate-001', label: 'Imagen 2' },
