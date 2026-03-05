@@ -363,8 +363,29 @@ export default function ProjectCanvasPage() {
     }
 
     const onConnect = useCallback((connection: Connection) => {
-        setEdges(eds => addEdge({ ...connection, animated: true }, eds as never[]) as never[])
-    }, [setEdges])
+        // Style edge based on target handle
+        const edgeColor =
+            connection.targetHandle === 'avatar' ? '#34d399' :
+                connection.targetHandle === 'prompt' ? '#a78bfa' :
+                    connection.targetHandle === 'product' ? '#fbbf24' : '#6b7280'
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setEdges(eds => addEdge({ ...(connection as any), animated: true, style: { stroke: edgeColor } }, eds as never[]) as never[])
+
+        // When Product → ImageGen(product handle): copy product data into imageGen node
+        if (connection.targetHandle === 'product' && connection.target && connection.source) {
+            setNodes(nds => {
+                const sourceNode = nds.find(n => n.id === connection.source)
+                if (!sourceNode || sourceNode.type !== 'productNode') return nds
+                const pd = sourceNode.data as Record<string, unknown>
+                return nds.map(n =>
+                    n.id === connection.target
+                        ? { ...n, data: { ...n.data, productName: pd.productName, productImage: pd.productImage, productDescription: pd.description } }
+                        : n
+                ) as typeof nds
+            })
+        }
+    }, [setEdges, setNodes])
 
     async function handleSave() {
         setSaving(true)

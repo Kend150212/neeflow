@@ -26,6 +26,7 @@ export async function POST(
     const imageGenNode = nodes.find(n => n.type === 'imageGenNode')
     const promptNode = nodes.find(n => n.type === 'promptNode')
     const avatarNode = nodes.find(n => n.type === 'avatarNode')
+    const productNode = nodes.find(n => n.type === 'productNode')
 
     if (!imageGenNode) {
         return NextResponse.json({ error: 'No Image Generation node found in workflow' }, { status: 400 })
@@ -54,6 +55,7 @@ export async function POST(
         imageSize,
         numImages,
         avatarNodeData: avatarNode?.data,
+        productNodeData: productNode?.data,
     }).catch(console.error)
 
     return NextResponse.json({ job })
@@ -63,12 +65,23 @@ async function executeWorkflow(opts: {
     userId: string; projectId: string; jobId: string
     model: string; prompt: string; imageSize: string; numImages: number
     avatarNodeData?: Record<string, unknown>
+    productNodeData?: Record<string, unknown>
 }) {
     const { falRunSync } = await import('@/lib/studio/fal-client')
     try {
         let finalPrompt = opts.prompt
+
+        // Inject avatar context
         if (opts.avatarNodeData?.avatarPrompt) {
             finalPrompt = `${opts.avatarNodeData.avatarPrompt as string}, ${finalPrompt}`
+        }
+
+        // Inject product context
+        if (opts.productNodeData?.productName) {
+            const productPart = opts.productNodeData.description
+                ? `featuring product: ${opts.productNodeData.productName} — ${String(opts.productNodeData.description).slice(0, 200)}`
+                : `featuring product: ${opts.productNodeData.productName}`
+            finalPrompt = `${finalPrompt}, ${productPart}`
         }
 
         const result = await falRunSync({

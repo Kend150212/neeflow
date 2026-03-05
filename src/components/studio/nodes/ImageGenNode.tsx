@@ -12,6 +12,10 @@ interface ImageGenNodeData {
     numImages?: number
     running?: boolean
     lastOutput?: string
+    // product data injected via edge
+    productName?: string
+    productImage?: string
+    productDescription?: string
     onRun?: () => void
     onChange?: (key: string, val: unknown) => void
 }
@@ -133,9 +137,20 @@ export const ImageGenNode = memo(({ data, selected }: NodeProps<any>) => {
                 </button>
             </div>
 
+            {/* Connected product preview */}
+            {d.productName && (
+                <div className="mx-3 mb-2 flex items-center gap-2 bg-amber-400/10 border border-amber-400/20 rounded-lg px-2 py-1.5">
+                    {d.productImage && (
+                        <img src={d.productImage} alt={d.productName} className="w-6 h-6 rounded object-cover flex-shrink-0" />
+                    )}
+                    <span className="text-[10px] text-amber-400 font-medium truncate">{d.productName}</span>
+                </div>
+            )}
+
             {/* Input handles */}
-            <Handle type="target" position={Position.Left} id="avatar" style={{ top: '35%' }} className="!w-2.5 !h-2.5 !bg-emerald-400 !border-2 !border-[#0d0a14]" />
-            <Handle type="target" position={Position.Left} id="prompt" style={{ top: '65%' }} className="!w-2.5 !h-2.5 !bg-violet-400 !border-2 !border-[#0d0a14]" />
+            <Handle type="target" position={Position.Left} id="avatar" style={{ top: '30%' }} className="!w-2.5 !h-2.5 !bg-emerald-400 !border-2 !border-[#0d0a14]" />
+            <Handle type="target" position={Position.Left} id="prompt" style={{ top: '55%' }} className="!w-2.5 !h-2.5 !bg-violet-400 !border-2 !border-[#0d0a14]" />
+            <Handle type="target" position={Position.Left} id="product" style={{ top: '80%', background: '#fbbf24', border: '2px solid #0d0a14', width: 10, height: 10, left: -5 }} />
             {/* Output handle */}
             <Handle type="source" position={Position.Right} className="!w-2.5 !h-2.5 !bg-pink-400 !border-2 !border-[#0d0a14]" />
         </div>
