@@ -301,6 +301,7 @@ model Channel {
   botTokenUsage        BotTokenUsage[]
   externalDbLinks      ExternalDbChannelLink[]
   externalDbConfigs    ExternalDbConfig[]
+  studioProjects       StudioProject[]
 
 
   @@map("channels")
@@ -1301,10 +1302,11 @@ model StudioAvatar {
   @@map("studio_avatars")
 }
 
-// Project: container for 1 campaign / product line
+// Project: container for 1 campaign / product line — scoped to a specific Channel
 model StudioProject {
   id          String    @id @default(cuid())
-  userId      String    @map("user_id")
+  userId      String    @map("user_id")      // creator / owner
+  channelId   String    @map("channel_id")   // which channel this belongs to
   name        String
   description String?   @db.Text
   coverImage  String?   @map("cover_image")
@@ -1314,10 +1316,12 @@ model StudioProject {
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel  Channel         @relation(fields: [channelId], references: [id], onDelete: Cascade)
   workflow StudioWorkflow?
   jobs     StudioJob[]
   outputs  StudioOutput[]
 
+  @@index([channelId])
   @@index([userId])
   @@map("studio_projects")
 }

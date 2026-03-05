@@ -85,7 +85,7 @@ const mainNav: NavItem[] = [
     { titleKey: 'nav.approvals', href: '/dashboard/posts/approvals', icon: CheckCircle2 },
     { titleKey: 'nav.media', href: '/dashboard/media', icon: Image },
     { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Zap },
-    { titleKey: 'nav.studio', href: '/dashboard/studio', icon: Clapperboard },
+    // Studio is handled dynamically below (channel-scoped)
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
     { titleKey: 'nav.reports', href: '/dashboard/reports', icon: BarChart3 },
     { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },
@@ -254,6 +254,22 @@ export function Sidebar({ session }: { session: Session }) {
                             </Link>
                         )
                     })}
+                    {/* Studio link (dynamic, channel-scoped) */}
+                    {activeChannel && (
+                        <Link
+                            key={`/dashboard/studio/${activeChannel.id}`}
+                            href={`/dashboard/studio/${activeChannel.id}`}
+                            className={cn(
+                                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                                pathname?.startsWith(`/dashboard/studio/${activeChannel.id}`)
+                                    ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
+                                    : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
+                            )}
+                        >
+                            <Clapperboard className={cn('h-4 w-4 shrink-0', pathname?.startsWith(`/dashboard/studio/${activeChannel.id}`) && 'text-primary')} />
+                            <span>{t('nav.studio')}</span>
+                        </Link>
+                    )}
                 </nav>
 
                 {isAdmin && (
