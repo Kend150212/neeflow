@@ -351,21 +351,22 @@ export default function ProjectCanvasPage() {
     return (
         <div className="flex h-screen overflow-hidden bg-[#080d0b]">
             {/* Left sidebar — node library */}
-            <aside className="w-14 border-r border-white/5 flex flex-col items-center py-4 gap-3 bg-[#080d0b] shrink-0">
+            <aside className="w-16 border-r border-white/5 flex flex-col items-center py-4 gap-1 bg-[#080d0b] shrink-0">
                 <Link href={`/dashboard/studio/${channelId}`}>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                 </Link>
-                <div className="h-px w-8 bg-white/10" />
+                <div className="h-px w-10 bg-white/10 my-1" />
                 {NodeLibrary.map(item => (
                     <button
                         key={item.type}
                         onClick={() => addNode(item.type)}
                         title={item.title}
-                        className={cn('w-9 h-9 rounded-lg flex items-center justify-center transition-colors', item.color)}
+                        className={cn('w-14 py-2 rounded-lg flex flex-col items-center gap-1 transition-colors', item.color)}
                     >
                         <item.icon className="h-4 w-4" />
+                        <span className="text-[9px] font-medium leading-none">{item.title}</span>
                     </button>
                 ))}
             </aside>
