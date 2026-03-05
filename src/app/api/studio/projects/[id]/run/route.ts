@@ -3,12 +3,14 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // POST /api/studio/projects/[id]/run — execute the workflow
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { id } = await params
+
     const project = await prisma.studioProject.findFirst({
-        where: { id: params.id, userId: session.user.id },
+        where: { id, userId: session.user.id },
         include: { workflow: true },
     })
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -16,7 +18,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const nodes = project.workflow.nodesJson as Array<{ type: string; data: Record<string, unknown> }>
 
-    // Find the ImageGenNode — it drives the generation
     const imageGenNode = nodes.find(n => n.type === 'imageGenNode')
     const promptNode = nodes.find(n => n.type === 'promptNode')
     const avatarNode = nodes.find(n => n.type === 'avatarNode')
@@ -30,25 +31,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const imageSize = (imageGenNode.data?.imageSize as string) || 'landscape_4_3'
     const numImages = (imageGenNode.data?.numImages as number) || 1
 
-    // Create the job optimistically
     const job = await prisma.studioJob.create({
         data: {
-            projectId: params.id,
+            projectId: id,
             status: 'running',
             provider: 'fal_ai',
         },
     })
 
-    // Update project lastRunAt
     await prisma.studioProject.update({
-        where: { id: params.id },
+        where: { id },
         data: { lastRunAt: new Date() },
     })
 
-    // Non-blocking execution
     executeWorkflow({
         userId: session.user.id,
-        projectId: params.id,
+        projectId: id,
         jobId: job.id,
         model,
         prompt,
@@ -73,7 +71,6 @@ async function executeWorkflow(opts: {
     const { falRunSync } = await import('@/lib/studio/fal-client')
 
     try {
-        // Build prompt: combine avatar description + user prompt
         let finalPrompt = opts.prompt
         if (opts.avatarNodeData?.avatarPrompt) {
             finalPrompt = `${opts.avatarNodeData.avatarPrompt as string}, ${finalPrompt}`
@@ -90,7 +87,6 @@ async function executeWorkflow(opts: {
             },
         }) as { images?: Array<{ url: string; width: number; height: number }> }
 
-        // Save outputs
         const images = result.images || []
         const firstOutputUrl = images[0]?.url ?? null
 
@@ -107,7 +103,6 @@ async function executeWorkflow(opts: {
             })
         }
 
-        // If this is the first output ever, set as project cover
         if (firstOutputUrl) {
             const existingCount = await prisma.studioOutput.count({ where: { projectId: opts.projectId } })
             if (existingCount <= images.length) {

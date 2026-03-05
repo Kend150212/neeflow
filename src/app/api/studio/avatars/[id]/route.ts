@@ -3,12 +3,14 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // PATCH /api/studio/avatars/[id] — update name/description
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { id } = await params
+
     const avatar = await prisma.studioAvatar.findFirst({
-        where: { id: params.id, userId: session.user.id },
+        where: { id, userId: session.user.id },
     })
     if (!avatar) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -16,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { name, description } = body
 
     const updated = await prisma.studioAvatar.update({
-        where: { id: params.id },
+        where: { id },
         data: { name: name || avatar.name, description: description ?? avatar.description },
     })
 
@@ -24,17 +26,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE /api/studio/avatars/[id] — soft delete
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { id } = await params
+
     const avatar = await prisma.studioAvatar.findFirst({
-        where: { id: params.id, userId: session.user.id },
+        where: { id, userId: session.user.id },
     })
     if (!avatar) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     await prisma.studioAvatar.update({
-        where: { id: params.id },
+        where: { id },
         data: { isActive: false },
     })
 
