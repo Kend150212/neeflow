@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -13,17 +13,17 @@ import {
     useEdgesState,
     type Connection,
     type NodeTypes,
+    type Node,
     BackgroundVariant,
     Panel,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import {
-    ChevronLeft, Save, Play, LayoutTemplate, Loader2,
-    Image as ImageIcon, Plus, MoreHorizontal, ExternalLink,
+    ChevronLeft, Save, Play, Loader2,
+    Image as ImageIcon, Plus, ExternalLink,
     CheckCircle2, AlertCircle, Clock, User, Type, ShoppingBag
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -32,15 +32,14 @@ import { PromptNode } from '@/components/studio/nodes/PromptNode'
 import { ProductNode } from '@/components/studio/nodes/ProductNode'
 import { ImageGenNode } from '@/components/studio/nodes/ImageGenNode'
 
+// ─── Types ────────────────────────────────────────────────────────
 interface StudioAvatar {
     id: string; name: string; coverImage: string | null; prompt: string; style: string
 }
-
 interface StudioOutput {
     id: string; url: string; type: string; prompt: string | null; createdAt: string
     metadata: { model?: string; size?: string } | null
 }
-
 interface StudioProject {
     id: string; name: string; description: string | null; status: string
     workflow: { nodesJson: unknown[]; edgesJson: unknown[] } | null
@@ -48,28 +47,18 @@ interface StudioProject {
     jobs: Array<{ id: string; status: string; createdAt: string; finishedAt: string | null }>
 }
 
-// ─── Default workflow template ────────────────────────────────────
-const DEFAULT_NODES = [
-    {
-        id: 'avatar-1', type: 'avatarNode', position: { x: 80, y: 80 },
-        data: { avatarId: null, avatarName: null, avatarCover: null, avatarPrompt: null },
-    },
-    {
-        id: 'prompt-1', type: 'promptNode', position: { x: 80, y: 260 },
-        data: { prompt: '' },
-    },
-    {
-        id: 'imagegen-1', type: 'imageGenNode', position: { x: 420, y: 140 },
-        data: { model: 'fal-ai/flux/schnell', imageSize: 'landscape_4_3', numImages: 1 },
-    },
+// ─── Default workflow ─────────────────────────────────────────────
+const makeDefaultNodes = () => [
+    { id: 'avatar-1', type: 'avatarNode', position: { x: 80, y: 80 }, data: {} },
+    { id: 'prompt-1', type: 'promptNode', position: { x: 80, y: 260 }, data: { prompt: '' } },
+    { id: 'imagegen-1', type: 'imageGenNode', position: { x: 420, y: 140 }, data: { model: 'fal-ai/flux/schnell', imageSize: 'landscape_4_3', numImages: 1 } },
 ]
-
 const DEFAULT_EDGES = [
     { id: 'e-avatar-img', source: 'avatar-1', target: 'imagegen-1', targetHandle: 'avatar', animated: true, style: { stroke: '#34d399' } },
     { id: 'e-prompt-img', source: 'prompt-1', target: 'imagegen-1', targetHandle: 'prompt', animated: true, style: { stroke: '#a78bfa' } },
 ]
 
-// ─── Main Page ────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────
 export default function ProjectPage() {
     const { id } = useParams<{ id: string }>()
     const [project, setProject] = useState<StudioProject | null>(null)
@@ -81,36 +70,107 @@ export default function ProjectPage() {
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
     const [avatarPickerNodeId, setAvatarPickerNodeId] = useState<string | null>(null)
 
-    const [nodes, setNodes, onNodesChange] = useNodesState(DEFAULT_NODES as never[])
+    const [nodes, setNodes, onNodesChange] = useNodesState(makeDefaultNodes() as Node[])
     const [edges, setEdges, onEdgesChange] = useEdgesState(DEFAULT_EDGES as never[])
     const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const runningRef = useRef(running)
+    useEffect(() => { runningRef.current = running }, [running])
 
-    // ─── Node types (must be stable refs) ─────────────────────────
-    const nodeTypes: NodeTypes = {
-        avatarNode: (props: never) => <AvatarNode {...props} data={{
-            ...((props as { data: Record<string, unknown> }).data),
-            onSelect: () => {
-                setAvatarPickerNodeId((props as { id: string }).id)
-                setAvatarPickerOpen(true)
+    // ─── Stable callback refs ──────────────────────────────────────
+    const updateNodeData = useCallback((nodeId: string, updates: Record<string, unknown>) => {
+        setNodes(nds => nds.map(n =>
+            n.id === nodeId ? { ...n, data: { ...(n.data as Record<string, unknown>), ...updates } } : n
+        ) as Node[])
+    }, [setNodes])
+
+    const handleOpenAvatarPicker = useCallback((nodeId: string) => {
+        setAvatarPickerNodeId(nodeId)
+        setAvatarPickerOpen(true)
+    }, [])
+
+    const handleRun = useCallback(async () => {
+        if (runningRef.current) return
+        setRunning(true)
+        try {
+            // Save first
+            setNodes(nds => {
+                // fire-and-forget save; we capture nodes via closure
+                fetch(`/api/studio/projects/${id}/workflow`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodes: nds, edges }),
+                }).catch(console.error)
+                return nds
+            })
+
+            const res = await fetch(`/api/studio/projects/${id}/run`, { method: 'POST' })
+            if (res.ok) {
+                toast.success('Generation started!')
+                // Start polling
+                let attempts = 0
+                const check = async () => {
+                    attempts++
+                    if (attempts > 60) { setRunning(false); return }
+                    const r = await fetch(`/api/studio/projects/${id}`)
+                    if (r.ok) {
+                        const data = await r.json()
+                        const latest = data.project?.jobs?.[0]
+                        if (latest?.status === 'done' || latest?.status === 'failed') {
+                            setRunning(false)
+                            setProject(data.project)
+                            if (latest.status === 'done') toast.success('Image generated!')
+                            else toast.error('Generation failed')
+                        } else {
+                            pollRef.current = setTimeout(check, 4000)
+                        }
+                    }
+                }
+                pollRef.current = setTimeout(check, 4000)
+            } else {
+                const data = await res.json()
+                toast.error(data.error || 'Failed to start generation')
+                setRunning(false)
             }
-        }} />,
-        promptNode: (props: never) => <PromptNode {...props} data={{
-            ...((props as { data: Record<string, unknown> }).data),
-            onChange: (val: string) => updateNodeData((props as { id: string }).id, { prompt: val }),
-        }} />,
-        productNode: ProductNode,
-        imageGenNode: (props: never) => <ImageGenNode {...props} data={{
-            ...((props as { data: Record<string, unknown> }).data),
-            running,
-            onRun: handleRun,
-            onChange: (key: string, val: unknown) => updateNodeData((props as { id: string }).id, { [key]: val }),
-        }} />,
-    }
+        } catch {
+            setRunning(false)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id])
+
+    // ─── nodeTypes — inject callbacks into data at render time ─────
+    const nodeTypes = useMemo<NodeTypes>(() => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        avatarNode: (props: any) => (
+            <AvatarNode {...props} data={{
+                ...props.data,
+                onSelect: () => handleOpenAvatarPicker(props.id),
+            }} />
+        ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        promptNode: (props: any) => (
+            <PromptNode {...props} data={{
+                ...props.data,
+                onChange: (val: string) => updateNodeData(props.id, { prompt: val }),
+            }} />
+        ),
+        productNode: ProductNode as NodeTypes[string],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        imageGenNode: (props: any) => (
+            <ImageGenNode {...props} data={{
+                ...props.data,
+                running,
+                onRun: handleRun,
+                onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }),
+            }} />
+        ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [handleOpenAvatarPicker, handleRun, updateNodeData, running])
 
     useEffect(() => {
         fetchProject()
         fetchAvatars()
         return () => { if (pollRef.current) clearTimeout(pollRef.current) }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id])
 
     async function fetchProject() {
@@ -122,7 +182,7 @@ export default function ProjectPage() {
                 setProject(data.project)
                 if (data.project.workflow) {
                     const wf = data.project.workflow
-                    if ((wf.nodesJson as unknown[]).length > 0) setNodes(wf.nodesJson as never[])
+                    if ((wf.nodesJson as unknown[]).length > 0) setNodes(wf.nodesJson as Node[])
                     if ((wf.edgesJson as unknown[]).length > 0) setEdges(wf.edgesJson as never[])
                 }
             }
@@ -137,12 +197,6 @@ export default function ProjectPage() {
             const data = await res.json()
             setAvatars(data.avatars || [])
         }
-    }
-
-    function updateNodeData(nodeId: string, updates: Record<string, unknown>) {
-        setNodes(nds => nds.map(n =>
-            (n as { id: string }).id === nodeId ? { ...n, data: { ...(n as { data: Record<string, unknown> }).data, ...updates } } : n
-        ) as never[])
     }
 
     function selectAvatarForNode(avatar: StudioAvatar) {
@@ -178,71 +232,24 @@ export default function ProjectPage() {
         }
     }
 
-    async function handleRun() {
-        // Save first
-        await fetch(`/api/studio/projects/${id}/workflow`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nodes, edges }),
-        })
-
-        setRunning(true)
-        try {
-            const res = await fetch(`/api/studio/projects/${id}/run`, { method: 'POST' })
-            if (res.ok) {
-                toast.success('Generation started!')
-                pollForCompletion()
-            } else {
-                const data = await res.json()
-                toast.error(data.error || 'Failed to start generation')
-                setRunning(false)
-            }
-        } catch {
-            setRunning(false)
-        }
-    }
-
-    function pollForCompletion() {
-        let attempts = 0
-        const check = async () => {
-            attempts++
-            if (attempts > 60) { setRunning(false); return }
-            const res = await fetch(`/api/studio/projects/${id}`)
-            if (res.ok) {
-                const data = await res.json()
-                const jobs = data.project.jobs || []
-                const latest = jobs[0]
-                if (latest?.status === 'done' || latest?.status === 'failed') {
-                    setRunning(false)
-                    setProject(data.project)
-                    if (latest.status === 'done') toast.success('Image generated! Check outputs panel.')
-                    else toast.error('Generation failed')
-                } else {
-                    pollRef.current = setTimeout(check, 4000)
-                }
-            }
-        }
-        check()
-    }
-
     function addNode(type: string) {
-        const id = `${type}-${Date.now()}`
-        const newNode = {
-            id,
+        const nodeId = `${type}-${Date.now()}`
+        const newNode: Node = {
+            id: nodeId,
             type,
             position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 80 },
             data: type === 'promptNode' ? { prompt: '' }
                 : type === 'imageGenNode' ? { model: 'fal-ai/flux/schnell', imageSize: 'landscape_4_3', numImages: 1 }
                     : {},
         }
-        setNodes(nds => [...nds, newNode as never])
+        setNodes(nds => [...nds, newNode])
     }
 
     const outputs = project?.outputs || []
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#080d0b]">
-            {/* ── Left toolbar ─────────────────────────────────────────── */}
+            {/* ── Left toolbar ─────────────────────────────────────── */}
             <aside className="w-14 border-r border-white/5 flex flex-col items-center py-4 gap-3 bg-[#080d0b] shrink-0">
                 <Link href="/dashboard/studio">
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
@@ -250,7 +257,6 @@ export default function ProjectPage() {
                     </Button>
                 </Link>
                 <div className="h-px w-8 bg-white/10" />
-                {/* Add nodes */}
                 {[
                     { type: 'avatarNode', icon: User, color: 'text-emerald-400 hover:bg-emerald-400/10', title: 'Add Avatar' },
                     { type: 'promptNode', icon: Type, color: 'text-violet-400 hover:bg-violet-400/10', title: 'Add Prompt' },
@@ -268,39 +274,25 @@ export default function ProjectPage() {
                 ))}
             </aside>
 
-            {/* ── Canvas ────────────────────────────────────────────────── */}
+            {/* ── Canvas ───────────────────────────────────────────── */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Top bar */}
                 <header className="h-12 border-b border-white/5 bg-[#080d0b]/90 backdrop-blur-md flex items-center px-4 gap-3 shrink-0">
-                    {loading ? (
-                        <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
-                    ) : (
-                        <span className="text-sm font-bold text-white">{project?.name}</span>
-                    )}
+                    {loading
+                        ? <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
+                        : <span className="text-sm font-bold text-white">{project?.name}</span>
+                    }
                     <div className="ml-auto flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1.5 text-slate-400 hover:text-white text-xs"
-                            onClick={handleSave}
-                            disabled={saving}
-                        >
+                        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-slate-400 hover:text-white text-xs" onClick={handleSave} disabled={saving}>
                             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                             Save
                         </Button>
-                        <Button
-                            size="sm"
-                            className="h-7 gap-1.5 bg-pink-400 text-[#080d0b] hover:bg-pink-300 font-bold text-xs shadow-[0_0_12px_rgba(244,114,182,0.3)]"
-                            onClick={handleRun}
-                            disabled={running}
-                        >
+                        <Button size="sm" className="h-7 gap-1.5 bg-pink-400 text-[#080d0b] hover:bg-pink-300 font-bold text-xs shadow-[0_0_12px_rgba(244,114,182,0.3)]" onClick={handleRun} disabled={running}>
                             {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                             Run Workflow
                         </Button>
                     </div>
                 </header>
 
-                {/* Flow canvas */}
                 <div className="flex-1 relative">
                     {loading ? (
                         <div className="flex items-center justify-center h-full">
@@ -316,25 +308,16 @@ export default function ProjectPage() {
                             nodeTypes={nodeTypes}
                             fitView
                             deleteKeyCode="Delete"
-                            className="bg-[#080d0b]"
                             style={{ background: '#080d0b' }}
                         >
-                            <Background
-                                variant={BackgroundVariant.Dots}
-                                gap={24}
-                                size={1}
-                                color="rgba(0,255,149,0.06)"
-                            />
-                            <Controls
-                                className="!bg-[#0f1a14] !border-white/10 [&>button]:!bg-[#0f1a14] [&>button]:!text-slate-400 [&>button:hover]:!text-white [&>button:hover]:!bg-white/10"
-                            />
+                            <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="rgba(0,255,149,0.06)" />
+                            <Controls className="!bg-[#0f1a14] !border-white/10 [&>button]:!bg-[#0f1a14] [&>button]:!text-slate-400 [&>button:hover]:!text-white [&>button:hover]:!bg-white/10" />
                             <MiniMap
                                 className="!bg-[#0a120d] !border-white/10"
                                 nodeColor={(n) => {
-                                    const t = (n as { type?: string }).type
-                                    if (t === 'avatarNode') return '#34d399'
-                                    if (t === 'promptNode') return '#a78bfa'
-                                    if (t === 'productNode') return '#fbbf24'
+                                    if (n.type === 'avatarNode') return '#34d399'
+                                    if (n.type === 'promptNode') return '#a78bfa'
+                                    if (n.type === 'productNode') return '#fbbf24'
                                     return '#f472b6'
                                 }}
                             />
@@ -346,23 +329,18 @@ export default function ProjectPage() {
                 </div>
             </div>
 
-            {/* ── Right panel: Outputs + History ───────────────────────── */}
+            {/* ── Right panel ──────────────────────────────────────── */}
             <aside className="w-72 border-l border-white/5 bg-[#0a120d] flex flex-col shrink-0">
                 <div className="flex border-b border-white/5 shrink-0">
                     {(['outputs', 'history'] as const).map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setRightTab(tab)}
-                            className={cn(
-                                'flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors',
+                        <button key={tab} onClick={() => setRightTab(tab)}
+                            className={cn('flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors',
                                 rightTab === tab ? 'text-white border-b-2 border-emerald-400' : 'text-slate-500 hover:text-slate-300'
-                            )}
-                        >
+                            )}>
                             {tab === 'outputs' ? `Outputs (${outputs.length})` : 'History'}
                         </button>
                     ))}
                 </div>
-
                 <div className="flex-1 overflow-y-auto p-3">
                     {rightTab === 'outputs' ? (
                         outputs.length === 0 ? (
@@ -395,8 +373,7 @@ export default function ProjectPage() {
                                         {job.status === 'done' ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                                             : job.status === 'failed' ? <AlertCircle className="h-3.5 w-3.5 text-red-400" />
                                                 : job.status === 'running' ? <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" />
-                                                    : <Clock className="h-3.5 w-3.5 text-slate-500" />
-                                        }
+                                                    : <Clock className="h-3.5 w-3.5 text-slate-500" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[10px] font-bold text-white capitalize">{job.status}</p>
@@ -412,13 +389,12 @@ export default function ProjectPage() {
                 </div>
             </aside>
 
-            {/* ── Avatar Picker Dialog ─────────────────────────────────── */}
+            {/* ── Avatar Picker Dialog ──────────────────────────────── */}
             <Dialog open={avatarPickerOpen} onOpenChange={setAvatarPickerOpen}>
                 <DialogContent className="sm:max-w-lg bg-[#0f1a14] border-emerald-400/20">
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
-                            <User className="h-5 w-5 text-emerald-400" />
-                            Select Avatar
+                            <User className="h-5 w-5 text-emerald-400" /> Select Avatar
                         </DialogTitle>
                     </DialogHeader>
                     {avatars.length === 0 ? (
@@ -433,11 +409,8 @@ export default function ProjectPage() {
                     ) : (
                         <div className="grid grid-cols-3 gap-3 pt-1">
                             {avatars.map(av => (
-                                <button
-                                    key={av.id}
-                                    onClick={() => selectAvatarForNode(av)}
-                                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl border border-white/10 hover:border-emerald-400/40 hover:bg-emerald-400/5 transition-all group"
-                                >
+                                <button key={av.id} onClick={() => selectAvatarForNode(av)}
+                                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl border border-white/10 hover:border-emerald-400/40 hover:bg-emerald-400/5 transition-all">
                                     <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10">
                                         {av.coverImage
                                             ? <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" />
