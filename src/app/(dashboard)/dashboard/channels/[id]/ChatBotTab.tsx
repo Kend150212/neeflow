@@ -11,7 +11,8 @@ import {
     Upload, FolderOpen, X, Check, Sparkles,
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
     Search, Package, Edit, Download, Copy,
-    RotateCcw, Paperclip, Tag, Ban, Eye, LayoutGrid,
+    RotateCcw, Paperclip, Tag, Ban, Eye, LayoutGrid, Bell,
+    AlertTriangle, CheckCircle2, ExternalLink as ExternalLinkIcon,
 } from 'lucide-react'
 
 
@@ -77,6 +78,14 @@ interface BotConfigData {
     sessionTimeoutHours: number
     summariesBeforeMerge: number
     botAvatarUrl: string | null
+    // Notification integrations
+    telegramEnabled: boolean
+    telegramBotToken: string
+    telegramChatId: string
+    telegramEvents: string[]
+    discordEnabled: boolean
+    discordWebhookUrl: string
+    discordEvents: string[]
 }
 
 interface ChatBotTabProps {
@@ -129,6 +138,14 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
         sessionTimeoutHours: 8,
         summariesBeforeMerge: 5,
         botAvatarUrl: null,
+        // Notification integrations
+        telegramEnabled: false,
+        telegramBotToken: '',
+        telegramChatId: '',
+        telegramEvents: ['escalation', 'stale'],
+        discordEnabled: false,
+        discordWebhookUrl: '',
+        discordEvents: ['escalation', 'stale'],
     })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -163,7 +180,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
     const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>([])
 
     // Tab navigation
-    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'hours' | 'scope' | 'chattest' | 'learning' | 'usage' | 'pages'>('general')
+    const [botTab, setBotTab] = useState<'general' | 'training' | 'behavior' | 'hours' | 'scope' | 'chattest' | 'learning' | 'usage' | 'pages' | 'notifications'>('general')
 
     // Available AI text models (fetched from integrations)
     const [availableModels, setAvailableModels] = useState<{ provider: string; label: string; models: { id: string; name: string }[] }[]>([])
@@ -506,6 +523,14 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         summariesBeforeMerge: data.summariesBeforeMerge ?? 5,
                         botModel: data.botModel || null,
                         botAvatarUrl: data.botAvatarUrl || null,
+                        // Notification integrations
+                        telegramEnabled: data.telegramEnabled ?? false,
+                        telegramBotToken: data.telegramBotToken || '',
+                        telegramChatId: data.telegramChatId || '',
+                        telegramEvents: data.telegramEvents || ['escalation', 'stale'],
+                        discordEnabled: data.discordEnabled ?? false,
+                        discordWebhookUrl: data.discordWebhookUrl || '',
+                        discordEvents: data.discordEvents || ['escalation', 'stale'],
                     })
                 }
             } catch { /* ignore */ }
@@ -706,6 +731,7 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
 
                         { key: 'pages' as const, icon: LayoutGrid, label: 'Accounts', color: 'text-orange-500' },
                         { key: 'learning' as const, icon: Zap, label: 'Learning', color: 'text-yellow-500' },
+                        { key: 'notifications' as const, icon: Bell, label: 'Notifications', color: 'text-rose-500' },
                         ...(planLimits?.hasBotUsageAnalytics ? [{ key: 'usage' as const, icon: BarChart3, label: 'Usage', color: 'text-violet-500' }] : []),
                     ].map(tab => (
                         <button
@@ -3291,6 +3317,260 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                     </div>
                 )}
 
+                {/* ─── NOTIFICATIONS TAB ─────────────────── */}
+                {botTab === 'notifications' && (
+                    <div className="space-y-5">
+                        {/* Header */}
+                        <div>
+                            <h4 className="text-sm font-semibold">Thông báo Agent</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Nhận cảnh báo qua Telegram hoặc Discord khi bot chuyển sang AGENT mode hoặc có sự kiện quan trọng.
+                            </p>
+                        </div>
+
+                        {/* ── Trigger events legend ── */}
+                        <div className="rounded-lg border bg-muted/30 p-3 text-xs space-y-1.5">
+                            <p className="font-medium text-muted-foreground mb-2">Loại sự kiện</p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                <div className="flex items-start gap-2">
+                                    <span className="mt-0.5 h-2 w-2 rounded-full bg-orange-500 flex-shrink-0" />
+                                    <div><span className="font-medium">escalation</span> — Bot nói "để team check" → chuyển AGENT mode</div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <span className="mt-0.5 h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
+                                    <div><span className="font-medium">stale</span> — Đã escalate &gt;2h chưa có agent reply</div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <span className="mt-0.5 h-2 w-2 rounded-full bg-amber-500 flex-shrink-0" />
+                                    <div><span className="font-medium">offhours</span> — Khách nhắn ngoài giờ làm việc</div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <span className="mt-0.5 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                                    <div><span className="font-medium">any</span> — Mọi tin nhắn (chỉ dùng cho bot thông lượng thấp)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Telegram Card ── */}
+                        <Card className={config.telegramEnabled ? 'border-blue-300 dark:border-blue-700' : ''}>
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        {/* Telegram logo */}
+                                        <span className="h-8 w-8 rounded-full flex items-center justify-center" style={{ background: '#29A9EB' }}>
+                                            <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
+                                            </svg>
+                                        </span>
+                                        <div>
+                                            <CardTitle className="text-sm">Telegram</CardTitle>
+                                            <CardDescription className="text-xs">Gửi tin nhắn qua Telegram Bot API</CardDescription>
+                                        </div>
+                                    </div>
+                                    <Switch
+                                        checked={config.telegramEnabled}
+                                        onCheckedChange={v => update('telegramEnabled', v)}
+                                        id="telegram-enabled"
+                                    />
+                                </div>
+                            </CardHeader>
+
+                            {config.telegramEnabled && (
+                                <CardContent className="space-y-4 pt-0">
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <div>
+                                            <Label className="text-xs">Bot Token</Label>
+                                            <Input
+                                                type="password"
+                                                placeholder="123456789:AAF..."
+                                                value={config.telegramBotToken}
+                                                onChange={e => update('telegramBotToken', e.target.value)}
+                                                className="mt-1 font-mono text-xs"
+                                            />
+                                            <p className="text-[11px] text-muted-foreground mt-1">
+                                                Lấy từ <a href="https://t.me/BotFather" target="_blank" rel="noopener" className="text-blue-500 hover:underline">@BotFather</a> → /newbot
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">Chat ID <span className="text-muted-foreground">(group hoặc user)</span></Label>
+                                            <Input
+                                                placeholder="-100123456789 hoặc 123456789"
+                                                value={config.telegramChatId}
+                                                onChange={e => update('telegramChatId', e.target.value)}
+                                                className="mt-1 font-mono text-xs"
+                                            />
+                                            <p className="text-[11px] text-muted-foreground mt-1">
+                                                Gửi /start cho bot rồi mở: <code className="bg-muted px-1 rounded">api.telegram.org/bot&lt;token&gt;/getUpdates</code> để lấy chat_id
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Events */}
+                                    <div>
+                                        <Label className="text-xs mb-2 block">Nhận thông báo khi</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(['escalation', 'stale', 'offhours', 'any'] as const).map(evt => (
+                                                <label key={evt} className="flex items-center gap-2 cursor-pointer text-xs">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-3.5 w-3.5 rounded border-gray-300"
+                                                        checked={config.telegramEvents.includes(evt)}
+                                                        onChange={e => {
+                                                            const cur = config.telegramEvents
+                                                            update('telegramEvents', e.target.checked
+                                                                ? [...cur, evt]
+                                                                : cur.filter(x => x !== evt))
+                                                        }}
+                                                    />
+                                                    <span>{evt}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Test button */}
+                                    <div className="flex items-center gap-2 pt-1 border-t">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-xs gap-1.5"
+                                            onClick={async () => {
+                                                if (!config.telegramBotToken || !config.telegramChatId) {
+                                                    toast.error('Chưa nhập Bot Token và Chat ID')
+                                                    return
+                                                }
+                                                try {
+                                                    const res = await fetch(`/api/admin/channels/${channelId}/bot-config/test-notify`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ platform: 'telegram', token: config.telegramBotToken, chatId: config.telegramChatId }),
+                                                    })
+                                                    if (res.ok) toast.success('✅ Telegram test message sent!')
+                                                    else toast.error('❌ Gửi thất bại — kiểm tra token và chat ID')
+                                                } catch {
+                                                    toast.error('❌ Network error')
+                                                }
+                                            }}
+                                        >
+                                            <Send className="h-3.5 w-3.5" />
+                                            Gửi test message
+                                        </Button>
+                                        <p className="text-[11px] text-muted-foreground">Nhớ Save trước khi test trong production</p>
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+
+                        {/* ── Discord Card ── */}
+                        <Card className={config.discordEnabled ? 'border-violet-300 dark:border-violet-700' : ''}>
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        {/* Discord logo */}
+                                        <span className="h-8 w-8 rounded-full flex items-center justify-center" style={{ background: '#5865F2' }}>
+                                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                                            </svg>
+                                        </span>
+                                        <div>
+                                            <CardTitle className="text-sm">Discord</CardTitle>
+                                            <CardDescription className="text-xs">Gửi thông báo qua Webhook URL</CardDescription>
+                                        </div>
+                                    </div>
+                                    <Switch
+                                        checked={config.discordEnabled}
+                                        onCheckedChange={v => update('discordEnabled', v)}
+                                        id="discord-enabled"
+                                    />
+                                </div>
+                            </CardHeader>
+
+                            {config.discordEnabled && (
+                                <CardContent className="space-y-4 pt-0">
+                                    <div>
+                                        <Label className="text-xs">Webhook URL</Label>
+                                        <Input
+                                            type="password"
+                                            placeholder="https://discord.com/api/webhooks/..."
+                                            value={config.discordWebhookUrl}
+                                            onChange={e => update('discordWebhookUrl', e.target.value)}
+                                            className="mt-1 font-mono text-xs"
+                                        />
+                                        <p className="text-[11px] text-muted-foreground mt-1">
+                                            Discord Server Settings → Integrations → Webhooks → New Webhook → Copy URL
+                                        </p>
+                                    </div>
+
+                                    {/* Events */}
+                                    <div>
+                                        <Label className="text-xs mb-2 block">Nhận thông báo khi</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(['escalation', 'stale', 'offhours', 'any'] as const).map(evt => (
+                                                <label key={evt} className="flex items-center gap-2 cursor-pointer text-xs">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-3.5 w-3.5 rounded border-gray-300"
+                                                        checked={config.discordEvents.includes(evt)}
+                                                        onChange={e => {
+                                                            const cur = config.discordEvents
+                                                            update('discordEvents', e.target.checked
+                                                                ? [...cur, evt]
+                                                                : cur.filter(x => x !== evt))
+                                                        }}
+                                                    />
+                                                    <span>{evt}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Test button */}
+                                    <div className="flex items-center gap-2 pt-1 border-t">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-xs gap-1.5"
+                                            onClick={async () => {
+                                                if (!config.discordWebhookUrl) {
+                                                    toast.error('Chưa nhập Webhook URL')
+                                                    return
+                                                }
+                                                try {
+                                                    const res = await fetch(`/api/admin/channels/${channelId}/bot-config/test-notify`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ platform: 'discord', webhookUrl: config.discordWebhookUrl }),
+                                                    })
+                                                    if (res.ok) toast.success('✅ Discord test message sent!')
+                                                    else toast.error('❌ Gửi thất bại — kiểm tra Webhook URL')
+                                                } catch {
+                                                    toast.error('❌ Network error')
+                                                }
+                                            }}
+                                        >
+                                            <Send className="h-3.5 w-3.5" />
+                                            Gửi test message
+                                        </Button>
+                                        <p className="text-[11px] text-muted-foreground">Nhớ Save trước khi test trong production</p>
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+
+                        {/* Info note */}
+                        <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs text-blue-700 dark:text-blue-400 space-y-1">
+                            <p className="font-medium">💡 Cách hoạt động</p>
+                            <ul className="space-y-0.5 list-disc list-inside">
+                                <li>Khi bot detect escalation → thông báo ngay cho toàn bộ OWNER/ADMIN/MANAGER trong app (SSE badge)</li>
+                                <li>Đồng thời gửi Telegram/Discord nếu đã cấu hình và bật sự kiện <strong>escalation</strong></li>
+                                <li>Sau 30 phút: bot tự gửi warm message "team đang check" cho khách</li>
+                                <li>Sau 2 giờ: gửi lại Telegram/Discord alert với <strong>stale</strong> event</li>
+                                <li>Khi agent reply: tự động dừng alert, clear flag</li>
+                            </ul>
+                        </div>
+                    </div>
+                )}
+
                 {/* ─── Bottom Save ─────────────────────── */}
                 <div className="flex justify-end pt-2">
                     <Button onClick={saveConfig} disabled={saving}>
@@ -3370,57 +3650,59 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                         </div>
                     </div>
                 )}
-            </div>
+            </div >
 
             {/* ─── BOT CONTEXT PREVIEW DIALOG ─── */}
-            {contextPreview && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-                    onClick={() => setContextPreview(null)}
-                >
+            {
+                contextPreview && (
                     <div
-                        className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
-                        onClick={e => e.stopPropagation()}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                        onClick={() => setContextPreview(null)}
                     >
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-5 py-4 border-b">
-                            <div>
-                                <h2 className="font-bold text-base flex items-center gap-2">
-                                    <Eye className="h-4 w-4 text-blue-500" />
-                                    Context Bot hiện tại
-                                </h2>
-                                <p className="text-[11px] text-muted-foreground mt-0.5">
-                                    Generated {new Date(contextPreview.generatedAt).toLocaleString('vi-VN')} — đây là mọi thứ bot đang biết lúc này
-                                </p>
-                            </div>
-                            <button onClick={() => setContextPreview(null)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-sm">
-                            {contextPreview.sections.map((sec, i) => (
-                                <div key={i} className="rounded-xl border bg-muted/40 overflow-hidden">
-                                    <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b">
-                                        <span className="font-semibold text-xs uppercase tracking-wide">{sec.label}</span>
-                                        <span className="text-[11px] bg-background border rounded-full px-2 py-0.5 font-mono">{sec.count}</span>
-                                    </div>
-                                    <pre className="px-4 py-3 text-[11px] leading-relaxed whitespace-pre-wrap font-mono text-muted-foreground overflow-x-auto max-h-48">
-                                        {sec.content}
-                                    </pre>
+                        <div
+                            className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-5 py-4 border-b">
+                                <div>
+                                    <h2 className="font-bold text-base flex items-center gap-2">
+                                        <Eye className="h-4 w-4 text-blue-500" />
+                                        Context Bot hiện tại
+                                    </h2>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                        Generated {new Date(contextPreview.generatedAt).toLocaleString('vi-VN')} — đây là mọi thứ bot đang biết lúc này
+                                    </p>
                                 </div>
-                            ))}
-                        </div>
+                                <button onClick={() => setContextPreview(null)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
 
-                        {/* Footer */}
-                        <div className="px-5 py-3 border-t flex justify-between items-center">
-                            <p className="text-[11px] text-muted-foreground">💡 Bot tự đọc context này mỗi lần trả lời — không cần reload thủ công</p>
-                            <Button size="sm" variant="outline" onClick={() => setContextPreview(null)}>Đóng</Button>
+                            {/* Body */}
+                            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-sm">
+                                {contextPreview.sections.map((sec, i) => (
+                                    <div key={i} className="rounded-xl border bg-muted/40 overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b">
+                                            <span className="font-semibold text-xs uppercase tracking-wide">{sec.label}</span>
+                                            <span className="text-[11px] bg-background border rounded-full px-2 py-0.5 font-mono">{sec.count}</span>
+                                        </div>
+                                        <pre className="px-4 py-3 text-[11px] leading-relaxed whitespace-pre-wrap font-mono text-muted-foreground overflow-x-auto max-h-48">
+                                            {sec.content}
+                                        </pre>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-5 py-3 border-t flex justify-between items-center">
+                                <p className="text-[11px] text-muted-foreground">💡 Bot tự đọc context này mỗi lần trả lời — không cần reload thủ công</p>
+                                <Button size="sm" variant="outline" onClick={() => setContextPreview(null)}>Đóng</Button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </>
     )
 }

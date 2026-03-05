@@ -280,28 +280,62 @@ async function sendTelegramFollowupAlert(opts: {
     try {
         const botConfig = await prisma.botConfig.findUnique({
             where: { channelId },
-            select: { telegramChatId: true, telegramBotToken: true } as any,
+            select: {
+                telegramEnabled: true,
+                telegramChatId: true,
+                telegramBotToken: true,
+                telegramEvents: true,
+                discordEnabled: true,
+                discordWebhookUrl: true,
+                discordEvents: true,
+            } as any,
         }) as any
 
-        if (!botConfig?.telegramChatId || !botConfig?.telegramBotToken) return
-
-        const msg = lang === 'vi'
+        const tgMsg = lang === 'vi'
             ? `🔴 *Cần follow-up gấp!*\n\nKhách: *${customerName}*\nChủ đề: ${escalatedTopic}\nĐã chờ: ${waitHours} giờ chưa có agent reply\n\n👉 Trả lời ngay trong dashboard`
             : `🔴 *Urgent follow-up needed!*\n\nCustomer: *${customerName}*\nTopic: ${escalatedTopic}\nWaiting: ${waitHours}h with no agent reply\n\n👉 Reply now in dashboard`
 
-        await fetch(`https://api.telegram.org/bot${botConfig.telegramBotToken}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: botConfig.telegramChatId,
-                text: msg,
-                parse_mode: 'Markdown',
-            }),
-        })
+        // Telegram
+        if (botConfig?.telegramEnabled && botConfig?.telegramChatId && botConfig?.telegramBotToken) {
+            const events: string[] = botConfig.telegramEvents || ['escalation', 'stale']
+            if (events.includes('stale') || events.includes('any')) {
+                await fetch(`https://api.telegram.org/bot${botConfig.telegramBotToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: botConfig.telegramChatId,
+                        text: tgMsg,
+                        parse_mode: 'Markdown',
+                    }),
+                })
+                console.log(`[BotFollowup] ✅ Telegram alert sent for ${conversationId}`)
+            }
+        }
 
-        console.log(`[BotFollowup] ✅ Telegram alert sent for ${conversationId}`)
+        // Discord
+        if (botConfig?.discordEnabled && botConfig?.discordWebhookUrl) {
+            const events: string[] = botConfig.discordEvents || ['escalation', 'stale']
+            if (events.includes('stale') || events.includes('any')) {
+                await fetch(botConfig.discordWebhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'Neeflow Bot',
+                        embeds: [{
+                            title: lang === 'vi' ? '🔴 Cần follow-up gấp!' : '🔴 Urgent follow-up needed!',
+                            description: lang === 'vi'
+                                ? `**Khách:** ${customerName}\n**Chủ đề:** ${escalatedTopic}\n**Đã chờ:** ${waitHours}h chưa có agent reply`
+                                : `**Customer:** ${customerName}\n**Topic:** ${escalatedTopic}\n**Waiting:** ${waitHours}h with no agent reply`,
+                            color: 0xe74c3c,
+                            footer: { text: 'Neeflow • Trả lời ngay trong dashboard' },
+                        }],
+                    }),
+                })
+                console.log(`[BotFollowup] ✅ Discord alert sent for ${conversationId}`)
+            }
+        }
     } catch (err) {
-        console.error('[BotFollowup] ❌ Telegram alert error:', err)
+        console.error('[BotFollowup] ❌ Telegram/Discord alert error:', err)
     }
 }
 

@@ -1093,6 +1093,17 @@ model BotConfig {
   sessionTimeoutHours  Int     @default(8)     @map("session_timeout_hours")
   summariesBeforeMerge Int     @default(5)     @map("summaries_before_merge")
 
+  // Notification integrations — Telegram
+  telegramEnabled      Boolean @default(false) @map("telegram_enabled")
+  telegramBotToken     String? @map("telegram_bot_token") @db.Text
+  telegramChatId       String? @map("telegram_chat_id")
+  telegramEvents       Json?   @default("[\"escalation\",\"stale\"]") @map("telegram_events") // escalation | stale | offhours | any
+
+  // Notification integrations — Discord
+  discordEnabled       Boolean @default(false) @map("discord_enabled")
+  discordWebhookUrl    String? @map("discord_webhook_url") @db.Text
+  discordEvents        Json?   @default("[\"escalation\",\"stale\"]") @map("discord_events")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

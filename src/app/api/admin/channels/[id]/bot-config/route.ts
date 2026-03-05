@@ -90,6 +90,9 @@ export async function PUT(
         'commentReplyMinDelay', 'commentReplyMaxDelay',
         'agentLearning', 'lastLearnedAt',
         'enableSmartMemory', 'sessionTimeoutHours', 'summariesBeforeMerge',
+        // Notification integrations
+        'telegramEnabled', 'telegramBotToken', 'telegramChatId', 'telegramEvents',
+        'discordEnabled', 'discordWebhookUrl', 'discordEvents',
     ]
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
