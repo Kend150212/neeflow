@@ -2737,10 +2737,10 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                     <div>
                                         <CardTitle className="text-sm flex items-center gap-2">
                                             <MessageCircle className="h-4 w-4 text-pink-500" />
-                                            Chat Test — Trò chuyện thử với Bot
+                                            {t('chatbot.chattest.title')}
                                         </CardTitle>
                                         <CardDescription className="text-[11px] mt-0.5">
-                                            Nhắn tin test trực tiếp với bot. Bot dùng đúng personality, knowledge base, và agent learning.
+                                            {t('chatbot.chattest.subtitle')}
                                         </CardDescription>
                                     </div>
                                     {chatMessages.length > 0 && (
@@ -2757,8 +2757,8 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                     {chatMessages.length === 0 && (
                                         <div className="flex flex-col items-center justify-center h-full text-center">
                                             <Bot className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                                            <p className="text-sm text-muted-foreground">Bắt đầu trò chuyện với bot</p>
-                                            <p className="text-[10px] text-muted-foreground/60 mt-1">Gõ tin nhắn hoặc đính kèm hình ảnh để test</p>
+                                            <p className="text-sm text-muted-foreground">{t('chatbot.chattest.startTitle')}</p>
+                                            <p className="text-[10px] text-muted-foreground/60 mt-1">{t('chatbot.chattest.startDesc')}</p>
                                         </div>
                                     )}
                                     {chatMessages.map((msg, i) => {
@@ -3113,10 +3113,10 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                 {botTab === 'usage' && planLimits?.hasBotUsageAnalytics && (() => {
                     if (!usageData && !usageLoading) loadUsageData(usagePeriod)
                     const periods = [
-                        { key: 'today' as const, label: 'Hôm nay' },
-                        { key: '7d' as const, label: '7 ngày' },
-                        { key: '30d' as const, label: '30 ngày' },
-                        { key: 'year' as const, label: 'Năm nay' },
+                        { key: 'today' as const, label: t('chatbot.usage.today') },
+                        { key: '7d' as const, label: t('chatbot.usage.7days') },
+                        { key: '30d' as const, label: t('chatbot.usage.30days') },
+                        { key: 'year' as const, label: t('chatbot.usage.thisYear') },
                     ]
                     const maxBarTokens = usageData?.byDate?.reduce((m: number, d: any) => Math.max(m, d.tokens), 0) || 1
                     const maxModelTokens = usageData?.byModel?.reduce((m: number, d: any) => Math.max(m, d.tokens), 0) || 1
@@ -3128,9 +3128,9 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 <div>
                                     <h3 className="text-sm font-semibold flex items-center gap-2">
                                         <BarChart3 className="h-4 w-4 text-violet-500" />
-                                        📊 Bot Usage Analytics
+                                        {t('chatbot.usage.title')}
                                     </h3>
-                                    <p className="text-[11px] text-muted-foreground mt-0.5">Token sử dụng mỗi lần bot trả lời</p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">{t('chatbot.usage.subtitle')}</p>
                                 </div>
                                 <div className="flex gap-1">
                                     {periods.map(p => (
@@ -3155,19 +3155,19 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                     {/* Stat Cards */}
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="rounded-xl border bg-muted/30 p-3 text-center">
-                                            <p className="text-[10px] text-muted-foreground mb-1">Tổng tokens</p>
+                                            <p className="text-[10px] text-muted-foreground mb-1">{t('chatbot.usage.totalTokens')}</p>
                                             <p className="text-xl font-bold text-violet-500">{fmtNum(usageData.totalTokens)}</p>
                                             <p className="text-[10px] text-muted-foreground mt-1">↑ {fmtNum(usageData.promptTokens)} in / {fmtNum(usageData.completionTokens)} out</p>
                                         </div>
                                         <div className="rounded-xl border bg-muted/30 p-3 text-center">
-                                            <p className="text-[10px] text-muted-foreground mb-1">Số lần bot trả lời</p>
+                                            <p className="text-[10px] text-muted-foreground mb-1">{t('chatbot.usage.totalReplies')}</p>
                                             <p className="text-xl font-bold text-blue-500">{fmtNum(usageData.repliesCount)}</p>
                                             <p className="text-[10px] text-muted-foreground mt-1">
-                                                {usageData.repliesCount > 0 ? `~${fmtNum(Math.round(usageData.totalTokens / usageData.repliesCount))} token/reply` : '—'}
+                                                {usageData.repliesCount > 0 ? `~${fmtNum(Math.round(usageData.totalTokens / usageData.repliesCount))} ${t('chatbot.usage.perReply')}` : '—'}
                                             </p>
                                         </div>
                                         <div className="rounded-xl border bg-muted/30 p-3 text-center">
-                                            <p className="text-[10px] text-muted-foreground mb-1">Model chính</p>
+                                            <p className="text-[10px] text-muted-foreground mb-1">{t('chatbot.usage.mainModel')}</p>
                                             <p className="text-sm font-bold text-emerald-500 truncate">{usageData.topModel || '—'}</p>
                                             <p className="text-[10px] text-muted-foreground mt-1 capitalize">{usageData.provider || '—'}</p>
                                         </div>
@@ -3242,12 +3242,12 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                         <div className="flex items-center gap-2 mb-2">
                             <LayoutGrid className="h-4 w-4 text-orange-500" />
                             <div>
-                                <h4 className="font-medium text-sm">Bot theo tài khoản</h4>
-                                <p className="text-xs text-muted-foreground">Bật/tắt bot riêng cho từng trang đã kết nối</p>
+                                <h4 className="font-medium text-sm">{t('chatbot.accounts.title')}</h4>
+                                <p className="text-xs text-muted-foreground">{t('chatbot.accounts.subtitle')}</p>
                             </div>
                             {pageAccounts.length > 0 && (
                                 <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                                    {pageAccounts.filter(p => p.botEnabled).length}/{pageAccounts.length} active
+                                    {pageAccounts.filter(p => p.botEnabled).length}/{pageAccounts.length} {t('chatbot.accounts.active')}
                                 </span>
                             )}
                         </div>
@@ -3286,7 +3286,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             <span className={`text-xs ${page.botEnabled ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                                {page.botEnabled ? 'On' : 'Off'}
+                                                {page.botEnabled ? t('chatbot.accounts.on') : t('chatbot.accounts.off')}
                                             </span>
                                             <Switch
                                                 checked={page.botEnabled}
@@ -3322,31 +3322,31 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                     <div className="space-y-5">
                         {/* Header */}
                         <div>
-                            <h4 className="text-sm font-semibold">Thông báo Agent</h4>
+                            <h4 className="text-sm font-semibold">{t('chatbot.notifications.title')}</h4>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Nhận cảnh báo qua Telegram hoặc Discord khi bot chuyển sang AGENT mode hoặc có sự kiện quan trọng.
+                                {t('chatbot.notifications.subtitle')}
                             </p>
                         </div>
 
                         {/* ── Trigger events legend ── */}
                         <div className="rounded-lg border bg-muted/30 p-3 text-xs space-y-1.5">
-                            <p className="font-medium text-muted-foreground mb-2">Loại sự kiện</p>
+                            <p className="font-medium text-muted-foreground mb-2">{t('chatbot.notifications.eventTypesTitle')}</p>
                             <div className="grid grid-cols-2 gap-1.5">
                                 <div className="flex items-start gap-2">
                                     <span className="mt-0.5 h-2 w-2 rounded-full bg-orange-500 flex-shrink-0" />
-                                    <div><span className="font-medium">escalation</span> — Bot nói "để team check" → chuyển AGENT mode</div>
+                                    <div><span className="font-medium">escalation</span> — {t('chatbot.notifications.eventEscalation')}</div>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <span className="mt-0.5 h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
-                                    <div><span className="font-medium">stale</span> — Đã escalate &gt;2h chưa có agent reply</div>
+                                    <div><span className="font-medium">stale</span> — {t('chatbot.notifications.eventStale')}</div>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <span className="mt-0.5 h-2 w-2 rounded-full bg-amber-500 flex-shrink-0" />
-                                    <div><span className="font-medium">offhours</span> — Khách nhắn ngoài giờ làm việc</div>
+                                    <div><span className="font-medium">offhours</span> — {t('chatbot.notifications.eventOffhours')}</div>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <span className="mt-0.5 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
-                                    <div><span className="font-medium">any</span> — Mọi tin nhắn (chỉ dùng cho bot thông lượng thấp)</div>
+                                    <div><span className="font-medium">any</span> — {t('chatbot.notifications.eventAny')}</div>
                                 </div>
                             </div>
                         </div>
@@ -3364,7 +3364,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                         </span>
                                         <div>
                                             <CardTitle className="text-sm">Telegram</CardTitle>
-                                            <CardDescription className="text-xs">Gửi tin nhắn qua Telegram Bot API</CardDescription>
+                                            <CardDescription className="text-xs">{t('chatbot.notifications.telegramDesc')}</CardDescription>
                                         </div>
                                     </div>
                                     <Switch
@@ -3388,7 +3388,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                 className="mt-1 font-mono text-xs"
                                             />
                                             <p className="text-[11px] text-muted-foreground mt-1">
-                                                Lấy từ <a href="https://t.me/BotFather" target="_blank" rel="noopener" className="text-blue-500 hover:underline">@BotFather</a> → /newbot
+                                                {t('chatbot.notifications.telegramTokenHint').replace('@BotFather', '')}<a href="https://t.me/BotFather" target="_blank" rel="noopener" className="text-blue-500 hover:underline">@BotFather</a> → /newbot
                                             </p>
                                         </div>
                                         <div>
@@ -3407,7 +3407,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
 
                                     {/* Events */}
                                     <div>
-                                        <Label className="text-xs mb-2 block">Nhận thông báo khi</Label>
+                                        <Label className="text-xs mb-2 block">{t('chatbot.notifications.receiveWhen')}</Label>
                                         <div className="grid grid-cols-2 gap-2">
                                             {(['escalation', 'stale', 'offhours', 'any'] as const).map(evt => (
                                                 <label key={evt} className="flex items-center gap-2 cursor-pointer text-xs">
@@ -3436,7 +3436,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                             className="text-xs gap-1.5"
                                             onClick={async () => {
                                                 if (!config.telegramBotToken || !config.telegramChatId) {
-                                                    toast.error('Chưa nhập Bot Token và Chat ID')
+                                                    toast.error(t('chatbot.notifications.testMissingConfig'))
                                                     return
                                                 }
                                                 try {
@@ -3445,17 +3445,17 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({ platform: 'telegram', token: config.telegramBotToken, chatId: config.telegramChatId }),
                                                     })
-                                                    if (res.ok) toast.success('✅ Telegram test message sent!')
-                                                    else toast.error('❌ Gửi thất bại — kiểm tra token và chat ID')
+                                                    if (res.ok) toast.success(t('chatbot.notifications.testSent'))
+                                                    else toast.error(t('chatbot.notifications.testFailed').replace('{error}', 'token/chat ID'))
                                                 } catch {
-                                                    toast.error('❌ Network error')
+                                                    toast.error(t('chatbot.toasts.networkError'))
                                                 }
                                             }}
                                         >
                                             <Send className="h-3.5 w-3.5" />
-                                            Gửi test message
+                                            {t('chatbot.notifications.sendTest')}
                                         </Button>
-                                        <p className="text-[11px] text-muted-foreground">Nhớ Save trước khi test trong production</p>
+                                        <p className="text-[11px] text-muted-foreground">{t('chatbot.notifications.savefirst')}</p>
                                     </div>
                                 </CardContent>
                             )}
@@ -3474,7 +3474,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                         </span>
                                         <div>
                                             <CardTitle className="text-sm">Discord</CardTitle>
-                                            <CardDescription className="text-xs">Gửi thông báo qua Webhook URL</CardDescription>
+                                            <CardDescription className="text-xs">{t('chatbot.notifications.discordDesc')}</CardDescription>
                                         </div>
                                     </div>
                                     <Switch
@@ -3497,13 +3497,13 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                             className="mt-1 font-mono text-xs"
                                         />
                                         <p className="text-[11px] text-muted-foreground mt-1">
-                                            Discord Server Settings → Integrations → Webhooks → New Webhook → Copy URL
+                                            {t('chatbot.notifications.webhookHint')}
                                         </p>
                                     </div>
 
                                     {/* Events */}
                                     <div>
-                                        <Label className="text-xs mb-2 block">Nhận thông báo khi</Label>
+                                        <Label className="text-xs mb-2 block">{t('chatbot.notifications.receiveWhen')}</Label>
                                         <div className="grid grid-cols-2 gap-2">
                                             {(['escalation', 'stale', 'offhours', 'any'] as const).map(evt => (
                                                 <label key={evt} className="flex items-center gap-2 cursor-pointer text-xs">
@@ -3532,7 +3532,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                             className="text-xs gap-1.5"
                                             onClick={async () => {
                                                 if (!config.discordWebhookUrl) {
-                                                    toast.error('Chưa nhập Webhook URL')
+                                                    toast.error(t('chatbot.notifications.testMissingWebhook'))
                                                     return
                                                 }
                                                 try {
@@ -3541,17 +3541,17 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({ platform: 'discord', webhookUrl: config.discordWebhookUrl }),
                                                     })
-                                                    if (res.ok) toast.success('✅ Discord test message sent!')
-                                                    else toast.error('❌ Gửi thất bại — kiểm tra Webhook URL')
+                                                    if (res.ok) toast.success(t('chatbot.notifications.testSent'))
+                                                    else toast.error(t('chatbot.notifications.testFailed').replace('{error}', 'Webhook URL'))
                                                 } catch {
-                                                    toast.error('❌ Network error')
+                                                    toast.error(t('chatbot.toasts.networkError'))
                                                 }
                                             }}
                                         >
                                             <Send className="h-3.5 w-3.5" />
-                                            Gửi test message
+                                            {t('chatbot.notifications.sendTest')}
                                         </Button>
-                                        <p className="text-[11px] text-muted-foreground">Nhớ Save trước khi test trong production</p>
+                                        <p className="text-[11px] text-muted-foreground">{t('chatbot.notifications.savefirst')}</p>
                                     </div>
                                 </CardContent>
                             )}
@@ -3559,13 +3559,13 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
 
                         {/* Info note */}
                         <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs text-blue-700 dark:text-blue-400 space-y-1">
-                            <p className="font-medium">💡 Cách hoạt động</p>
+                            <p className="font-medium">💡 {t('chatbot.notifications.howItWorks')}</p>
                             <ul className="space-y-0.5 list-disc list-inside">
-                                <li>Khi bot detect escalation → thông báo ngay cho toàn bộ OWNER/ADMIN/MANAGER trong app (SSE badge)</li>
-                                <li>Đồng thời gửi Telegram/Discord nếu đã cấu hình và bật sự kiện <strong>escalation</strong></li>
-                                <li>Sau 30 phút: bot tự gửi warm message "team đang check" cho khách</li>
-                                <li>Sau 2 giờ: gửi lại Telegram/Discord alert với <strong>stale</strong> event</li>
-                                <li>Khi agent reply: tự động dừng alert, clear flag</li>
+                                <li>{t('chatbot.notifications.howItem1')}</li>
+                                <li>{t('chatbot.notifications.howItem2')}</li>
+                                <li>{t('chatbot.notifications.howItem3')}</li>
+                                <li>{t('chatbot.notifications.howItem4')}</li>
+                                <li>{t('chatbot.notifications.howItem5')}</li>
                             </ul>
                         </div>
                     </div>
