@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
     User, Plus, Loader2, Sparkles, ChevronLeft,
-    CheckCircle2, AlertCircle, Trash2, RefreshCw, ChevronDown
+    CheckCircle2, AlertCircle, Trash2, RefreshCw, ImagePlus, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -36,28 +36,44 @@ const STYLES = [
     { value: '3d', label: '3D Render', hint: 'Pixar / cinema 3D style' },
 ]
 
+// Full model lists for each provider
 const GEN_PROVIDERS = [
     {
         value: 'fal_ai', label: 'Fal.ai',
         models: [
-            { value: 'fal-ai/flux/schnell', label: 'FLUX Schnell (fast)' },
+            { value: 'fal-ai/flux/schnell', label: 'FLUX Schnell (fastest)' },
             { value: 'fal-ai/flux/dev', label: 'FLUX Dev (quality)' },
-            { value: 'fal-ai/stable-diffusion-v3-medium', label: 'SD3 Medium' },
+            { value: 'fal-ai/flux-pro', label: 'FLUX Pro' },
+            { value: 'fal-ai/flux-pro/v1.1', label: 'FLUX Pro v1.1' },
+            { value: 'fal-ai/flux-realism', label: 'FLUX Realism' },
+            { value: 'fal-ai/flux-lora', label: 'FLUX LoRA' },
+            { value: 'fal-ai/stable-diffusion-v3-medium', label: 'Stable Diffusion 3 Medium' },
+            { value: 'fal-ai/stable-diffusion-xl', label: 'SDXL' },
+            { value: 'fal-ai/aura-flow', label: 'AuraFlow' },
+            { value: 'fal-ai/kolors', label: 'Kolors (Kwai)' },
+            { value: 'fal-ai/pixart-sigma', label: 'PixArt Sigma' },
+            { value: 'fal-ai/ideogram/v2', label: 'Ideogram v2' },
+            { value: 'fal-ai/recraft-v3', label: 'Recraft v3' },
         ],
     },
     {
         value: 'runware', label: 'Runware',
         models: [
             { value: 'runware:100@1', label: 'Runware Fast FLUX' },
+            { value: 'runware:101@1', label: 'Runware FLUX Dev' },
             { value: 'civitai:4201@501240', label: 'DreamShaper XL' },
             { value: 'civitai:36520@76907', label: 'DREAMIX' },
+            { value: 'civitai:133005@782002', label: 'Realistic Vision v6' },
+            { value: 'civitai:43331@176425', label: 'AbsoluteReality v1.8.1' },
+            { value: 'civitai:25694@143906', label: 'Counterfeit-V3.0 (anime)' },
+            { value: 'civitai:7240@46846', label: 'ChilloutMix' },
         ],
     },
     {
-        value: 'openai', label: 'OpenAI (DALL-E)',
+        value: 'openai', label: 'OpenAI DALL-E',
         models: [
-            { value: 'dall-e-3', label: 'DALL-E 3' },
-            { value: 'dall-e-2', label: 'DALL-E 2' },
+            { value: 'dall-e-3', label: 'DALL-E 3 (1792×1024)' },
+            { value: 'dall-e-2', label: 'DALL-E 2 (1024×1024)' },
         ],
     },
     {
@@ -69,7 +85,6 @@ const GEN_PROVIDERS = [
         ],
     },
 ]
-
 
 export default function ChannelAvatarsPage() {
     const { channelId } = useParams<{ channelId: string }>()
@@ -87,12 +102,21 @@ export default function ChannelAvatarsPage() {
     const [creating, setCreating] = useState(false)
     const [generating, setGenerating] = useState<string | null>(null)
 
-    // Provider/model picker for generation
+    // AI provider picker state (now inline in panel)
     const [genProvider, setGenProvider] = useState('fal_ai')
     const [genModel, setGenModel] = useState('fal-ai/flux/schnell')
-    const [showProviderPicker, setShowProviderPicker] = useState(false)
+
+    // Reference image upload
+    const refInputRef = useRef<HTMLInputElement>(null)
+    const [uploadingRef, setUploadingRef] = useState(false)
 
     useEffect(() => { fetchAvatars() }, [channelId])
+
+    // keep genModel in sync when provider changes
+    useEffect(() => {
+        const firstModel = GEN_PROVIDERS.find(p => p.value === genProvider)?.models[0]?.value
+        if (firstModel) setGenModel(firstModel)
+    }, [genProvider])
 
     async function fetchAvatars() {
         setLoading(true)
@@ -122,7 +146,7 @@ export default function ChannelAvatarsPage() {
                 setAvatars(prev => [data.avatar, ...prev])
                 setShowCreate(false)
                 resetForm()
-                toast.success('Avatar created! Click "Generate" to create the AI reference sheet.')
+                toast.success('Avatar created! Select a provider and click Generate.')
             } else {
                 const d = await res.json()
                 toast.error(d.error || 'Failed to create avatar')
@@ -134,7 +158,6 @@ export default function ChannelAvatarsPage() {
 
     async function generateAvatar(avatar: StudioAvatar) {
         setGenerating(avatar.id)
-        setShowProviderPicker(false)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
                 method: 'POST',
@@ -144,7 +167,6 @@ export default function ChannelAvatarsPage() {
             if (res.ok) {
                 const data = await res.json()
                 if (data.status === 'done') {
-                    // Runware / DALL-E respond synchronously
                     toast.success('Image generated!')
                     fetchAvatars()
                 } else {
@@ -191,6 +213,56 @@ export default function ChannelAvatarsPage() {
         }
     }
 
+    // Upload reference image to R2 / API
+    async function handleRefUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file || !selectedAvatar) return
+        if (selectedAvatar.referenceImages?.length >= 4) {
+            toast.error('Maximum 4 reference images')
+            return
+        }
+        setUploadingRef(true)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            const res = await fetch(
+                `/api/studio/channels/${channelId}/avatars/${selectedAvatar.id}/reference-images`,
+                { method: 'POST', body: formData }
+            )
+            if (res.ok) {
+                const data = await res.json()
+                const updatedAvatar = { ...selectedAvatar, referenceImages: data.referenceImages }
+                setSelectedAvatar(updatedAvatar)
+                setAvatars(prev => prev.map(a => a.id === selectedAvatar.id ? updatedAvatar : a))
+                toast.success('Reference image uploaded')
+            } else {
+                const d = await res.json()
+                toast.error(d.error || 'Upload failed')
+            }
+        } finally {
+            setUploadingRef(false)
+            if (refInputRef.current) refInputRef.current.value = ''
+        }
+    }
+
+    async function removeRefImage(idx: number) {
+        if (!selectedAvatar) return
+        const res = await fetch(
+            `/api/studio/channels/${channelId}/avatars/${selectedAvatar.id}/reference-images`,
+            {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ index: idx }),
+            }
+        )
+        if (res.ok) {
+            const data = await res.json()
+            const updatedAvatar = { ...selectedAvatar, referenceImages: data.referenceImages }
+            setSelectedAvatar(updatedAvatar)
+            setAvatars(prev => prev.map(a => a.id === selectedAvatar.id ? updatedAvatar : a))
+        }
+    }
+
     function resetForm() {
         setName(''); setDescription(''); setPrompt(''); setStyle('realistic')
     }
@@ -203,6 +275,7 @@ export default function ChannelAvatarsPage() {
     }
 
     const allAvatars = [...avatars, ...sharedAvatars]
+    const currentProviderModels = GEN_PROVIDERS.find(p => p.value === genProvider)?.models || []
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#080d0b]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(0, 255, 149, 0.04) 1px, transparent 0)', backgroundSize: '32px 32px' }}>
@@ -259,7 +332,6 @@ export default function ChannelAvatarsPage() {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {/* Own avatars */}
                             <div>
                                 {sharedAvatars.length > 0 && (
                                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">This Channel</p>
@@ -308,7 +380,6 @@ export default function ChannelAvatarsPage() {
                                 </div>
                             </div>
 
-                            {/* Shared avatars */}
                             {sharedAvatars.length > 0 && (
                                 <div>
                                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">Shared with this Channel</p>
@@ -348,6 +419,7 @@ export default function ChannelAvatarsPage() {
             {/* Right: Detail panel */}
             {selectedAvatar && (
                 <aside className="w-80 border-l border-white/5 bg-[#0a120d] flex flex-col overflow-y-auto">
+                    {/* Header */}
                     <div className="p-5 border-b border-white/5 flex items-start justify-between">
                         <div>
                             <h3 className="text-white font-bold">{selectedAvatar.name}</h3>
@@ -356,94 +428,151 @@ export default function ChannelAvatarsPage() {
                                 <span className="text-[10px] text-violet-400 font-medium">Shared avatar</span>
                             )}
                         </div>
-                        <div className="flex gap-1 items-start">
-                            {!selectedAvatar._shared && selectedAvatar.status !== 'generating' && (
-                                <div className="flex flex-col gap-1">
-                                    {/* Provider + model mini-picker */}
-                                    <button
-                                        onClick={() => setShowProviderPicker(v => !v)}
-                                        className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
-                                    >
-                                        <span className="font-medium">{GEN_PROVIDERS.find(p => p.value === genProvider)?.label}</span>
-                                        <span className="text-slate-600">·</span>
-                                        <span>{GEN_PROVIDERS.find(p => p.value === genProvider)?.models.find(m => m.value === genModel)?.label}</span>
-                                        <ChevronDown className="h-3 w-3" />
-                                    </button>
-                                    {showProviderPicker && (
-                                        <div className="absolute right-4 top-16 z-50 bg-[#0f1a14] border border-emerald-400/20 rounded-xl p-3 w-64 shadow-xl space-y-3">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Provider</p>
-                                                <div className="grid grid-cols-3 gap-1">
-                                                    {GEN_PROVIDERS.map(p => (
-                                                        <button key={p.value} onClick={() => { setGenProvider(p.value); setGenModel(p.models[0].value) }}
-                                                            className={`py-1 rounded-lg text-[10px] font-bold transition-colors ${genProvider === p.value ? 'bg-emerald-400/20 text-emerald-400' : 'bg-white/5 text-slate-500 hover:text-slate-300'
-                                                                }`}>
-                                                            {p.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Model</p>
-                                                <Select value={genModel} onValueChange={setGenModel}>
-                                                    <SelectTrigger className="h-7 text-xs bg-white/5 border-white/10 text-white">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {(GEN_PROVIDERS.find(p => p.value === genProvider)?.models || []).map(m => (
-                                                            <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <p className="text-[10px] text-slate-600">Add keys in Dashboard → API Keys → Studio Image Generation</p>
-                                        </div>
-                                    )}
-                                    <Button
-                                        variant="ghost" size="sm"
-                                        className="h-7 gap-1.5 text-emerald-400 hover:bg-emerald-400/10 text-xs"
-                                        onClick={() => generateAvatar(selectedAvatar)}
-                                        disabled={generating === selectedAvatar.id}
-                                    >
-                                        {generating === selectedAvatar.id
-                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                            : <Sparkles className="h-3.5 w-3.5" />}
-                                        Generate
-                                    </Button>
-                                </div>
-                            )}
-                            {!selectedAvatar._shared && (
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-red-400" onClick={() => deleteAvatar(selectedAvatar.id)}>
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                            )}
-                        </div>
+                        {!selectedAvatar._shared && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-red-400" onClick={() => deleteAvatar(selectedAvatar.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
                     </div>
-                    <div className="p-5 space-y-4">
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Reference Images</p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {selectedAvatar.referenceImages?.length > 0
-                                    ? selectedAvatar.referenceImages.map((url, i) => (
-                                        <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10">
-                                            <img src={url} alt={`angle-${i}`} className="w-full h-full object-cover" />
-                                        </div>
-                                    ))
-                                    : Array.from({ length: 4 }).map((_, i) => (
-                                        <div key={i} className="aspect-square rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
-                                            {selectedAvatar.status === 'generating'
-                                                ? <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
-                                                : <User className="h-4 w-4 text-slate-700" />
-                                            }
-                                        </div>
-                                    ))
-                                }
+
+                    <div className="p-5 space-y-5 flex-1">
+
+                        {/* ── AI Generation ── */}
+                        {!selectedAvatar._shared && (
+                            <div className="space-y-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">AI Generation</p>
+
+                                {/* Provider selector */}
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    {GEN_PROVIDERS.map(p => (
+                                        <button
+                                            key={p.value}
+                                            onClick={() => setGenProvider(p.value)}
+                                            className={cn(
+                                                'py-1.5 px-2 rounded-lg text-xs font-semibold transition-all border',
+                                                genProvider === p.value
+                                                    ? 'bg-emerald-400/15 text-emerald-400 border-emerald-400/30'
+                                                    : 'bg-white/5 text-slate-500 border-white/5 hover:text-slate-300 hover:border-white/15'
+                                            )}
+                                        >
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Model selector */}
+                                <Select value={genModel} onValueChange={setGenModel}>
+                                    <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-white">
+                                        <SelectValue placeholder="Select model" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-64 overflow-y-auto">
+                                        {currentProviderModels.map(m => (
+                                            <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Generate button */}
+                                <Button
+                                    className="w-full gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold h-8 text-xs shadow-[0_0_16px_rgba(0,255,149,0.15)]"
+                                    onClick={() => generateAvatar(selectedAvatar)}
+                                    disabled={!!generating}
+                                >
+                                    {generating === selectedAvatar.id
+                                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating...</>
+                                        : <><Sparkles className="h-3.5 w-3.5" /> Generate Image</>
+                                    }
+                                </Button>
+                                <p className="text-[10px] text-slate-600 text-center">
+                                    Key from Dashboard → API Keys
+                                </p>
                             </div>
+                        )}
+
+                        {/* ── Reference Images ── */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Reference Images</p>
+                                {!selectedAvatar._shared && (
+                                    <>
+                                        <input
+                                            ref={refInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleRefUpload}
+                                        />
+                                        <button
+                                            onClick={() => refInputRef.current?.click()}
+                                            disabled={uploadingRef || (selectedAvatar.referenceImages?.length >= 4)}
+                                            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors disabled:opacity-40"
+                                        >
+                                            {uploadingRef
+                                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                                : <ImagePlus className="h-3 w-3" />
+                                            }
+                                            Upload ({selectedAvatar.referenceImages?.length || 0}/4)
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                {/* Uploaded images */}
+                                {(selectedAvatar.referenceImages || []).map((url, i) => (
+                                    <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10 relative group">
+                                        <img src={url} alt={`ref-${i}`} className="w-full h-full object-cover" />
+                                        {!selectedAvatar._shared && (
+                                            <button
+                                                onClick={() => removeRefImage(i)}
+                                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
+                                            >
+                                                <X className="h-3 w-3 text-white" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {/* Empty slots */}
+                                {Array.from({ length: Math.max(0, 4 - (selectedAvatar.referenceImages?.length || 0)) }).map((_, i) => (
+                                    <button
+                                        key={`empty-${i}`}
+                                        onClick={() => !selectedAvatar._shared && refInputRef.current?.click()}
+                                        disabled={uploadingRef || selectedAvatar._shared}
+                                        className={cn(
+                                            'aspect-square rounded-lg bg-white/5 border border-dashed border-white/10 flex flex-col items-center justify-center gap-1 transition-colors',
+                                            !selectedAvatar._shared && 'hover:border-emerald-400/30 hover:bg-emerald-400/5 cursor-pointer',
+                                        )}
+                                    >
+                                        {uploadingRef && i === 0
+                                            ? <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
+                                            : <>
+                                                <ImagePlus className="h-4 w-4 text-slate-700" />
+                                                <span className="text-[9px] text-slate-700">Add photo</span>
+                                            </>
+                                        }
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-slate-600 mt-1.5">Upload reference photos to guide the AI style</p>
                         </div>
+
+                        {/* ── Generated Image ── */}
+                        {selectedAvatar.coverImage && (
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Generated Image</p>
+                                <div className="rounded-xl overflow-hidden border border-white/10">
+                                    <img src={selectedAvatar.coverImage} alt="generated" className="w-full object-cover" />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Prompt ── */}
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Prompt</p>
                             <p className="text-xs text-slate-400 leading-relaxed">{selectedAvatar.prompt}</p>
                         </div>
+
                         {selectedAvatar.description && (
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Description</p>
