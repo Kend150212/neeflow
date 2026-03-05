@@ -128,6 +128,30 @@ const providerGuides: Record<string, ProviderGuide> = {
         ],
         tips: ['Fal.ai powers Studio image generation, face swap, img2img', 'Free credits on signup'],
     },
+    studio_runware: {
+        description: 'Image generation — FLUX, SDXL, DALL-E (Studio only)',
+        placeholder: 'Enter Runware API key...',
+        guideUrl: 'https://my.runware.ai/signup',
+        guideLabel: 'Open Runware Dashboard',
+        guideSteps: [
+            { title: 'Sign up at runware.ai', detail: 'Go to my.runware.ai and create an account' },
+            { title: 'Go to API Keys', detail: 'Dashboard → API Keys → Create Key' },
+            { title: 'Copy your key', detail: 'Copy the key — used for Neeflow Studio image generation' },
+        ],
+        tips: ['Runware is used only for Neeflow Studio avatar/image generation', 'Separate from the Runware AI text provider above'],
+    },
+    studio_openai: {
+        description: 'DALL-E 3 / DALL-E 2 image generation (Studio only)',
+        placeholder: 'sk-...',
+        guideUrl: 'https://platform.openai.com/api-keys',
+        guideLabel: 'Open OpenAI Platform',
+        guideSteps: [
+            { title: 'Sign in to OpenAI', detail: 'Go to platform.openai.com' },
+            { title: 'API Keys', detail: 'Navigate to API Keys → Create new secret key' },
+            { title: 'Copy key', detail: 'Copy the key — used for DALL-E image generation in Studio' },
+        ],
+        tips: ['This key is used only for Neeflow Studio image generation via DALL-E', 'Separate from the OpenAI text key above'],
+    },
 }
 
 const providerColors: Record<string, string> = {
@@ -138,7 +162,10 @@ const providerColors: Record<string, string> = {
     runware: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
     synthetic: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
     fal_ai: 'bg-violet-500/10 text-violet-500 border-violet-500/20',
+    studio_runware: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+    studio_openai: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
 }
+
 
 // ─── Types ─────────────────────────────────────────────────
 interface AiProvider {
@@ -1014,8 +1041,9 @@ export default function UserApiKeysPage() {
                 <div className="grid gap-4 md:grid-cols-3">
                     {[
                         { id: 'fal_ai', provider: 'fal_ai', name: 'Fal.ai', status: 'active' },
-                        { id: 'runware', provider: 'runware', name: 'Runware', status: 'active' },
-                        { id: 'openai', provider: 'openai', name: 'OpenAI (DALL-E)', status: 'active' },
+                        { id: 'studio_runware', provider: 'studio_runware', name: 'Runware', status: 'active' },
+                        { id: 'studio_openai', provider: 'studio_openai', name: 'OpenAI (DALL-E)', status: 'active' },
+
                     ].map(prov => {
                         const existingKey = keys.find(k => k.provider === prov.provider)
                         return (

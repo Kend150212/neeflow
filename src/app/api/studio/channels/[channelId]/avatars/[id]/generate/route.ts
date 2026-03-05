@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { decrypt } from '@/lib/encryption'
 
 async function verifyMembership(userId: string, channelId: string) {
     return !!(await prisma.channelMember.findFirst({ where: { userId, channelId } }))
 }
 
-// Resolve image generation key for a provider: user key → env fallback
+// Resolve image generation key for a provider: user Studio key → env fallback
+// Studio keys use provider prefix: fal_ai, studio_runware, studio_openai
 async function resolveKey(userId: string, provider: string): Promise<string | null> {
+    // Map provider → userApiKey provider field (Studio-specific keys don't collide with AI text keys)
+    const dbProvider = provider === 'runware' ? 'studio_runware'
+        : provider === 'openai' ? 'studio_openai'
+            : provider // fal_ai stays as fal_ai
+
     const userKey = await prisma.userApiKey.findFirst({
-        where: { userId, provider },
+        where: { userId, provider: dbProvider },
+        select: { apiKeyEncrypted: true },
     })
-    if (userKey?.apiKeyEncrypted) return userKey.apiKeyEncrypted
+    if (userKey?.apiKeyEncrypted) {
+        try { return decrypt(userKey.apiKeyEncrypted) } catch { /* fall through */ }
+    }
 
     // env fallbacks
     const envMap: Record<string, string | undefined> = {
@@ -49,7 +59,7 @@ export async function POST(
     const apiKey = await resolveKey(session.user.id, provider)
     if (!apiKey) {
         return NextResponse.json({
-            error: `No API key found for ${provider}. Add your key in Dashboard → API Keys.`,
+            error: `No API key found for ${provider}. Go to Dashboard → API Keys → Studio Image Generation.`,
         }, { status: 400 })
     }
 
@@ -79,6 +89,8 @@ export async function POST(
             }
             const falData = await falRes.json()
             jobId = falData.request_id || falData.id || 'unknown'
+            await prisma.studioAvatar.update({ where: { id }, data: { falJobId: jobId, status: 'generating' } })
+            return NextResponse.json({ jobId, status: 'generating' })
 
         } else if (provider === 'runware') {
             const runwareModel = model || 'runware:100@1'
@@ -102,7 +114,6 @@ export async function POST(
                 return NextResponse.json({ error: `Runware error: ${err}` }, { status: 500 })
             }
             const rwData = await rwRes.json()
-            // Runware returns results synchronously
             const imageUrls: string[] = (rwData.data || []).map((r: { imageURL?: string }) => r.imageURL).filter(Boolean)
             await prisma.studioAvatar.update({
                 where: { id },
@@ -111,7 +122,6 @@ export async function POST(
             return NextResponse.json({ status: 'done', imageUrls })
 
         } else if (provider === 'openai') {
-            // DALL-E 3 — generates one image at a time
             const dalleModel = model || 'dall-e-3'
             const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
@@ -141,9 +151,6 @@ export async function POST(
             await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
             return NextResponse.json({ error: `Unsupported provider: ${provider}` }, { status: 400 })
         }
-
-        await prisma.studioAvatar.update({ where: { id }, data: { falJobId: jobId, status: 'generating' } })
-        return NextResponse.json({ jobId, status: 'generating' })
 
     } catch (err) {
         await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
