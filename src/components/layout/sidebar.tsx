@@ -76,7 +76,8 @@ interface NavItem {
     exact?: boolean  // use exact pathname match instead of startsWith
 }
 
-const mainNav: NavItem[] = [
+// Items above Studio (Dashboard → Media)
+const topNav: NavItem[] = [
     { titleKey: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true },
     { titleKey: 'nav.channels', href: '/dashboard/channels', icon: Megaphone },
     { titleKey: 'nav.posts', href: '/dashboard/posts', icon: PenSquare, exact: true },
@@ -84,8 +85,10 @@ const mainNav: NavItem[] = [
     { titleKey: 'nav.queue', href: '/dashboard/posts/queue', icon: CalendarClock },
     { titleKey: 'nav.approvals', href: '/dashboard/posts/approvals', icon: CheckCircle2 },
     { titleKey: 'nav.media', href: '/dashboard/media', icon: Image },
+]
+// Items below Studio (Client Board → Billing)
+const bottomNav: NavItem[] = [
     { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Zap },
-    // Studio is handled dynamically below (channel-scoped)
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
     { titleKey: 'nav.reports', href: '/dashboard/reports', icon: BarChart3 },
     { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },
@@ -229,7 +232,7 @@ export function Sidebar({ session }: { session: Session }) {
             {/* Navigation */}
             <div className="flex-1 overflow-y-auto overscroll-contain py-4">
                 <nav className="space-y-1 px-3">
-                    {mainNav.map((item) => {
+                    {topNav.map((item) => {
                         const isActive = item.exact
                             ? pathname === item.href
                             : (pathname === item.href || pathname?.startsWith(item.href + '/'))
@@ -254,22 +257,46 @@ export function Sidebar({ session }: { session: Session }) {
                             </Link>
                         )
                     })}
-                    {/* Studio link (dynamic, channel-scoped) */}
-                    {activeChannel && (
-                        <Link
-                            key={`/dashboard/studio/${activeChannel.id}`}
-                            href={`/dashboard/studio/${activeChannel.id}`}
-                            className={cn(
-                                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                                pathname?.startsWith(`/dashboard/studio/${activeChannel.id}`)
-                                    ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
-                                    : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
-                            )}
-                        >
-                            <Clapperboard className={cn('h-4 w-4 shrink-0', pathname?.startsWith(`/dashboard/studio/${activeChannel.id}`) && 'text-primary')} />
-                            <span>{t('nav.studio')}</span>
-                        </Link>
-                    )}
+
+                    {/* Studio — channel-scoped, sits between Media and Client Board */}
+                    <Link
+                        href={activeChannel?.id ? `/dashboard/studio/${activeChannel.id}` : '/dashboard/studio'}
+                        className={cn(
+                            'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                            pathname?.startsWith('/dashboard/studio')
+                                ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
+                                : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
+                        )}
+                    >
+                        <Clapperboard className={cn('h-4 w-4 shrink-0', pathname?.startsWith('/dashboard/studio') && 'text-primary')} />
+                        <span>{t('nav.studio')}</span>
+                    </Link>
+
+                    {bottomNav.map((item) => {
+                        const isActive = item.exact
+                            ? pathname === item.href
+                            : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                                    isActive
+                                        ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
+                                        : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
+                                )}
+                            >
+                                <item.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
+                                <span>{t(item.titleKey)}</span>
+                                {item.badge && (
+                                    <Badge variant="secondary" className="ml-auto text-xs">
+                                        {item.badge}
+                                    </Badge>
+                                )}
+                            </Link>
+                        )
+                    })}
                 </nav>
 
                 {isAdmin && (
@@ -466,7 +493,7 @@ export function Sidebar({ session }: { session: Session }) {
 
             <ScrollArea className="flex-1 py-4">
                 <nav className="space-y-1 px-2">
-                    {mainNav.map((item) => {
+                    {[...topNav, ...bottomNav].map((item: NavItem) => {
                         const isActive = item.exact
                             ? pathname === item.href
                             : (pathname === item.href || pathname?.startsWith(item.href + '/'))
@@ -486,6 +513,19 @@ export function Sidebar({ session }: { session: Session }) {
                             </Link>
                         )
                     })}
+                    {/* Studio icon in collapsed mode */}
+                    <Link
+                        href={activeChannel?.id ? `/dashboard/studio/${activeChannel.id}` : '/dashboard/studio'}
+                        className={cn(
+                            'flex items-center justify-center rounded-xl p-2.5 transition-all duration-150',
+                            pathname?.startsWith('/dashboard/studio')
+                                ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
+                                : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
+                        )}
+                        title={t('nav.studio')}
+                    >
+                        <Clapperboard className={cn('h-4 w-4', pathname?.startsWith('/dashboard/studio') && 'text-primary')} />
+                    </Link>
                 </nav>
 
                 {isAdmin && (

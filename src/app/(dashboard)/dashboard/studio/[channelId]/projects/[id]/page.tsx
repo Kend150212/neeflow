@@ -21,7 +21,8 @@ import '@xyflow/react/dist/style.css'
 import {
     ChevronLeft, Save, Play, Loader2,
     Image as ImageIcon, Plus, ExternalLink,
-    CheckCircle2, AlertCircle, Clock, User, Type, ShoppingBag
+    CheckCircle2, AlertCircle, Clock, User, Type,
+    ShoppingBag, ArrowUpCircle, Scissors, Video, Send,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -31,6 +32,9 @@ import { AvatarNode } from '@/components/studio/nodes/AvatarNode'
 import { PromptNode } from '@/components/studio/nodes/PromptNode'
 import { ProductNode } from '@/components/studio/nodes/ProductNode'
 import { ImageGenNode } from '@/components/studio/nodes/ImageGenNode'
+import { UpscaleNode } from '@/components/studio/nodes/UpscaleNode'
+import { BgRemoveNode } from '@/components/studio/nodes/BgRemoveNode'
+import { VideoGenNode } from '@/components/studio/nodes/VideoGenNode'
 
 interface StudioAvatar {
     id: string; name: string; coverImage: string | null; prompt: string; style: string
@@ -38,6 +42,7 @@ interface StudioAvatar {
 interface StudioOutput {
     id: string; url: string; type: string; prompt: string | null; createdAt: string
     metadata: { model?: string; size?: string } | null
+    pushedToPost?: boolean
 }
 interface StudioProject {
     id: string; name: string; description: string | null; status: string
@@ -66,6 +71,9 @@ export default function ProjectCanvasPage() {
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
     const [avatarPickerNodeId, setAvatarPickerNodeId] = useState<string | null>(null)
+    const [selectedOutputs, setSelectedOutputs] = useState<Set<string>>(new Set())
+    const [pushing, setPushing] = useState(false)
+    const [enhancingNode, setEnhancingNode] = useState<string | null>(null)
 
     const [nodes, setNodes, onNodesChange] = useNodesState(makeDefaultNodes() as Node[])
     const [edges, setEdges, onEdgesChange] = useEdgesState(DEFAULT_EDGES as never[])
@@ -83,6 +91,48 @@ export default function ProjectCanvasPage() {
         setAvatarPickerNodeId(nodeId)
         setAvatarPickerOpen(true)
     }, [])
+
+    // AI Suggest for PromptNode
+    const handleAISuggest = useCallback(async (nodeId: string) => {
+        setEnhancingNode(nodeId)
+        try {
+            // Find avatar + product context from connected nodes
+            const currentNodes = nodes
+            const promptNode = currentNodes.find(n => n.id === nodeId)
+            const avatarNode = currentNodes.find(n => n.type === 'avatarNode')
+            const productNode = currentNodes.find(n => n.type === 'productNode')
+
+            const avatarData = avatarNode?.data as Record<string, string> | undefined
+            const productData = productNode?.data as Record<string, string | number> | undefined
+            const currentPrompt = (promptNode?.data as Record<string, string>)?.prompt || ''
+
+            const res = await fetch(`/api/studio/channels/${channelId}/prompt-suggest`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    avatarName: avatarData?.avatarName,
+                    avatarPrompt: avatarData?.avatarPrompt,
+                    productName: productData?.productName,
+                    productDesc: String(productData?.description || ''),
+                    platform: 'Instagram',
+                    currentPrompt,
+                }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                const suggestions: string[] = data.suggestions || []
+                if (suggestions.length > 0) {
+                    updateNodeData(nodeId, { prompt: suggestions[0], _suggestions: suggestions })
+                    toast.success('AI suggestions generated! Click to cycle through them.')
+                }
+            } else {
+                toast.error('Failed to generate suggestions')
+            }
+        } finally {
+            setEnhancingNode(null)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [channelId, nodes, updateNodeData])
 
     const handleRun = useCallback(async () => {
         if (runningRef.current) return
@@ -131,6 +181,36 @@ export default function ProjectCanvasPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [channelId, id])
 
+    // Push selected outputs to Compose as draft post
+    const handlePushToPost = useCallback(async () => {
+        if (!selectedOutputs.size) {
+            toast.error('Select at least one output')
+            return
+        }
+        setPushing(true)
+        try {
+            const res = await fetch(`/api/studio/channels/${channelId}/projects/${id}/push-to-post`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ outputIds: Array.from(selectedOutputs) }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                toast.success('Sent to Compose! Opening draft...')
+                window.open(data.composeUrl, '_blank')
+                setSelectedOutputs(new Set())
+                // refresh to show pushedToPost badge
+                fetchProject()
+            } else {
+                const data = await res.json()
+                toast.error(data.error || 'Failed to push to post')
+            }
+        } finally {
+            setPushing(false)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [channelId, id, selectedOutputs])
+
     const nodeTypes = useMemo<NodeTypes>(() => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         avatarNode: (props: any) => (
@@ -138,15 +218,32 @@ export default function ProjectCanvasPage() {
         ),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         promptNode: (props: any) => (
-            <PromptNode {...props} data={{ ...props.data, onChange: (val: string) => updateNodeData(props.id, { prompt: val }) }} />
+            <PromptNode {...props} data={{
+                ...props.data,
+                onChange: (val: string) => updateNodeData(props.id, { prompt: val }),
+                onEnhance: () => handleAISuggest(props.id),
+                enhancing: enhancingNode === props.id,
+            }} />
         ),
         productNode: ProductNode as NodeTypes[string],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         imageGenNode: (props: any) => (
             <ImageGenNode {...props} data={{ ...props.data, running, onRun: handleRun, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        upscaleNode: (props: any) => (
+            <UpscaleNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        bgRemoveNode: (props: any) => (
+            <BgRemoveNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        ),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        videoGenNode: (props: any) => (
+            <VideoGenNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+        ),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [handleOpenAvatarPicker, handleRun, updateNodeData, running])
+    }), [handleOpenAvatarPicker, handleRun, handleAISuggest, updateNodeData, running, enhancingNode])
 
     useEffect(() => {
         fetchProject()
@@ -172,8 +269,13 @@ export default function ProjectCanvasPage() {
     }
 
     async function fetchAvatars() {
-        const res = await fetch('/api/studio/avatars')
-        if (res.ok) setAvatars((await res.json()).avatars || [])
+        // Use channel-scoped API
+        const res = await fetch(`/api/studio/channels/${channelId}/avatars`)
+        if (res.ok) {
+            const data = await res.json()
+            // Combine own + shared avatars
+            setAvatars([...(data.avatars || []), ...(data.sharedAvatars || [])])
+        }
     }
 
     function selectAvatarForNode(avatar: StudioAvatar) {
@@ -208,15 +310,27 @@ export default function ProjectCanvasPage() {
             position: { x: Math.random() * 200 + 100, y: Math.random() * 200 + 80 },
             data: type === 'promptNode' ? { prompt: '' }
                 : type === 'imageGenNode' ? { model: 'fal-ai/flux/schnell', imageSize: 'landscape_4_3', numImages: 1 }
-                    : {},
+                    : type === 'videoGenNode' ? { duration: 5, motion: 'subtle' }
+                        : {},
         }
         setNodes(nds => [...nds, newNode])
     }
 
     const outputs = project?.outputs || []
 
+    const NodeLibrary = [
+        { type: 'avatarNode', icon: User, color: 'text-emerald-400 hover:bg-emerald-400/10', title: 'Avatar' },
+        { type: 'promptNode', icon: Type, color: 'text-violet-400 hover:bg-violet-400/10', title: 'Prompt' },
+        { type: 'productNode', icon: ShoppingBag, color: 'text-amber-400 hover:bg-amber-400/10', title: 'Product' },
+        { type: 'imageGenNode', icon: ImageIcon, color: 'text-pink-400 hover:bg-pink-400/10', title: 'Image Gen' },
+        { type: 'upscaleNode', icon: ArrowUpCircle, color: 'text-cyan-400 hover:bg-cyan-400/10', title: 'Upscale' },
+        { type: 'bgRemoveNode', icon: Scissors, color: 'text-fuchsia-400 hover:bg-fuchsia-400/10', title: 'Rm BG' },
+        { type: 'videoGenNode', icon: Video, color: 'text-orange-400 hover:bg-orange-400/10', title: 'Video' },
+    ]
+
     return (
         <div className="flex h-screen overflow-hidden bg-[#080d0b]">
+            {/* Left sidebar — node library */}
             <aside className="w-14 border-r border-white/5 flex flex-col items-center py-4 gap-3 bg-[#080d0b] shrink-0">
                 <Link href={`/dashboard/studio/${channelId}`}>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
@@ -224,12 +338,7 @@ export default function ProjectCanvasPage() {
                     </Button>
                 </Link>
                 <div className="h-px w-8 bg-white/10" />
-                {[
-                    { type: 'avatarNode', icon: User, color: 'text-emerald-400 hover:bg-emerald-400/10', title: 'Add Avatar' },
-                    { type: 'promptNode', icon: Type, color: 'text-violet-400 hover:bg-violet-400/10', title: 'Add Prompt' },
-                    { type: 'productNode', icon: ShoppingBag, color: 'text-amber-400 hover:bg-amber-400/10', title: 'Add Product' },
-                    { type: 'imageGenNode', icon: ImageIcon, color: 'text-pink-400 hover:bg-pink-400/10', title: 'Add Image Gen' },
-                ].map(item => (
+                {NodeLibrary.map(item => (
                     <button
                         key={item.type}
                         onClick={() => addNode(item.type)}
@@ -242,6 +351,7 @@ export default function ProjectCanvasPage() {
             </aside>
 
             <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Top header */}
                 <header className="h-12 border-b border-white/5 bg-[#080d0b]/90 backdrop-blur-md flex items-center px-4 gap-3 shrink-0">
                     {loading
                         ? <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
@@ -254,11 +364,12 @@ export default function ProjectCanvasPage() {
                         </Button>
                         <Button size="sm" className="h-7 gap-1.5 bg-pink-400 text-[#080d0b] hover:bg-pink-300 font-bold text-xs shadow-[0_0_12px_rgba(244,114,182,0.3)]" onClick={handleRun} disabled={running}>
                             {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                            Run Workflow
+                            Run
                         </Button>
                     </div>
                 </header>
 
+                {/* Canvas */}
                 <div className="flex-1 relative">
                     {loading ? (
                         <div className="flex items-center justify-center h-full">
@@ -280,6 +391,9 @@ export default function ProjectCanvasPage() {
                                     if (n.type === 'avatarNode') return '#34d399'
                                     if (n.type === 'promptNode') return '#a78bfa'
                                     if (n.type === 'productNode') return '#fbbf24'
+                                    if (n.type === 'upscaleNode') return '#22d3ee'
+                                    if (n.type === 'bgRemoveNode') return '#e879f9'
+                                    if (n.type === 'videoGenNode') return '#fb923c'
                                     return '#f472b6'
                                 }}
                             />
@@ -291,6 +405,7 @@ export default function ProjectCanvasPage() {
                 </div>
             </div>
 
+            {/* Right panel — Outputs + History */}
             <aside className="w-72 border-l border-white/5 bg-[#0a120d] flex flex-col shrink-0">
                 <div className="flex border-b border-white/5 shrink-0">
                     {(['outputs', 'history'] as const).map(tab => (
@@ -302,6 +417,7 @@ export default function ProjectCanvasPage() {
                         </button>
                     ))}
                 </div>
+
                 <div className="flex-1 overflow-y-auto p-3">
                     {rightTab === 'outputs' ? (
                         outputs.length === 0 ? (
@@ -312,18 +428,52 @@ export default function ProjectCanvasPage() {
                                 <p className="text-xs text-slate-500 text-center">No outputs yet.<br />Run the workflow to generate images.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 gap-2">
-                                {outputs.map(out => (
-                                    <div key={out.id} className="group relative aspect-square rounded-lg overflow-hidden border border-white/10 hover:border-pink-400/40 transition-colors">
-                                        <img src={out.url} alt="" className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-1.5">
-                                            <span className="text-[9px] text-slate-400">{out.metadata?.model?.split('/').pop()}</span>
-                                            <a href={out.url} target="_blank" rel="noopener noreferrer">
-                                                <ExternalLink className="h-3.5 w-3.5 text-white" />
-                                            </a>
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    {outputs.map(out => (
+                                        <div
+                                            key={out.id}
+                                            onClick={() => setSelectedOutputs(prev => {
+                                                const next = new Set(prev)
+                                                if (next.has(out.id)) next.delete(out.id)
+                                                else next.add(out.id)
+                                                return next
+                                            })}
+                                            className={cn(
+                                                'group relative aspect-square rounded-lg overflow-hidden border transition-colors cursor-pointer',
+                                                selectedOutputs.has(out.id)
+                                                    ? 'border-emerald-400 ring-1 ring-emerald-400/40'
+                                                    : 'border-white/10 hover:border-pink-400/40'
+                                            )}
+                                        >
+                                            {out.type === 'video'
+                                                ? <video src={out.url} className="w-full h-full object-cover" muted />
+                                                : <img src={out.url} alt="" className="w-full h-full object-cover" />
+                                            }
+                                            {out.pushedToPost && (
+                                                <div className="absolute top-1 left-1 bg-emerald-400 text-[#080d0b] text-[9px] font-bold px-1 rounded">SENT</div>
+                                            )}
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-1.5">
+                                                <span className="text-[9px] text-slate-400">{out.metadata?.model?.split('/').pop()}</span>
+                                                <a href={out.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                                    <ExternalLink className="h-3.5 w-3.5 text-white" />
+                                                </a>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
+                                {/* Send to Compose button */}
+                                {selectedOutputs.size > 0 && (
+                                    <Button
+                                        onClick={handlePushToPost}
+                                        disabled={pushing}
+                                        size="sm"
+                                        className="w-full gap-1.5 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold text-xs mt-2"
+                                    >
+                                        {pushing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                                        Send {selectedOutputs.size} to Compose
+                                    </Button>
+                                )}
                             </div>
                         )
                     ) : (
@@ -350,6 +500,7 @@ export default function ProjectCanvasPage() {
                 </div>
             </aside>
 
+            {/* Avatar Picker Dialog */}
             <Dialog open={avatarPickerOpen} onOpenChange={setAvatarPickerOpen}>
                 <DialogContent className="sm:max-w-lg bg-[#0f1a14] border-emerald-400/20">
                     <DialogHeader>

@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+
+async function verifyMembership(userId: string, channelId: string) {
+    return !!(await prisma.channelMember.findFirst({ where: { userId, channelId } }))
+}
+
+type Ctx = { params: Promise<{ channelId: string; id: string }> }
+
+// GET /api/studio/channels/[channelId]/avatars/[id]
+export async function GET(_req: NextRequest, { params }: Ctx) {
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { channelId, id } = await params
+
+    if (!(await verifyMembership(session.user.id, channelId))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const avatar = await prisma.studioAvatar.findFirst({
+        where: { id, channelId, isActive: true },
+    })
+    if (!avatar) return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
+    return NextResponse.json({ avatar })
+}
+
+// PATCH /api/studio/channels/[channelId]/avatars/[id]
+export async function PATCH(req: NextRequest, { params }: Ctx) {
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { channelId, id } = await params
+
+    if (!(await verifyMembership(session.user.id, channelId))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const avatar = await prisma.studioAvatar.findFirst({ where: { id, channelId, isActive: true } })
+    if (!avatar) return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
+
+    const body = await req.json()
+    const { name, description, prompt, style, coverImage, falJobId, status } = body
+
+    const updated = await prisma.studioAvatar.update({
+        where: { id },
+        data: {
+            ...(name !== undefined && { name }),
+            ...(description !== undefined && { description }),
+            ...(prompt !== undefined && { prompt }),
+            ...(style !== undefined && { style }),
+            ...(coverImage !== undefined && { coverImage }),
+            ...(falJobId !== undefined && { falJobId }),
+            ...(status !== undefined && { status }),
+        },
+    })
+    return NextResponse.json({ avatar: updated })
+}
+
+// DELETE /api/studio/channels/[channelId]/avatars/[id] — soft delete
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
+    const session = await auth()
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { channelId, id } = await params
+
+    if (!(await verifyMembership(session.user.id, channelId))) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const avatar = await prisma.studioAvatar.findFirst({ where: { id, channelId } })
+    if (!avatar) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    await prisma.studioAvatar.update({ where: { id }, data: { isActive: false } })
+    return NextResponse.json({ success: true })
+}

@@ -302,6 +302,8 @@ model Channel {
   externalDbLinks      ExternalDbChannelLink[]
   externalDbConfigs    ExternalDbConfig[]
   studioProjects       StudioProject[]
+  studioAvatars        StudioAvatar[]
+  studioAvatarShares   StudioAvatarShare[]
 
 
   @@map("channels")
@@ -1280,10 +1282,11 @@ model ExternalDbChannelLink {
 // user.studioAvatars  StudioAvatar[]
 // user.studioProjects StudioProject[]
 
-// Avatar: global per user — shared across all projects & channels
+// Avatar: scoped to a channel (home channel), can be shared to other channels
 model StudioAvatar {
   id              String   @id @default(cuid())
   userId          String   @map("user_id")
+  channelId       String   @map("channel_id")   // home channel
   name            String
   description     String?  @db.Text
   prompt          String   @db.Text
@@ -1296,10 +1299,28 @@ model StudioAvatar {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel           @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  shares  StudioAvatarShare[]
 
   @@index([userId])
+  @@index([channelId])
   @@map("studio_avatars")
+}
+
+// Sharing: avatar from one channel made accessible to another channel
+model StudioAvatarShare {
+  id        String   @id @default(cuid())
+  avatarId  String   @map("avatar_id")
+  channelId String   @map("channel_id")  // target channel
+  createdAt DateTime @default(now()) @map("created_at")
+
+  avatar  StudioAvatar @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  channel Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([avatarId, channelId])
+  @@index([channelId])
+  @@map("studio_avatar_shares")
 }
 
 // Project: container for 1 campaign / product line — scoped to a specific Channel
