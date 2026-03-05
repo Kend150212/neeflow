@@ -29,7 +29,7 @@ export async function POST(
     const userKey = await prisma.userApiKey.findFirst({
         where: { userId: session.user.id, provider: 'fal_ai' },
     })
-    const falKey = userKey?.encryptedKey || process.env.FAL_AI_KEY
+    const falKey = userKey?.apiKeyEncrypted || process.env.FAL_AI_KEY
     if (!falKey) {
         return NextResponse.json({ error: 'No Fal.ai API key configured' }, { status: 400 })
     }
