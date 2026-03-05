@@ -317,7 +317,8 @@ export default function ProjectCanvasPage() {
             <LipSyncNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         )),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [withDelete, handleOpenAvatarPicker, handleRun, handleAISuggest, updateNodeData, running, enhancingNode, channelId])
+    }), [withDelete, handleOpenAvatarPicker, handleRun, handleAISuggest, updateNodeData, running, channelId])
+
 
     useEffect(() => {
         fetchProject()
