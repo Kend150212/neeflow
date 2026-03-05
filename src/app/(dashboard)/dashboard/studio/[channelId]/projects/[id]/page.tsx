@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -91,6 +91,26 @@ export default function ProjectCanvasPage() {
         setAvatarPickerNodeId(nodeId)
         setAvatarPickerOpen(true)
     }, [])
+
+    const handleDeleteNode = useCallback((nodeId: string) => {
+        setNodes(nds => nds.filter(n => n.id !== nodeId) as Node[])
+        setEdges(eds => (eds as Array<{ source: string; target: string; id: string }>).filter(e => e.source !== nodeId && e.target !== nodeId) as never[])
+    }, [setNodes, setEdges])
+
+    // HOC: wraps any node with a hover-activated × delete button
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const withDelete = useCallback((Component: React.ComponentType<any>) => (props: any) => (
+        <div className="group/node relative">
+            <button
+                onMouseDown={(e) => { e.stopPropagation(); handleDeleteNode(props.id) }}
+                title="Delete node"
+                className="absolute -top-2.5 -right-2.5 z-50 w-5 h-5 rounded-full bg-red-500 border border-[#080d0b] flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-opacity hover:bg-red-400 shadow-md"
+            >
+                <span className="text-white text-[10px] font-bold leading-none">×</span>
+            </button>
+            <Component {...props} />
+        </div>
+    ), [handleDeleteNode])
 
     // AI Suggest for PromptNode
     const handleAISuggest = useCallback(async (nodeId: string) => {
@@ -213,37 +233,37 @@ export default function ProjectCanvasPage() {
 
     const nodeTypes = useMemo<NodeTypes>(() => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        avatarNode: (props: any) => (
+        avatarNode: withDelete((props: any) => (
             <AvatarNode {...props} data={{ ...props.data, onSelect: () => handleOpenAvatarPicker(props.id) }} />
-        ),
+        )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        promptNode: (props: any) => (
+        promptNode: withDelete((props: any) => (
             <PromptNode {...props} data={{
                 ...props.data,
                 onChange: (val: string) => updateNodeData(props.id, { prompt: val }),
                 onEnhance: () => handleAISuggest(props.id),
                 enhancing: enhancingNode === props.id,
             }} />
-        ),
-        productNode: ProductNode as NodeTypes[string],
+        )),
+        productNode: withDelete(ProductNode),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        imageGenNode: (props: any) => (
+        imageGenNode: withDelete((props: any) => (
             <ImageGenNode {...props} data={{ ...props.data, running, onRun: handleRun, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
-        ),
+        )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        upscaleNode: (props: any) => (
+        upscaleNode: withDelete((props: any) => (
             <UpscaleNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
-        ),
+        )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        bgRemoveNode: (props: any) => (
+        bgRemoveNode: withDelete((props: any) => (
             <BgRemoveNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
-        ),
+        )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        videoGenNode: (props: any) => (
+        videoGenNode: withDelete((props: any) => (
             <VideoGenNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
-        ),
+        )),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [handleOpenAvatarPicker, handleRun, handleAISuggest, updateNodeData, running, enhancingNode])
+    }), [withDelete, handleOpenAvatarPicker, handleRun, handleAISuggest, updateNodeData, running, enhancingNode])
 
     useEffect(() => {
         fetchProject()
