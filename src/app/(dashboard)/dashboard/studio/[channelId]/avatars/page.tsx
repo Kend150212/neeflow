@@ -81,9 +81,9 @@ const GEN_PROVIDERS = [
         value: 'gemini', label: 'Gemini Imagen',
         models: [
             // ── Gemini native image gen (generateContent API) ──
-            { value: 'gemini-3.1-flash-image-generation', label: '⚡ Flash 2 (Banana 2) — mới nhất 2026' },
-            { value: 'gemini-3-pro-image-generation', label: '✨ Gemini 3 Pro — chất lượng cao nhất' },
-            { value: 'gemini-2.5-flash-preview-image-generation', label: '⚡ Flash 1.5 (Banana) — nhanh & ổn định' },
+            { value: 'gemini-3.1-flash-image-preview', label: '⚡ Flash 2 (Banana 2) — mới nhất 2026' },
+            { value: 'gemini-3-pro-image-preview', label: '✨ Banana Pro — chất lượng studio' },
+            { value: 'gemini-2.5-flash-image', label: '⚡ Banana (Flash 1.5) — nhanh & ổn định' },
             { value: 'gemini-2.0-flash-preview-image-generation', label: '⚡ Flash 1 — thế hệ đầu' },
             // ── Imagen 4 (predict API) ──
             { value: 'imagen-4.0-ultra-generate-001', label: '🏆 Imagen 4 Ultra — đỉnh nhất, 2K' },
