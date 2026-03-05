@@ -150,6 +150,11 @@ export async function POST(
     })
 
     // Update conversation
+    const currentConv = await prisma.conversation.findUnique({
+        where: { id },
+        select: { mode: true, metadata: true },
+    })
+
     await prisma.conversation.update({
         where: { id },
         data: {
@@ -157,6 +162,17 @@ export async function POST(
             mode: 'AGENT', // Auto-switch to agent mode when agent replies
             assignedTo: conversation.mode === 'BOT' ? session.user.id : undefined,
             status: conversation.mode === 'BOT' ? 'open' : undefined,
+            // Clear pendingFollowup flag — agent has responded, no more warm messages needed
+            ...(senderType === 'agent' && (currentConv?.metadata as any)?.pendingFollowup
+                ? {
+                    metadata: {
+                        ...(currentConv?.metadata as object || {}),
+                        pendingFollowup: false,
+                        resolvedAt: new Date().toISOString(),
+                        resolvedByAgent: session.user.id,
+                    },
+                }
+                : {}),
         },
     })
 

@@ -7,6 +7,7 @@
 import { prisma } from '@/lib/prisma'
 import { getAutoPostQueue, DEFAULT_JOB_OPTIONS } from '@/lib/queue'
 import type { AutoPostJobData } from '@/lib/queue'
+import { checkStaleEscalations } from '@/lib/bot-followup'
 
 const POLL_INTERVAL_MS = 60_000 // 1 minute
 
@@ -81,6 +82,11 @@ export function startScheduler(): void {
             const result = await pollScheduledPosts()
             if (result.enqueued > 0) {
                 console.log(`[Scheduler] ✅ Enqueued ${result.enqueued} post(s)`)
+            }
+
+            // Every 5 minutes: check for escalations with no agent reply
+            if (Date.now() % (5 * 60_000) < POLL_INTERVAL_MS) {
+                await checkStaleEscalations()
             }
         } catch (err) {
             console.error('[Scheduler] Poll error:', err)

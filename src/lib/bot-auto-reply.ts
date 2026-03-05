@@ -13,6 +13,8 @@ import { OAUTH_PLATFORMS, CREDENTIAL_PLATFORMS } from '@/lib/platform-registry'
 import { buildPromotionContext } from '@/lib/product-context'
 import { buildMemoryContext, summarizeSession } from '@/lib/customer-memory'
 import { semanticSearchKnowledge, semanticSearchProducts } from '@/lib/rag-search'
+import { scheduleWarmFollowup } from '@/lib/bot-followup'
+import { createNotification, notifyChannelAdmins } from '@/lib/notify'
 
 /**
  * Infer AI provider from a model ID string.
@@ -713,11 +715,82 @@ Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
         const isEscalation = escalationPatterns.some(p => p.test(textReply))
 
         if (isEscalation) {
+            // Fetch current metadata to merge (avoid clobbering existing fields)
+            const existingConv = await prisma.conversation.findUnique({
+                where: { id: conversationId },
+                select: { metadata: true },
+            })
+            const existingMeta = (existingConv?.metadata as Record<string, unknown>) || {}
+
+            // Extract a short topic hint from bot's reply for the notification message
+            const topicMatch = textReply.match(/(?:check|look into|find out about|verify|confirm|về|kiểm tra|xem)\s+(.{10,50})/i)
+            const escalatedTopic = topicMatch ? topicMatch[1].trim() : textReply.substring(0, 60)
+
             await prisma.conversation.update({
                 where: { id: conversationId },
-                data: { mode: 'AGENT', status: 'new' },
+                data: {
+                    mode: 'AGENT',
+                    status: 'new',
+                    metadata: {
+                        ...existingMeta,
+                        pendingFollowup: true,
+                        escalatedAt: new Date().toISOString(),
+                        escalatedTopic,
+                        followupWarm1SentAt: null,
+                        followupWarm2SentAt: null,
+                    },
+                },
             })
-            console.log(`[Bot Auto-Reply] 🔄 AI escalated → switched to AGENT mode`)
+
+            console.log(`[Bot Auto-Reply] 🔄 AI escalated → AGENT mode + scheduling follow-up`)
+
+            const isVi = channel.language === 'vi'
+            const notifyTitle = isVi ? '⚠️ Khách đang chờ tư vấn' : '⚠️ Customer waiting for follow-up'
+            const notifyMsg = `${conversation.externalUserName || (isVi ? 'Khách' : 'Customer')} — "${escalatedTopic}${escalatedTopic.length > 55 ? '…' : ''}"`
+            const inboxLink = `/dashboard/inbox?conversationId=${conversationId}`
+
+            // Notify all channel OWNER/ADMIN/MANAGER immediately (SSE badge + DB)
+            await notifyChannelAdmins({
+                channelId: channel.id,
+                type: 'new_message',
+                title: notifyTitle,
+                message: notifyMsg,
+                link: inboxLink,
+                data: { conversationId, pendingFollowup: true },
+            })
+
+            // Notify the specifically assigned agent if different from admins
+            if (conversation.assignedTo) {
+                await createNotification({
+                    userId: conversation.assignedTo,
+                    type: 'new_message',
+                    title: notifyTitle,
+                    message: notifyMsg,
+                    link: inboxLink,
+                    data: { conversationId, pendingFollowup: true },
+                })
+            }
+
+            // Extract phone from businessInfo for warm2 fallback message
+            const bizInfo = channel.businessInfo as Record<string, string> | null
+            const channelPhone = bizInfo?.phone || bizInfo?.phoneNumber || null
+
+            // Schedule warm messages (non-blocking)
+            scheduleWarmFollowup({
+                conversationId,
+                channelId: channel.id,
+                channelLanguage: channel.language,
+                channelPhone,
+                platform,
+                externalUserId: conversation.externalUserId,
+                platformAccountId: conversation.platformAccountId ?? null,
+                conversationType: conversation.type ?? null,
+                assignedTo: conversation.assignedTo ?? null,
+                customerName: conversation.externalUserName ?? null,
+                escalatedTopic,
+                botConfig: botConfig as Record<string, any> | null,
+            })
+
             return { replied: true, reason: 'Escalated to agent' }
         }
 
