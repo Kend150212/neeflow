@@ -122,6 +122,10 @@ export default function ChannelAvatarsPage() {
     const refInputRef = useRef<HTMLInputElement>(null)
     const [uploadingRef, setUploadingRef] = useState(false)
 
+    // Cover image upload (manual external photo)
+    const coverInputRef = useRef<HTMLInputElement>(null)
+    const [uploadingCover, setUploadingCover] = useState(false)
+
     useEffect(() => { fetchAvatars() }, [channelId])
 
     // keep genModel in sync when provider changes
@@ -247,6 +251,36 @@ export default function ChannelAvatarsPage() {
     }
 
     // Upload reference image to R2 / API
+    async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (!file || !selectedAvatar) return
+        setUploadingCover(true)
+        const toastId = toast.loading('Uploading cover image...')
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            const res = await fetch(
+                `/api/studio/channels/${channelId}/avatars/${selectedAvatar.id}/cover`,
+                { method: 'POST', body: formData }
+            )
+            if (res.ok) {
+                const data = await res.json()
+                const updatedAvatar = { ...selectedAvatar, coverImage: data.coverImage, status: 'idle' }
+                setSelectedAvatar(updatedAvatar)
+                setAvatars(prev => prev.map(a => a.id === selectedAvatar.id ? updatedAvatar : a))
+                toast.success('✅ Cover image uploaded!', { id: toastId })
+            } else {
+                const d = await res.json()
+                toast.error(`❌ ${d.error || 'Upload failed'}`, { id: toastId })
+            }
+        } catch (err) {
+            toast.error(`❌ Network error: ${err instanceof Error ? err.message : String(err)}`, { id: toastId })
+        } finally {
+            setUploadingCover(false)
+            if (coverInputRef.current) coverInputRef.current.value = ''
+        }
+    }
+
     async function handleRefUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0]
         if (!file || !selectedAvatar) return
@@ -592,16 +626,40 @@ export default function ChannelAvatarsPage() {
 
                         {/* ── Generated Image ── */}
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Generated Image</p>
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Avatar Image</p>
+                                {!selectedAvatar._shared && (
+                                    <>
+                                        <input
+                                            ref={coverInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleCoverUpload}
+                                        />
+                                        <button
+                                            onClick={() => coverInputRef.current?.click()}
+                                            disabled={uploadingCover || selectedAvatar.status === 'generating'}
+                                            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors disabled:opacity-40"
+                                        >
+                                            {uploadingCover
+                                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                                : <ImagePlus className="h-3 w-3" />
+                                            }
+                                            Upload Photo
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                             <div className="rounded-xl overflow-hidden border border-white/10 relative">
                                 {selectedAvatar.coverImage ? (
-                                    <img src={selectedAvatar.coverImage} alt="generated" className="w-full object-cover" />
+                                    <img src={selectedAvatar.coverImage} alt="avatar" className="w-full object-cover" />
                                 ) : (
                                     <div className="w-full aspect-video bg-white/5 flex flex-col items-center justify-center gap-2">
                                         {selectedAvatar.status === 'generating' ? null : (
                                             <>
                                                 <Sparkles className="h-6 w-6 text-slate-700" />
-                                                <span className="text-[11px] text-slate-600">No image yet — click Generate</span>
+                                                <span className="text-[11px] text-slate-600">Generate or upload a photo</span>
                                             </>
                                         )}
                                     </div>
@@ -613,8 +671,16 @@ export default function ChannelAvatarsPage() {
                                         <span className="text-xs text-emerald-400 font-medium">Generating...</span>
                                     </div>
                                 )}
+                                {/* Overlay while uploading cover */}
+                                {uploadingCover && (
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+                                        <Loader2 className="h-7 w-7 text-sky-400 animate-spin" />
+                                        <span className="text-xs text-sky-400 font-medium">Uploading...</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
+
 
 
                         {/* ── Prompt ── */}
