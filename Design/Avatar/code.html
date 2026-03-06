@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | Character &amp; Outfit Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#050807",
+                        "card-dark": "#0d1411",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            background-color: #050807;
+            background-image: radial-gradient(circle at 2px 2px, rgba(0, 255, 149, 0.03) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 149, 0.2);
+            border-radius: 10px;
+        }
+        .split-view-divider {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #00ff95;
+            box-shadow: 0 0 15px rgba(0, 255, 149, 0.5);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="font-display text-slate-100 min-h-screen overflow-hidden">
+<div class="flex h-screen">
+<aside class="w-72 border-r border-primary/10 bg-background-dark p-6 flex flex-col gap-6">
+<div class="flex items-center gap-3 px-2">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-background-dark font-bold">face_6</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight text-white uppercase">Catalog</h1>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+<input class="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Search characters..." type="text"/>
+</div>
+<div class="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-2">
+<button class="flex items-center gap-3 p-2 rounded-xl bg-primary/10 border border-primary/20 text-left group">
+<div class="w-12 h-12 rounded-lg bg-slate-800 border border-primary/30 overflow-hidden flex-shrink-0">
+<img alt="Avatar 1" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYfraPJvNLNVpvMZxFmOKyzIvrtq0k0Ux4_RNY6sIexuDRkZFCIzkVZLezEIsfy3elqd5bC4pAF4XhMAycKX2rWK81ET4kK1nQzLlYDYw9fWVZ6NGz5aX6M6-iGI2E9UVCAs0u_n_byxJ7WKBtHSUcP5ALhFxRwD5yooqBLFBMJvdsdwy-hZv7BO-VCJqU7-8_O9Bqr9UdXTd6zFDiTZatmBPebAeX2A1VxKwIUn6XOnbzEbQkozhrcRkkAR-y-EO9qUCvPFlolr0"/>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Nova Prime</p>
+<p class="text-[10px] text-primary uppercase font-bold tracking-widest">Active</p>
+</div>
+</button>
+<button class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 border border-transparent transition-all text-left group">
+<div class="w-12 h-12 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0 grayscale group-hover:grayscale-0 transition-all">
+<img alt="Avatar 2" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA13iMTKepQA4numeloZBtyqRAANtGdeoGCkrllWc0sAawt_Tu3HimD0NEbECo59pUh7obMUfU-HQgToJMrf4kudRdi8LEsKqor2KpSwdSRvJpD2I36vnfrOZFFJwyyw8NjIVnAF9Y80_zVPDy9UPsI8sP0o4TAR1RQvCVS4HsSPnvfAUAEZSEZ8Aa2B4j5PV_-huR9jaTRCD5--j8KArr8DCiL-i676dVdyFxQOlwzRYSLGZknIMIIONyyGr_JGqf8l7b_yAIuCI4"/>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-400 group-hover:text-white transition-colors">Elias Thorne</p>
+<p class="text-[10px] text-slate-600 uppercase font-bold tracking-widest">Idle</p>
+</div>
+</button>
+<button class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 border border-transparent transition-all text-left group">
+<div class="w-12 h-12 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0 grayscale group-hover:grayscale-0 transition-all">
+<img alt="Avatar 3" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDovqNXu7_7y6SS1wINNK_sF5qmo8h0IitRQEmbaEhIwseLXsTuibyjiNRKGpDvItSnRvjpz3Lp3zUZ4Kg9vsVwaSNaP6IXcjRDXpW1df_cRKtP5mb3YoeufjPU7hHbuM7x1R2z5vUCtBAVVkRzY-W-OPg_Za0_y1rgWrZcqqcUMP1CTa36hBa0KLGL8i4s91uFYySN2eyTH18TuINEzyFz99rvrrPcW7cmtXMZYdwybgcaUpFbGiIBou3V1KVKFUyyvhnBCjjxsUw"/>
+</div>
+<div>
+<p class="text-sm font-bold text-slate-400 group-hover:text-white transition-colors">Luna 01</p>
+<p class="text-[10px] text-slate-600 uppercase font-bold tracking-widest">Archived</p>
+</div>
+</button>
+</div>
+<button class="mt-auto flex items-center justify-center gap-2 w-full py-3 border border-dashed border-primary/30 rounded-xl text-primary text-xs font-bold hover:bg-primary/5 transition-all">
+<span class="material-symbols-outlined text-sm">add</span>
+                Create New Character
+            </button>
+</aside>
+<main class="flex-1 flex flex-col min-w-0 bg-background-dark/50 backdrop-blur-sm overflow-y-auto custom-scrollbar">
+<header class="px-8 py-6 flex items-center justify-between sticky top-0 bg-background-dark/80 backdrop-blur-md z-20 border-b border-white/5">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h2 class="text-2xl font-black text-white tracking-tight">Nova Prime</h2>
+<span class="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase">v2.4 Stable</span>
+</div>
+<p class="text-slate-400 text-xs">Consistent character model across all generation pipelines</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-5 py-2.5 bg-white/5 text-white border border-white/10 font-bold text-sm rounded-xl hover:bg-white/10 transition-all">
+<span class="material-symbols-outlined text-sm">sync</span>
+                        Sync Assets
+                    </button>
+<button class="flex items-center gap-2 px-6 py-2.5 bg-primary text-background-dark font-bold text-sm rounded-xl hover:shadow-[0_0_20px_rgba(0,255,149,0.3)] transition-all">
+<span class="material-symbols-outlined text-sm font-bold">bolt</span>
+                        Generate More Angles
+                    </button>
+</div>
+</header>
+<div class="p-8 space-y-8">
+<section>
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-xs font-bold text-primary uppercase tracking-[0.2em]">Consistency Check</h3>
+<div class="flex gap-4">
+<span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Original Image (Left)</span>
+<span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Generated Variation (Right)</span>
+</div>
+</div>
+<div class="relative aspect-[21/9] rounded-2xl overflow-hidden border border-white/10 bg-slate-900 group">
+<div class="flex h-full">
+<div class="w-1/2 h-full relative">
+<img alt="Original" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiiFv9GMPaZ69q-gUnSpS1hkufb726clWya5tYED-YUfuq6PxqebjeEst6WoTTjx5toaeBUJVGcImEK5NtuUuJZ2g5cyAQyVa-M9lZio1RNT0Qbh7zsYHK9PLTKqQ7TdxrsGvr_57iwTR4A_HiQRPYabphk5csxvUkNuppMZ0UraKnOznQGBP37S047WDqQm0NR3xqddnIM6ZbrCDSAMW_WT28ZVncMNy-NTq0PpqjQARHFB32eCFiNAYV8sfAiA5MAKcg_QPtwh4"/>
+<div class="absolute bottom-4 left-4 px-3 py-1 bg-background-dark/80 backdrop-blur-md rounded text-[10px] font-bold uppercase border border-white/10">Reference</div>
+</div>
+<div class="w-1/2 h-full relative">
+<img alt="Generated" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5BADbTXcCVTBM-qOOFz5HgpfS9aRFkdEB1neQ21TE0M3DynDcauiJlzwbvmE87k-dLazeDsQL4MzPhg89DPaxqyDiYdhPTh-Qc3tjxC_fwEaM4Qj5Q4-4i84QjcuVWpMBQj1Gwq4GUsoTqfFzLpAj7WSPktxh5iC9PHtmvgRz_Ux52kn7BjRueQtCmtA33mEEYCrGxgqOwyHqIClD9IHBv2fJaIAkITxMz1gLFXFqpARAYmAVWrPSCQR3QwL1Rlbm7ARImevbV3c"/>
+<div class="absolute bottom-4 right-4 px-3 py-1 bg-primary/20 backdrop-blur-md rounded text-primary text-[10px] font-bold uppercase border border-primary/30">AI Generated</div>
+</div>
+</div>
+<div class="split-view-divider">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg border-2 border-background-dark">
+<span class="material-symbols-outlined text-background-dark text-sm font-bold">unfold_more</span>
+</div>
+</div>
+</div>
+</section>
+<section>
+<h3 class="text-xs font-bold text-primary uppercase tracking-[0.2em] mb-4">Pose Matrix &amp; Body Angles</h3>
+<div class="grid grid-cols-4 gap-4">
+<div class="group relative aspect-[3/4] bg-card-dark border border-white/5 rounded-xl overflow-hidden hover:border-primary/50 transition-all cursor-pointer">
+<img alt="Full Body" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7nsax6-2c79ch2X8NV8JwNrO6ssfn5nMqzqex3Yim2ZlWj_XVlRjTY5JTPQCPmFH2n8CDMU_oYGz2giJz8k8KXQX0tw4nYRwqx_DoaQJK5BlEDiuQR2xftIEK23rO5MxLya-Mkea3MrOeyyk19Al7hvw1y9aq0yNURCIsyg2rNBKbhnQFdKy2pdcBk6thnNcqhr0Q9MOzxaqm4pyQsJEiR5fnSij-bq4rxQiKpsW4VIeqw4Qyqd66TOZD1XmHJu0ENbAXR1rdPMo"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark/90 to-transparent flex flex-col justify-end p-4">
+<p class="text-xs font-bold text-white uppercase tracking-wider">Full Body</p>
+<p class="text-[10px] text-slate-500">Master Reference</p>
+</div>
+</div>
+<div class="group relative aspect-[3/4] bg-card-dark border border-white/5 rounded-xl overflow-hidden hover:border-primary/50 transition-all cursor-pointer">
+<img alt="Front View" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0mE2Mqn57sk12VZ7cXgMQsPEAxGRvUdgUe92nTBN0nH-67wHQZrtHu7YM_QllN1JiAcYxQ30J_1U_d14FCzLx6unhxCHwxBSqAuX1jUV-GqSsAhcG2GF8dVnH3Q7VLc2hg-bX_wfT9dtbVXkg3ULbAwXkMFflhdIdSnH-vcka0a2X9qnZTVN41v-BQyLfjg3W2uipctrvZ88uaEHsvvbTQeOIzKIJ7EP0Vulw5zXy_sDK0AYPWiCqOdBuUt08PUd0w2MJvLZouSs"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark/90 to-transparent flex flex-col justify-end p-4">
+<p class="text-xs font-bold text-white uppercase tracking-wider">Front View</p>
+<p class="text-[10px] text-slate-500">Pose Locked</p>
+</div>
+</div>
+<div class="group relative aspect-[3/4] bg-card-dark border border-white/5 rounded-xl overflow-hidden hover:border-primary/50 transition-all cursor-pointer">
+<img alt="Side View" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdxGlCL7ObzO5SG75sgkrDBw8BHIJ8oliNWf0g9wRGUpX3CWWjz4bR7-s-1L69g-wdYeqgXzCDwI4oON9I4ycNWnXzS7SgEO3JYJo9wfijfjnvScALkWjjUUxXk37DvhGb6PlyNlvkhlZElZfUDf7psM_-PeywomFhOdycwdGLJukDZBK1lj-HB6-_5bZFu7nWXF9j9B1o9CTmne9_x7GiKxOeJNki7jGP8rPLATtt0lnr0K36dcN4GUJM7ePt28Yr9nYsk541x9M"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark/90 to-transparent flex flex-col justify-end p-4">
+<p class="text-xs font-bold text-white uppercase tracking-wider">Side Profile</p>
+<p class="text-[10px] text-slate-500">Anatomy Check</p>
+</div>
+</div>
+<div class="group relative aspect-[3/4] bg-card-dark border border-white/5 rounded-xl overflow-hidden hover:border-primary/50 transition-all cursor-pointer">
+<img alt="3/4 View" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqeVBVJHOf7MKMnVzu44ZYMAlKXg2P3-VH5AyhXggzev0mvUVYMG0MPZIjKxqvfRlB9WsV2qkhX2i6VodhgsnmvITZG5UCqZI4NWhY3PewNYNissd4VpHYfUO1o6rcGyaPRSs5PkfSyaV1B73L_ptPbGoHRBAIsBn8QLCMcB8kgkImSmDA16AX3lVb_ROIwFz7A9CNwI2nWZt6VTzEdfRooCJpTUzsyjjv0UCiL4x_X2_TbauDQbzt0gRUuDYJDuPJufF5hhL4y_w"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark/90 to-transparent flex flex-col justify-end p-4">
+<p class="text-xs font-bold text-white uppercase tracking-wider">3/4 Dynamic</p>
+<p class="text-[10px] text-slate-500">Lighting Applied</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<aside class="w-80 border-l border-primary/10 bg-background-dark p-0 flex flex-col">
+<div class="p-6">
+<h3 class="text-lg font-bold text-white mb-6">Asset Manager</h3>
+<div class="flex border-b border-white/10 mb-6">
+<button class="flex-1 pb-3 text-xs font-bold uppercase tracking-widest text-primary border-b-2 border-primary">Outfits</button>
+<button class="flex-1 pb-3 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-white transition-colors">Accessory</button>
+<button class="flex-1 pb-3 text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-white transition-colors">Props</button>
+</div>
+<div class="space-y-4 overflow-y-auto max-h-[calc(100vh-320px)] pr-2 custom-scrollbar">
+<div class="p-3 rounded-xl bg-card-dark border border-white/5 hover:border-white/20 transition-all group">
+<div class="flex gap-3 mb-3">
+<div class="w-16 h-16 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0">
+<img alt="Outfit 1" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7ztJqJoFg5lclzXVG0YFCvW4WYa0ayI1_ro9HhR2sSMR7Wpir6FvCkYl1Z5HWtjAh2vbQD8SHpOIWTKY7jWjdw3R_l66eykk1AmA0vsyABTzzOXApzEkogZphKLsQb9EEddbyzadzhcBXu5vcFYUX3U6-qeGYriBzWryjSiOfD2XEXy5ay5Va5439gZra8V_J9DD4JqW-NY7szr5HcAoDS7JdSOSCWg3trvWPxVz2ijGoi0myystAyovgttZ1xM8_KF2hjlRz9TI"/>
+</div>
+<div class="flex-1">
+<div class="flex items-start justify-between">
+<p class="text-sm font-bold text-white">Urban Techwear</p>
+<span class="material-symbols-outlined text-slate-500 text-sm cursor-pointer hover:text-primary transition-colors">more_horiz</span>
+</div>
+<p class="text-[10px] text-slate-500 mt-1 uppercase">Variant: Midnight</p>
+<div class="mt-2 flex gap-1">
+<span class="w-2 h-2 rounded-full bg-slate-900 border border-white/20"></span>
+<span class="w-2 h-2 rounded-full bg-primary/40 border border-white/20"></span>
+</div>
+</div>
+</div>
+<button class="w-full py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all">Apply to Model</button>
+</div>
+<div class="p-3 rounded-xl bg-card-dark border border-white/5 hover:border-white/20 transition-all group">
+<div class="flex gap-3 mb-3">
+<div class="w-16 h-16 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0">
+<img alt="Outfit 2" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEPkT2fEb_QHt7eWY-_cjsEdBQpdUJW6B1CnxykssMAOz8VjJaew6OiF104CgvVD_Q7aJtNWcEEVmVqqvb9WeHESrQnhc1KdLBbamjq-QeoUEUmQcGNB3eL3gMHT_TyF7LEXtcmgvSd7rC3nfy4TVf3AZ1-gICiETB4ccqPaFC3KPKtYCf0bVl7F5_L9gnUuKdjgBfCdiZGbyPAwFKxtsLvbVVEme5dZAdoNL598YH_331oBnjfUTVUC0285rhlMHffot7lIzv708"/>
+</div>
+<div class="flex-1">
+<div class="flex items-start justify-between">
+<p class="text-sm font-bold text-white">Nomad Leather</p>
+<span class="material-symbols-outlined text-slate-500 text-sm cursor-pointer hover:text-primary transition-colors">more_horiz</span>
+</div>
+<p class="text-[10px] text-slate-500 mt-1 uppercase">Variant: Desert</p>
+<div class="mt-2 flex gap-1">
+<span class="w-2 h-2 rounded-full bg-orange-900 border border-white/20"></span>
+<span class="w-2 h-2 rounded-full bg-yellow-700 border border-white/20"></span>
+</div>
+</div>
+</div>
+<button class="w-full py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all">Apply to Model</button>
+</div>
+<div class="p-3 rounded-xl bg-card-dark border border-white/5 hover:border-white/20 transition-all group">
+<div class="flex gap-3 mb-3">
+<div class="w-16 h-16 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0">
+<img alt="Outfit 3" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqsJaIXtSRRN5wbpNaRgSVzp0IbLK_CkExCee3zh_TMvldGT5Zahl--6Hg4igrpwJXFBlb8QFB4k9expOZJqF3_xXHUArIlmdubEwpcgXgb8rnkB4V4NeeAlxlPiQoQwMZ8uqFVU3tZBV2g5U_j1z7DPgEV5mcLRqT-qXNrIx1yHjPbkCwu6DpCgqXn8gbVhBsIDPWtC2UKM7y8L_OAxxxZp9nM6ylXmtqA6G0cCzb-bjgx7-dPlFk_C5mHZ2S1Lw_tuA1VqaBB6g"/>
+</div>
+<div class="flex-1">
+<div class="flex items-start justify-between">
+<p class="text-sm font-bold text-white">Classic Formal</p>
+<span class="material-symbols-outlined text-slate-500 text-sm cursor-pointer hover:text-primary transition-colors">more_horiz</span>
+</div>
+<p class="text-[10px] text-slate-500 mt-1 uppercase">Variant: Onyx</p>
+<div class="mt-2 flex gap-1">
+<span class="w-2 h-2 rounded-full bg-white border border-white/20"></span>
+<span class="w-2 h-2 rounded-full bg-black border border-white/20"></span>
+</div>
+</div>
+</div>
+<button class="w-full py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all">Apply to Model</button>
+</div>
+</div>
+</div>
+<div class="mt-auto p-6 border-t border-white/5 bg-background-dark/80 backdrop-blur-md">
+<button class="flex items-center justify-center gap-2 w-full py-4 bg-primary text-background-dark font-black rounded-xl hover:shadow-[0_0_25px_rgba(0,255,149,0.4)] transition-all">
+<span class="material-symbols-outlined font-bold">apparel</span>
+                    Create New Outfit
+                </button>
+<p class="text-[10px] text-center text-slate-500 mt-4 uppercase font-bold tracking-[0.2em]">Character Engine v4.0.2</p>
+</div>
+</aside>
+</div>
+
+</body></html>
