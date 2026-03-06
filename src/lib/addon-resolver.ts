@@ -84,7 +84,7 @@ export async function getEffectiveLimits(userId: string): Promise<EffectiveLimit
         hasAdvancedReports: plan?.hasAdvancedReports ?? FREE_PLAN_DEFAULTS.hasAdvancedReports,
         hasPrioritySupport: plan?.hasPrioritySupport ?? FREE_PLAN_DEFAULTS.hasPrioritySupport,
         hasWhiteLabel: plan?.hasWhiteLabel ?? FREE_PLAN_DEFAULTS.hasWhiteLabel,
-        hasSmartFlow: plan?.hasSmartFlow ?? FREE_PLAN_DEFAULTS.hasSmartFlow,
+        hasSmartFlow: !!(plan?.hasSmartFlow) || (plan?.maxSmartFlowJobsPerMonth !== 0 && plan?.maxSmartFlowJobsPerMonth != null),
         hasBotUsageAnalytics: plan?.hasBotUsageAnalytics ?? FREE_PLAN_DEFAULTS.hasBotUsageAnalytics,
     }
 

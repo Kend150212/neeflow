@@ -104,8 +104,8 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             hasAdvancedReports: p.hasAdvancedReports,
             hasPrioritySupport: p.hasPrioritySupport,
             hasWhiteLabel: p.hasWhiteLabel,
-            hasSmartFlow: (p as any).hasSmartFlow ?? false,
-            hasBotUsageAnalytics: (p as any).hasBotUsageAnalytics ?? false,
+            hasSmartFlow: !!(p as any).hasSmartFlow || ((p as any).maxSmartFlowJobsPerMonth !== 0),
+            hasBotUsageAnalytics: !!(p as any).hasBotUsageAnalytics ?? false,
             maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
             isInTrial: isStripeTrial
                 || daysLeftInTrial > 0
@@ -185,8 +185,8 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             hasAdvancedReports: p.hasAdvancedReports,
             hasPrioritySupport: p.hasPrioritySupport,
             hasWhiteLabel: p.hasWhiteLabel,
-            hasSmartFlow: (p as any).hasSmartFlow ?? false,
-            hasBotUsageAnalytics: (p as any).hasBotUsageAnalytics ?? false,
+            hasSmartFlow: !!(p as any).hasSmartFlow || ((p as any).maxSmartFlowJobsPerMonth !== 0),
+            hasBotUsageAnalytics: !!(p as any).hasBotUsageAnalytics ?? false,
             maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
             isInTrial: false,
             trialEndsAt,
