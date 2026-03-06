@@ -5794,10 +5794,8 @@ export default function ComposePage() {
             }
 
             {/* ── AI Image Studio Dialog ── */}
-            <Dialog open={showImagePicker} onOpenChange={(open) => {
-                setShowImagePicker(open)
-            }}>
-                <DialogContent className="max-w-4xl w-[95vw] max-h-[92vh] overflow-hidden p-0 text-white flex flex-col" showCloseButton={false}
+            <Dialog open={showImagePicker} onOpenChange={(open) => { setShowImagePicker(open) }}>
+                <DialogContent className="max-w-5xl w-[96vw] max-h-[92vh] overflow-hidden p-0 text-white flex flex-col" showCloseButton={false}
                     style={{ background: '#0e1a14', border: '1px solid rgba(43,238,157,0.12)' }}>
 
                     {/* ── Header ── */}
@@ -5807,25 +5805,6 @@ export default function ComposePage() {
                                 <Sparkles className="h-4 w-4 text-[#0e1a14]" />
                             </div>
                             <span className="text-sm font-bold tracking-tight" style={{ color: '#2bee9d' }}>AI Image Studio</span>
-                            {/* Tab switcher */}
-                            <div className="flex items-center ml-2 gap-0 p-0.5 rounded-lg" style={{ background: 'rgba(43,238,157,0.06)', border: '1px solid rgba(43,238,157,0.12)' }}>
-                                {([
-                                    { key: 'ai' as const, label: 'Generate' },
-                                    { key: 'article' as const, label: 'Article' },
-                                ] as { key: 'ai' | 'article'; label: string }[]).map(t => (
-                                    <button
-                                        key={t.key}
-                                        type="button"
-                                        onClick={() => setImagePickerTab(t.key)}
-                                        className="px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer"
-                                        style={imagePickerTab === t.key
-                                            ? { background: '#2bee9d', color: '#0e1a14' }
-                                            : { color: 'rgba(43,238,157,0.5)' }}
-                                    >
-                                        {t.label}
-                                    </button>
-                                ))}
-                            </div>
                         </div>
                         <div className="flex items-center gap-2.5">
                             {imageQuota.limit > 0 && (
@@ -5852,7 +5831,6 @@ export default function ComposePage() {
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(43,238,157,0.5)' }}>Branding Kit</p>
 
-                                {/* Toggle */}
                                 <label className="flex items-center gap-2.5 cursor-pointer mb-4">
                                     <div
                                         onClick={() => {
@@ -5870,16 +5848,10 @@ export default function ComposePage() {
                                     <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>Apply Watermark</span>
                                 </label>
 
-                                {/* Logo upload */}
                                 <div
                                     onClick={() => brandLogoInputRef.current?.click()}
                                     className="relative rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all overflow-hidden mb-3"
-                                    style={{
-                                        height: '88px',
-                                        borderColor: brandingEnabled ? 'rgba(43,238,157,0.35)' : 'rgba(255,255,255,0.08)',
-                                        opacity: brandingEnabled ? 1 : 0.4,
-                                        pointerEvents: brandingEnabled ? 'auto' : 'none',
-                                    }}
+                                    style={{ height: '88px', borderColor: brandingEnabled ? 'rgba(43,238,157,0.35)' : 'rgba(255,255,255,0.08)', opacity: brandingEnabled ? 1 : 0.4, pointerEvents: brandingEnabled ? 'auto' : 'none' }}
                                 >
                                     {brandLogoDataUrl ? (
                                         <img src={brandLogoDataUrl} alt="Logo" className="max-h-full max-w-full object-contain p-2" />
@@ -5897,53 +5869,30 @@ export default function ComposePage() {
                                     reader.onload = ev => {
                                         const url = ev.target?.result as string
                                         setBrandLogoDataUrl(url)
-                                        if (selectedChannel) {
-                                            try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: url, position: brandLogoPosition, opacity: brandLogoOpacity, enabled: brandingEnabled })) } catch { }
-                                        }
+                                        if (selectedChannel) { try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: url, position: brandLogoPosition, opacity: brandLogoOpacity, enabled: brandingEnabled })) } catch { } }
                                     }
                                     reader.readAsDataURL(file)
                                     if (e.target) e.target.value = ''
                                 }} />
 
-                                {/* Position grid */}
                                 <div style={{ opacity: brandingEnabled ? 1 : 0.3, pointerEvents: brandingEnabled ? 'auto' : 'none' }}>
                                     <p className="text-[10px] mb-1.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Position</p>
                                     <div className="grid grid-cols-3 gap-1 p-1 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(43,238,157,0.08)' }}>
                                         {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(pos => (
-                                            <button
-                                                key={pos}
-                                                type="button"
-                                                onClick={() => {
-                                                    setBrandLogoPosition(pos)
-                                                    if (selectedChannel) {
-                                                        try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: pos, opacity: brandLogoOpacity, enabled: brandingEnabled })) } catch { }
-                                                    }
-                                                }}
+                                            <button key={pos} type="button"
+                                                onClick={() => { setBrandLogoPosition(pos); if (selectedChannel) { try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: pos, opacity: brandLogoOpacity, enabled: brandingEnabled })) } catch { } } }}
                                                 className="h-7 rounded transition-all cursor-pointer"
-                                                style={brandLogoPosition === pos
-                                                    ? { background: '#2bee9d', boxShadow: '0 0 10px rgba(43,238,157,0.4)' }
-                                                    : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                                                style={brandLogoPosition === pos ? { background: '#2bee9d', boxShadow: '0 0 10px rgba(43,238,157,0.4)' } : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
                                             />
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* Opacity */}
                                 <div className="mt-3" style={{ opacity: brandingEnabled ? 1 : 0.3, pointerEvents: brandingEnabled ? 'auto' : 'none' }}>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <p className="text-[10px]" style={{ color: 'rgba(43,238,157,0.5)' }}>Opacity: {brandLogoOpacity}%</p>
-                                    </div>
-                                    <input
-                                        type="range" min={10} max={100} value={brandLogoOpacity}
-                                        onChange={e => {
-                                            const v = Number(e.target.value)
-                                            setBrandLogoOpacity(v)
-                                            if (selectedChannel) {
-                                                try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: brandLogoPosition, opacity: v, enabled: brandingEnabled })) } catch { }
-                                            }
-                                        }}
-                                        className="w-full h-1.5 rounded-full cursor-pointer"
-                                        style={{ accentColor: '#2bee9d' }}
+                                    <p className="text-[10px] mb-1.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Opacity: {brandLogoOpacity}%</p>
+                                    <input type="range" min={10} max={100} value={brandLogoOpacity}
+                                        onChange={e => { const v = Number(e.target.value); setBrandLogoOpacity(v); if (selectedChannel) { try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: brandLogoPosition, opacity: v, enabled: brandingEnabled })) } catch { } } }}
+                                        className="w-full h-1.5 rounded-full cursor-pointer" style={{ accentColor: '#2bee9d' }}
                                     />
                                 </div>
                             </div>
@@ -5958,10 +5907,7 @@ export default function ComposePage() {
                                 ) : (
                                     <div className="grid grid-cols-2 gap-1.5">
                                         {aiHistoryMedia.slice(0, 12).map(item => (
-                                            <button
-                                                key={item.id}
-                                                type="button"
-                                                title={item.originalName || 'AI image'}
+                                            <button key={item.id} type="button" title={item.originalName || 'AI image'}
                                                 onClick={() => { addFromLibrary(item); setShowImagePicker(false) }}
                                                 className="aspect-square rounded-lg overflow-hidden transition-all cursor-pointer"
                                                 style={{ border: '1px solid rgba(43,238,157,0.1)' }}
@@ -5977,354 +5923,277 @@ export default function ComposePage() {
                         {/* ════ RIGHT: AI Controls ════ */}
                         <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
-                            {/* AI Tab */}
-                            {imagePickerTab === 'ai' && (
-                                <>
-                                    {/* AI ENGINE */}
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>AI Engine</p>
-                                        <div className="space-y-2">
-                                            {/* Provider */}
-                                            {(() => {
-                                                const currentSelectValue = overrideImageProvider || '__auto__'
-                                                const rawProvider = (() => {
-                                                    if (!currentSelectValue || currentSelectValue === '__auto__') return selectedChannel?.defaultImageProvider || ''
-                                                    const parts = currentSelectValue.split(':')
-                                                    return parts.length > 1 ? parts.slice(1).join(':') : parts[0]
-                                                })()
-                                                const handleProviderChange = (selectVal: string) => {
-                                                    if (selectVal === '__auto__') { setOverrideImageProvider(''); return }
-                                                    setOverrideImageProvider(selectVal)
-                                                    setOverrideImageModel('')
-                                                    setAvailableImageModels([])
-                                                    const [source, ...rest] = selectVal.split(':')
-                                                    const providerName = rest.join(':')
-                                                    if (providerName) {
-                                                        if (source === 'plan') {
-                                                            setLoadingImageModels(true)
-                                                            fetch('/api/admin/posts/plan-models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
-                                                                .then(r => r.json()).then(d => { setAvailableImageModels((d.models || []).map((m: { id: string; name?: string }) => ({ id: m.id, name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id, type: 'image' as const }))) })
-                                                                .catch(() => { }).finally(() => setLoadingImageModels(false))
-                                                        } else {
-                                                            setLoadingImageModels(true)
-                                                            fetch('/api/user/api-keys/models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
-                                                                .then(r => r.json()).then(d => { setAvailableImageModels((d.models || []).filter((m: { type?: string }) => m.type === 'image')) })
-                                                                .catch(() => { }).finally(() => setLoadingImageModels(false))
-                                                        }
-                                                    }
+                            {/* AI ENGINE */}
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>AI Engine</p>
+                                <div className="space-y-2">
+                                    {(() => {
+                                        const currentSelectValue = overrideImageProvider || '__auto__'
+                                        const rawProvider = (() => {
+                                            if (!currentSelectValue || currentSelectValue === '__auto__') return selectedChannel?.defaultImageProvider || ''
+                                            const parts = currentSelectValue.split(':')
+                                            return parts.length > 1 ? parts.slice(1).join(':') : parts[0]
+                                        })()
+                                        const handleProviderChange = (selectVal: string) => {
+                                            if (selectVal === '__auto__') { setOverrideImageProvider(''); return }
+                                            setOverrideImageProvider(selectVal)
+                                            setOverrideImageModel('')
+                                            setAvailableImageModels([])
+                                            const [source, ...rest] = selectVal.split(':')
+                                            const providerName = rest.join(':')
+                                            if (providerName) {
+                                                if (source === 'plan') {
+                                                    setLoadingImageModels(true)
+                                                    fetch('/api/admin/posts/plan-models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
+                                                        .then(r => r.json()).then(d => { setAvailableImageModels((d.models || []).map((m: { id: string; name?: string }) => ({ id: m.id, name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id, type: 'image' as const }))) })
+                                                        .catch(() => { }).finally(() => setLoadingImageModels(false))
+                                                } else {
+                                                    setLoadingImageModels(true)
+                                                    fetch('/api/user/api-keys/models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
+                                                        .then(r => r.json()).then(d => { setAvailableImageModels((d.models || []).filter((m: { type?: string }) => m.type === 'image')) })
+                                                        .catch(() => { }).finally(() => setLoadingImageModels(false))
                                                 }
-                                                return (
-                                                    <Select value={currentSelectValue} onValueChange={handleProviderChange}>
-                                                        <SelectTrigger className="w-full h-10 text-sm focus:ring-0" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}>
-                                                            <SelectValue>
-                                                                {rawProvider
-                                                                    ? (byokProviders.find(p => p.provider === rawProvider)?.name || planProviders.find(p => p.provider === rawProvider)?.name || rawProvider)
-                                                                    : 'Auto-detect provider'}
-                                                            </SelectValue>
-                                                        </SelectTrigger>
-                                                        <SelectContent style={{ background: '#162e24', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}>
-                                                            <SelectItem value="__auto__" className="text-sm">Auto-detect provider</SelectItem>
-                                                            {byokProviders.length > 0 && (<>
-                                                                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: 'rgba(43,238,157,0.5)' }}>📌 YOUR KEYS (unlimited)</div>
-                                                                {byokProviders.map(p => <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-sm">{p.name}</SelectItem>)}
-                                                            </>)}
-                                                            {planProviders.length > 0 && imageQuota.limit !== 0 && (<>
-                                                                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: 'rgba(43,238,157,0.5)' }}>⚡ PLAN ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
-                                                                {planProviders.map(p => <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-sm">{p.name}</SelectItem>)}
-                                                            </>)}
-                                                        </SelectContent>
-                                                    </Select>
-                                                )
-                                            })()}
-
-                                            {/* Model */}
-                                            <div className="relative">
-                                                <select
-                                                    value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
-                                                    onChange={e => setOverrideImageModel(e.target.value)}
-                                                    disabled={loadingImageModels}
-                                                    className="w-full h-10 text-sm rounded-lg px-3 focus:outline-none disabled:opacity-50"
-                                                    style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}
-                                                >
-                                                    <option value="">Default model</option>
-                                                    {availableImageModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                                </select>
-                                                {loadingImageModels && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin" style={{ color: 'rgba(43,238,157,0.5)' }} />}
-                                            </div>
-
-                                            {byokProviders.length === 0 && planProviders.length === 0 && (
-                                                <p className="text-[11px] rounded-lg px-3 py-2" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
-                                                    ⚠️ No providers. Add an API key in <strong>API Hub</strong> or upgrade your plan.
-                                                </p>
-                                            )}
-                                        </div>
+                                            }
+                                        }
+                                        return (
+                                            <Select value={currentSelectValue} onValueChange={handleProviderChange}>
+                                                <SelectTrigger className="w-full h-10 text-sm focus:ring-0" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}>
+                                                    <SelectValue>
+                                                        {rawProvider ? (byokProviders.find(p => p.provider === rawProvider)?.name || planProviders.find(p => p.provider === rawProvider)?.name || rawProvider) : 'Auto-detect provider'}
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent style={{ background: '#162e24', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}>
+                                                    <SelectItem value="__auto__" className="text-sm">Auto-detect provider</SelectItem>
+                                                    {byokProviders.length > 0 && (<>
+                                                        <div className="px-2 py-1 text-[10px] font-bold" style={{ color: 'rgba(43,238,157,0.5)' }}>📌 YOUR KEYS (unlimited)</div>
+                                                        {byokProviders.map(p => <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-sm">{p.name}</SelectItem>)}
+                                                    </>)}
+                                                    {planProviders.length > 0 && imageQuota.limit !== 0 && (<>
+                                                        <div className="px-2 py-1 text-[10px] font-bold" style={{ color: 'rgba(43,238,157,0.5)' }}>⚡ PLAN ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
+                                                        {planProviders.map(p => <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-sm">{p.name}</SelectItem>)}
+                                                    </>)}
+                                                </SelectContent>
+                                            </Select>
+                                        )
+                                    })()}
+                                    <div className="relative">
+                                        <select value={overrideImageModel || selectedChannel?.defaultImageModel || ''} onChange={e => setOverrideImageModel(e.target.value)} disabled={loadingImageModels}
+                                            className="w-full h-10 text-sm rounded-lg px-3 focus:outline-none disabled:opacity-50"
+                                            style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}>
+                                            <option value="">Default model</option>
+                                            {availableImageModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                        </select>
+                                        {loadingImageModels && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin" style={{ color: 'rgba(43,238,157,0.5)' }} />}
                                     </div>
-
-                                    {/* ASPECT RATIO */}
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Aspect Ratio</p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {([
-                                                { value: '1:1' as const, label: '1:1' },
-                                                { value: '16:9' as const, label: '16:9' },
-                                                { value: '9:16' as const, label: '9:16' },
-                                                { value: '4:3' as const, label: '4:3' },
-                                                { value: '3:4' as const, label: '3:4' },
-                                                { value: '4:5' as const, label: '4:5' },
-                                            ] as { value: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'; label: string }[]).map(r => (
-                                                <button
-                                                    key={r.value}
-                                                    type="button"
-                                                    onClick={() => setImageAspectRatio(r.value)}
-                                                    className="py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
-                                                    style={imageAspectRatio === r.value
-                                                        ? { background: '#2bee9d', color: '#0e1a14', boxShadow: '0 0 12px rgba(43,238,157,0.3)' }
-                                                        : { background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)', color: 'rgba(255,255,255,0.5)' }}
-                                                >
-                                                    {r.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* REFERENCE IMAGE */}
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Reference Image</p>
-                                        <div
-                                            onClick={() => refImageInputRef.current?.click()}
-                                            className="relative rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all overflow-hidden"
-                                            style={{ height: '90px', borderColor: 'rgba(43,238,157,0.2)' }}
-                                        >
-                                            {refImageDataUrl ? (
-                                                <>
-                                                    <img src={refImageDataUrl} alt="Ref" className="h-full w-full object-contain p-1" />
-                                                    <button
-                                                        type="button"
-                                                        onClick={e => { e.stopPropagation(); setRefImageDataUrl(null); setRefImageFile(null) }}
-                                                        className="absolute top-1.5 right-1.5 h-5 w-5 rounded-full flex items-center justify-center"
-                                                        style={{ background: 'rgba(0,0,0,0.7)' }}
-                                                    >
-                                                        <X className="h-3 w-3 text-white" />
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <ImageIcon className="h-6 w-6" style={{ color: 'rgba(43,238,157,0.3)' }} />
-                                                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>Upload reference image</p>
-                                                </>
-                                            )}
-                                        </div>
-                                        <input ref={refImageInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
-                                            const file = e.target.files?.[0]
-                                            if (!file) return
-                                            setRefImageFile(file)
-                                            const reader = new FileReader()
-                                            reader.onload = ev => setRefImageDataUrl(ev.target?.result as string)
-                                            reader.readAsDataURL(file)
-                                            if (e.target) e.target.value = ''
-                                        }} />
-                                    </div>
-
-                                    {/* TYPOGRAPHY */}
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Typography</p>
-                                        <div className="space-y-2">
-                                            <input
-                                                type="text"
-                                                placeholder="Text to render in image..."
-                                                value={typoText}
-                                                onChange={e => setTypoText(e.target.value)}
-                                                className="w-full h-10 rounded-lg px-3 text-sm placeholder:text-white/25 focus:outline-none"
-                                                style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}
-                                            />
-                                            <select
-                                                value={typoFont}
-                                                onChange={e => setTypoFont(e.target.value)}
-                                                className="w-full h-10 rounded-lg px-3 text-sm focus:outline-none"
-                                                style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}
-                                            >
-                                                {['Inter', 'Space Grotesk', 'Playfair Display', 'Montserrat', 'Roboto', 'Oswald', 'Bebas Neue'].map(f => (
-                                                    <option key={f} value={f}>{f}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* PROMPT + STYLE PRESETS */}
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Prompt</p>
-
-                                        {/* Visual style presets */}
-                                        <div className="flex gap-2.5 overflow-x-auto pb-2 mb-3" style={{ scrollbarWidth: 'none' }}>
-                                            {[
-                                                { id: '', label: 'None', emoji: '✨' },
-                                                { id: 'cinematic', label: 'Cinematic', emoji: '🎬' },
-                                                { id: '3d-render', label: '3D Render', emoji: '🧊' },
-                                                { id: 'cyberpunk', label: 'Cyberpunk', emoji: '⚡' },
-                                                { id: 'anime', label: 'Anime', emoji: '🌸' },
-                                                { id: 'neon', label: 'Neon', emoji: '🌟' },
-                                                { id: 'minimalist', label: 'Minimal', emoji: '◻️' },
-                                                { id: 'ethereal', label: 'Ethereal', emoji: '🌊' },
-                                                { id: 'vintage', label: 'Vintage', emoji: '📷' },
-                                            ].map(s => (
-                                                <button
-                                                    key={s.id}
-                                                    type="button"
-                                                    onClick={() => setSelectedStyle(s.id)}
-                                                    className="shrink-0 flex flex-col items-center gap-1.5 cursor-pointer transition-all group"
-                                                >
-                                                    <div
-                                                        className="h-14 w-14 rounded-xl flex items-center justify-center text-2xl transition-all"
-                                                        style={selectedStyle === s.id
-                                                            ? { background: 'rgba(43,238,157,0.15)', border: '2px solid #2bee9d', boxShadow: '0 0 12px rgba(43,238,157,0.25)' }
-                                                            : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(43,238,157,0.1)' }}
-                                                    >
-                                                        {s.emoji}
-                                                    </div>
-                                                    <span
-                                                        className="text-[9px] font-bold uppercase tracking-tight"
-                                                        style={{ color: selectedStyle === s.id ? '#2bee9d' : 'rgba(255,255,255,0.35)' }}
-                                                    >
-                                                        {s.label}
-                                                    </span>
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Dual mode toggle */}
-                                        {content.trim() && (
-                                            <div className="flex gap-1.5 mb-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setUseContentAsPrompt(true); setAiImagePrompt(content.substring(0, 500)) }}
-                                                    className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer"
-                                                    style={useContentAsPrompt
-                                                        ? { background: 'rgba(43,238,157,0.12)', border: '1px solid rgba(43,238,157,0.4)', color: '#2bee9d' }
-                                                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}
-                                                >
-                                                    <Sparkles className="h-3 w-3 mx-auto mb-0.5" />
-                                                    Auto from Content
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setUseContentAsPrompt(false); setAiImagePrompt('') }}
-                                                    className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer"
-                                                    style={!useContentAsPrompt
-                                                        ? { background: 'rgba(43,238,157,0.12)', border: '1px solid rgba(43,238,157,0.4)', color: '#2bee9d' }
-                                                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}
-                                                >
-                                                    <Pencil className="h-3 w-3 mx-auto mb-0.5" />
-                                                    Custom Prompt
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {/* Prompt textarea */}
-                                        {useContentAsPrompt && content.trim() ? (
-                                            <div className="rounded-xl p-3 mb-3" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)' }}>
-                                                <p className="text-xs line-clamp-3" style={{ color: 'rgba(255,255,255,0.45)' }}>{content.substring(0, 250)}{content.length > 250 ? '...' : ''}</p>
-                                                <p className="text-[10px] mt-1.5" style={{ color: 'rgba(43,238,157,0.4)' }}>AI will match this content</p>
-                                            </div>
-                                        ) : (
-                                            <textarea
-                                                placeholder="Describe the image you want to generate..."
-                                                value={aiImagePrompt}
-                                                onChange={e => setAiImagePrompt(e.target.value)}
-                                                onKeyDown={e => e.key === 'Enter' && e.ctrlKey && aiImagePrompt.trim() && handleAiImageGenerate()}
-                                                rows={3}
-                                                className="w-full rounded-xl px-4 py-3 text-sm placeholder:text-white/25 focus:outline-none resize-none mb-3"
-                                                style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}
-                                            />
-                                        )}
-
-                                        {visualIdea && !useContentAsPrompt && (
-                                            <p className="text-[11px] mb-3" style={{ color: 'rgba(43,238,157,0.5)' }}>💡 {visualIdea}</p>
-                                        )}
-
-                                        {/* Generate button */}
-                                        <button
-                                            type="button"
-                                            onClick={handleAiImageGenerate}
-                                            disabled={generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel}
-                                            className="w-full h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
-                                            style={{
-                                                background: 'linear-gradient(135deg, #2bee9d, #1ab87a)',
-                                                color: '#0e1a14',
-                                                boxShadow: '0 0 24px rgba(43,238,157,0.25)',
-                                                opacity: (generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel) ? 0.4 : 1,
-                                            }}
-                                        >
-                                            {generatingImage ? (
-                                                <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
-                                            ) : (
-                                                <><Sparkles className="h-4 w-4" /> Generate Image</>
-                                            )}
-                                        </button>
-
-                                        {/* Result */}
-                                        {aiGeneratedPreview && !generatingImage && (
-                                            <div className="mt-4 space-y-3">
-                                                <div className="relative rounded-xl overflow-hidden aspect-video" style={{ background: 'rgba(0,0,0,0.4)' }}>
-                                                    <img src={aiGeneratedPreview} alt="AI Generated" className="w-full h-full object-contain" />
-                                                </div>
-                                                {lastUsedImageModel && (
-                                                    <p className="text-[11px] flex items-center gap-1" style={{ color: 'rgba(43,238,157,0.6)' }}>
-                                                        <Check className="h-3 w-3" style={{ color: '#2bee9d' }} /> Generated with {lastUsedImageModel}
-                                                    </p>
-                                                )}
-                                                <div className="flex gap-2">
-                                                    <button type="button" onClick={handleAiImageGenerate} disabled={generatingImage} className="flex-1 h-9 rounded-lg text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
-                                                        <RefreshCw className="h-3.5 w-3.5" /> Regenerate
-                                                    </button>
-                                                    <button type="button" onClick={() => setShowImagePicker(false)} className="flex-1 h-9 rounded-lg text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer font-semibold" style={{ background: 'rgba(43,238,157,0.15)', border: '1px solid rgba(43,238,157,0.3)', color: '#2bee9d' }}>
-                                                        <Check className="h-3.5 w-3.5" /> Done
-                                                    </button>
-                                                </div>
-                                                <p className="text-[11px] flex items-center gap-1" style={{ color: '#2bee9d' }}>
-                                                    <Check className="h-3 w-3" /> Saved to media library &amp; attached
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Article Tab */}
-                            {imagePickerTab === 'article' && (
-                                <div className="space-y-4 pt-2">
-                                    <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Download featured image from an article URL.</p>
-                                    {aiTopic.startsWith('http') ? (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2 text-xs rounded-lg p-2.5" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)' }}>
-                                                <ExternalLink className="h-3.5 w-3.5 shrink-0" style={{ color: 'rgba(43,238,157,0.5)' }} />
-                                                <span className="truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{aiTopic}</span>
-                                            </div>
-                                            <Button size="sm" className="cursor-pointer w-full" disabled={downloadingStock !== null} onClick={async () => {
-                                                if (!selectedChannel) return
-                                                setDownloadingStock(-1)
-                                                try {
-                                                    const res = await fetch('/api/admin/posts/stock-images', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'download', channelId: selectedChannel.id, photoUrl: aiTopic, alt: 'Article image' }) })
-                                                    const data = await res.json()
-                                                    if (!res.ok) throw new Error(data.error)
-                                                    addFromLibrary(data.mediaItem)
-                                                    toast.success('Article image downloaded!')
-                                                    setShowImagePicker(false)
-                                                } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to download image') }
-                                                finally { setDownloadingStock(null) }
-                                            }}>
-                                                {downloadingStock === -1 ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <ImageIcon className="h-4 w-4 mr-1.5" />}
-                                                Extract &amp; Download Article Image
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-12">
-                                            <Newspaper className="h-9 w-9 mx-auto mb-3" style={{ color: 'rgba(43,238,157,0.2)' }} />
-                                            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>No article URL detected.</p>
-                                            <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.2)' }}>Paste an article URL in the topic input first.</p>
-                                        </div>
+                                    {byokProviders.length === 0 && planProviders.length === 0 && (
+                                        <p className="text-[11px] rounded-lg px-3 py-2" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                                            ⚠️ No providers. Add an API key in <strong>API Hub</strong> or upgrade your plan.
+                                        </p>
                                     )}
                                 </div>
-                            )}
+                            </div>
+
+                            {/* ASPECT RATIO */}
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Aspect Ratio</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {([
+                                        { value: '1:1' as const, label: '1:1' },
+                                        { value: '16:9' as const, label: '16:9' },
+                                        { value: '9:16' as const, label: '9:16' },
+                                        { value: '4:3' as const, label: '4:3' },
+                                        { value: '3:4' as const, label: '3:4' },
+                                        { value: '4:5' as const, label: '4:5' },
+                                    ] as { value: '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5', label: string }[]).map(r => (
+                                        <button key={r.value} type="button" onClick={() => setImageAspectRatio(r.value)}
+                                            className="py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+                                            style={imageAspectRatio === r.value
+                                                ? { background: '#2bee9d', color: '#0e1a14', boxShadow: '0 0 12px rgba(43,238,157,0.3)' }
+                                                : { background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)', color: 'rgba(255,255,255,0.5)' }}>
+                                            {r.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* REFERENCE IMAGE — with drag & drop */}
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Reference Image</p>
+                                <div
+                                    onClick={() => { if (!refImageDataUrl) refImageInputRef.current?.click() }}
+                                    onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                                    onDragEnter={e => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.borderColor = '#2bee9d' }}
+                                    onDragLeave={e => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(43,238,157,0.2)' }}
+                                    onDrop={e => {
+                                        e.preventDefault(); e.stopPropagation();
+                                        (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(43,238,157,0.2)'
+                                        const file = e.dataTransfer.files?.[0]
+                                        if (!file || !file.type.startsWith('image/')) return
+                                        setRefImageFile(file)
+                                        const reader = new FileReader()
+                                        reader.onload = ev => setRefImageDataUrl(ev.target?.result as string)
+                                        reader.readAsDataURL(file)
+                                    }}
+                                    className="relative rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all overflow-hidden"
+                                    style={{ height: '100px', borderColor: 'rgba(43,238,157,0.2)', cursor: refImageDataUrl ? 'default' : 'pointer' }}
+                                >
+                                    {refImageDataUrl ? (
+                                        <>
+                                            <img src={refImageDataUrl} alt="Ref" className="h-full w-full object-contain p-1" />
+                                            <button type="button" onClick={e => { e.stopPropagation(); setRefImageDataUrl(null); setRefImageFile(null) }}
+                                                className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full flex items-center justify-center"
+                                                style={{ background: 'rgba(0,0,0,0.7)' }}>
+                                                <X className="h-3 w-3 text-white" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ color: 'rgba(43,238,157,0.4)' }}>
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                            </svg>
+                                            <p className="text-xs font-medium" style={{ color: 'rgba(43,238,157,0.5)' }}>Drop image or click to upload</p>
+                                        </>
+                                    )}
+                                </div>
+                                <input ref={refImageInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
+                                    const file = e.target.files?.[0]
+                                    if (!file) return
+                                    setRefImageFile(file)
+                                    const reader = new FileReader()
+                                    reader.onload = ev => setRefImageDataUrl(ev.target?.result as string)
+                                    reader.readAsDataURL(file)
+                                    if (e.target) e.target.value = ''
+                                }} />
+                            </div>
+
+                            {/* TYPOGRAPHY */}
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Typography</p>
+                                <div className="space-y-2">
+                                    <input type="text" placeholder="Text to render in image..." value={typoText} onChange={e => setTypoText(e.target.value)}
+                                        className="w-full h-10 rounded-lg px-3 text-sm placeholder:text-white/25 focus:outline-none"
+                                        style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }} />
+                                    <select value={typoFont} onChange={e => setTypoFont(e.target.value)} className="w-full h-10 rounded-lg px-3 text-sm focus:outline-none"
+                                        style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}>
+                                        {['Inter', 'Space Grotesk', 'Playfair Display', 'Montserrat', 'Roboto', 'Oswald', 'Bebas Neue'].map(f => <option key={f} value={f}>{f}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* PROMPT + STYLE PRESETS */}
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(43,238,157,0.5)' }}>Prompt & Style</p>
+
+                                {/* Style preset grid — 3 columns so nothing is cut */}
+                                <div className="grid grid-cols-3 gap-2 mb-4">
+                                    {([
+                                        { id: '', label: 'None', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74L12 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+                                        )},
+                                        { id: 'cinematic', label: 'Cinematic', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M7 6V18M17 6V18M2 10h20M2 14h20" stroke="currentColor" strokeWidth="1.5"/></svg>
+                                        )},
+                                        { id: '3d-render', label: '3D Render', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+                                        )},
+                                        { id: 'cyberpunk', label: 'Cyberpunk', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.5H11L10.5 22L19.5 10.5H13L13 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+                                        )},
+                                        { id: 'anime', label: 'Anime', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M6 8c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" strokeWidth="1.5"/><path d="M3 20c0-3.87 4.03-7 9-7s9 3.13 9 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                        )},
+                                        { id: 'neon', label: 'Neon', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M19.07 4.93l-2.12 2.12M7.05 16.95l-2.12 2.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                        )},
+                                        { id: 'minimalist', label: 'Minimal', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                        )},
+                                        { id: 'ethereal', label: 'Ethereal', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 12c2-4 5-6 10-6s8 2 10 6c-2 4-5 6-10 6S4 16 2 12z" stroke="currentColor" strokeWidth="1.5"/><path d="M6 6c0 4 2.5 7 6 7s6-3 6-7" stroke="currentColor" strokeWidth="1.5"/></svg>
+                                        )},
+                                        { id: 'vintage', label: 'Vintage', icon: (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5"/><circle cx="18" cy="7" r="1" fill="currentColor"/></svg>
+                                        )},
+                                    ] as { id: string, label: string, icon: React.ReactNode }[]).map(s => (
+                                        <button key={s.id} type="button" onClick={() => setSelectedStyle(s.id)}
+                                            className="flex flex-col items-center gap-2 py-3 px-2 rounded-xl transition-all cursor-pointer"
+                                            style={selectedStyle === s.id
+                                                ? { background: 'rgba(43,238,157,0.12)', border: '1.5px solid #2bee9d', boxShadow: '0 0 12px rgba(43,238,157,0.2)', color: '#2bee9d' }
+                                                : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(43,238,157,0.1)', color: 'rgba(255,255,255,0.4)' }}>
+                                            {s.icon}
+                                            <span className="text-[9px] font-bold uppercase tracking-tight">{s.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Dual mode toggle */}
+                                {content.trim() && (
+                                    <div className="flex gap-1.5 mb-3">
+                                        <button type="button" onClick={() => { setUseContentAsPrompt(true); setAiImagePrompt(content.substring(0, 500)) }}
+                                            className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex flex-col items-center gap-1"
+                                            style={useContentAsPrompt ? { background: 'rgba(43,238,157,0.12)', border: '1px solid rgba(43,238,157,0.4)', color: '#2bee9d' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}>
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                            Auto from Content
+                                        </button>
+                                        <button type="button" onClick={() => { setUseContentAsPrompt(false); setAiImagePrompt('') }}
+                                            className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex flex-col items-center gap-1"
+                                            style={!useContentAsPrompt ? { background: 'rgba(43,238,157,0.12)', border: '1px solid rgba(43,238,157,0.4)', color: '#2bee9d' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                            Custom Prompt
+                                        </button>
+                                    </div>
+                                )}
+
+                                {useContentAsPrompt && content.trim() ? (
+                                    <div className="rounded-xl p-3 mb-3" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)' }}>
+                                        <p className="text-xs line-clamp-3" style={{ color: 'rgba(255,255,255,0.45)' }}>{content.substring(0, 250)}{content.length > 250 ? '...' : ''}</p>
+                                        <p className="text-[10px] mt-1.5" style={{ color: 'rgba(43,238,157,0.4)' }}>AI will match this content</p>
+                                    </div>
+                                ) : (
+                                    <textarea placeholder="Describe the image you want to generate..." value={aiImagePrompt}
+                                        onChange={e => setAiImagePrompt(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && e.ctrlKey && aiImagePrompt.trim() && handleAiImageGenerate()}
+                                        rows={3} className="w-full rounded-xl px-4 py-3 text-sm placeholder:text-white/25 focus:outline-none resize-none mb-3"
+                                        style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }} />
+                                )}
+
+                                {visualIdea && !useContentAsPrompt && (
+                                    <p className="text-[11px] mb-3" style={{ color: 'rgba(43,238,157,0.5)' }}>💡 {visualIdea}</p>
+                                )}
+
+                                <button type="button" onClick={handleAiImageGenerate}
+                                    disabled={generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel}
+                                    className="w-full h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                                    style={{ background: 'linear-gradient(135deg, #2bee9d, #1ab87a)', color: '#0e1a14', boxShadow: '0 0 24px rgba(43,238,157,0.25)', opacity: (generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel) ? 0.4 : 1 }}>
+                                    {generatingImage ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Sparkles className="h-4 w-4" /> Generate Image</>}
+                                </button>
+
+                                {aiGeneratedPreview && !generatingImage && (
+                                    <div className="mt-4 space-y-3">
+                                        <div className="relative rounded-xl overflow-hidden aspect-video" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                                            <img src={aiGeneratedPreview} alt="AI Generated" className="w-full h-full object-contain" />
+                                        </div>
+                                        {lastUsedImageModel && (
+                                            <p className="text-[11px] flex items-center gap-1" style={{ color: 'rgba(43,238,157,0.6)' }}>
+                                                <Check className="h-3 w-3" style={{ color: '#2bee9d' }} /> Generated with {lastUsedImageModel}
+                                            </p>
+                                        )}
+                                        <div className="flex gap-2">
+                                            <button type="button" onClick={handleAiImageGenerate} disabled={generatingImage} className="flex-1 h-9 rounded-lg text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
+                                                <RefreshCw className="h-3.5 w-3.5" /> Regenerate
+                                            </button>
+                                            <button type="button" onClick={() => setShowImagePicker(false)} className="flex-1 h-9 rounded-lg text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer font-semibold" style={{ background: 'rgba(43,238,157,0.15)', border: '1px solid rgba(43,238,157,0.3)', color: '#2bee9d' }}>
+                                                <Check className="h-3.5 w-3.5" /> Done
+                                            </button>
+                                        </div>
+                                        <p className="text-[11px] flex items-center gap-1" style={{ color: '#2bee9d' }}>
+                                            <Check className="h-3 w-3" /> Saved to media library &amp; attached
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </DialogContent>
