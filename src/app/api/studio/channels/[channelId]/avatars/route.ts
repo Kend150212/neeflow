@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// Verify caller is a member of this channel
-async function verifyMembership(userId: string, channelId: string) {
+// Verify caller is a member of this channel (or platform ADMIN)
+async function verifyMembership(userId: string, channelId: string, role?: string) {
+    if (role === 'ADMIN') return true
     const member = await prisma.channelMember.findFirst({
         where: { userId, channelId },
     })
@@ -19,7 +20,7 @@ export async function GET(
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { channelId } = await params
 
-    if (!(await verifyMembership(session.user.id, channelId))) {
+    if (!(await verifyMembership(session.user.id, channelId, session.user.role as string))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -48,7 +49,7 @@ export async function POST(
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { channelId } = await params
 
-    if (!(await verifyMembership(session.user.id, channelId))) {
+    if (!(await verifyMembership(session.user.id, channelId, session.user.role as string))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

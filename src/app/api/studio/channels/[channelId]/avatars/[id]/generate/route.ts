@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/encryption'
 import { uploadToR2, generateR2Key } from '@/lib/r2'
 
-async function verifyMembership(userId: string, channelId: string) {
+async function verifyMembership(userId: string, channelId: string, role?: string) {
+    if (role === 'ADMIN') return true
     return !!(await prisma.channelMember.findFirst({ where: { userId, channelId } }))
 }
 
@@ -37,7 +38,7 @@ export async function POST(
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { channelId, id } = await params
 
-    if (!(await verifyMembership(session.user.id, channelId))) {
+    if (!(await verifyMembership(session.user.id, channelId, session.user.role as string))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

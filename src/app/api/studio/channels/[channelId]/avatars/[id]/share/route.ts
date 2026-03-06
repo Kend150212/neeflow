@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-async function verifyMembership(userId: string, channelId: string) {
+async function verifyMembership(userId: string, channelId: string, role?: string) {
+    if (role === 'ADMIN') return true
     return !!(await prisma.channelMember.findFirst({ where: { userId, channelId } }))
 }
 
@@ -14,8 +15,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const session = await auth()
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { channelId, id } = await params
+    const role = session.user.role as string
 
-    if (!(await verifyMembership(session.user.id, channelId))) {
+    if (!(await verifyMembership(session.user.id, channelId, role))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -32,8 +34,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         return NextResponse.json({ error: 'Cannot share to the same channel' }, { status: 400 })
     }
 
-    // Must be a member of target channel too
-    if (!(await verifyMembership(session.user.id, targetChannelId))) {
+    // Must be a member of target channel too (or ADMIN)
+    if (!(await verifyMembership(session.user.id, targetChannelId, role))) {
         return NextResponse.json({ error: 'Not a member of target channel' }, { status: 403 })
     }
 
@@ -53,7 +55,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { channelId, id } = await params
 
-    if (!(await verifyMembership(session.user.id, channelId))) {
+    if (!(await verifyMembership(session.user.id, channelId, session.user.role as string))) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
