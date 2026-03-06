@@ -1060,20 +1060,10 @@ function SortableMediaCard({ media, index, mediaRatio, isLast, aiImageJustComple
         <div
             ref={setNodeRef}
             style={style}
-            className={`relative group rounded-lg overflow-hidden bg-muted ${aspectClass} ${aiImageJustCompleted && isLast ? 'animate-ai-reveal' : ''}`}
+            {...attributes}
+            {...listeners}
+            className={`relative group rounded-lg overflow-hidden bg-muted cursor-grab active:cursor-grabbing ${aspectClass} ${aiImageJustCompleted && isLast ? 'animate-ai-reveal' : ''}`}
         >
-            {/* Drag handle — top-center, visible on hover */}
-            <div
-                {...attributes}
-                {...listeners}
-                className="absolute top-0 inset-x-0 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
-            >
-                <div className="flex gap-0.5">
-                    <div className="w-0.5 h-2.5 bg-white/70 rounded-full" />
-                    <div className="w-0.5 h-2.5 bg-white/70 rounded-full" />
-                    <div className="w-0.5 h-2.5 bg-white/70 rounded-full" />
-                </div>
-            </div>
 
             {isVideoMedia(media) ? (
                 <div className="relative h-full w-full bg-muted">
