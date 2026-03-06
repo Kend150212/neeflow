@@ -68,7 +68,7 @@ export async function POST() {
             try {
                 const { channel, mediaItem } = job
 
-                // ─── Resolve uploader user ID ───────────────────────
+                // ─── Resolve uploader user ID (for tracking only) ───────────────────────
                 let uploaderUserId: string | null = null
                 if (job.uploadedBy) {
                     const uploader = await prisma.user.findUnique({
@@ -77,24 +77,21 @@ export async function POST() {
                     })
                     uploaderUserId = uploader?.id ?? null
                 }
-                if (!uploaderUserId) {
-                    // Fallback: channel owner/admin
-                    const owner = await prisma.channelMember.findFirst({
-                        where: { channelId: channel.id, role: { in: ['OWNER', 'ADMIN'] } },
-                        select: { userId: true },
-                    })
-                    uploaderUserId = owner?.userId ?? null
-                }
-                if (!uploaderUserId) {
-                    throw new Error('No uploader or channel admin found — cannot determine plan quota')
-                }
 
-                // ─── SmartFlow quota check ───────────────────────────
-                console.log(`[Pipeline] Job ${job.id}: uploaderUserId=${uploaderUserId}, uploadedBy=${job.uploadedBy}`)
-                const { getUserPlan } = await import('@/lib/plans')
-                const _debugPlan = await getUserPlan(uploaderUserId)
-                console.log(`[Pipeline] Plan check: hasSmartFlow=${_debugPlan.hasSmartFlow}, maxJobs=${_debugPlan.maxSmartFlowJobsPerMonth}, planName=${_debugPlan.planName}`)
-                const quotaResult = await checkSmartFlowQuota(uploaderUserId)
+                // ─── Resolve channel owner (always used for plan/quota check) ────────────
+                const ownerMember = await prisma.channelMember.findFirst({
+                    where: { channelId: channel.id, role: { in: ['OWNER', 'ADMIN'] } },
+                    select: { userId: true },
+                })
+                const ownerUserId = ownerMember?.userId ?? uploaderUserId
+                if (!ownerUserId) {
+                    throw new Error('No channel owner/admin found — cannot determine plan quota')
+                }
+                if (!uploaderUserId) uploaderUserId = ownerUserId
+
+                // ─── SmartFlow quota check (always use OWNER plan, not uploader) ────────
+                console.log(`[Pipeline] Job ${job.id}: ownerUserId=${ownerUserId}, uploaderUserId=${uploaderUserId}`)
+                const quotaResult = await checkSmartFlowQuota(ownerUserId)
                 if (!quotaResult.allowed) {
                     throw new Error(quotaResult.error.message)
                 }
@@ -141,57 +138,46 @@ export async function POST() {
                         console.log(`[Pipeline] ✅ Using platform key: provider=${provider}`)
                     }
                 } else {
-                    // 3) Over quota or BYOK-only — use user's own key
+                    // 3) Over quota or BYOK-only — use owner's key first, then uploader's
                     let userApiKey = null
 
-                    // Try uploader's personal API key
+                    // Try owner's API key first
                     if (channel.defaultAiProvider) {
                         userApiKey = await prisma.userApiKey.findFirst({
-                            where: { userId: uploaderUserId, provider: channel.defaultAiProvider, isActive: true },
+                            where: { userId: ownerUserId, provider: channel.defaultAiProvider, isActive: true },
                         })
                     }
                     if (!userApiKey) {
                         userApiKey = await prisma.userApiKey.findFirst({
-                            where: { userId: uploaderUserId, isDefault: true, isActive: true },
+                            where: { userId: ownerUserId, isDefault: true, isActive: true },
                         })
                     }
                     if (!userApiKey) {
                         userApiKey = await prisma.userApiKey.findFirst({
-                            where: { userId: uploaderUserId, isActive: true },
+                            where: { userId: ownerUserId, isActive: true },
                             orderBy: { provider: 'asc' },
                         })
                     }
 
-                    // Try channel admin/owner if uploader has no key
-                    if (!userApiKey) {
-                        const owner = await prisma.channelMember.findFirst({
-                            where: { channelId: channel.id, role: { in: ['OWNER', 'ADMIN'] } },
-                            select: { userId: true },
-                        })
-                        if (owner && owner.userId !== uploaderUserId) {
-                            if (channel.defaultAiProvider) {
-                                userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: owner.userId, provider: channel.defaultAiProvider, isActive: true },
-                                })
-                            }
-                            if (!userApiKey) {
-                                userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: owner.userId, isDefault: true, isActive: true },
-                                })
-                            }
-                            if (!userApiKey) {
-                                userApiKey = await prisma.userApiKey.findFirst({
-                                    where: { userId: owner.userId, isActive: true },
-                                    orderBy: { provider: 'asc' },
-                                })
-                            }
+                    // Fallback: try uploader's personal key if different from owner
+                    if (!userApiKey && uploaderUserId !== ownerUserId) {
+                        if (channel.defaultAiProvider) {
+                            userApiKey = await prisma.userApiKey.findFirst({
+                                where: { userId: uploaderUserId!, provider: channel.defaultAiProvider, isActive: true },
+                            })
+                        }
+                        if (!userApiKey) {
+                            userApiKey = await prisma.userApiKey.findFirst({
+                                where: { userId: uploaderUserId!, isActive: true },
+                                orderBy: { provider: 'asc' },
+                            })
                         }
                     }
 
                     if (!userApiKey) {
                         const quotaMsg = quotaResult.limit > 0
-                            ? `SmartFlow quota đã hết (${quotaResult.used}/${quotaResult.limit}). Thêm API key tại Dashboard > API Keys để tiếp tục.`
-                            : 'Cần setup AI API key trong Dashboard > API Keys để sử dụng SmartFlow.'
+                            ? `Client Board quota đã hết (${quotaResult.used}/${quotaResult.limit}). Thêm API key tại Dashboard > API Keys để tiếp tục.`
+                            : 'Cần setup AI API key trong Dashboard > API Keys để sử dụng Client Board.'
                         throw new Error(quotaMsg)
                     }
 
@@ -398,7 +384,7 @@ export async function POST() {
 
                 // ─── Step 9: Increment SmartFlow usage counter ────────
                 try {
-                    await incrementSmartFlowUsage(uploaderUserId)
+                    await incrementSmartFlowUsage(ownerUserId)
                 } catch (e) {
                     console.warn('[Pipeline] Failed to increment SmartFlow usage:', e)
                 }
