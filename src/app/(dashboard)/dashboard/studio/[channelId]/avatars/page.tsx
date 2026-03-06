@@ -17,7 +17,6 @@ interface AvatarAsset { id: string; type: 'outfit' | 'accessory' | 'prop'; name:
 interface StudioAvatar {
     id: string; name: string; description: string | null; prompt: string; style: string
     referenceImages: string[]; coverImage: string | null; status: string; createdAt: string
-    generatedImages?: Array<{ url: string; type: 'preview' | 'sheet'; createdAt: string }>
     poses?: AvatarPose[]; assets?: AvatarAsset[]; _shared?: boolean
 }
 
@@ -116,7 +115,6 @@ export default function ChannelAvatarsPage() {
     // Generation
     const [generating, setGenerating] = useState<string | null>(null)
     const [generatingAngle, setGeneratingAngle] = useState<number | null>(null)
-    const [generatingAsset, setGeneratingAsset] = useState<string | null>(null)
     const [genProvider, setGenProvider] = useState('gemini')
     const [genModel, setGenModel] = useState('gemini-3.1-flash-image-preview')
     const [genPhase, setGenPhase] = useState<Record<string, 'preview' | 'approved' | null>>({})
@@ -305,26 +303,6 @@ export default function ChannelAvatarsPage() {
             if (res.ok) { const data = await res.json(); const up = data.avatar as StudioAvatar; setSelected(prev => prev ? { ...prev, ...up } : null); setAvatars(prev => prev.map(a => a.id === selected.id ? { ...a, ...up } : a)) }
             else toast.error('Upload failed')
         } finally { setUploadingRef(false); e.target.value = '' }
-    }
-
-    async function generateAsset(assetId: string, avatarId: string) {
-        setGeneratingAsset(assetId)
-        const toastId = toast.loading('Đang tạo ảnh bằng AI...')
-        try {
-            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatarId}/assets/${assetId}/generate`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider: genProvider, model: genModel }),
-            })
-            const data = await res.json()
-            if (res.ok && data.status === 'done') {
-                toast.success('✅ AI đã tạo xong!', { id: toastId })
-                setSelected(prev => prev ? {
-                    ...prev,
-                    assets: (prev.assets || []).map(a => a.id === assetId ? data.asset : a)
-                } : null)
-            } else { toast.success(data.message || '⏳ Đang xử lý...', { id: toastId }) }
-        } catch (err) { toast.error(String(err), { id: toastId }) }
-        finally { setGeneratingAsset(null) }
     }
 
     /* ── Asset helpers ── */
@@ -596,97 +574,36 @@ export default function ChannelAvatarsPage() {
                                 <input ref={refCoverRef} type="file" accept="image/*" className="hidden" onChange={uploadRefImage} />
                             </section>
 
-                            {/* ── Section 2: Reference Photos ── */}
+                            {/* ── Section 2: Pose Matrix ── */}
                             <section>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Reference Photos</h3>
+                                    <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Pose Matrix & Body Angles</h3>
                                     {!selected._shared && (
-                                        <label className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors cursor-pointer">
+                                        <button onClick={() => refCoverRef.current?.click()} className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors">
                                             <Upload size={10} /> Upload
-                                            <input type="file" accept="image/*" multiple className="hidden" onChange={e => {
-                                                const files = e.target.files; if (!files) return
-                                                Array.from(files).forEach(f => { const ev = { target: { files: [f] } } as unknown as React.ChangeEvent<HTMLInputElement>; uploadRefImage(ev) })
-                                                e.target.value = ''
-                                            }} />
-                                        </label>
+                                        </button>
                                     )}
                                 </div>
-                                {(selected.referenceImages || []).length === 0 && !selected._shared ? (
-                                    <label className="flex flex-col items-center justify-center h-24 border border-dashed border-white/10 rounded-xl text-slate-600 hover:border-emerald-500/30 hover:text-emerald-400 transition-all cursor-pointer">
-                                        <ImagePlus size={20} className="mb-1" />
-                                        <span className="text-[10px]">Upload reference photos</span>
-                                        <input type="file" accept="image/*" multiple className="hidden" onChange={e => {
-                                            const files = e.target.files; if (!files) return
-                                            Array.from(files).forEach(f => { const ev = { target: { files: [f] } } as unknown as React.ChangeEvent<HTMLInputElement>; uploadRefImage(ev) })
-                                            e.target.value = ''
-                                        }} />
-                                    </label>
-                                ) : (
-                                    <div className="flex gap-2 flex-wrap">
-                                        {(selected.referenceImages || []).map((url, i) => (
-                                            <div key={i} className="relative group w-16 h-20 rounded-lg overflow-hidden border border-white/5 hover:border-emerald-500/40 transition-all">
-                                                <img src={url} alt={`ref-${i}`} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightbox(url)} />
-                                            </div>
-                                        ))}
-                                        {!selected._shared && (
-                                            <label className="w-16 h-20 rounded-lg border border-dashed border-white/10 flex items-center justify-center text-slate-700 hover:border-emerald-500/30 hover:text-emerald-400 transition-all cursor-pointer">
-                                                <Plus size={16} />
-                                                <input type="file" accept="image/*" multiple className="hidden" onChange={e => {
-                                                    const files = e.target.files; if (!files) return
-                                                    Array.from(files).forEach(f => { const ev = { target: { files: [f] } } as unknown as React.ChangeEvent<HTMLInputElement>; uploadRefImage(ev) })
-                                                    e.target.value = ''
-                                                }} />
-                                            </label>
-                                        )}
-                                    </div>
-                                )}
+                                <div className="grid grid-cols-5 gap-3">
+                                    {ANGLE_LABELS.map((label, i) => {
+                                        const imgs = selected.referenceImages || []
+                                        const url = imgs[i]
+                                        return (
+                                            <PoseMatrixSlot
+                                                key={label}
+                                                label={label}
+                                                url={url}
+                                                isShared={!!selected._shared}
+                                                generatingAngle={generatingAngle}
+                                                angleIndex={i}
+                                                onZoom={() => url && setLightbox(url)}
+                                                onUpload={uploadRefImage}
+                                                onGenerate={(prompt) => generateAngle(selected, i, prompt)}
+                                            />
+                                        )
+                                    })}
+                                </div>
                             </section>
-
-                            {/* ── Section 2.5: Generated Gallery ── */}
-                            {((selected.generatedImages || []).length > 0 || selected.coverImage) && (
-                                <section>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Generated Images</h3>
-                                        <span className="text-[10px] text-slate-600">{(selected.generatedImages || []).length} image(s)</span>
-                                    </div>
-                                    <div className="flex gap-2 overflow-x-auto pb-2">
-                                        {(selected.generatedImages || []).map((img, i) => (
-                                            <div key={i} className="relative flex-shrink-0 group">
-                                                <img src={img.url} alt={img.type} onClick={() => setLightbox(img.url)}
-                                                    className="h-32 w-auto rounded-xl border object-cover cursor-pointer transition-all hover:border-emerald-500/60"
-                                                    style={{ borderColor: selected.coverImage === img.url ? 'rgb(16,185,129)' : 'rgba(255,255,255,0.05)' }} />
-                                                <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
-                                                    style={{ background: img.type === 'sheet' ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)', color: img.type === 'sheet' ? '#34d399' : '#a5b4fc' }}>
-                                                    {img.type === 'sheet' ? '5-panel' : 'preview'}
-                                                </div>
-                                                {/* Set as avatar / zoom overlay */}
-                                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all bg-black/60 rounded-xl flex flex-col items-center justify-center gap-1 p-1">
-                                                    <button onClick={() => setLightbox(img.url)} className="p-1 bg-white/10 rounded-lg hover:bg-white/20"><ZoomIn size={12} className="text-white" /></button>
-                                                    {!selected._shared && selected.coverImage !== img.url && (
-                                                        <button onClick={async () => {
-                                                            await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coverImage: img.url }) })
-                                                            setSelected(prev => prev ? { ...prev, coverImage: img.url } : null)
-                                                            setAvatars(prev => prev.map(a => a.id === selected.id ? { ...a, coverImage: img.url } : a))
-                                                            toast.success('✅ Avatar cover updated!')
-                                                        }} className="text-[9px] bg-emerald-500/30 px-2 py-0.5 rounded-lg text-emerald-400 hover:bg-emerald-500/50 font-bold whitespace-nowrap">Set as avatar</button>
-                                                    )}
-                                                    {selected.coverImage === img.url && <span className="text-[9px] text-emerald-400 font-bold">★ Current</span>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {/* Current avatar cover shown prominently at bottom */}
-                                    {selected.coverImage && (
-                                        <div className="mt-3 flex items-center gap-3 p-2 bg-white/3 border border-emerald-500/20 rounded-xl">
-                                            <img src={selected.coverImage} className="h-12 w-auto rounded-lg object-cover border border-emerald-500/30" alt="Avatar" />
-                                            <div>
-                                                <p className="text-[10px] font-bold text-emerald-400">Current Avatar</p>
-                                                <p className="text-[9px] text-slate-500">Click “Set as avatar” on any image above to change</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </section>
-                            )}
 
                             {/* ── Section 3: Custom Poses ── */}
                             <section>
@@ -756,12 +673,10 @@ export default function ChannelAvatarsPage() {
                     ) : selectedAssets.map(asset => (
                         <AssetCard key={asset.id} asset={asset}
                             uploading={uploadingAsset === asset.id}
-                            generating={generatingAsset === asset.id}
                             onUpload={files => uploadAssetImages(asset.id, files)}
                             onDeleteImage={url => deleteAssetImage(asset.id, url)}
                             onDelete={() => deleteAsset(asset.id)}
                             onZoom={setLightbox}
-                            onGenerate={() => selected && generateAsset(asset.id, selected.id)}
                             fileRef={el => { assetFileRefs.current[asset.id] = el }}
                         />
                     ))}
@@ -954,17 +869,15 @@ function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZ
     )
 }
 
-function AssetCard({ asset, uploading, generating, onUpload, onDeleteImage, onDelete, onZoom, onGenerate, fileRef }: {
-    asset: AvatarAsset; uploading: boolean; generating: boolean
+function AssetCard({ asset, uploading, onUpload, onDeleteImage, onDelete, onZoom, fileRef }: {
+    asset: AvatarAsset; uploading: boolean
     onUpload: (files: FileList) => void
     onDeleteImage: (url: string) => void
     onDelete: () => void
     onZoom: (url: string) => void
-    onGenerate: () => void
     fileRef: (el: HTMLInputElement | null) => void
 }) {
     const inputRef = useRef<HTMLInputElement>(null)
-    const [showGenPrompt, setShowGenPrompt] = useState(false)
     return (
         <div className="p-3 rounded-xl bg-[#0d1411] border border-white/5 hover:border-white/10 transition-all">
             <div className="flex items-start justify-between mb-2">
@@ -989,26 +902,6 @@ function AssetCard({ asset, uploading, generating, onUpload, onDeleteImage, onDe
                     <input ref={el => { inputRef.current = el; fileRef(el) }} type="file" accept="image/*" multiple className="hidden" onChange={e => e.target.files && onUpload(e.target.files)} />
                 </label>
             </div>
-            {/* AI Generate button */}
-            {!showGenPrompt ? (
-                <button onClick={() => setShowGenPrompt(true)}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[10px] text-emerald-400 hover:bg-emerald-500/20 transition-all">
-                    {generating ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                    {generating ? 'AI đang tạo...' : 'AI Generate'}
-                </button>
-            ) : (
-                <div className="space-y-1.5">
-                    <p className="text-[9px] text-emerald-400 font-bold uppercase">AI Generate — {asset.name}</p>
-                    <p className="text-[9px] text-slate-500">Dùng prompt: "{asset.prompt || asset.name}" (white studio bg)</p>
-                    <div className="flex gap-1">
-                        <button onClick={() => setShowGenPrompt(false)} className="flex-1 py-1 bg-white/5 rounded text-[10px] text-slate-400">Cancel</button>
-                        <button onClick={() => { onGenerate(); setShowGenPrompt(false) }}
-                            className="flex-1 py-1 bg-emerald-500 rounded text-[10px] text-black font-bold flex items-center justify-center gap-1">
-                            <Sparkles size={10} /> Generate
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

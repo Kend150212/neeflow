@@ -219,18 +219,13 @@ export async function POST(
 }
 
 // Helper: append generated URL to generatedImages[]. Only updates coverImage for 'sheet' type.
-async function appendAndSave(id: string, url: string, type: 'preview' | 'sheet') {
+// Helper: save generated image URL as coverImage and reset status
+// Does NOT reference generatedImages column (migration not yet deployed)
+async function appendAndSave(id: string, url: string, _type: 'preview' | 'sheet') {
     if (!url) return
-    const avatar = await prisma.studioAvatar.findFirst({ where: { id }, select: { generatedImages: true } })
-    const existing = (avatar?.generatedImages as Array<{ url: string; type: string; createdAt: string }>) || []
     await prisma.studioAvatar.update({
         where: { id },
-        data: {
-            // Only make the 5-panel sheet the current avatar — preview images are saved but don't overwrite
-            ...(type === 'sheet' ? { coverImage: url } : {}),
-            status: 'idle',
-            generatedImages: [...existing, { url, type, createdAt: new Date().toISOString() }],
-        },
+        data: { coverImage: url, status: 'idle' },
     })
 }
 
