@@ -1191,6 +1191,20 @@ export default function ComposePage() {
     const [planAllowedModels, setPlanAllowedModels] = useState<Record<string, string[]>>({})
     const [imageQuota, setImageQuota] = useState<{ used: number; limit: number }>({ used: 0, limit: -1 })
     const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '4:5'>('1:1')
+    // ─── Studio AI extra state ─────────────────────────────────────────────────
+    const [refImageDataUrl, setRefImageDataUrl] = useState<string | null>(null)         // base64 preview of reference image
+    const [refImageFile, setRefImageFile] = useState<File | null>(null)
+    const refImageInputRef = useRef<HTMLInputElement>(null)
+    const [selectedStyle, setSelectedStyle] = useState('')                              // style preset keyword
+    const [typoText, setTypoText] = useState('')                                        // text to render in image
+    const [typoFont, setTypoFont] = useState('Inter')                                   // font for typography
+    const [brandingEnabled, setBrandingEnabled] = useState(false)
+    const [brandLogoDataUrl, setBrandLogoDataUrl] = useState<string | null>(null)       // uploaded logo preview
+    const [brandLogoPosition, setBrandLogoPosition] = useState(8)                       // 0-8 (3x3 grid index)
+    const [brandLogoOpacity, setBrandLogoOpacity] = useState(80)                        // 0-100
+    const brandLogoInputRef = useRef<HTMLInputElement>(null)
+    const [aiHistoryMedia, setAiHistoryMedia] = useState<MediaItem[]>([])
+    const [loadingAiHistory, setLoadingAiHistory] = useState(false)
     const [stockQuery, setStockQuery] = useState('')
     const [stockPhotos, setStockPhotos] = useState<{ id: number; src: { original: string; medium: string; small: string }; photographer: string; alt: string }[]>([])
     const [searchingStock, setSearchingStock] = useState(false)
@@ -1592,8 +1606,33 @@ export default function ComposePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showImagePicker])
 
+    // ── Restore branding from localStorage + fetch AI image history when dialog opens ──
+    useEffect(() => {
+        if (!showImagePicker || !selectedChannel) return
+        // Restore branding panel
+        try {
+            const saved = localStorage.getItem(`studio-branding-${selectedChannel.id}`)
+            if (saved) {
+                const b = JSON.parse(saved)
+                if (b.logoDataUrl) setBrandLogoDataUrl(b.logoDataUrl)
+                if (typeof b.position === 'number') setBrandLogoPosition(b.position)
+                if (typeof b.opacity === 'number') setBrandLogoOpacity(b.opacity)
+                if (typeof b.enabled === 'boolean') setBrandingEnabled(b.enabled)
+            }
+        } catch { /* ignore */ }
+        // Fetch AI-generated image history
+        setLoadingAiHistory(true)
+        fetch(`/api/admin/media?channelId=${selectedChannel.id}&source=ai&limit=20&sort=newest`)
+            .then(r => r.ok ? r.json() : { media: [] })
+            .then(d => setAiHistoryMedia(d.media || []))
+            .catch(() => { })
+            .finally(() => setLoadingAiHistory(false))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showImagePicker])
+
     // ── Auto-fetch Pinterest boards when Pinterest is selected ──
     useEffect(() => {
+
         const hasPinterest = activePlatforms.some(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
         if (!hasPinterest || !selectedChannel || pinBoardsLoading) return
         // Skip if already fetched and no reconnect needed
@@ -2593,8 +2632,11 @@ export default function ComposePage() {
         setGeneratingImage(true)
         setAiGeneratedPreview(null)
 
-        // Build request body
-        const promptToUse = useContentAsPrompt && content.trim() ? content.substring(0, 500) : aiImagePrompt
+        // Build prompt — inject style + typography
+        let promptToUse = useContentAsPrompt && content.trim() ? content.substring(0, 500) : aiImagePrompt
+        if (selectedStyle) promptToUse = `${promptToUse}, ${selectedStyle} style`
+        if (typoText.trim()) promptToUse = `${promptToUse}, with the text "${typoText}" rendered in ${typoFont} font integrated naturally into the design`
+
         const aspectDims: Record<string, [number, number]> = {
             '1:1': [1024, 1024], '16:9': [1280, 768], '9:16': [768, 1280],
             '4:3': [1024, 768], '3:4': [768, 1024], '4:5': [832, 1024],
@@ -2611,6 +2653,8 @@ export default function ComposePage() {
             }
         }
         if (overrideImageModel) body.model = overrideImageModel
+        // Ref image (image-to-image) — send base64 if model supports it
+        if (refImageDataUrl) body.refImageBase64 = refImageDataUrl
 
         // Close modal immediately and show placeholder in media grid
         setShowImagePicker(false)
@@ -2625,14 +2669,73 @@ export default function ComposePage() {
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data.error)
-            // Auto-attach the media item
-            addFromLibrary(data.mediaItem)
-            setAiGeneratedPreview(data.mediaItem.url || data.mediaItem.thumbnailUrl)
-            setLastUsedImageModel(data.model || data.provider)
-            // Update quota from server response
-            if (data.quota) {
-                setImageQuota(data.quota)
+
+            let finalMediaItem = data.mediaItem
+
+            // ── Client-side Watermark via Canvas ──────────────────────────────
+            if (brandingEnabled && brandLogoDataUrl && finalMediaItem?.url) {
+                try {
+                    const canvas = document.createElement('canvas')
+                    const ctx = canvas.getContext('2d')
+                    if (ctx) {
+                        // Load generated image
+                        const genImg = new window.Image(); genImg.crossOrigin = 'anonymous'
+                        await new Promise<void>((resolve, reject) => {
+                            genImg.onload = () => resolve(); genImg.onerror = reject
+                            genImg.src = finalMediaItem.url
+                        })
+                        canvas.width = genImg.naturalWidth || 1024
+                        canvas.height = genImg.naturalHeight || 1024
+                        ctx.drawImage(genImg, 0, 0)
+
+                        // Load logo
+                        const logoImg = new window.Image()
+                        await new Promise<void>((resolve, reject) => {
+                            logoImg.onload = () => resolve(); logoImg.onerror = reject
+                            logoImg.src = brandLogoDataUrl
+                        })
+
+                        // Position based on 3x3 grid (0=TL,1=TC,2=TR, 3=ML,4=MC,5=MR, 6=BL,7=BC,8=BR)
+                        const logoSize = Math.round(canvas.width * 0.15)
+                        const pad = Math.round(canvas.width * 0.03)
+                        const col = brandLogoPosition % 3
+                        const row = Math.floor(brandLogoPosition / 3)
+                        const x = col === 0 ? pad : col === 2 ? canvas.width - logoSize - pad : (canvas.width - logoSize) / 2
+                        const y = row === 0 ? pad : row === 2 ? canvas.height - logoSize - pad : (canvas.height - logoSize) / 2
+
+                        ctx.globalAlpha = brandLogoOpacity / 100
+                        ctx.drawImage(logoImg, x, y, logoSize, logoSize)
+                        ctx.globalAlpha = 1
+
+                        // Export as blob and re-upload
+                        const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'))
+                        if (blob) {
+                            const formData = new FormData()
+                            formData.append('file', blob, 'ai-branded.png')
+                            formData.append('channelId', selectedChannel.id)
+                            const uploadRes = await fetch('/api/admin/media', { method: 'POST', body: formData })
+                            if (uploadRes.ok) {
+                                const uploadData = await uploadRes.json()
+                                finalMediaItem = uploadData.mediaItem || uploadData
+                            }
+                        }
+                    }
+                } catch { /* watermark failed silently, use original */ }
             }
+
+            // Auto-attach the (possibly watermarked) media item
+            addFromLibrary(finalMediaItem)
+            setAiGeneratedPreview(finalMediaItem.url || finalMediaItem.thumbnailUrl)
+            setLastUsedImageModel(data.model || data.provider)
+            // Refresh AI history
+            if (selectedChannel) {
+                fetch(`/api/admin/media?channelId=${selectedChannel.id}&source=ai&limit=20&sort=newest`)
+                    .then(r => r.ok ? r.json() : { media: [] })
+                    .then(d => setAiHistoryMedia(d.media || []))
+                    .catch(() => { })
+            }
+            // Update quota from server response
+            if (data.quota) setImageQuota(data.quota)
             // Trigger reveal animation
             setAiImageJustCompleted(true)
             setTimeout(() => setAiImageJustCompleted(false), 2000)
@@ -2653,6 +2756,7 @@ export default function ComposePage() {
             setAiImageBgGenerating(false)
         }
     }
+
 
     // Stock Photo Search via Pexels
     const handleStockSearch = async () => {
@@ -5689,84 +5793,279 @@ export default function ComposePage() {
             )
             }
 
-            {/* ── Generate Image Dialog ── */}
+            {/* ── AI Image Studio Dialog ── */}
             <Dialog open={showImagePicker} onOpenChange={(open) => {
                 setShowImagePicker(open)
-            }} >
-                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Sparkles className="h-5 w-5 text-purple-500" />
-                            Generate Image
-                        </DialogTitle>
-                    </DialogHeader>
+            }}>
+                <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] overflow-hidden p-0 bg-[#0d0f14] border-white/10 text-white flex flex-col">
+                    {/* ── Header Bar ── */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+                        <div className="flex items-center gap-2.5">
+                            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                                <Sparkles className="h-4 w-4 text-white" />
+                            </div>
+                            <span className="text-sm font-semibold">AI Image Studio</span>
+                            {/* Tab switcher */}
+                            <div className="flex items-center ml-3 gap-0.5 p-0.5 rounded-md bg-white/5 border border-white/10">
+                                {[
+                                    { key: 'ai' as const, label: 'Generate' },
+                                    { key: 'article' as const, label: 'Article' },
+                                ].map(t => (
+                                    <button
+                                        key={t.key}
+                                        type="button"
+                                        onClick={() => setImagePickerTab(t.key)}
+                                        className={`px-3 py-1 rounded text-[11px] font-medium transition-all cursor-pointer ${imagePickerTab === t.key ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white/80'}`}
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {/* Quota badge */}
+                            {imageQuota.limit > 0 && (
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${imageQuota.used >= imageQuota.limit ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                    {imageQuota.used}/{imageQuota.limit} used
+                                </span>
+                            )}
+                            {imageQuota.limit === -1 && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-emerald-500/20 text-emerald-400">∞ unlimited</span>
+                            )}
+                            <button type="button" onClick={() => setShowImagePicker(false)} className="h-7 w-7 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer">
+                                <X className="h-4 w-4 text-white/60" />
+                            </button>
+                        </div>
+                    </div>
 
+                    {/* ── AI Generate Tab ── */}
+                    {imagePickerTab === 'ai' && (
+                        <div className="flex flex-1 min-h-0 overflow-hidden">
 
+                            {/* ════ LEFT: Branding Kit Panel ════ */}
+                            <div className="w-56 shrink-0 border-r border-white/10 flex flex-col overflow-y-auto p-3 gap-4">
+                                <div>
+                                    <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Branding Kit</p>
+                                    {/* Enable toggle */}
+                                    <label className="flex items-center gap-2 cursor-pointer mb-3">
+                                        <div
+                                            onClick={() => {
+                                                const next = !brandingEnabled
+                                                setBrandingEnabled(next)
+                                                if (selectedChannel) {
+                                                    try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: brandLogoPosition, opacity: brandLogoOpacity, enabled: next })) } catch { }
+                                                }
+                                            }}
+                                            className={`relative w-8 h-4 rounded-full transition-colors cursor-pointer ${brandingEnabled ? 'bg-purple-500' : 'bg-white/10'}`}
+                                        >
+                                            <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${brandingEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                        </div>
+                                        <span className="text-xs text-white/70">Apply Watermark</span>
+                                    </label>
 
-                    {/* Tab Content */}
-                    <div className="mt-4 min-h-[300px]">
+                                    {/* Logo upload */}
+                                    <div
+                                        onClick={() => brandLogoInputRef.current?.click()}
+                                        className={`relative rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all overflow-hidden ${brandingEnabled ? 'border-purple-500/40 hover:border-purple-400' : 'border-white/10 opacity-40 pointer-events-none'}`}
+                                        style={{ height: '80px' }}
+                                    >
+                                        {brandLogoDataUrl ? (
+                                            <img src={brandLogoDataUrl} alt="Logo" className="max-h-full max-w-full object-contain p-2" />
+                                        ) : (
+                                            <div className="text-center">
+                                                <Upload className="h-4 w-4 text-white/40 mx-auto mb-1" />
+                                                <p className="text-[10px] text-white/40">Upload Logo</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <input ref={brandLogoInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
+                                        const file = e.target.files?.[0]
+                                        if (!file) return
+                                        const reader = new FileReader()
+                                        reader.onload = ev => {
+                                            const url = ev.target?.result as string
+                                            setBrandLogoDataUrl(url)
+                                            if (selectedChannel) {
+                                                try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: url, position: brandLogoPosition, opacity: brandLogoOpacity, enabled: brandingEnabled })) } catch { }
+                                            }
+                                        }
+                                        reader.readAsDataURL(file)
+                                        if (e.target) e.target.value = ''
+                                    }} />
 
-                        {/* AI Generate */}
-                        {imagePickerTab === 'ai' && (
-                            <div className="space-y-4">
-                                {/* Provider / Model selector */}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    {/* Provider dropdown with SVG logos */}
+                                    {/* Position grid */}
+                                    <div className={`mt-3 transition-opacity ${brandingEnabled ? '' : 'opacity-30 pointer-events-none'}`}>
+                                        <p className="text-[10px] text-white/40 mb-1.5">Position</p>
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(pos => (
+                                                <button
+                                                    key={pos}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setBrandLogoPosition(pos)
+                                                        if (selectedChannel) {
+                                                            try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: pos, opacity: brandLogoOpacity, enabled: brandingEnabled })) } catch { }
+                                                        }
+                                                    }}
+                                                    className={`h-6 rounded border transition-all cursor-pointer ${brandLogoPosition === pos ? 'border-purple-400 bg-purple-500/30' : 'border-white/10 hover:border-white/30 bg-white/5'}`}
+                                                />
+                                            ))}
+                                        </div>
+                                        {/* Opacity */}
+                                        <p className="text-[10px] text-white/40 mt-2 mb-1">Opacity: {brandLogoOpacity}%</p>
+                                        <input
+                                            type="range" min={10} max={100} value={brandLogoOpacity}
+                                            onChange={e => {
+                                                const v = Number(e.target.value)
+                                                setBrandLogoOpacity(v)
+                                                if (selectedChannel) {
+                                                    try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: brandLogoPosition, opacity: v, enabled: brandingEnabled })) } catch { }
+                                                }
+                                            }}
+                                            className="w-full accent-purple-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* ── AI History Gallery ── */}
+                                <div>
+                                    <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Recent AI Images</p>
+                                    {loadingAiHistory ? (
+                                        <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-white/30" /></div>
+                                    ) : aiHistoryMedia.length === 0 ? (
+                                        <p className="text-[10px] text-white/30 text-center py-3">No AI images yet</p>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-1">
+                                            {aiHistoryMedia.slice(0, 12).map(item => (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    title={item.originalName || 'AI image'}
+                                                    onClick={() => { addFromLibrary(item); setShowImagePicker(false) }}
+                                                    className="aspect-square rounded-md overflow-hidden border border-white/10 hover:border-purple-400/60 transition-colors cursor-pointer"
+                                                >
+                                                    <img src={item.url} alt="" className="w-full h-full object-cover" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* ════ CENTER: Preview + Controls ════ */}
+                            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                                {/* Image Preview */}
+                                <div className="flex-1 flex items-center justify-center bg-[#0a0c10] relative min-h-0 overflow-hidden">
+                                    {aiGeneratedPreview ? (
+                                        <img
+                                            src={aiGeneratedPreview}
+                                            alt="AI Generated"
+                                            className="max-w-full max-h-full object-contain rounded-lg cursor-zoom-in"
+                                            onClick={() => setLightboxUrl(aiGeneratedPreview)}
+                                        />
+                                    ) : generatingImage ? (
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="relative">
+                                                <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-500/30 flex items-center justify-center">
+                                                    <Loader2 className="h-9 w-9 animate-spin text-purple-400" />
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-white/50">Creating your image...</p>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-4 select-none">
+                                            {/* Neeflow logo placeholder */}
+                                            <div className="h-24 w-24 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                                                <img src="/logo.png" alt="Neeflow" className="h-16 w-16 object-contain opacity-40" />
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm text-white/40 font-medium">Your image will appear here</p>
+                                                <p className="text-[11px] text-white/20 mt-1">Configure your settings and click Generate</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {/* Generated model badge */}
+                                    {aiGeneratedPreview && lastUsedImageModel && (
+                                        <div className="absolute bottom-3 left-3">
+                                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-white/10">
+                                                <Check className="h-3 w-3 text-emerald-400" />
+                                                <span className="text-[10px] text-white/70">{lastUsedImageModel}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Style Presets Strip ── */}
+                                <div className="border-t border-white/10 py-2 px-3 shrink-0">
+                                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
+                                        {[
+                                            { id: '', label: 'None', emoji: '🎨' },
+                                            { id: 'cinematic', label: 'Cinematic', emoji: '🎬' },
+                                            { id: 'minimalist', label: 'Minimal', emoji: '⬜' },
+                                            { id: '3D render', label: '3D', emoji: '🧊' },
+                                            { id: 'cyberpunk', label: 'Cyberpunk', emoji: '🌆' },
+                                            { id: 'ethereal soft glow', label: 'Ethereal', emoji: '✨' },
+                                            { id: 'anime illustration', label: 'Anime', emoji: '🌸' },
+                                            { id: 'photorealistic', label: 'Photo', emoji: '📷' },
+                                            { id: 'flat design', label: 'Flat', emoji: '▪️' },
+                                            { id: 'watercolor painting', label: 'Watercolor', emoji: '🖌️' },
+                                            { id: 'neon glow dark', label: 'Neon', emoji: '💜' },
+                                        ].map(s => (
+                                            <button
+                                                key={s.id}
+                                                type="button"
+                                                onClick={() => setSelectedStyle(s.id)}
+                                                className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-medium whitespace-nowrap transition-all cursor-pointer shrink-0 ${selectedStyle === s.id
+                                                    ? 'border-purple-400 bg-purple-500/20 text-purple-300'
+                                                    : 'border-white/10 text-white/50 hover:border-white/30 hover:text-white/80'}`}
+                                            >
+                                                <span>{s.emoji}</span> {s.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ════ RIGHT: Controls Panel ════ */}
+                            <div className="w-72 shrink-0 border-l border-white/10 flex flex-col overflow-y-auto p-3 gap-4">
+
+                                {/* ── Provider + Model ── */}
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">AI Engine</p>
+                                    {/* Provider dropdown */}
                                     {(() => {
-                                        // overrideImageProvider stores prefixed value like 'byok:gemini' or 'plan:gemini'
                                         const currentSelectValue = overrideImageProvider || '__auto__'
-                                        // Extract bare provider name for display and API calls
                                         const rawProvider = (() => {
                                             if (!currentSelectValue || currentSelectValue === '__auto__') return selectedChannel?.defaultImageProvider || ''
                                             const parts = currentSelectValue.split(':')
                                             return parts.length > 1 ? parts.slice(1).join(':') : parts[0]
                                         })()
                                         const handleProviderChange = (selectVal: string) => {
-                                            if (selectVal === '__auto__') {
-                                                setOverrideImageProvider('')
-                                                return
-                                            }
-                                            // Store full prefixed value: "byok:gemini" or "plan:gemini"
+                                            if (selectVal === '__auto__') { setOverrideImageProvider(''); return }
                                             setOverrideImageProvider(selectVal)
                                             setOverrideImageModel('')
                                             setAvailableImageModels([])
-                                            // Parse source and provider name
                                             const [source, ...rest] = selectVal.split(':')
                                             const providerName = rest.join(':')
                                             if (providerName) {
                                                 if (source === 'plan') {
-                                                    // Plan: fetch models from platform API Hub key
-                                                    // Server handles whitelist filtering + uses platform key (not user's)
                                                     setLoadingImageModels(true)
-                                                    fetch('/api/admin/posts/plan-models', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ provider: providerName }),
-                                                    }).then(r => r.json()).then(d => {
-                                                        const models = (d.models || []).map((m: { id: string; name?: string }) => ({
-                                                            id: m.id,
-                                                            name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id,
-                                                            type: 'image' as const,
-                                                        }))
-                                                        setAvailableImageModels(models)
-                                                    }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                                                    fetch('/api/admin/posts/plan-models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
+                                                        .then(r => r.json()).then(d => {
+                                                            setAvailableImageModels((d.models || []).map((m: { id: string; name?: string }) => ({ id: m.id, name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id, type: 'image' as const })))
+                                                        }).catch(() => { }).finally(() => setLoadingImageModels(false))
                                                 } else {
                                                     setLoadingImageModels(true)
-                                                    fetch('/api/user/api-keys/models', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ provider: providerName }),
-                                                    }).then(r => r.json()).then(d => {
-                                                        setAvailableImageModels(
-                                                            (d.models || []).filter((m: { type?: string }) => m.type === 'image')
-                                                        )
-                                                    }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                                                    fetch('/api/user/api-keys/models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
+                                                        .then(r => r.json()).then(d => {
+                                                            setAvailableImageModels((d.models || []).filter((m: { type?: string }) => m.type === 'image'))
+                                                        }).catch(() => { }).finally(() => setLoadingImageModels(false))
                                                 }
                                             }
                                         }
                                         return (
                                             <Select value={currentSelectValue} onValueChange={handleProviderChange}>
-                                                <SelectTrigger className="h-7 text-[11px] w-auto min-w-[160px] gap-1.5">
+                                                <SelectTrigger className="h-8 text-[11px] w-full bg-white/5 border-white/15 text-white">
                                                     <SelectValue>
                                                         {rawProvider ? (
                                                             byokProviders.find(p => p.provider === rawProvider)?.name ||
@@ -5776,16 +6075,12 @@ export default function ComposePage() {
                                                     </SelectValue>
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="__auto__" className="text-[11px]">
-                                                        Auto-detect provider
-                                                    </SelectItem>
+                                                    <SelectItem value="__auto__" className="text-[11px]">Auto-detect provider</SelectItem>
                                                     {byokProviders.length > 0 && (
                                                         <>
                                                             <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys (unlimited)</div>
                                                             {byokProviders.map(p => (
-                                                                <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-[11px]">
-                                                                    {p.name}
-                                                                </SelectItem>
+                                                                <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-[11px]">{p.name}</SelectItem>
                                                             ))}
                                                         </>
                                                     )}
@@ -5793,17 +6088,13 @@ export default function ComposePage() {
                                                         <>
                                                             <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
                                                             {planProviders.map(p => (
-                                                                <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-[11px]">
-                                                                    {p.name}
-                                                                </SelectItem>
+                                                                <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-[11px]">{p.name}</SelectItem>
                                                             ))}
                                                         </>
                                                     )}
                                                     {planProviders.length > 0 && imageQuota.limit === 0 && (
                                                         <div className="px-2 py-1.5 text-[10px] text-amber-400">
-                                                            <a href="/dashboard/billing" className="flex items-center gap-1 hover:underline">
-                                                                <Sparkles className="h-3 w-3" /> Upgrade plan to unlock AI images
-                                                            </a>
+                                                            <a href="/dashboard/billing" className="flex items-center gap-1 hover:underline"><Sparkles className="h-3 w-3" /> Upgrade to unlock AI images</a>
                                                         </div>
                                                     )}
                                                 </SelectContent>
@@ -5811,120 +6102,157 @@ export default function ComposePage() {
                                         )
                                     })()}
                                     {/* Model dropdown */}
-                                    <select
-                                        value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
-                                        onChange={(e) => setOverrideImageModel(e.target.value)}
-                                        disabled={loadingImageModels}
-                                        className="h-7 text-[11px] rounded-md border bg-muted/50 px-2 focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                                    >
-                                        <option value="">Default model</option>
-                                        {availableImageModels.map(m => (
-                                            <option key={m.id} value={m.id}>{m.name}</option>
-                                        ))}
-                                    </select>
-                                    {loadingImageModels && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                                    {/* Quota badge */}
-                                    {imageQuota.limit > 0 && (
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${imageQuota.used >= imageQuota.limit ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                            {imageQuota.used}/{imageQuota.limit} used
-                                        </span>
-                                    )}
-                                    {imageQuota.limit === -1 && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-500/20 text-emerald-400">∞ unlimited</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <select
+                                            value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
+                                            onChange={(e) => setOverrideImageModel(e.target.value)}
+                                            disabled={loadingImageModels}
+                                            className="flex-1 h-8 text-[11px] rounded-md border border-white/15 bg-white/5 text-white px-2 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                                        >
+                                            <option value="">Default model</option>
+                                            {availableImageModels.map(m => (
+                                                <option key={m.id} value={m.id}>{m.name}</option>
+                                            ))}
+                                        </select>
+                                        {loadingImageModels && <Loader2 className="h-3.5 w-3.5 animate-spin text-white/40 shrink-0" />}
+                                    </div>
+                                    {byokProviders.length === 0 && planProviders.length === 0 && (
+                                        <p className="text-[10px] text-amber-400 bg-amber-500/10 rounded-md px-2 py-1.5">
+                                            ⚠️ No providers available. Add an API key in API Hub or upgrade your plan.
+                                        </p>
                                     )}
                                 </div>
-                                {/* No providers warning */}
-                                {byokProviders.length === 0 && planProviders.length === 0 && (
-                                    <p className="text-[10px] text-amber-400 bg-amber-500/10 rounded-md px-2 py-1.5">
-                                        ⚠️ No image providers available. Add an API key in <strong>API Hub</strong> or upgrade your plan.
-                                    </p>
-                                )}
 
-                                {/* Aspect Ratio selector */}
+                                {/* ── Aspect Ratio ── */}
                                 <div>
-                                    <label className="text-[10px] text-muted-foreground font-medium mb-1.5 block">Aspect Ratio</label>
-                                    <div className="flex gap-1.5">
+                                    <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Aspect Ratio</p>
+                                    <div className="grid grid-cols-3 gap-1">
                                         {[
-                                            { value: '1:1' as const, label: '1:1', icon: <span className="w-4 h-4 border border-current rounded-[2px]" /> },
-                                            { value: '16:9' as const, label: '16:9', icon: <span className="w-5 h-3 border border-current rounded-[2px]" /> },
-                                            { value: '9:16' as const, label: '9:16', icon: <span className="w-3 h-5 border border-current rounded-[2px]" /> },
-                                            { value: '4:3' as const, label: '4:3', icon: <span className="w-4.5 h-3.5 border border-current rounded-[2px]" style={{ width: '18px', height: '14px' }} /> },
-                                            { value: '3:4' as const, label: '3:4', icon: <span className="border border-current rounded-[2px]" style={{ width: '14px', height: '18px' }} /> },
-                                            { value: '4:5' as const, label: '4:5', icon: <span className="border border-current rounded-[2px]" style={{ width: '16px', height: '20px' }} /> },
-                                        ].map(ratio => (
+                                            { value: '1:1' as const, label: '1:1' },
+                                            { value: '16:9' as const, label: '16:9' },
+                                            { value: '9:16' as const, label: '9:16' },
+                                            { value: '4:3' as const, label: '4:3' },
+                                            { value: '3:4' as const, label: '3:4' },
+                                            { value: '4:5' as const, label: '4:5' },
+                                        ].map(r => (
                                             <button
-                                                key={ratio.value}
+                                                key={r.value}
                                                 type="button"
-                                                onClick={() => setImageAspectRatio(ratio.value)}
-                                                className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-md border text-[10px] font-medium transition-all cursor-pointer ${imageAspectRatio === ratio.value
-                                                    ? 'border-primary bg-primary/10 text-primary'
-                                                    : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
-                                                    }`}
+                                                onClick={() => setImageAspectRatio(r.value)}
+                                                className={`py-1 rounded-md border text-[10px] font-medium transition-all cursor-pointer ${imageAspectRatio === r.value ? 'border-purple-400 bg-purple-500/20 text-purple-300' : 'border-white/10 text-white/50 hover:border-white/30 hover:text-white/80'}`}
                                             >
-                                                {ratio.icon}
-                                                {ratio.label}
+                                                {r.label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* Option: Use content as prompt or custom */}
-                                {content.trim() && (
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => { setUseContentAsPrompt(true); setAiImagePrompt(content.substring(0, 500)) }}
-                                            className={`flex-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${useContentAsPrompt
-                                                ? 'border-primary bg-primary/10 text-primary'
-                                                : 'border-border bg-card text-muted-foreground hover:border-primary/50'
-                                                }`}
-                                        >
-                                            <Sparkles className="h-4 w-4 mx-auto mb-1" />
-                                            Auto from Content
-                                            <p className="text-[10px] mt-0.5 font-normal opacity-70">Generate based on post content</p>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setUseContentAsPrompt(false); setAiImagePrompt('') }}
-                                            className={`flex-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${!useContentAsPrompt
-                                                ? 'border-primary bg-primary/10 text-primary'
-                                                : 'border-border bg-card text-muted-foreground hover:border-primary/50'
-                                                }`}
-                                        >
-                                            <Pencil className="h-4 w-4 mx-auto mb-1" />
-                                            Custom Prompt
-                                            <p className="text-[10px] mt-0.5 font-normal opacity-70">Type your own image description</p>
-                                        </button>
+                                {/* ── Ref Image ── */}
+                                <div>
+                                    <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Reference Image</p>
+                                    <div
+                                        onClick={() => refImageInputRef.current?.click()}
+                                        className="relative rounded-xl border-2 border-dashed border-white/15 hover:border-purple-400/50 flex items-center justify-center cursor-pointer transition-all overflow-hidden"
+                                        style={{ height: '80px' }}
+                                    >
+                                        {refImageDataUrl ? (
+                                            <>
+                                                <img src={refImageDataUrl} alt="Reference" className="max-h-full max-w-full object-contain p-1" />
+                                                <button
+                                                    type="button"
+                                                    onClick={e => { e.stopPropagation(); setRefImageDataUrl(null); setRefImageFile(null) }}
+                                                    className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 flex items-center justify-center hover:bg-red-500/80 transition-colors cursor-pointer"
+                                                >
+                                                    <X className="h-3 w-3 text-white" />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className="text-center">
+                                                <ImageIcon className="h-5 w-5 text-white/20 mx-auto mb-1" />
+                                                <p className="text-[10px] text-white/30">Upload reference image</p>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                    <input ref={refImageInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
+                                        const file = e.target.files?.[0]
+                                        if (!file) return
+                                        setRefImageFile(file)
+                                        const reader = new FileReader()
+                                        reader.onload = ev => setRefImageDataUrl(ev.target?.result as string)
+                                        reader.readAsDataURL(file)
+                                        if (e.target) e.target.value = ''
+                                    }} />
+                                </div>
 
-                                <div className="space-y-2">
-                                    <Label>{useContentAsPrompt && content.trim() ? 'Generated from your post content' : 'Image prompt'}</Label>
+                                {/* ── Typography Kit ── */}
+                                <div>
+                                    <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Typography</p>
+                                    <input
+                                        type="text"
+                                        placeholder="Text to render in image..."
+                                        value={typoText}
+                                        onChange={e => setTypoText(e.target.value)}
+                                        className="w-full h-8 text-[11px] rounded-md border border-white/15 bg-white/5 text-white px-3 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder:text-white/25 mb-1.5"
+                                    />
+                                    <select
+                                        value={typoFont}
+                                        onChange={e => setTypoFont(e.target.value)}
+                                        className="w-full h-8 text-[11px] rounded-md border border-white/15 bg-white/5 text-white px-2 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                    >
+                                        {['Inter', 'Montserrat', 'Playfair Display', 'Bebas Neue', 'Futura', 'Georgia', 'Roboto', 'Helvetica', 'Comic Sans MS', 'Courier New'].map(f => (
+                                            <option key={f} value={f}>{f}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* ── Prompt ── */}
+                                <div className="flex-1">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Prompt</p>
+                                        {/* Dual mode toggle */}
+                                        {content.trim() && (
+                                            <div className="flex items-center gap-0.5 p-0.5 rounded-md bg-white/5 border border-white/10">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setUseContentAsPrompt(true)}
+                                                    className={`px-2 py-0.5 rounded text-[10px] transition-all cursor-pointer flex items-center gap-1 ${useContentAsPrompt ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'}`}
+                                                >
+                                                    <Sparkles className="h-2.5 w-2.5" /> Auto
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setUseContentAsPrompt(false); setAiImagePrompt('') }}
+                                                    className={`px-2 py-0.5 rounded text-[10px] transition-all cursor-pointer flex items-center gap-1 ${!useContentAsPrompt ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'}`}
+                                                >
+                                                    <Pencil className="h-2.5 w-2.5" /> Custom
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                     {useContentAsPrompt && content.trim() ? (
-                                        <div className="rounded-lg border bg-muted/50 p-3">
-                                            <p className="text-xs text-muted-foreground line-clamp-4">{content.substring(0, 300)}{content.length > 300 ? '...' : ''}</p>
-                                            <p className="text-[10px] text-muted-foreground/70 mt-2">AI will generate an image that matches this content</p>
+                                        <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                            <p className="text-[11px] text-white/60 line-clamp-4">{content.substring(0, 280)}{content.length > 280 ? '...' : ''}</p>
+                                            <p className="text-[10px] text-white/25 mt-1.5">AI will generate an image matching this content</p>
                                         </div>
                                     ) : (
-                                        <Input
+                                        <textarea
                                             placeholder="Describe the image you want to generate..."
                                             value={aiImagePrompt}
                                             onChange={(e) => setAiImagePrompt(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && aiImagePrompt.trim() && handleAiImageGenerate()}
+                                            rows={4}
+                                            className="w-full text-[11px] rounded-md border border-white/15 bg-white/5 text-white px-3 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder:text-white/25 resize-none"
                                         />
                                     )}
                                     {visualIdea && !useContentAsPrompt && (
-                                        <p className="text-[10px] text-muted-foreground mt-1">
-                                            💡 AI suggestion: <span className="italic">{visualIdea}</span>
-                                        </p>
+                                        <p className="text-[10px] text-white/40 mt-1">💡 <span className="italic">{visualIdea}</span></p>
                                     )}
                                 </div>
 
-                                {/* Generate Button */}
+                                {/* ── Generate Button ── */}
                                 <Button
                                     onClick={handleAiImageGenerate}
                                     disabled={generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel}
-                                    className="w-full cursor-pointer"
+                                    className="w-full cursor-pointer bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white border-0 font-semibold"
                                 >
                                     {generatingImage ? (
                                         <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating...</>
@@ -5932,58 +6260,41 @@ export default function ComposePage() {
                                         <><Sparkles className="h-4 w-4 mr-2" /> Generate Image</>
                                     )}
                                 </Button>
-
-                                {generatingImage && (
-                                    <div className="flex flex-col items-center justify-center py-8 gap-3">
-                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                        <p className="text-sm text-muted-foreground">Creating your image...</p>
+                                {aiGeneratedPreview && !generatingImage && (
+                                    <div className="flex gap-2">
+                                        <Button size="sm" variant="outline" className="flex-1 cursor-pointer border-white/15 text-white/70 hover:text-white hover:border-white/30" onClick={handleAiImageGenerate} disabled={generatingImage}>
+                                            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Regenerate
+                                        </Button>
+                                        <Button size="sm" className="flex-1 cursor-pointer bg-emerald-600 hover:bg-emerald-500 border-0" onClick={() => setShowImagePicker(false)}>
+                                            <Check className="h-3.5 w-3.5 mr-1.5" /> Done
+                                        </Button>
                                     </div>
                                 )}
-
                                 {aiGeneratedPreview && !generatingImage && (
-                                    <div className="space-y-3">
-                                        <div className="relative rounded-lg overflow-hidden bg-muted aspect-video">
-                                            <img src={aiGeneratedPreview} alt="AI Generated" className="w-full h-full object-contain" />
-                                        </div>
-                                        {lastUsedImageModel && (
-                                            <div className="flex items-center gap-1.5">
-                                                <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
-                                                    <Check className="h-3 w-3 mr-1" />
-                                                    Generated with {lastUsedImageModel}
-                                                </Badge>
-                                            </div>
-                                        )}
-                                        <div className="flex gap-2">
-                                            <Button size="sm" variant="outline" className="flex-1 cursor-pointer" onClick={handleAiImageGenerate} disabled={generatingImage}>
-                                                <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Regenerate
-                                            </Button>
-                                            <Button size="sm" className="flex-1 cursor-pointer" onClick={() => setShowImagePicker(false)}>
-                                                <Check className="h-3.5 w-3.5 mr-1.5" /> Done
-                                            </Button>
-                                        </div>
-                                        <p className="text-xs text-emerald-500 flex items-center gap-1">
-                                            <Check className="h-3 w-3" /> Image saved to media library and attached to post
-                                        </p>
-                                    </div>
+                                    <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                                        <Check className="h-3 w-3" /> Image saved to media library
+                                    </p>
                                 )}
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* 📰 Article */}
-                        {imagePickerTab === 'article' && (
-                            <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground">
-                                    If you pasted an article URL as your topic, we&apos;ll download the article&apos;s featured image.
-                                </p>
+                    {/* ── Article Tab ── */}
+                    {imagePickerTab === 'article' && (
+                        <div className="flex-1 flex items-center justify-center p-8">
+                            <div className="max-w-sm w-full space-y-4">
+                                <div className="text-center mb-4">
+                                    <Newspaper className="h-8 w-8 text-white/20 mx-auto mb-2" />
+                                    <p className="text-sm text-white/50">Download the featured image from an article URL</p>
+                                </div>
                                 {aiTopic.startsWith('http') ? (
                                     <div className="space-y-3">
-                                        <div className="flex items-center gap-2 text-xs bg-muted rounded-md p-2">
-                                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                                            <span className="truncate">{aiTopic}</span>
+                                        <div className="flex items-center gap-2 text-xs bg-white/5 rounded-md p-2 border border-white/10">
+                                            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                                            <span className="truncate text-white/60">{aiTopic}</span>
                                         </div>
                                         <Button
-                                            size="sm"
-                                            className="cursor-pointer"
+                                            className="w-full cursor-pointer"
                                             disabled={downloadingStock !== null}
                                             onClick={async () => {
                                                 if (!selectedChannel) return
@@ -5992,12 +6303,7 @@ export default function ComposePage() {
                                                     const res = await fetch('/api/admin/posts/stock-images', {
                                                         method: 'POST',
                                                         headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({
-                                                            action: 'download',
-                                                            channelId: selectedChannel.id,
-                                                            photoUrl: aiTopic,
-                                                            alt: 'Article image',
-                                                        }),
+                                                        body: JSON.stringify({ action: 'download', channelId: selectedChannel.id, photoUrl: aiTopic, alt: 'Article image' }),
                                                     })
                                                     const data = await res.json()
                                                     if (!res.ok) throw new Error(data.error)
@@ -6016,27 +6322,22 @@ export default function ComposePage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-12">
-                                        <Newspaper className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                                        <p className="text-sm text-muted-foreground">No article URL detected.</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Paste an article URL in the AI topic input first.</p>
+                                    <div className="text-center py-4">
+                                        <p className="text-sm text-white/30">No article URL detected.</p>
+                                        <p className="text-xs text-white/20 mt-1">Paste an article URL in the AI topic input first.</p>
                                     </div>
                                 )}
+                                <Button variant="outline" className="w-full cursor-pointer border-white/15 text-white/60 hover:text-white" onClick={() => setShowImagePicker(false)}>
+                                    <X className="h-4 w-4 mr-2" /> Close
+                                </Button>
                             </div>
-                        )}
-                    </div>
-
-                    {/* Done Button — always visible at bottom */}
-                    <div className="pt-3 border-t mt-4">
-                        <Button variant="outline" className="w-full cursor-pointer" onClick={() => setShowImagePicker(false)}>
-                            <Check className="h-4 w-4 mr-2" /> Done
-                        </Button>
-                    </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
 
             {/* ── Thumbnail Style Selector Modal ── */}
-            <Dialog open={styleModalOpen} onOpenChange={setStyleModalOpen} >
+            < Dialog open={styleModalOpen} onOpenChange={setStyleModalOpen} >
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -6121,10 +6422,10 @@ export default function ComposePage() {
                         </div>
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* Delete Post Confirmation */}
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} >
+            < AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Post?</AlertDialogTitle>
@@ -6135,51 +6436,53 @@ export default function ComposePage() {
                         <AlertDialogAction onClick={handleDeletePost} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer">Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
-            </AlertDialog>
+            </AlertDialog >
 
             {/* ─── Canva Session Expired Modal ─────────────────────────── */}
-            {canvaExpiredModal && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-[#7d2ae8]/10 border border-[#7d2ae8]/30 flex items-center justify-center">
-                                <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-[#7d2ae8]" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                                    <line x1="12" y1="9" x2="12" y2="13" strokeLinecap="round" />
-                                    <line x1="12" y1="17" x2="12.01" y2="17" strokeLinecap="round" />
-                                </svg>
+            {
+                canvaExpiredModal && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-[#7d2ae8]/10 border border-[#7d2ae8]/30 flex items-center justify-center">
+                                    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-[#7d2ae8]" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                        <line x1="12" y1="9" x2="12" y2="13" strokeLinecap="round" />
+                                        <line x1="12" y1="17" x2="12.01" y2="17" strokeLinecap="round" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-foreground">Canva Session Expired</h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Your Canva connection needs to be refreshed</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-sm font-semibold text-foreground">Canva Session Expired</h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">Your Canva connection needs to be refreshed</p>
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                    Your Canva session has <strong className="text-foreground">expired</strong>. This usually happens after a period of inactivity. Click <strong className="text-foreground">Reconnect Canva</strong> to restore the connection — it only takes a few seconds and you will be brought back here.
+                                </p>
                             </div>
-                        </div>
-                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                Your Canva session has <strong className="text-foreground">expired</strong>. This usually happens after a period of inactivity. Click <strong className="text-foreground">Reconnect Canva</strong> to restore the connection — it only takes a few seconds and you will be brought back here.
-                            </p>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <button
-                                onClick={() => { window.location.href = canvaExpiredModal.reconnectUrl }}
-                                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg bg-[#7d2ae8] hover:bg-[#6d22d0] text-white text-sm font-semibold transition-colors cursor-pointer"
-                            >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Reconnect Canva
-                            </button>
-                            <button
-                                onClick={() => setCanvaExpiredModal(null)}
-                                className="w-full py-2 px-4 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                            >
-                                Cancel
-                            </button>
+                            <div className="flex flex-col gap-2">
+                                <button
+                                    onClick={() => { window.location.href = canvaExpiredModal.reconnectUrl }}
+                                    className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg bg-[#7d2ae8] hover:bg-[#6d22d0] text-white text-sm font-semibold transition-colors cursor-pointer"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Reconnect Canva
+                                </button>
+                                <button
+                                    onClick={() => setCanvaExpiredModal(null)}
+                                    className="w-full py-2 px-4 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-        </div>
+        </div >
     )
 }
