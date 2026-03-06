@@ -5068,7 +5068,7 @@ export default function ComposePage() {
                                         return (
                                             <div className="flex flex-col gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-xs">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-amber-600 flex-1">⚠️ Pinterest token expired. Paste a new Sandbox token or Reconnect via OAuth.</span>
+                                                    <span className="text-amber-600 flex-1">⚠️ Pinterest token expired. Generate a new Sandbox token in API Hub, then retry.</span>
                                                     <button
                                                         type="button"
                                                         className="text-[10px] px-2 py-1 rounded border border-amber-500/40 text-amber-600 hover:bg-amber-500/10 cursor-pointer whitespace-nowrap"
@@ -5104,50 +5104,12 @@ export default function ComposePage() {
                                                         Reconnect
                                                     </button>
                                                 </div>
-                                                {/* Sandbox token paste — only useful in sandbox mode */}
-                                                <div className="flex gap-1.5 items-center">
-                                                    <input
-                                                        type="password"
-                                                        placeholder="Paste new Sandbox token here..."
-                                                        className="flex-1 h-7 rounded border border-amber-500/30 bg-transparent px-2 text-[10px] text-foreground placeholder:text-muted-foreground outline-none focus:border-amber-500"
-                                                        value={pinSandboxTokenInput}
-                                                        onChange={e => setPinSandboxTokenInput(e.target.value)}
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        disabled={!pinSandboxTokenInput.trim() || pinSandboxSaving}
-                                                        className="text-[10px] px-2 py-1 rounded bg-amber-500 text-white font-medium hover:bg-amber-600 cursor-pointer disabled:opacity-50 whitespace-nowrap"
-                                                        onClick={async () => {
-                                                            if (!pinterestPlatform || !selectedChannel || !pinSandboxTokenInput.trim()) return
-                                                            setPinSandboxSaving(true)
-                                                            try {
-                                                                const res = await fetch(`/api/admin/channels/${selectedChannel.id}/pinterest-sandbox-token`, {
-                                                                    method: 'PUT',
-                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                    body: JSON.stringify({ accountId: pinterestPlatform.accountId, sandboxToken: pinSandboxTokenInput.trim() }),
-                                                                })
-                                                                if (res.ok) {
-                                                                    setPinSandboxTokenInput('')
-                                                                    setTimeout(fetchBoards, 300)
-                                                                } else {
-                                                                    const err = await res.json()
-                                                                    alert(err.error || 'Failed to save token')
-                                                                }
-                                                            } catch {
-                                                                alert('Network error')
-                                                            } finally {
-                                                                setPinSandboxSaving(false)
-                                                            }
-                                                        }}
-                                                    >
-                                                        {pinSandboxSaving ? '...' : 'Apply'}
-                                                    </button>
-                                                </div>
                                                 <p className="text-[9px] text-muted-foreground">
-                                                    Generate a new token at{' '}
-                                                    <a href="https://developers.pinterest.com/apps/" target="_blank" rel="noopener noreferrer" className="underline text-amber-600">
-                                                        developers.pinterest.com → your app → Generate token (Sandbox)
+                                                    Go to{' '}
+                                                    <a href="/admin/integrations" target="_blank" rel="noopener noreferrer" className="underline text-amber-600">
+                                                        Admin → API Hub → Pinterest
                                                     </a>
+                                                    {' '}→ paste token in <strong>Sandbox Token</strong> field → Apply. Then click Retry.
                                                 </p>
                                             </div>
                                         )
