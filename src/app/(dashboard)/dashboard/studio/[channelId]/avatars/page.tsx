@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
     User, Plus, Loader2, Sparkles, ChevronLeft,
-    CheckCircle2, AlertCircle, Trash2, RefreshCw, ImagePlus, X
+    CheckCircle2, AlertCircle, Trash2, RefreshCw, ImagePlus, X, ZoomIn
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -126,6 +126,13 @@ export default function ChannelAvatarsPage() {
     const coverInputRef = useRef<HTMLInputElement>(null)
     const [uploadingCover, setUploadingCover] = useState(false)
 
+    // Lightbox
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+    // 2-phase generation: 'preview' = 1 front-view, 'full' = all angles
+    // null means no current phase; 'preview' after first gen; 'approved' after user approves
+    const [genPhase, setGenPhase] = useState<Record<string, 'preview' | 'approved' | null>>({})
+
     useEffect(() => { fetchAvatars() }, [channelId])
 
     // keep genModel in sync when provider changes
@@ -177,27 +184,43 @@ export default function ChannelAvatarsPage() {
         }
     }
 
-    async function generateAvatar(avatar: StudioAvatar) {
+    // phase: 'preview' = generate 1 front-view first, 'full' = generate all angles with reference
+    async function generateAvatar(avatar: StudioAvatar, phase: 'preview' | 'full' = 'preview', referenceImage?: string) {
         setGenerating(avatar.id)
-        const toastId = toast.loading(`Generating image for "${avatar.name}"...`)
+        const label = phase === 'preview' ? 'Tạo ảnh xem trước...' : 'Tạo toàn bộ góc nhìn...'
+        const toastId = toast.loading(`${label} "${avatar.name}"`)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider: genProvider, model: genModel }),
+                body: JSON.stringify({
+                    provider: genProvider,
+                    model: genModel,
+                    // Phase 1: single front view. Phase 2: all 4 angles
+                    numAngles: phase === 'preview' ? 1 : 4,
+                    referenceImage: referenceImage || undefined,
+                }),
             })
             if (res.ok) {
                 const data = await res.json()
                 if (data.status === 'done') {
-                    toast.success(`✅ Image generated for "${avatar.name}"!`, { id: toastId })
-                    await fetchAvatars()
+                    toast.success(`✅ Xong! "${avatar.name}"`, { id: toastId })
+                    const latest = await fetchAvatars()
+                    if (phase === 'preview') {
+                        setGenPhase(prev => ({ ...prev, [avatar.id]: 'preview' }))
+                    } else {
+                        setGenPhase(prev => ({ ...prev, [avatar.id]: null }))
+                    }
                 } else {
-                    toast.success('⏳ Generating... will finish in ~30 seconds.', { id: toastId })
+                    toast.success('⏳ Đang tạo... (~30 giây)', { id: toastId })
                     setAvatars(prev => prev.map(a => a.id === avatar.id ? { ...a, status: 'generating' } : a))
                     if (selectedAvatar?.id === avatar.id) {
                         setSelectedAvatar(prev => prev ? { ...prev, status: 'generating' } : null)
                     }
-                    pollAvatarStatus(avatar.id)
+                    if (phase === 'preview') {
+                        setGenPhase(prev => ({ ...prev, [avatar.id]: 'preview' }))
+                    }
+                    pollAvatarStatus(avatar.id, phase)
                 }
             } else {
                 const d = await res.json()
@@ -210,11 +233,11 @@ export default function ChannelAvatarsPage() {
         }
     }
 
-    async function pollAvatarStatus(id: string) {
+    async function pollAvatarStatus(id: string, phase: 'preview' | 'full' = 'preview') {
         let attempts = 0
         const interval = setInterval(async () => {
             attempts++
-            if (attempts > 60) {
+            if (attempts > 72) { // 6 min timeout
                 clearInterval(interval)
                 toast.error('Generation timed out. Please try again.')
                 return
@@ -228,10 +251,15 @@ export default function ChannelAvatarsPage() {
                     if (updated && updated.status !== 'generating') {
                         clearInterval(interval)
                         setAvatars(allFetched)
-                        // Replace selectedAvatar with updated data so image shows immediately
                         setSelectedAvatar(prev => prev?.id === id ? updated : prev)
-                        if (updated.status === 'done') {
-                            toast.success(`✅ Avatar "${updated.name}" is ready!`)
+                        if (updated.status === 'idle' || updated.status === 'done') {
+                            if (phase === 'preview') {
+                                toast.success(`✅ Ảnh xem trước sẵn sàng! Xem và approve để tạo toàn bộ góc nhìn.`)
+                                setGenPhase(prev => ({ ...prev, [id]: 'preview' }))
+                            } else {
+                                toast.success(`✅ Avatar "${updated.name}" đã tạo xong tất cả góc nhìn!`)
+                                setGenPhase(prev => ({ ...prev, [id]: null }))
+                            }
                         } else if (updated.status === 'failed') {
                             toast.error(`❌ Avatar "${updated.name}" generation failed. Check your API key.`)
                         }
@@ -542,12 +570,12 @@ export default function ChannelAvatarsPage() {
                                 {/* Generate button */}
                                 <Button
                                     className="w-full gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold h-8 text-xs shadow-[0_0_16px_rgba(0,255,149,0.15)]"
-                                    onClick={() => generateAvatar(selectedAvatar)}
-                                    disabled={!!generating}
+                                    onClick={() => generateAvatar(selectedAvatar, 'preview')}
+                                    disabled={!!generating || selectedAvatar.status === 'generating'}
                                 >
                                     {generating === selectedAvatar.id
-                                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating...</>
-                                        : <><Sparkles className="h-3.5 w-3.5" /> Generate Image</>
+                                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tạo...</>
+                                        : <><Sparkles className="h-3.5 w-3.5" /> Tạo ảnh xem trước (1 góc)</>
                                     }
                                 </Button>
                                 <p className="text-[10px] text-slate-600 text-center">
@@ -653,7 +681,16 @@ export default function ChannelAvatarsPage() {
                             </div>
                             <div className="rounded-xl overflow-hidden border border-white/10 relative">
                                 {selectedAvatar.coverImage ? (
-                                    <img src={selectedAvatar.coverImage} alt="avatar" className="w-full object-cover" />
+                                    <button
+                                        className="w-full block cursor-zoom-in group relative"
+                                        onClick={() => setLightboxUrl(selectedAvatar.coverImage!)}
+                                        title="Click để phóng to"
+                                    >
+                                        <img src={selectedAvatar.coverImage} alt="avatar" className="w-full object-cover" />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                                            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+                                        </div>
+                                    </button>
                                 ) : (
                                     <div className="w-full aspect-video bg-white/5 flex flex-col items-center justify-center gap-2">
                                         {selectedAvatar.status === 'generating' ? null : (
@@ -668,7 +705,7 @@ export default function ChannelAvatarsPage() {
                                 {selectedAvatar.status === 'generating' && (
                                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
                                         <Loader2 className="h-7 w-7 text-emerald-400 animate-spin" />
-                                        <span className="text-xs text-emerald-400 font-medium">Generating...</span>
+                                        <span className="text-xs text-emerald-400 font-medium">Đang tạo...</span>
                                     </div>
                                 )}
                                 {/* Overlay while uploading cover */}
@@ -679,6 +716,36 @@ export default function ChannelAvatarsPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* ── Phase 1 approve/reject bar ── */}
+                            {!selectedAvatar._shared && selectedAvatar.coverImage && genPhase[selectedAvatar.id] === 'preview' && selectedAvatar.status !== 'generating' && (
+                                <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 space-y-2">
+                                    <p className="text-[11px] text-emerald-300 font-medium text-center">Ảnh xem trước — hài lòng chưa?</p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setGenPhase(prev => ({ ...prev, [selectedAvatar.id!]: null }))
+                                                generateAvatar(selectedAvatar, 'preview')
+                                            }}
+                                            disabled={!!generating}
+                                            className="flex-1 h-8 rounded-lg border border-white/10 text-[11px] text-slate-400 hover:text-white hover:border-white/30 transition-colors flex items-center justify-center gap-1"
+                                        >
+                                            <RefreshCw className="h-3 w-3" /> Thử lại
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setGenPhase(prev => ({ ...prev, [selectedAvatar.id!]: 'approved' }))
+                                                generateAvatar(selectedAvatar, 'full', selectedAvatar.coverImage!)
+                                            }}
+                                            disabled={!!generating}
+                                            className="flex-1 h-8 rounded-lg bg-emerald-400 text-[#080d0b] text-[11px] font-bold hover:bg-emerald-300 transition-colors flex items-center justify-center gap-1"
+                                        >
+                                            <CheckCircle2 className="h-3 w-3" /> Approve & 4 góc nhìn
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-600 text-center">AI sẽ tạo Front, Side, Back, 3/4 đồng bộ từ ảnh này</p>
+                                </div>
+                            )}
                         </div>
 
 
@@ -767,6 +834,28 @@ export default function ChannelAvatarsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* ── Lightbox Modal ── */}
+            {lightboxUrl && (
+                <div
+                    className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setLightboxUrl(null)}
+                    onKeyDown={e => e.key === 'Escape' && setLightboxUrl(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                        onClick={() => setLightboxUrl(null)}
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                    <img
+                        src={lightboxUrl}
+                        alt="Avatar preview"
+                        className="max-w-full max-h-full rounded-2xl object-contain shadow-2xl"
+                        onClick={e => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     )
 }

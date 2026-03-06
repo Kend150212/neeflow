@@ -47,9 +47,10 @@ export async function POST(
     if (!avatar) return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
 
     const body = await req.json().catch(() => ({}))
-    const numAngles = (body.numAngles as number) || 4
+    const numAngles = (body.numAngles as number) || 1
     const provider: string = (body.provider as string) || 'fal_ai'
     const model: string = body.model || ''
+    const referenceImage: string | undefined = body.referenceImage // Phase 2: approved front-view image URL
 
     const apiKey = await resolveKey(session.user.id, provider)
     if (!apiKey) {
@@ -58,7 +59,15 @@ export async function POST(
         }, { status: 400 })
     }
 
-    const basePrompt = `${avatar.prompt}, ${avatar.style} style, character reference sheet, ${numAngles} views: front, side, back${numAngles >= 4 ? ', 3/4 view' : ''}, white background, high detail, character design`
+    // Phase 1 (numAngles=1): generate a single front view character portrait
+    // Phase 2 (numAngles=4): generate all views, consistent with the approved Phase 1 image
+    const viewsLabel = numAngles === 1
+        ? 'single front view, full body portrait'
+        : `${numAngles} character views: front view, side view, back view, 3/4 view`
+    const consistencyClause = referenceImage
+        ? `, MUST maintain identical: face features, skin tone, hair color & style, outfit, accessories — based on the reference character image provided`
+        : ''
+    const basePrompt = `${avatar.prompt}, ${avatar.style} style, ${viewsLabel}, white background, high detail, character design sheet${consistencyClause}`
 
     await prisma.studioAvatar.update({ where: { id }, data: { status: 'generating' } })
 
@@ -163,13 +172,10 @@ export async function POST(
         }
 
         // ─── Gemini Imagen / Flash (fire-and-forget async bg) ────────
-        // Returns immediately with status:'generating' to avoid browser timeout.
-        // The actual Gemini API call + R2 upload happens in the background.
-        // Client polls /status endpoint until status is no longer 'generating'.
         if (provider === 'gemini') {
             const gemModel = model || 'imagen-3.0-generate-001'
             const isFlash = gemModel.startsWith('gemini-')
-            runGeminiBackground({ id, channelId, apiKey, gemModel, isFlash, basePrompt }).catch(console.error)
+            runGeminiBackground({ id, channelId, apiKey, gemModel, isFlash, basePrompt, referenceImage }).catch(console.error)
             return NextResponse.json({ status: 'generating' })
         }
 
@@ -193,21 +199,38 @@ async function runGeminiBackground(opts: {
     gemModel: string
     isFlash: boolean
     basePrompt: string
+    referenceImage?: string
 }) {
-    const { id, channelId, apiKey, gemModel, isFlash, basePrompt } = opts
-    console.log(`[generate:bg] Gemini start: model=${gemModel} isFlash=${isFlash} avatarId=${id}`)
+    const { id, channelId, apiKey, gemModel, isFlash, basePrompt, referenceImage } = opts
+    console.log(`[generate:bg] Gemini start: model=${gemModel} isFlash=${isFlash} ref=${!!referenceImage} avatarId=${id}`)
     const imageUrls: string[] = []
 
     try {
         if (isFlash) {
             // Gemini Flash: generateContent with responseModalities: ['IMAGE','TEXT']
+            // Phase 2: include reference image inline for character consistency
+            const parts: unknown[] = [{ text: basePrompt.slice(0, 2000) }]
+            if (referenceImage && referenceImage.startsWith('http')) {
+                try {
+                    const imgRes = await fetch(referenceImage)
+                    if (imgRes.ok) {
+                        const imgBuf = await imgRes.arrayBuffer()
+                        const imgB64 = Buffer.from(imgBuf).toString('base64')
+                        const imgMime = imgRes.headers.get('content-type') || 'image/jpeg'
+                        parts.unshift({ inlineData: { data: imgB64, mimeType: imgMime } })
+                        console.log(`[generate:bg] Included reference image (${imgBuf.byteLength}b) in Gemini Flash prompt`)
+                    }
+                } catch (e) {
+                    console.warn(`[generate:bg] Failed to fetch referenceImage: ${e}`)
+                }
+            }
             const flashRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:generateContent?key=${apiKey}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: basePrompt.slice(0, 2000) }] }],
+                        contents: [{ parts }],
                         generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
                     }),
                 }
