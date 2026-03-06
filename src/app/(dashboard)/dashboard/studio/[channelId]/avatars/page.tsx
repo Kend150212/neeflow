@@ -130,10 +130,38 @@ export default function ChannelAvatarsPage() {
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
     // 2-phase generation: 'preview' = 1 front-view, 'full' = all angles
-    // null means no current phase; 'preview' after first gen; 'approved' after user approves
     const [genPhase, setGenPhase] = useState<Record<string, 'preview' | 'approved' | null>>({})
 
+    // Save edits state (right panel is editable)
+    const [saving, setSaving] = useState(false)
+    const [editName, setEditName] = useState('')
+    const [editPrompt, setEditPrompt] = useState('')
+    const [editStyle, setEditStyle] = useState('realistic')
+    const [editDescription, setEditDescription] = useState('')
+
+    // Structured prompt builder (HO SO NHAN VAT system)
+    const [builderMode, setBuilderMode] = useState(false) // false = free text, true = structured
+    const [bGender, setBGender] = useState('')
+    const [bAge, setBAge] = useState('')
+    const [bSkin, setBSkin] = useState('')
+    const [bBody, setBBody] = useState('')
+    const [bFace, setBFace] = useState('')
+    const [bHair, setBHair] = useState('')
+    const [bOutfit, setBOutfit] = useState('')
+    const [bVibe, setBVibe] = useState('')
+    const [bNote, setBNote] = useState('')
+
     useEffect(() => { fetchAvatars() }, [channelId])
+
+    // Sync edit fields when selectedAvatar changes
+    useEffect(() => {
+        if (selectedAvatar && !selectedAvatar._shared) {
+            setEditName(selectedAvatar.name)
+            setEditPrompt(selectedAvatar.prompt)
+            setEditStyle(selectedAvatar.style)
+            setEditDescription(selectedAvatar.description || '')
+        }
+    }, [selectedAvatar?.id])
 
     // keep genModel in sync when provider changes
     useEffect(() => {
@@ -171,7 +199,13 @@ export default function ChannelAvatarsPage() {
             })
             if (res.ok) {
                 const data = await res.json()
-                setAvatars(prev => [data.avatar, ...prev])
+                const newAvatar = data.avatar
+                setAvatars(prev => [newAvatar, ...prev])
+                setSelectedAvatar(newAvatar)
+                setEditName(newAvatar.name)
+                setEditPrompt(newAvatar.prompt)
+                setEditStyle(newAvatar.style)
+                setEditDescription(newAvatar.description || '')
                 setShowCreate(false)
                 resetForm()
                 toast.success('Avatar created! Select a provider and click Generate.')
@@ -181,6 +215,35 @@ export default function ChannelAvatarsPage() {
             }
         } finally {
             setCreating(false)
+        }
+    }
+
+    async function saveAvatar() {
+        if (!selectedAvatar || !editName.trim() || !editPrompt.trim()) return
+        setSaving(true)
+        try {
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selectedAvatar.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: editName.trim(),
+                    prompt: editPrompt.trim(),
+                    style: editStyle,
+                    description: editDescription.trim() || undefined,
+                }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                const updated = data.avatar as StudioAvatar
+                setSelectedAvatar(prev => prev ? { ...prev, ...updated } : null)
+                setAvatars(prev => prev.map(a => a.id === selectedAvatar.id ? { ...a, ...updated } : a))
+                toast.success('✅ Avatar saved!')
+            } else {
+                const d = await res.json()
+                toast.error(d.error || 'Failed to save')
+            }
+        } finally {
+            setSaving(false)
         }
     }
 
@@ -360,6 +423,22 @@ export default function ChannelAvatarsPage() {
 
     function resetForm() {
         setName(''); setDescription(''); setPrompt(''); setStyle('realistic')
+        setBGender(''); setBAge(''); setBSkin(''); setBBody(''); setBFace(''); setBHair(''); setBOutfit(''); setBVibe(''); setBNote('')
+        setBuilderMode(false)
+    }
+
+    function buildPromptFromFields() {
+        const parts = [
+            bGender && bAge ? `${bGender}, ${bAge} tuổi` : (bGender || ''),
+            bSkin && `da ${bSkin}`,
+            bBody && `vóc dáng ${bBody}`,
+            bFace && `khuôn mặt: ${bFace}`,
+            bHair && `tóc: ${bHair}`,
+            bOutfit && `trang phục: ${bOutfit}`,
+            bVibe && `vibe: ${bVibe}`,
+            bNote && `ghi chú: ${bNote}`,
+        ].filter(Boolean).join(', ')
+        return parts + ', character is 18+ years old'
     }
 
     const statusIcon = (s: string) => {
@@ -516,8 +595,17 @@ export default function ChannelAvatarsPage() {
                 <aside className="w-80 border-l border-white/5 bg-[#0a120d] flex flex-col overflow-y-auto">
                     {/* Header */}
                     <div className="p-5 border-b border-white/5 flex items-start justify-between">
-                        <div>
-                            <h3 className="text-white font-bold">{selectedAvatar.name}</h3>
+                        <div className="flex-1 mr-2">
+                            {!selectedAvatar._shared ? (
+                                <input
+                                    value={editName}
+                                    onChange={e => setEditName(e.target.value)}
+                                    className="bg-transparent text-white font-bold text-base w-full focus:outline-none focus:border-b focus:border-emerald-400/50 pb-0.5 border-b border-transparent transition-colors"
+                                    placeholder="Avatar name..."
+                                />
+                            ) : (
+                                <h3 className="text-white font-bold">{selectedAvatar.name}</h3>
+                            )}
                             <p className="text-slate-400 text-xs capitalize mt-0.5">{selectedAvatar.style} style</p>
                             {selectedAvatar._shared && (
                                 <span className="text-[10px] text-violet-400 font-medium">Shared avatar</span>
@@ -753,10 +841,58 @@ export default function ChannelAvatarsPage() {
                         {/* ── Prompt ── */}
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Prompt</p>
-                            <p className="text-xs text-slate-400 leading-relaxed">{selectedAvatar.prompt}</p>
+                            {!selectedAvatar._shared ? (
+                                <>
+                                    <textarea
+                                        value={editPrompt}
+                                        onChange={e => setEditPrompt(e.target.value)}
+                                        rows={5}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-xs text-slate-300 resize-none focus:outline-none focus:border-emerald-400/40 leading-relaxed"
+                                        placeholder="Describe your character in detail..."
+                                    />
+                                    <div className="mt-2 space-y-1.5">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Art Style</p>
+                                        <div className="grid grid-cols-2 gap-1.5">
+                                            {STYLES.map(s => (
+                                                <button
+                                                    key={s.value}
+                                                    onClick={() => setEditStyle(s.value)}
+                                                    className={cn(
+                                                        'py-1.5 px-2 rounded-lg text-xs font-medium transition-all border text-left',
+                                                        editStyle === s.value
+                                                            ? 'bg-emerald-400/15 text-emerald-400 border-emerald-400/30'
+                                                            : 'bg-white/5 text-slate-500 border-white/5 hover:text-slate-300'
+                                                    )}
+                                                >
+                                                    {s.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="mt-2">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Notes</p>
+                                        <input
+                                            value={editDescription}
+                                            onChange={e => setEditDescription(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-400/40"
+                                            placeholder="Internal notes about this avatar..."
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={saveAvatar}
+                                        disabled={saving || editName === selectedAvatar.name && editPrompt === selectedAvatar.prompt && editStyle === selectedAvatar.style && editDescription === (selectedAvatar.description || '')}
+                                        className="mt-3 w-full h-8 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-400/20 text-xs font-bold hover:bg-blue-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
+                                    >
+                                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                                        Save Changes
+                                    </button>
+                                </>
+                            ) : (
+                                <p className="text-xs text-slate-400 leading-relaxed">{selectedAvatar.prompt}</p>
+                            )}
                         </div>
 
-                        {selectedAvatar.description && (
+                        {selectedAvatar.description && selectedAvatar._shared && (
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Description</p>
                                 <p className="text-xs text-slate-400">{selectedAvatar.description}</p>
@@ -768,7 +904,7 @@ export default function ChannelAvatarsPage() {
 
             {/* Create Avatar Dialog */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                <DialogContent className="sm:max-w-lg bg-[#0f1a14] border-emerald-400/20">
+                <DialogContent className="sm:max-w-xl bg-[#0f1a14] border-emerald-400/20 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
                             <Sparkles className="h-5 w-5 text-emerald-400" />
@@ -776,17 +912,104 @@ export default function ChannelAvatarsPage() {
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-1">
+                        {/* Name */}
                         <div>
                             <Label className="text-slate-300 text-xs">Avatar Name *</Label>
                             <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Linh — Brand Ambassador"
                                 className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40" />
                         </div>
-                        <div>
-                            <Label className="text-slate-300 text-xs">Prompt * <span className="text-slate-600 normal-case font-normal">— describe your character</span></Label>
-                            <Textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={3}
-                                placeholder="A young Vietnamese woman, 25 years old, casual style, warm smile, modern fashion, holding products naturally..."
-                                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40 resize-none" />
+
+                        {/* Mode toggle */}
+                        <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+                            <button
+                                onClick={() => { setBuilderMode(false) }}
+                                className={cn('flex-1 py-1.5 rounded-md text-xs font-semibold transition-all', !builderMode ? 'bg-emerald-400/20 text-emerald-400' : 'text-slate-500 hover:text-slate-300')}
+                            >✍️ Free Text</button>
+                            <button
+                                onClick={() => { setBuilderMode(true) }}
+                                className={cn('flex-1 py-1.5 rounded-md text-xs font-semibold transition-all', builderMode ? 'bg-emerald-400/20 text-emerald-400' : 'text-slate-500 hover:text-slate-300')}
+                            >🧬 Structured Builder</button>
                         </div>
+
+                        {builderMode ? (
+                            /* ── Structured HO SO NHAN VAT builder ── */
+                            <div className="space-y-3">
+                                <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/5 p-3">
+                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-2.5">🧬 Hồ Sơ Nhân Vật [HO SO NHAN VAT]</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 block mb-1">Giới tính</label>
+                                            <Input value={bGender} onChange={e => setBGender(e.target.value)} placeholder="Nữ / Nam / Phi nhị nguyên"
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 block mb-1">Tuổi</label>
+                                            <Input value={bAge} onChange={e => setBAge(e.target.value)} placeholder="25"
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 block mb-1">Màu da</label>
+                                            <Input value={bSkin} onChange={e => setBSkin(e.target.value)} placeholder="trắng hồng / olive / nâu"
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 block mb-1">Vóc dáng</label>
+                                            <Input value={bBody} onChange={e => setBBody(e.target.value)} placeholder="thon gọn / cao ráo / đậm người"
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] text-slate-500 block mb-1">Khuôn mặt</label>
+                                            <Input value={bFace} onChange={e => setBFace(e.target.value)} placeholder="mắt to tròn, mũi cao, môi trái tim..."
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] text-slate-500 block mb-1">Kiểu tóc</label>
+                                            <Input value={bHair} onChange={e => setBHair(e.target.value)} placeholder="dài uốn nhẹ, màu nâu hạt dẻ..."
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] text-slate-500 block mb-1">Trang phục</label>
+                                            <Input value={bOutfit} onChange={e => setBOutfit(e.target.value)} placeholder="áo crop top trắng, quần jean xanh..."
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 block mb-1">Vibe / Ánh sáng</label>
+                                            <Input value={bVibe} onChange={e => setBVibe(e.target.value)} placeholder="casual, natural light"
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 block mb-1">Ghi chú thêm</label>
+                                            <Input value={bNote} onChange={e => setBNote(e.target.value)} placeholder="cầm sản phẩm, mỉm cười..."
+                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        </div>
+                                    </div>
+                                    {/* Live preview */}
+                                    {(bGender || bSkin || bOutfit) && (
+                                        <div className="mt-3 rounded-lg bg-black/30 p-2.5">
+                                            <p className="text-[9px] text-slate-600 uppercase tracking-wider mb-1">Generated Prompt Preview</p>
+                                            <p className="text-[10px] text-slate-400 leading-relaxed">{buildPromptFromFields()}</p>
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={() => { setPrompt(buildPromptFromFields()); setBuilderMode(false) }}
+                                        disabled={!bGender && !bOutfit}
+                                        className="mt-3 w-full h-8 rounded-lg bg-emerald-400/15 text-emerald-400 border border-emerald-400/20 text-xs font-bold hover:bg-emerald-400/25 disabled:opacity-40 transition-colors"
+                                    >
+                                        ✅ Dùng prompt này →
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            /* ── Free text mode ── */
+                            <div>
+                                <Label className="text-slate-300 text-xs">Prompt * <span className="text-slate-600 normal-case font-normal">— describe your character</span></Label>
+                                <Textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={4}
+                                    placeholder="Nhân vật nữ, 25 tuổi, da trắng hồng, vóc dáng thon gọn, mắt to tròn, tóc nâu uốn nhẹ, áo crop top trắng, quần jean cạp cao, vibe casual..."
+                                    className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40 resize-none" />
+                            </div>
+                        )}
+
+                        {/* Style + Notes */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <Label className="text-slate-300 text-xs">Art Style</Label>
@@ -806,20 +1029,13 @@ export default function ChannelAvatarsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div>
+                                <Label className="text-slate-300 text-xs">Notes <span className="text-slate-600">(optional)</span></Label>
+                                <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Internal notes..."
+                                    className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40" />
+                            </div>
                         </div>
-                        <div>
-                            <Label className="text-slate-300 text-xs">Description <span className="text-slate-600">(optional)</span></Label>
-                            <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Notes about this avatar..."
-                                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40" />
-                        </div>
-                        <div className="bg-emerald-400/5 border border-emerald-400/15 rounded-lg p-3 text-xs text-slate-400">
-                            <p className="text-emerald-400 font-medium mb-1">💡 Tips for best results:</p>
-                            <ul className="space-y-0.5 list-disc pl-4">
-                                <li>Include ethnicity, age, hair color, clothing style</li>
-                                <li>Mention what they will be doing (holding product, smiling, etc.)</li>
-                                <li>White background works best for product compositing</li>
-                            </ul>
-                        </div>
+
                         <div className="flex justify-end gap-2 pt-1">
                             <Button variant="ghost" onClick={() => { setShowCreate(false); resetForm() }} className="text-slate-400">Cancel</Button>
                             <Button
