@@ -4030,16 +4030,25 @@ export default function ComposePage() {
                                             ))}
                                             {/* AI Image Generating Placeholder — inside grid as a cell */}
                                             {aiImageBgGenerating && (
-                                                <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
-                                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
+                                                <div className={`relative rounded-lg overflow-hidden border ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}
+                                                    style={{ background: 'linear-gradient(135deg, #0e1a14 0%, #0a1a10 50%, #0e1a14 100%)', borderColor: 'rgba(43,238,157,0.2)' }}>
+                                                    {/* Shimmer sweep */}
+                                                    <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent, rgba(43,238,157,0.06), transparent)', backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
                                                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
                                                         <div className="relative">
-                                                            <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" style={{ animationDuration: '2s' }} />
-                                                            <div className="relative h-6 w-6 rounded-full bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
-                                                                <img src="/logo.png" alt="" className="h-4 w-4 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
+                                                            {/* Green ping ring */}
+                                                            <div className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(43,238,157,0.15)', animationDuration: '2s' }} />
+                                                            {/* Brand logo badge */}
+                                                            <div className="relative h-9 w-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(43,238,157,0.12)', border: '1.5px solid rgba(43,238,157,0.3)' }}>
+                                                                <img
+                                                                    src={branding.logoUrl || '/logo.png'}
+                                                                    alt=""
+                                                                    className="h-6 w-6 object-contain animate-pulse"
+                                                                    style={{ animationDuration: '2s' }}
+                                                                />
                                                             </div>
                                                         </div>
-                                                        <p className="text-[8px] font-medium text-purple-300 animate-pulse">Creating...</p>
+                                                        <p className="text-[8px] font-semibold animate-pulse" style={{ color: '#2bee9d', animationDuration: '2s' }}>Creating...</p>
                                                     </div>
                                                 </div>
                                             )}
