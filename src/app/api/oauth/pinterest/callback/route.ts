@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
     const integration = await prisma.apiIntegration.findFirst({ where: { provider: 'pinterest' } })
     const config = (integration?.config || {}) as Record<string, string>
     const clientId = config.pinterestClientId || process.env.PINTEREST_CLIENT_ID
+    const sandboxMode = config.sandboxMode === 'true' || config.sandboxMode === true as unknown as string
     let clientSecret = process.env.PINTEREST_CLIENT_SECRET || ''
     if (integration?.apiKeyEncrypted) {
         try { clientSecret = decrypt(integration.apiKeyEncrypted) } catch { clientSecret = integration.apiKeyEncrypted }
@@ -39,13 +40,12 @@ export async function GET(req: NextRequest) {
     if (!clientId || !clientSecret) return popupOrRedirect('/dashboard?error=not_configured', 'pinterest', false)
 
     const redirectUri = `${host}/api/oauth/pinterest/callback`
+    // Use sandbox or production base URL depending on the integration setting
+    const PINTEREST_BASE = sandboxMode ? 'https://api-sandbox.pinterest.com' : 'https://api.pinterest.com'
 
     try {
-        // Always use PRODUCTION URL for token exchange — sandbox tokens are specific to sandbox API
-        // The Sandbox flag only controls where pins/boards are created, not OAuth
-        const PINTEREST_PRODUCTION = 'https://api.pinterest.com'
         const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-        const tokenRes = await fetch(`${PINTEREST_PRODUCTION}/v5/oauth/token`, {
+        const tokenRes = await fetch(`${PINTEREST_BASE}/v5/oauth/token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -66,8 +66,8 @@ export async function GET(req: NextRequest) {
         const refreshToken = tokens.refresh_token
         const expiresIn = tokens.expires_in
 
-        // Get Pinterest user info — always use production for user_account
-        const userRes = await fetch(`${PINTEREST_PRODUCTION}/v5/user_account`, {
+        // Get Pinterest user info
+        const userRes = await fetch(`${PINTEREST_BASE}/v5/user_account`, {
             headers: { Authorization: `Bearer ${accessToken}` },
         })
         let username = 'Pinterest Account'
