@@ -21,6 +21,10 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
     const avatar = await prisma.studioAvatar.findFirst({
         where: { id, channelId, isActive: true },
+        include: {
+            poses: { orderBy: { createdAt: 'asc' } },
+            assets: { orderBy: [{ type: 'asc' }, { createdAt: 'asc' }] },
+        },
     })
     if (!avatar) return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
     return NextResponse.json({ avatar })

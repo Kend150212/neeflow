@@ -1,1078 +1,810 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import {
-    User, Plus, Loader2, Sparkles, ChevronLeft,
-    CheckCircle2, AlertCircle, Trash2, RefreshCw, ImagePlus, X, ZoomIn
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, FolderOpen, Upload, Search, ChevronRight, MoreHorizontal, Shirt, Glasses, Package } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
+/* ─── Types ─── */
+interface PoseImage { url: string; label?: string; prompt?: string; createdAt?: string }
+interface AvatarPose { id: string; name: string; images: PoseImage[]; createdAt: string }
+interface AssetImage { url: string; label?: string; createdAt?: string }
+interface AvatarAsset { id: string; type: 'outfit' | 'accessory' | 'prop'; name: string; images: AssetImage[]; prompt?: string }
 interface StudioAvatar {
-    id: string
-    name: string
-    description: string | null
-    prompt: string
-    style: string
-    referenceImages: string[]
-    coverImage: string | null
-    status: string
-    createdAt: string
-    _shared?: boolean
+    id: string; name: string; description: string | null; prompt: string; style: string
+    referenceImages: string[]; coverImage: string | null; status: string; createdAt: string
+    poses?: AvatarPose[]; assets?: AvatarAsset[]; _shared?: boolean
 }
 
 const STYLES = [
-    { value: 'realistic', label: 'Realistic', hint: 'Photorealistic, natural look' },
-    { value: 'anime', label: 'Anime', hint: 'Japanese animation style' },
-    { value: 'cartoon', label: 'Cartoon', hint: 'Fun, vibrant cartoon style' },
-    { value: '3d', label: '3D Render', hint: 'Pixar / cinema 3D style' },
+    { value: 'realistic', label: 'Realistic' }, { value: 'anime', label: 'Anime' },
+    { value: 'cartoon', label: 'Cartoon' }, { value: '3d', label: '3D Render' },
 ]
-
-// Full model lists for each provider
 const GEN_PROVIDERS = [
     {
-        value: 'fal_ai', label: 'Fal.ai',
-        models: [
+        value: 'fal_ai', label: 'Fal.ai', models: [
             { value: 'fal-ai/flux/schnell', label: 'FLUX Schnell (fastest)' },
             { value: 'fal-ai/flux/dev', label: 'FLUX Dev (quality)' },
             { value: 'fal-ai/flux-pro', label: 'FLUX Pro' },
-            { value: 'fal-ai/flux-pro/v1.1', label: 'FLUX Pro v1.1' },
             { value: 'fal-ai/flux-realism', label: 'FLUX Realism' },
-            { value: 'fal-ai/flux-lora', label: 'FLUX LoRA' },
-            { value: 'fal-ai/stable-diffusion-v3-medium', label: 'Stable Diffusion 3 Medium' },
-            { value: 'fal-ai/stable-diffusion-xl', label: 'SDXL' },
-            { value: 'fal-ai/aura-flow', label: 'AuraFlow' },
-            { value: 'fal-ai/kolors', label: 'Kolors (Kwai)' },
-            { value: 'fal-ai/pixart-sigma', label: 'PixArt Sigma' },
-            { value: 'fal-ai/ideogram/v2', label: 'Ideogram v2' },
-            { value: 'fal-ai/recraft-v3', label: 'Recraft v3' },
-        ],
+        ]
     },
     {
-        value: 'runware', label: 'Runware',
-        models: [
+        value: 'runware', label: 'Runware', models: [
             { value: 'runware:100@1', label: 'Runware Fast FLUX' },
             { value: 'runware:101@1', label: 'Runware FLUX Dev' },
-            { value: 'civitai:4201@501240', label: 'DreamShaper XL' },
-            { value: 'civitai:36520@76907', label: 'DREAMIX' },
-            { value: 'civitai:133005@782002', label: 'Realistic Vision v6' },
-            { value: 'civitai:43331@176425', label: 'AbsoluteReality v1.8.1' },
-            { value: 'civitai:25694@143906', label: 'Counterfeit-V3.0 (anime)' },
-            { value: 'civitai:7240@46846', label: 'ChilloutMix' },
-        ],
+        ]
     },
     {
-        value: 'openai', label: 'OpenAI Images',
-        models: [
-            { value: 'gpt-image-1', label: 'GPT Image 1 (newest)' },
-            { value: 'dall-e-3', label: 'DALL-E 3 (1792×1024)' },
-            { value: 'dall-e-2', label: 'DALL-E 2 (1024×1024)' },
-        ],
+        value: 'openai', label: 'OpenAI', models: [
+            { value: 'gpt-image-1', label: 'GPT Image 1' },
+            { value: 'dall-e-3', label: 'DALL-E 3' },
+        ]
     },
     {
-        value: 'gemini', label: 'Gemini Imagen',
-        models: [
-            // ── Gemini native image gen (generateContent API) ──
-            { value: 'gemini-3.1-flash-image-preview', label: '⚡ Flash 2 (Banana 2) — mới nhất 2026' },
-            { value: 'gemini-3-pro-image-preview', label: '✨ Banana Pro — chất lượng studio' },
-            { value: 'gemini-2.5-flash-image', label: '⚡ Banana (Flash 1.5) — nhanh & ổn định' },
-            { value: 'gemini-2.0-flash-preview-image-generation', label: '⚡ Flash 1 — thế hệ đầu' },
-            // ── Imagen 4 (predict API) ──
-            { value: 'imagen-4.0-ultra-generate-001', label: '🏆 Imagen 4 Ultra — đỉnh nhất, 2K' },
-            { value: 'imagen-4.0-generate-001', label: '🎨 Imagen 4 — tiêu chuẩn 2025' },
-            { value: 'imagen-4.0-fast-generate-001', label: '🚀 Imagen 4 Fast — nhanh, số lượng lớn' },
-            // ── Imagen 3 ──
-            { value: 'imagen-3.0-generate-001', label: '🎨 Imagen 3 — ổn định, phổ biến' },
-            { value: 'imagen-3.0-fast-generate-001', label: '🚀 Imagen 3 Fast' },
-            // ── Legacy ──
-            { value: 'imagen-2.0-generate-001', label: '📷 Imagen 2 — thế hệ cũ' },
-        ],
+        value: 'gemini', label: 'Gemini', models: [
+            { value: 'gemini-3.1-flash-image-preview', label: '⚡ Flash 2 (mới nhất)' },
+            { value: 'gemini-3-pro-image-preview', label: '✨ Pro — studio quality' },
+            { value: 'imagen-4.0-generate-001', label: '🎨 Imagen 4' },
+            { value: 'imagen-4.0-ultra-generate-001', label: '🏆 Imagen 4 Ultra' },
+        ]
     },
 ]
 
+const ASSET_TYPES = [
+    { value: 'outfit', label: 'Outfit', icon: Shirt, color: 'text-violet-400' },
+    { value: 'accessory', label: 'Phụ kiện', icon: Glasses, color: 'text-cyan-400' },
+    { value: 'prop', label: 'Props', icon: Package, color: 'text-amber-400' },
+]
+const ANGLE_LABELS = ['Toàn thân', 'Mặt trước', 'Mặt bên', 'Góc 3/4']
+
+/* ─── Lightbox ─── */
+function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+    return (
+        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center" onClick={onClose}>
+            <button className="absolute top-4 right-4 text-white/60 hover:text-white" onClick={onClose}><X size={28} /></button>
+            <img src={url} className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain" alt="lightbox" onClick={e => e.stopPropagation()} />
+        </div>
+    )
+}
+
+/* ─── Main Page ─── */
 export default function ChannelAvatarsPage() {
     const { channelId } = useParams<{ channelId: string }>()
+
+    // Avatar list
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
     const [sharedAvatars, setSharedAvatars] = useState<StudioAvatar[]>([])
     const [loading, setLoading] = useState(true)
+    const [search, setSearch] = useState('')
+
+    // Selected avatar + detail
+    const [selected, setSelected] = useState<StudioAvatar | null>(null)
+
+    // Create avatar dialog
     const [showCreate, setShowCreate] = useState(false)
-    const [selectedAvatar, setSelectedAvatar] = useState<StudioAvatar | null>(null)
-
-    // Form state
-    const [name, setName] = useState('')
-    const [description, setDescription] = useState('')
-    const [prompt, setPrompt] = useState('')
-    const [style, setStyle] = useState('realistic')
+    const [cName, setCName] = useState(''); const [cPrompt, setCPrompt] = useState('')
+    const [cStyle, setCStyle] = useState('realistic'); const [cDesc, setCDesc] = useState('')
     const [creating, setCreating] = useState(false)
+
+    // Generation
     const [generating, setGenerating] = useState<string | null>(null)
-
-    // AI provider picker state (now inline in panel)
-    const [genProvider, setGenProvider] = useState('fal_ai')
-    const [genModel, setGenModel] = useState('fal-ai/flux/schnell')
-
-    // Reference image upload
-    const refInputRef = useRef<HTMLInputElement>(null)
-    const [uploadingRef, setUploadingRef] = useState(false)
-
-    // Cover image upload (manual external photo)
-    const coverInputRef = useRef<HTMLInputElement>(null)
-    const [uploadingCover, setUploadingCover] = useState(false)
-
-    // Lightbox
-    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-
-    // 2-phase generation: 'preview' = 1 front-view, 'full' = all angles
+    const [genProvider, setGenProvider] = useState('gemini')
+    const [genModel, setGenModel] = useState('gemini-3.1-flash-image-preview')
     const [genPhase, setGenPhase] = useState<Record<string, 'preview' | 'approved' | null>>({})
 
-    // Save edits state (right panel is editable)
-    const [saving, setSaving] = useState(false)
-    const [editName, setEditName] = useState('')
-    const [editPrompt, setEditPrompt] = useState('')
-    const [editStyle, setEditStyle] = useState('realistic')
-    const [editDescription, setEditDescription] = useState('')
+    // Lightbox
+    const [lightbox, setLightbox] = useState<string | null>(null)
 
-    // Structured prompt builder (HO SO NHAN VAT system)
-    const [builderMode, setBuilderMode] = useState(false) // false = free text, true = structured
-    const [bGender, setBGender] = useState('')
-    const [bAge, setBAge] = useState('')
-    const [bSkin, setBSkin] = useState('')
-    const [bBody, setBBody] = useState('')
-    const [bFace, setBFace] = useState('')
-    const [bHair, setBHair] = useState('')
-    const [bOutfit, setBOutfit] = useState('')
-    const [bVibe, setBVibe] = useState('')
-    const [bNote, setBNote] = useState('')
+    // Asset manager
+    const [assetTab, setAssetTab] = useState<'outfit' | 'accessory' | 'prop'>('outfit')
+    const [showAddAsset, setShowAddAsset] = useState(false)
+    const [assetName, setAssetName] = useState(''); const [assetType, setAssetType] = useState<'outfit' | 'accessory' | 'prop'>('outfit')
+    const [assetPrompt, setAssetPrompt] = useState('')
+    const [creatingAsset, setCreatingAsset] = useState(false)
+    const [uploadingAsset, setUploadingAsset] = useState<string | null>(null)
+    const assetFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+    // Pose manager
+    const [showAddPose, setShowAddPose] = useState(false)
+    const [poseName, setPoseName] = useState(''); const [creatingPose, setCreatingPose] = useState(false)
+    const [openPose, setOpenPose] = useState<AvatarPose | null>(null)
+    const [uploadingPose, setUploadingPose] = useState(false)
+    const poseFileRef = useRef<HTMLInputElement>(null)
+    const refCoverRef = useRef<HTMLInputElement>(null)
+    const [uploadingRef, setUploadingRef] = useState(false)
+
+    // Edit fields (right panel when shared is false)
+    const [editName, setEditName] = useState(''); const [editPrompt, setEditPrompt] = useState('')
+    const [editStyle, setEditStyle] = useState('realistic'); const [saving, setSaving] = useState(false)
 
     useEffect(() => { fetchAvatars() }, [channelId])
-
-    // Sync edit fields when selectedAvatar changes
     useEffect(() => {
-        if (selectedAvatar && !selectedAvatar._shared) {
-            setEditName(selectedAvatar.name)
-            setEditPrompt(selectedAvatar.prompt)
-            setEditStyle(selectedAvatar.style)
-            setEditDescription(selectedAvatar.description || '')
+        if (selected && !selected._shared) {
+            setEditName(selected.name); setEditPrompt(selected.prompt); setEditStyle(selected.style)
         }
-    }, [selectedAvatar?.id])
-
-    // keep genModel in sync when provider changes
+    }, [selected?.id])
     useEffect(() => {
-        const firstModel = GEN_PROVIDERS.find(p => p.value === genProvider)?.models[0]?.value
-        if (firstModel) setGenModel(firstModel)
+        const first = GEN_PROVIDERS.find(p => p.value === genProvider)?.models[0]?.value
+        if (first) setGenModel(first)
     }, [genProvider])
 
+    /* ─── API helpers ─── */
     async function fetchAvatars() {
         setLoading(true)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars`)
             if (res.ok) {
                 const data = await res.json()
-                const allFetched: StudioAvatar[] = data.avatars || []
-                setAvatars(allFetched)
-                setSharedAvatars(data.sharedAvatars || [])
-                // sync selectedAvatar so new image shows up in panel
-                setSelectedAvatar(prev => prev ? (allFetched.find(a => a.id === prev.id) ?? prev) : null)
-                return allFetched
+                const all: StudioAvatar[] = data.avatars || []
+                setAvatars(all); setSharedAvatars(data.sharedAvatars || [])
+                setSelected(prev => prev ? (all.find(a => a.id === prev.id) ?? prev) : null)
             }
-        } finally {
-            setLoading(false)
+        } finally { setLoading(false) }
+    }
+
+    async function fetchAvatarDetail(id: string) {
+        const res = await fetch(`/api/studio/channels/${channelId}/avatars/${id}`)
+        if (res.ok) {
+            const data = await res.json()
+            const av = data.avatar as StudioAvatar
+            setSelected(av)
+            setAvatars(prev => prev.map(a => a.id === id ? { ...a, ...av } : a))
         }
-        return []
+    }
+
+    async function selectAvatar(av: StudioAvatar) {
+        setSelected(av)
+        // fetch full detail with poses + assets
+        await fetchAvatarDetail(av.id)
     }
 
     async function createAvatar() {
-        if (!name.trim() || !prompt.trim()) return
+        if (!cName.trim() || !cPrompt.trim()) return
         setCreating(true)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name.trim(), description: description.trim() || undefined, prompt: prompt.trim(), style }),
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: cName.trim(), prompt: cPrompt.trim(), style: cStyle, description: cDesc.trim() || undefined }),
             })
             if (res.ok) {
-                const data = await res.json()
-                const newAvatar = data.avatar
-                setAvatars(prev => [newAvatar, ...prev])
-                setSelectedAvatar(newAvatar)
-                setEditName(newAvatar.name)
-                setEditPrompt(newAvatar.prompt)
-                setEditStyle(newAvatar.style)
-                setEditDescription(newAvatar.description || '')
-                setShowCreate(false)
-                resetForm()
-                toast.success('Avatar created! Select a provider and click Generate.')
-            } else {
-                const d = await res.json()
-                toast.error(d.error || 'Failed to create avatar')
-            }
-        } finally {
-            setCreating(false)
-        }
+                const data = await res.json(); const nw = data.avatar
+                setAvatars(prev => [nw, ...prev]); setSelected(nw)
+                setShowCreate(false); setCName(''); setCPrompt(''); setCDesc('')
+                toast.success('Avatar created!')
+            } else { const d = await res.json(); toast.error(d.error || 'Failed') }
+        } finally { setCreating(false) }
     }
 
     async function saveAvatar() {
-        if (!selectedAvatar || !editName.trim() || !editPrompt.trim()) return
+        if (!selected || !editName.trim()) return
         setSaving(true)
         try {
-            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selectedAvatar.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: editName.trim(),
-                    prompt: editPrompt.trim(),
-                    style: editStyle,
-                    description: editDescription.trim() || undefined,
-                }),
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: editName, prompt: editPrompt, style: editStyle }),
             })
             if (res.ok) {
-                const data = await res.json()
-                const updated = data.avatar as StudioAvatar
-                setSelectedAvatar(prev => prev ? { ...prev, ...updated } : null)
-                setAvatars(prev => prev.map(a => a.id === selectedAvatar.id ? { ...a, ...updated } : a))
-                toast.success('✅ Avatar saved!')
-            } else {
-                const d = await res.json()
-                toast.error(d.error || 'Failed to save')
+                const data = await res.json(); const up = data.avatar
+                setSelected(prev => prev ? { ...prev, ...up } : null)
+                setAvatars(prev => prev.map(a => a.id === selected.id ? { ...a, ...up } : a))
+                toast.success('Saved!')
             }
-        } finally {
-            setSaving(false)
-        }
+        } finally { setSaving(false) }
     }
 
-    // phase: 'preview' = generate 1 front-view first, 'full' = generate all angles with reference
-    async function generateAvatar(avatar: StudioAvatar, phase: 'preview' | 'full' = 'preview', referenceImage?: string) {
+    async function deleteAvatar(id: string) {
+        const res = await fetch(`/api/studio/channels/${channelId}/avatars/${id}`, { method: 'DELETE' })
+        if (res.ok) { setAvatars(prev => prev.filter(a => a.id !== id)); if (selected?.id === id) setSelected(null); toast.success('Deleted') }
+    }
+
+    async function generateAvatar(avatar: StudioAvatar, phase: 'preview' | 'full' = 'preview') {
         setGenerating(avatar.id)
-        const label = phase === 'preview' ? 'Tạo ảnh xem trước...' : 'Tạo toàn bộ góc nhìn...'
-        const toastId = toast.loading(`${label} "${avatar.name}"`)
+        const toastId = toast.loading(`Đang tạo ảnh "${avatar.name}"...`)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    provider: genProvider,
-                    model: genModel,
-                    // Phase 1: single front view. Phase 2: all 4 angles
-                    numAngles: phase === 'preview' ? 1 : 4,
-                    referenceImage: referenceImage || undefined,
-                }),
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider: genProvider, model: genModel, numAngles: phase === 'preview' ? 1 : 4 }),
             })
             if (res.ok) {
                 const data = await res.json()
                 if (data.status === 'done') {
-                    toast.success(`✅ Xong! "${avatar.name}"`, { id: toastId })
-                    const latest = await fetchAvatars()
-                    if (phase === 'preview') {
-                        setGenPhase(prev => ({ ...prev, [avatar.id]: 'preview' }))
-                    } else {
-                        setGenPhase(prev => ({ ...prev, [avatar.id]: null }))
-                    }
+                    toast.success('✅ Xong!', { id: toastId })
+                    await fetchAvatarDetail(avatar.id)
+                    if (phase === 'preview') setGenPhase(prev => ({ ...prev, [avatar.id]: 'preview' }))
+                    else setGenPhase(prev => ({ ...prev, [avatar.id]: null }))
                 } else {
-                    toast.success('⏳ Đang tạo... (~30 giây)', { id: toastId })
+                    toast.success('⏳ Đang tạo... (~30s)', { id: toastId })
                     setAvatars(prev => prev.map(a => a.id === avatar.id ? { ...a, status: 'generating' } : a))
-                    if (selectedAvatar?.id === avatar.id) {
-                        setSelectedAvatar(prev => prev ? { ...prev, status: 'generating' } : null)
-                    }
-                    if (phase === 'preview') {
-                        setGenPhase(prev => ({ ...prev, [avatar.id]: 'preview' }))
-                    }
+                    if (selected?.id === avatar.id) setSelected(prev => prev ? { ...prev, status: 'generating' } : null)
+                    if (phase === 'preview') setGenPhase(prev => ({ ...prev, [avatar.id]: 'preview' }))
                     pollAvatarStatus(avatar.id, phase)
                 }
-            } else {
-                const d = await res.json()
-                toast.error(`❌ ${d.error || 'Failed to start generation'}`, { id: toastId })
-            }
-        } catch (err) {
-            toast.error(`❌ Network error: ${err instanceof Error ? err.message : String(err)}`, { id: toastId })
-        } finally {
-            setGenerating(null)
-        }
+            } else { const d = await res.json(); toast.error(d.error || 'Failed', { id: toastId }) }
+        } catch (err) { toast.error(`Network error: ${err instanceof Error ? err.message : String(err)}`, { id: toastId }) }
+        finally { setGenerating(null) }
     }
 
     async function pollAvatarStatus(id: string, phase: 'preview' | 'full' = 'preview') {
         let attempts = 0
         const interval = setInterval(async () => {
             attempts++
-            if (attempts > 120) { // 5 min timeout at 2.5s interval
-                clearInterval(interval)
-                toast.error('Generation timed out. Please try again.')
-                return
-            }
+            if (attempts > 120) { clearInterval(interval); toast.error('Generation timed out.'); return }
             try {
-                // Poll individual avatar — much faster than fetching the whole list
                 const res = await fetch(`/api/studio/channels/${channelId}/avatars/${id}`)
                 if (!res.ok) return
-                const data = await res.json()
-                const updated: StudioAvatar = data.avatar
+                const data = await res.json(); const updated: StudioAvatar = data.avatar
                 if (!updated) return
                 if (updated.status !== 'generating') {
                     clearInterval(interval)
-                    // Update avatar in list and panel immediately
                     setAvatars(prev => prev.map(a => a.id === id ? updated : a))
-                    setSelectedAvatar(prev => prev?.id === id ? updated : prev)
+                    setSelected(prev => prev?.id === id ? updated : prev)
                     if (updated.status === 'idle' || updated.status === 'done') {
-                        if (phase === 'preview') {
-                            toast.success(`✅ Ảnh xem trước sẵn sàng! Xem và approve để tạo toàn bộ góc nhìn.`)
-                            setGenPhase(prev => ({ ...prev, [id]: 'preview' }))
-                        } else {
-                            toast.success(`✅ Avatar "${updated.name}" đã tạo xong tất cả góc nhìn!`)
-                            setGenPhase(prev => ({ ...prev, [id]: null }))
-                        }
-                    } else if (updated.status === 'failed') {
-                        toast.error(`❌ Avatar "${updated.name}" generation failed. Check your API key.`)
-                    }
+                        if (phase === 'preview') { toast.success('✅ Ảnh xem trước sẵn sàng!'); setGenPhase(prev => ({ ...prev, [id]: 'preview' })) }
+                        else { toast.success('✅ Tất cả góc nhìn đã xong!'); setGenPhase(prev => ({ ...prev, [id]: null })) }
+                    } else if (updated.status === 'failed') { toast.error('❌ Generation failed.') }
                 }
             } catch { }
-        }, 2500) // poll every 2.5s instead of 5s
+        }, 2500)
     }
 
-    async function deleteAvatar(id: string) {
-        const res = await fetch(`/api/studio/channels/${channelId}/avatars/${id}`, { method: 'DELETE' })
-        if (res.ok) {
-            setAvatars(prev => prev.filter(a => a.id !== id))
-            if (selectedAvatar?.id === id) setSelectedAvatar(null)
-            toast.success('Avatar deleted')
-        }
-    }
-
-    // Upload reference image to R2 / API
-    async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0]
-        if (!file || !selectedAvatar) return
-        setUploadingCover(true)
-        const toastId = toast.loading('Uploading cover image...')
-        try {
-            const formData = new FormData()
-            formData.append('file', file)
-            const res = await fetch(
-                `/api/studio/channels/${channelId}/avatars/${selectedAvatar.id}/cover`,
-                { method: 'POST', body: formData }
-            )
-            if (res.ok) {
-                const data = await res.json()
-                const updatedAvatar = { ...selectedAvatar, coverImage: data.coverImage, status: 'idle' }
-                setSelectedAvatar(updatedAvatar)
-                setAvatars(prev => prev.map(a => a.id === selectedAvatar.id ? updatedAvatar : a))
-                toast.success('✅ Cover image uploaded!', { id: toastId })
-            } else {
-                const d = await res.json()
-                toast.error(`❌ ${d.error || 'Upload failed'}`, { id: toastId })
-            }
-        } catch (err) {
-            toast.error(`❌ Network error: ${err instanceof Error ? err.message : String(err)}`, { id: toastId })
-        } finally {
-            setUploadingCover(false)
-            if (coverInputRef.current) coverInputRef.current.value = ''
-        }
-    }
-
-    async function handleRefUpload(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0]
-        if (!file || !selectedAvatar) return
-        if (selectedAvatar.referenceImages?.length >= 4) {
-            toast.error('Maximum 4 reference images')
-            return
-        }
+    async function uploadRefImage(e: React.ChangeEvent<HTMLInputElement>) {
+        if (!selected || !e.target.files?.[0]) return
         setUploadingRef(true)
         try {
-            const formData = new FormData()
-            formData.append('file', file)
-            const res = await fetch(
-                `/api/studio/channels/${channelId}/avatars/${selectedAvatar.id}/reference-images`,
-                { method: 'POST', body: formData }
-            )
+            const fd = new FormData(); fd.append('file', e.target.files[0])
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/reference-images`, { method: 'POST', body: fd })
+            if (res.ok) { const data = await res.json(); const up = data.avatar as StudioAvatar; setSelected(prev => prev ? { ...prev, ...up } : null); setAvatars(prev => prev.map(a => a.id === selected.id ? { ...a, ...up } : a)) }
+            else toast.error('Upload failed')
+        } finally { setUploadingRef(false); e.target.value = '' }
+    }
+
+    /* ── Asset helpers ── */
+    async function createAsset() {
+        if (!selected || !assetName.trim()) return
+        setCreatingAsset(true)
+        try {
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/assets`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: assetName, type: assetType, prompt: assetPrompt }),
+            })
             if (res.ok) {
                 const data = await res.json()
-                const updatedAvatar = { ...selectedAvatar, referenceImages: data.referenceImages }
-                setSelectedAvatar(updatedAvatar)
-                setAvatars(prev => prev.map(a => a.id === selectedAvatar.id ? updatedAvatar : a))
-                toast.success('Reference image uploaded')
-            } else {
-                const d = await res.json()
-                toast.error(d.error || 'Upload failed')
+                const newAsset = data.asset as AvatarAsset
+                setSelected(prev => prev ? { ...prev, assets: [...(prev.assets || []), newAsset] } : null)
+                setShowAddAsset(false); setAssetName(''); setAssetPrompt(''); toast.success('Asset created!')
             }
-        } finally {
-            setUploadingRef(false)
-            if (refInputRef.current) refInputRef.current.value = ''
-        }
+        } finally { setCreatingAsset(false) }
     }
 
-    async function removeRefImage(idx: number) {
-        if (!selectedAvatar) return
-        const res = await fetch(
-            `/api/studio/channels/${channelId}/avatars/${selectedAvatar.id}/reference-images`,
-            {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ index: idx }),
-            }
-        )
+    async function uploadAssetImages(assetId: string, files: FileList) {
+        if (!selected) return
+        setUploadingAsset(assetId)
+        try {
+            const fd = new FormData()
+            Array.from(files).forEach(f => fd.append('file', f))
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/assets/${assetId}/upload`, { method: 'POST', body: fd })
+            if (res.ok) {
+                const data = await res.json(); const up = data.asset as AvatarAsset
+                setSelected(prev => prev ? { ...prev, assets: prev.assets?.map(a => a.id === assetId ? up : a) } : null)
+                toast.success(`${Array.from(files).length} ảnh đã upload`)
+            } else toast.error('Upload failed')
+        } finally { setUploadingAsset(null) }
+    }
+
+    async function deleteAsset(assetId: string) {
+        if (!selected) return
+        const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/assets/${assetId}`, { method: 'DELETE' })
+        if (res.ok) { setSelected(prev => prev ? { ...prev, assets: prev.assets?.filter(a => a.id !== assetId) } : null); toast.success('Deleted') }
+    }
+
+    async function deleteAssetImage(assetId: string, url: string) {
+        if (!selected) return
+        const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/assets/${assetId}/upload`, {
+            method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }),
+        })
         if (res.ok) {
-            const data = await res.json()
-            const updatedAvatar = { ...selectedAvatar, referenceImages: data.referenceImages }
-            setSelectedAvatar(updatedAvatar)
-            setAvatars(prev => prev.map(a => a.id === selectedAvatar.id ? updatedAvatar : a))
+            const data = await res.json(); const up = data.asset as AvatarAsset
+            setSelected(prev => prev ? { ...prev, assets: prev.assets?.map(a => a.id === assetId ? up : a) } : null)
         }
     }
 
-    function resetForm() {
-        setName(''); setDescription(''); setPrompt(''); setStyle('realistic')
-        setBGender(''); setBAge(''); setBSkin(''); setBBody(''); setBFace(''); setBHair(''); setBOutfit(''); setBVibe(''); setBNote('')
-        setBuilderMode(false)
+    /* ── Pose helpers ── */
+    async function createPose() {
+        if (!selected || !poseName.trim()) return
+        setCreatingPose(true)
+        try {
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/poses`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: poseName }),
+            })
+            if (res.ok) {
+                const data = await res.json(); const np = data.pose as AvatarPose
+                setSelected(prev => prev ? { ...prev, poses: [...(prev.poses || []), np] } : null)
+                setShowAddPose(false); setPoseName(''); toast.success('Pose folder created!')
+            }
+        } finally { setCreatingPose(false) }
     }
 
-    function buildPromptFromFields() {
-        const parts = [
-            bGender && bAge ? `${bGender}, ${bAge} tuổi` : (bGender || ''),
-            bSkin && `da ${bSkin}`,
-            bBody && `vóc dáng ${bBody}`,
-            bFace && `khuôn mặt: ${bFace}`,
-            bHair && `tóc: ${bHair}`,
-            bOutfit && `trang phục: ${bOutfit}`,
-            bVibe && `vibe: ${bVibe}`,
-            bNote && `ghi chú: ${bNote}`,
-        ].filter(Boolean).join(', ')
-        return parts + ', character is 18+ years old'
+    async function deletePose(poseId: string) {
+        if (!selected) return
+        const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/poses/${poseId}`, { method: 'DELETE' })
+        if (res.ok) {
+            setSelected(prev => prev ? { ...prev, poses: prev.poses?.filter(p => p.id !== poseId) } : null)
+            if (openPose?.id === poseId) setOpenPose(null)
+        }
     }
 
-    const statusIcon = (s: string) => {
-        if (s === 'done') return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-        if (s === 'generating') return <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" />
-        if (s === 'failed') return <AlertCircle className="h-3.5 w-3.5 text-red-400" />
-        return null
+    async function uploadPoseImages(files: FileList) {
+        if (!selected || !openPose) return
+        setUploadingPose(true)
+        try {
+            const fd = new FormData()
+            Array.from(files).forEach(f => fd.append('file', f))
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/poses/${openPose.id}/upload`, { method: 'POST', body: fd })
+            if (res.ok) {
+                const data = await res.json(); const up = data.pose as AvatarPose
+                setOpenPose(up)
+                setSelected(prev => prev ? { ...prev, poses: prev.poses?.map(p => p.id === openPose.id ? up : p) } : null)
+                toast.success(`${Array.from(files).length} ảnh đã upload`)
+            }
+        } finally { setUploadingPose(false) }
     }
 
-    const allAvatars = [...avatars, ...sharedAvatars]
-    const currentProviderModels = GEN_PROVIDERS.find(p => p.value === genProvider)?.models || []
+    async function deletePoseImage(url: string) {
+        if (!selected || !openPose) return
+        const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/poses/${openPose.id}/delete-image`, {
+            method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }),
+        })
+        if (res.ok) {
+            const data = await res.json(); const up = data.pose as AvatarPose
+            setOpenPose(up)
+            setSelected(prev => prev ? { ...prev, poses: prev.poses?.map(p => p.id === openPose.id ? up : p) } : null)
+        }
+    }
 
+    /* ─── Filtered lists ─── */
+    const filteredAvatars = [...avatars, ...sharedAvatars].filter(a =>
+        search ? a.name.toLowerCase().includes(search.toLowerCase()) : true
+    )
+    const selectedAssets = selected?.assets?.filter(a => a.type === assetTab) || []
+
+    /* ─── Render ─── */
     return (
-        <div className="flex h-screen overflow-hidden bg-[#080d0b]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(0, 255, 149, 0.04) 1px, transparent 0)', backgroundSize: '32px 32px' }}>
-            {/* Left: Avatar grid */}
-            <div className="flex-1 flex flex-col overflow-y-auto">
-                <header className="sticky top-0 z-10 px-8 py-5 border-b border-white/5 bg-[#080d0b]/90 backdrop-blur-md flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Link href={`/dashboard/studio/${channelId}`}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white">
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-black text-white tracking-tight">Avatars</h1>
-                            <p className="text-slate-400 text-xs mt-0.5">Channel-scoped AI characters</p>
-                        </div>
+        <div className="flex h-screen overflow-hidden bg-[#050807]">
+
+            {/* ══ LEFT SIDEBAR — Avatar List ══ */}
+            <aside className="w-64 flex-shrink-0 border-r border-white/5 bg-[#0a0f0d] flex flex-col">
+                <div className="p-4 border-b border-white/5">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-[0.2em]">Characters</h2>
+                        <button onClick={() => setShowCreate(true)} className="w-6 h-6 rounded bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/30 transition-all">
+                            <Plus size={12} />
+                        </button>
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={fetchAvatars} className="gap-2 text-slate-400 hover:text-white">
-                            <RefreshCw className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold shadow-[0_0_20px_rgba(0,255,149,0.2)]"
-                            onClick={() => setShowCreate(true)}
-                        >
-                            <Plus className="h-4 w-4" />
-                            Create Avatar
-                        </Button>
+                    <div className="relative">
+                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search characters..." className="w-full bg-white/5 border border-white/10 rounded-lg py-1.5 pl-7 pr-3 text-xs text-slate-300 placeholder:text-slate-600 outline-none focus:border-emerald-500/50 transition-all" />
                     </div>
-                </header>
-
-                <div className="px-8 py-6">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-24">
-                            <Loader2 className="h-8 w-8 text-emerald-400 animate-spin" />
-                        </div>
-                    ) : allAvatars.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-24 gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center">
-                                <User className="h-8 w-8 text-emerald-400" />
-                            </div>
-                            <div className="text-center">
-                                <p className="text-white font-bold mb-1">No avatars yet</p>
-                                <p className="text-slate-400 text-sm max-w-xs">Create your first AI character to use as a reference in projects</p>
-                            </div>
-                            <Button
-                                onClick={() => setShowCreate(true)}
-                                className="gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold mt-2"
-                            >
-                                <Sparkles className="h-4 w-4" />
-                                Create First Avatar
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            <div>
-                                {sharedAvatars.length > 0 && (
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">This Channel</p>
-                                )}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-                                    <button
-                                        onClick={() => setShowCreate(true)}
-                                        className="aspect-[3/4] rounded-2xl border-2 border-dashed border-white/15 flex flex-col items-center justify-center gap-2 hover:border-emerald-400/40 hover:bg-emerald-400/5 transition-colors group"
-                                    >
-                                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-emerald-400/10 transition-colors">
-                                            <Plus className="h-5 w-5 text-slate-500 group-hover:text-emerald-400" />
-                                        </div>
-                                        <span className="text-xs text-slate-500 group-hover:text-emerald-400 transition-colors font-medium">New Avatar</span>
-                                    </button>
-
-                                    {avatars.map((av) => (
-                                        <button
-                                            key={av.id}
-                                            onClick={() => setSelectedAvatar(av)}
-                                            className={cn(
-                                                'aspect-[3/4] rounded-2xl overflow-hidden border relative group text-left transition-all',
-                                                selectedAvatar?.id === av.id
-                                                    ? 'border-emerald-400 shadow-[0_0_20px_rgba(0,255,149,0.2)]'
-                                                    : 'border-white/10 hover:border-emerald-400/40'
-                                            )}
-                                        >
-                                            {av.coverImage ? (
-                                                <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center gap-2">
-                                                    {av.status === 'generating'
-                                                        ? <><Loader2 className="h-6 w-6 text-emerald-400 animate-spin" /><span className="text-xs text-slate-500">Generating...</span></>
-                                                        : av.status === 'failed'
-                                                            ? <><AlertCircle className="h-6 w-6 text-red-400" /><span className="text-xs text-red-400">Failed</span></>
-                                                            : <User className="h-8 w-8 text-slate-700" />
-                                                    }
-                                                </div>
-                                            )}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
-                                                <p className="text-white text-xs font-bold truncate">{av.name}</p>
-                                                <p className="text-slate-400 text-[10px] capitalize">{av.style}</p>
-                                            </div>
-                                            <div className="absolute top-2 right-2">{statusIcon(av.status)}</div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {sharedAvatars.length > 0 && (
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-3">Shared with this Channel</p>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-                                        {sharedAvatars.map((av) => (
-                                            <button
-                                                key={av.id}
-                                                onClick={() => setSelectedAvatar(av)}
-                                                className={cn(
-                                                    'aspect-[3/4] rounded-2xl overflow-hidden border relative group text-left transition-all',
-                                                    selectedAvatar?.id === av.id
-                                                        ? 'border-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.2)]'
-                                                        : 'border-white/10 hover:border-violet-400/40'
-                                                )}
-                                            >
-                                                {av.coverImage ? (
-                                                    <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                                                        <User className="h-8 w-8 text-slate-700" />
-                                                    </div>
-                                                )}
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
-                                                    <p className="text-white text-xs font-bold truncate">{av.name}</p>
-                                                    <p className="text-violet-400 text-[10px]">Shared</p>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
                 </div>
-            </div>
 
-            {/* Right: Detail panel */}
-            {selectedAvatar && (
-                <aside className="w-80 border-l border-white/5 bg-[#0a120d] flex flex-col overflow-y-auto">
-                    {/* Header */}
-                    <div className="p-5 border-b border-white/5 flex items-start justify-between">
-                        <div className="flex-1 mr-2">
-                            {!selectedAvatar._shared ? (
-                                <input
-                                    value={editName}
-                                    onChange={e => setEditName(e.target.value)}
-                                    className="bg-transparent text-white font-bold text-base w-full focus:outline-none focus:border-b focus:border-emerald-400/50 pb-0.5 border-b border-transparent transition-colors"
-                                    placeholder="Avatar name..."
-                                />
-                            ) : (
-                                <h3 className="text-white font-bold">{selectedAvatar.name}</h3>
-                            )}
-                            <p className="text-slate-400 text-xs capitalize mt-0.5">{selectedAvatar.style} style</p>
-                            {selectedAvatar._shared && (
-                                <span className="text-[10px] text-violet-400 font-medium">Shared avatar</span>
-                            )}
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-8"><Loader2 size={16} className="animate-spin text-emerald-500" /></div>
+                    ) : filteredAvatars.length === 0 ? (
+                        <div className="text-center py-8">
+                            <p className="text-xs text-slate-500 mb-3">No avatars yet</p>
+                            <button onClick={() => setShowCreate(true)} className="text-xs text-emerald-400 hover:underline">+ Create first avatar</button>
                         </div>
-                        {!selectedAvatar._shared && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-red-400" onClick={() => deleteAvatar(selectedAvatar.id)}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                        )}
+                    ) : filteredAvatars.map(av => (
+                        <button key={av.id} onClick={() => selectAvatar(av)}
+                            className={cn('w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all group',
+                                selected?.id === av.id ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'
+                            )}>
+                            <div className={cn('w-10 h-10 rounded-lg bg-slate-800 border overflow-hidden flex-shrink-0 transition-all',
+                                selected?.id === av.id ? 'border-emerald-500/40' : 'border-white/10 grayscale group-hover:grayscale-0'
+                            )}>
+                                {av.coverImage ? <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" /> :
+                                    <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">{av.name[0]}</div>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className={cn('text-xs font-bold truncate', selected?.id === av.id ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors')}>{av.name}</p>
+                                <p className={cn('text-[10px] uppercase tracking-widest font-bold mt-0.5',
+                                    av.status === 'generating' ? 'text-amber-400' : selected?.id === av.id ? 'text-emerald-400' : 'text-slate-600'
+                                )}>{av._shared ? 'Shared' : av.status}</p>
+                            </div>
+                            {av.status === 'generating' && <Loader2 size={12} className="animate-spin text-amber-400 flex-shrink-0" />}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="p-3 border-t border-white/5">
+                    <button onClick={() => setShowCreate(true)} className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold hover:bg-emerald-500/5 transition-all">
+                        <Plus size={12} /> New Character
+                    </button>
+                </div>
+            </aside>
+
+            {/* ══ CENTER — Character Workspace ══ */}
+            <main className="flex-1 min-w-0 flex flex-col overflow-y-auto">
+                {!selected ? (
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                                <Sparkles size={24} className="text-emerald-400" />
+                            </div>
+                            <p className="text-slate-400 text-sm">Select a character to view details</p>
+                            <button onClick={() => setShowCreate(true)} className="mt-4 px-4 py-2 bg-emerald-500 text-black text-xs font-bold rounded-xl hover:bg-emerald-400 transition-all">
+                                + Create First Avatar
+                            </button>
+                        </div>
                     </div>
-
-                    <div className="p-5 space-y-5 flex-1">
-
-                        {/* ── AI Generation ── */}
-                        {!selectedAvatar._shared && (
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">AI Generation</p>
-
-                                {/* Provider selector */}
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    {GEN_PROVIDERS.map(p => (
-                                        <button
-                                            key={p.value}
-                                            onClick={() => setGenProvider(p.value)}
-                                            className={cn(
-                                                'py-1.5 px-2 rounded-lg text-xs font-semibold transition-all border',
-                                                genProvider === p.value
-                                                    ? 'bg-emerald-400/15 text-emerald-400 border-emerald-400/30'
-                                                    : 'bg-white/5 text-slate-500 border-white/5 hover:text-slate-300 hover:border-white/15'
-                                            )}
-                                        >
-                                            {p.label}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Model selector */}
-                                <Select value={genModel} onValueChange={setGenModel}>
-                                    <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-white">
-                                        <SelectValue placeholder="Select model" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-64 overflow-y-auto">
-                                        {currentProviderModels.map(m => (
-                                            <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-
-                                {/* Generate button */}
-                                <Button
-                                    className="w-full gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold h-8 text-xs shadow-[0_0_16px_rgba(0,255,149,0.15)]"
-                                    onClick={() => generateAvatar(selectedAvatar, 'preview')}
-                                    disabled={!!generating || selectedAvatar.status === 'generating'}
-                                >
-                                    {generating === selectedAvatar.id
-                                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang tạo...</>
-                                        : <><Sparkles className="h-3.5 w-3.5" /> Tạo ảnh xem trước (1 góc)</>
-                                    }
-                                </Button>
-                                <p className="text-[10px] text-slate-600 text-center">
-                                    Key from Dashboard → API Keys
-                                </p>
-                            </div>
-                        )}
-
-                        {/* ── Reference Images ── */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Reference Images</p>
-                                {!selectedAvatar._shared && (
-                                    <>
-                                        <input
-                                            ref={refInputRef}
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={handleRefUpload}
-                                        />
-                                        <button
-                                            onClick={() => refInputRef.current?.click()}
-                                            disabled={uploadingRef || (selectedAvatar.referenceImages?.length >= 4)}
-                                            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors disabled:opacity-40"
-                                        >
-                                            {uploadingRef
-                                                ? <Loader2 className="h-3 w-3 animate-spin" />
-                                                : <ImagePlus className="h-3 w-3" />
-                                            }
-                                            Upload ({selectedAvatar.referenceImages?.length || 0}/4)
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                {/* Uploaded images */}
-                                {(selectedAvatar.referenceImages || []).map((url, i) => (
-                                    <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10 relative group">
-                                        <img src={url} alt={`ref-${i}`} className="w-full h-full object-cover" />
-                                        {!selectedAvatar._shared && (
-                                            <button
-                                                onClick={() => removeRefImage(i)}
-                                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
-                                            >
-                                                <X className="h-3 w-3 text-white" />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-
-                                {/* Empty slots */}
-                                {Array.from({ length: Math.max(0, 4 - (selectedAvatar.referenceImages?.length || 0)) }).map((_, i) => (
-                                    <button
-                                        key={`empty-${i}`}
-                                        onClick={() => !selectedAvatar._shared && refInputRef.current?.click()}
-                                        disabled={uploadingRef || selectedAvatar._shared}
-                                        className={cn(
-                                            'aspect-square rounded-lg bg-white/5 border border-dashed border-white/10 flex flex-col items-center justify-center gap-1 transition-colors',
-                                            !selectedAvatar._shared && 'hover:border-emerald-400/30 hover:bg-emerald-400/5 cursor-pointer',
-                                        )}
-                                    >
-                                        {uploadingRef && i === 0
-                                            ? <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
-                                            : <>
-                                                <ImagePlus className="h-4 w-4 text-slate-700" />
-                                                <span className="text-[9px] text-slate-700">Add photo</span>
-                                            </>
-                                        }
-                                    </button>
-                                ))}
-                            </div>
-                            <p className="text-[10px] text-slate-600 mt-1.5">Upload reference photos to guide the AI style</p>
-                        </div>
-
-                        {/* ── Generated Image ── */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Avatar Image</p>
-                                {!selectedAvatar._shared && (
-                                    <>
-                                        <input
-                                            ref={coverInputRef}
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={handleCoverUpload}
-                                        />
-                                        <button
-                                            onClick={() => coverInputRef.current?.click()}
-                                            disabled={uploadingCover || selectedAvatar.status === 'generating'}
-                                            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors disabled:opacity-40"
-                                        >
-                                            {uploadingCover
-                                                ? <Loader2 className="h-3 w-3 animate-spin" />
-                                                : <ImagePlus className="h-3 w-3" />
-                                            }
-                                            Upload Photo
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                            <div className="rounded-xl overflow-hidden border border-white/10 relative">
-                                {selectedAvatar.coverImage ? (
-                                    <button
-                                        className="w-full block cursor-zoom-in group relative"
-                                        onClick={() => setLightboxUrl(selectedAvatar.coverImage!)}
-                                        title="Click để phóng to"
-                                    >
-                                        <img src={selectedAvatar.coverImage} alt="avatar" className="w-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                                            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
-                                        </div>
-                                    </button>
-                                ) : (
-                                    <div className="w-full aspect-video bg-white/5 flex flex-col items-center justify-center gap-2">
-                                        {selectedAvatar.status === 'generating' ? null : (
-                                            <>
-                                                <Sparkles className="h-6 w-6 text-slate-700" />
-                                                <span className="text-[11px] text-slate-600">Generate or upload a photo</span>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
-                                {/* Overlay while generating */}
-                                {selectedAvatar.status === 'generating' && (
-                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
-                                        <Loader2 className="h-7 w-7 text-emerald-400 animate-spin" />
-                                        <span className="text-xs text-emerald-400 font-medium">Đang tạo...</span>
-                                    </div>
-                                )}
-                                {/* Overlay while uploading cover */}
-                                {uploadingCover && (
-                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
-                                        <Loader2 className="h-7 w-7 text-sky-400 animate-spin" />
-                                        <span className="text-xs text-sky-400 font-medium">Uploading...</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* ── Phase 1 approve/reject bar ── */}
-                            {!selectedAvatar._shared && selectedAvatar.coverImage && genPhase[selectedAvatar.id] === 'preview' && selectedAvatar.status !== 'generating' && (
-                                <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 space-y-2">
-                                    <p className="text-[11px] text-emerald-300 font-medium text-center">Ảnh xem trước — hài lòng chưa?</p>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => {
-                                                setGenPhase(prev => ({ ...prev, [selectedAvatar.id!]: null }))
-                                                generateAvatar(selectedAvatar, 'preview')
-                                            }}
-                                            disabled={!!generating}
-                                            className="flex-1 h-8 rounded-lg border border-white/10 text-[11px] text-slate-400 hover:text-white hover:border-white/30 transition-colors flex items-center justify-center gap-1"
-                                        >
-                                            <RefreshCw className="h-3 w-3" /> Thử lại
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setGenPhase(prev => ({ ...prev, [selectedAvatar.id!]: 'approved' }))
-                                                generateAvatar(selectedAvatar, 'full', selectedAvatar.coverImage!)
-                                            }}
-                                            disabled={!!generating}
-                                            className="flex-1 h-8 rounded-lg bg-emerald-400 text-[#080d0b] text-[11px] font-bold hover:bg-emerald-300 transition-colors flex items-center justify-center gap-1"
-                                        >
-                                            <CheckCircle2 className="h-3 w-3" /> Approve & 4 góc nhìn
-                                        </button>
-                                    </div>
-                                    <p className="text-[10px] text-slate-600 text-center">AI sẽ tạo Front, Side, Back, 3/4 đồng bộ từ ảnh này</p>
-                                </div>
-                            )}
-                        </div>
-
-
-
-                        {/* ── Prompt ── */}
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Prompt</p>
-                            {!selectedAvatar._shared ? (
-                                <>
-                                    <textarea
-                                        value={editPrompt}
-                                        onChange={e => setEditPrompt(e.target.value)}
-                                        rows={5}
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-xs text-slate-300 resize-none focus:outline-none focus:border-emerald-400/40 leading-relaxed"
-                                        placeholder="Describe your character in detail..."
-                                    />
-                                    <div className="mt-2 space-y-1.5">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Art Style</p>
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            {STYLES.map(s => (
-                                                <button
-                                                    key={s.value}
-                                                    onClick={() => setEditStyle(s.value)}
-                                                    className={cn(
-                                                        'py-1.5 px-2 rounded-lg text-xs font-medium transition-all border text-left',
-                                                        editStyle === s.value
-                                                            ? 'bg-emerald-400/15 text-emerald-400 border-emerald-400/30'
-                                                            : 'bg-white/5 text-slate-500 border-white/5 hover:text-slate-300'
-                                                    )}
-                                                >
-                                                    {s.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="mt-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Notes</p>
-                                        <input
-                                            value={editDescription}
-                                            onChange={e => setEditDescription(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-400/40"
-                                            placeholder="Internal notes about this avatar..."
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={saveAvatar}
-                                        disabled={saving || editName === selectedAvatar.name && editPrompt === selectedAvatar.prompt && editStyle === selectedAvatar.style && editDescription === (selectedAvatar.description || '')}
-                                        className="mt-3 w-full h-8 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-400/20 text-xs font-bold hover:bg-blue-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
-                                    >
-                                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                                        Save Changes
-                                    </button>
-                                </>
-                            ) : (
-                                <p className="text-xs text-slate-400 leading-relaxed">{selectedAvatar.prompt}</p>
-                            )}
-                        </div>
-
-                        {selectedAvatar.description && selectedAvatar._shared && (
+                ) : (
+                    <>
+                        {/* Header */}
+                        <div className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between border-b border-white/5 bg-[#050807]/90 backdrop-blur-md">
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Description</p>
-                                <p className="text-xs text-slate-400">{selectedAvatar.description}</p>
+                                <div className="flex items-center gap-2 mb-0.5">
+                                    <h2 className="text-lg font-black text-white tracking-tight">{selected.name}</h2>
+                                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase">{selected.style}</span>
+                                    {selected._shared && <span className="px-2 py-0.5 rounded bg-violet-500/20 text-violet-400 text-[10px] font-bold uppercase">Shared</span>}
+                                </div>
+                                <p className="text-slate-500 text-xs">{selected.description || selected.prompt.slice(0, 80)}</p>
                             </div>
-                        )}
-                    </div>
-                </aside>
-            )}
-
-            {/* Create Avatar Dialog */}
-            <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                <DialogContent className="sm:max-w-xl bg-[#0f1a14] border-emerald-400/20 max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
-                            <Sparkles className="h-5 w-5 text-emerald-400" />
-                            Create Avatar
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-1">
-                        {/* Name */}
-                        <div>
-                            <Label className="text-slate-300 text-xs">Avatar Name *</Label>
-                            <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Linh — Brand Ambassador"
-                                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40" />
+                            <div className="flex gap-2">
+                                {!selected._shared && (
+                                    <>
+                                        <select value={genProvider} onChange={e => setGenProvider(e.target.value)} className="bg-white/5 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1.5 outline-none">
+                                            {GEN_PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                                        </select>
+                                        <select value={genModel} onChange={e => setGenModel(e.target.value)} className="bg-white/5 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1.5 outline-none max-w-[180px] truncate">
+                                            {GEN_PROVIDERS.find(p => p.value === genProvider)?.models.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                        </select>
+                                        <button onClick={() => generateAvatar(selected, genPhase[selected.id] === 'preview' ? 'full' : 'preview')}
+                                            disabled={!!generating} className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-black font-bold text-xs rounded-xl hover:bg-emerald-400 disabled:opacity-50 transition-all">
+                                            {generating === selected.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                            {genPhase[selected.id] === 'preview' ? 'Tạo toàn bộ (4 góc)' : 'Tạo ảnh xem trước'}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Mode toggle */}
-                        <div className="flex items-center gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
-                            <button
-                                onClick={() => { setBuilderMode(false) }}
-                                className={cn('flex-1 py-1.5 rounded-md text-xs font-semibold transition-all', !builderMode ? 'bg-emerald-400/20 text-emerald-400' : 'text-slate-500 hover:text-slate-300')}
-                            >✍️ Free Text</button>
-                            <button
-                                onClick={() => { setBuilderMode(true) }}
-                                className={cn('flex-1 py-1.5 rounded-md text-xs font-semibold transition-all', builderMode ? 'bg-emerald-400/20 text-emerald-400' : 'text-slate-500 hover:text-slate-300')}
-                            >🧬 Structured Builder</button>
-                        </div>
+                        {/* Content */}
+                        <div className="p-6 space-y-6">
 
-                        {builderMode ? (
-                            /* ── Structured HO SO NHAN VAT builder ── */
-                            <div className="space-y-3">
-                                <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/5 p-3">
-                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-2.5">🧬 Hồ Sơ Nhân Vật [HO SO NHAN VAT]</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block mb-1">Giới tính</label>
-                                            <Input value={bGender} onChange={e => setBGender(e.target.value)} placeholder="Nữ / Nam / Phi nhị nguyên"
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                            {/* ── Section 1: Consistency Check ── */}
+                            <section>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Consistency Check</h3>
+                                    <div className="flex gap-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                                        <span>Ảnh gốc (trái)</span>
+                                        <span>AI Generated (phải)</span>
+                                    </div>
+                                </div>
+                                <div className="relative aspect-[21/9] rounded-2xl overflow-hidden border border-white/10 bg-slate-900">
+                                    <div className="flex h-full">
+                                        {/* Left: reference (first ref image or placeholder) */}
+                                        <div className="w-1/2 h-full relative group">
+                                            {selected.referenceImages?.[0] ? (
+                                                <>
+                                                    <img src={selected.referenceImages[0]} className="w-full h-full object-cover opacity-80" alt="Reference" />
+                                                    <button onClick={() => setLightbox(selected.referenceImages[0])} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/30">
+                                                        <ZoomIn size={24} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer" onClick={() => refCoverRef.current?.click()}>
+                                                    <Upload size={20} className="text-slate-600" />
+                                                    <p className="text-[10px] text-slate-600">Upload reference image</p>
+                                                    {uploadingRef && <Loader2 size={14} className="animate-spin text-emerald-400" />}
+                                                </div>
+                                            )}
+                                            <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold uppercase border border-white/10">Reference</div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block mb-1">Tuổi</label>
-                                            <Input value={bAge} onChange={e => setBAge(e.target.value)} placeholder="25"
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        {/* Divider */}
+                                        <div className="relative w-px bg-emerald-500 shadow-[0_0_15px_rgba(0,255,149,0.5)]">
+                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-[#050807]">
+                                                <ChevronRight size={12} className="text-black" />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block mb-1">Màu da</label>
-                                            <Input value={bSkin} onChange={e => setBSkin(e.target.value)} placeholder="trắng hồng / olive / nâu"
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block mb-1">Vóc dáng</label>
-                                            <Input value={bBody} onChange={e => setBBody(e.target.value)} placeholder="thon gọn / cao ráo / đậm người"
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="text-[10px] text-slate-500 block mb-1">Khuôn mặt</label>
-                                            <Input value={bFace} onChange={e => setBFace(e.target.value)} placeholder="mắt to tròn, mũi cao, môi trái tim..."
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="text-[10px] text-slate-500 block mb-1">Kiểu tóc</label>
-                                            <Input value={bHair} onChange={e => setBHair(e.target.value)} placeholder="dài uốn nhẹ, màu nâu hạt dẻ..."
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="text-[10px] text-slate-500 block mb-1">Trang phục</label>
-                                            <Input value={bOutfit} onChange={e => setBOutfit(e.target.value)} placeholder="áo crop top trắng, quần jean xanh..."
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block mb-1">Vibe / Ánh sáng</label>
-                                            <Input value={bVibe} onChange={e => setBVibe(e.target.value)} placeholder="casual, natural light"
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block mb-1">Ghi chú thêm</label>
-                                            <Input value={bNote} onChange={e => setBNote(e.target.value)} placeholder="cầm sản phẩm, mỉm cười..."
-                                                className="h-8 text-xs bg-white/5 border-white/10 text-white placeholder:text-slate-700" />
+                                        {/* Right: latest generated */}
+                                        <div className="w-1/2 h-full relative group">
+                                            {selected.coverImage ? (
+                                                <>
+                                                    <img src={selected.coverImage} className="w-full h-full object-cover" alt="Generated" />
+                                                    <button onClick={() => setLightbox(selected.coverImage!)} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/30">
+                                                        <ZoomIn size={24} className="text-white" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <p className="text-[10px] text-slate-600 uppercase">No generated image yet</p>
+                                                </div>
+                                            )}
+                                            {selected.coverImage && <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-emerald-500/20 backdrop-blur-md rounded text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/30">AI Generated</div>}
                                         </div>
                                     </div>
-                                    {/* Live preview */}
-                                    {(bGender || bSkin || bOutfit) && (
-                                        <div className="mt-3 rounded-lg bg-black/30 p-2.5">
-                                            <p className="text-[9px] text-slate-600 uppercase tracking-wider mb-1">Generated Prompt Preview</p>
-                                            <p className="text-[10px] text-slate-400 leading-relaxed">{buildPromptFromFields()}</p>
+                                </div>
+                                <input ref={refCoverRef} type="file" accept="image/*" className="hidden" onChange={uploadRefImage} />
+                            </section>
+
+                            {/* ── Section 2: Pose Matrix ── */}
+                            <section>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Pose Matrix & Body Angles</h3>
+                                    {!selected._shared && (
+                                        <button onClick={() => refCoverRef.current?.click()} className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors">
+                                            <Upload size={10} /> Upload angle
+                                        </button>
+                                    )}
+                                </div>
+                                {(selected.referenceImages || []).length > 0 ? (
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {ANGLE_LABELS.map((label, i) => {
+                                            const imgs = selected.referenceImages || []
+                                            const url = imgs[i]
+                                            return (
+                                                <div key={label} className={cn('group relative aspect-[3/4] bg-[#0d1411] border rounded-xl overflow-hidden transition-all cursor-pointer',
+                                                    url ? 'border-white/5 hover:border-emerald-500/50' : 'border-dashed border-white/10'
+                                                )} onClick={() => url && setLightbox(url)}>
+                                                    {url ? (
+                                                        <img src={url} alt={label} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <ImagePlus size={16} className="text-slate-700" />
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-3">
+                                                        <p className="text-[10px] font-bold text-white uppercase tracking-wider">{label}</p>
+                                                        <p className="text-[9px] text-slate-500">{url ? 'Click to zoom' : 'Empty'}</p>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="border border-dashed border-white/10 rounded-2xl p-8 text-center">
+                                        <ImagePlus size={20} className="mx-auto text-slate-600 mb-2" />
+                                        <p className="text-xs text-slate-500">Upload reference images to see pose matrix</p>
+                                        {!selected._shared && (
+                                            <button onClick={() => refCoverRef.current?.click()} className="mt-2 text-xs text-emerald-400 hover:underline">+ Upload angles</button>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+
+                            {/* ── Section 3: Custom Poses ── */}
+                            <section>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Custom Poses</h3>
+                                    {!selected._shared && (
+                                        <button onClick={() => setShowAddPose(true)} className="flex items-center gap-1 text-[10px] text-emerald-400 hover:underline">
+                                            <Plus size={10} /> New pose folder
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex gap-3 overflow-x-auto pb-2">
+                                    {(selected.poses || []).length === 0 && (
+                                        <div className="flex-shrink-0 w-32 h-40 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-600 cursor-pointer hover:border-emerald-500/30 hover:text-emerald-400 transition-all" onClick={() => setShowAddPose(true)}>
+                                            <FolderOpen size={20} />
+                                            <p className="text-[10px] text-center px-2">Create pose folder</p>
                                         </div>
                                     )}
-                                    <button
-                                        onClick={() => { setPrompt(buildPromptFromFields()); setBuilderMode(false) }}
-                                        disabled={!bGender && !bOutfit}
-                                        className="mt-3 w-full h-8 rounded-lg bg-emerald-400/15 text-emerald-400 border border-emerald-400/20 text-xs font-bold hover:bg-emerald-400/25 disabled:opacity-40 transition-colors"
-                                    >
-                                        ✅ Dùng prompt này →
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            /* ── Free text mode ── */
-                            <div>
-                                <Label className="text-slate-300 text-xs">Prompt * <span className="text-slate-600 normal-case font-normal">— describe your character</span></Label>
-                                <Textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={4}
-                                    placeholder="Nhân vật nữ, 25 tuổi, da trắng hồng, vóc dáng thon gọn, mắt to tròn, tóc nâu uốn nhẹ, áo crop top trắng, quần jean cạp cao, vibe casual..."
-                                    className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40 resize-none" />
-                            </div>
-                        )}
-
-                        {/* Style + Notes */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="text-slate-300 text-xs">Art Style</Label>
-                                <Select value={style} onValueChange={setStyle}>
-                                    <SelectTrigger className="mt-1.5 bg-white/5 border-white/10 text-white focus:border-emerald-400/40">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {STYLES.map(s => (
-                                            <SelectItem key={s.value} value={s.value}>
-                                                <div>
-                                                    <p className="font-medium">{s.label}</p>
-                                                    <p className="text-xs text-muted-foreground">{s.hint}</p>
+                                    {(selected.poses || []).map(pose => (
+                                        <div key={pose.id} className="flex-shrink-0 w-32 group cursor-pointer" onClick={() => setOpenPose(pose)}>
+                                            <div className="w-full h-40 bg-[#0d1411] border border-white/5 rounded-xl overflow-hidden relative hover:border-emerald-500/40 transition-all">
+                                                {pose.images[0] ? (
+                                                    <img src={pose.images[0].url} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" alt={pose.name} />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center"><FolderOpen size={20} className="text-slate-700" /></div>
+                                                )}
+                                                {pose.images.length > 1 && (
+                                                    <div className="absolute top-2 right-2 bg-black/80 rounded px-1.5 py-0.5 text-[10px] text-white font-bold">+{pose.images.length}</div>
+                                                )}
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-2">
+                                                    <p className="text-[10px] font-bold text-white truncate">{pose.name}</p>
+                                                    <p className="text-[9px] text-slate-400">{pose.images.length} ảnh</p>
                                                 </div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label className="text-slate-300 text-xs">Notes <span className="text-slate-600">(optional)</span></Label>
-                                <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Internal notes..."
-                                    className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40" />
-                            </div>
-                        </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
 
-                        <div className="flex justify-end gap-2 pt-1">
-                            <Button variant="ghost" onClick={() => { setShowCreate(false); resetForm() }} className="text-slate-400">Cancel</Button>
-                            <Button
-                                onClick={createAvatar}
-                                disabled={!name.trim() || !prompt.trim() || creating}
-                                className="gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold"
-                            >
-                                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                                Create
-                            </Button>
                         </div>
+                    </>
+                )}
+            </main>
+
+            {/* ══ RIGHT — Asset Manager ══ */}
+            <aside className="w-72 flex-shrink-0 border-l border-white/5 bg-[#0a0f0d] flex flex-col">
+                <div className="p-4 border-b border-white/5">
+                    <h3 className="text-sm font-bold text-white mb-3">Asset Manager</h3>
+                    {/* Tabs */}
+                    <div className="flex border-b border-white/10">
+                        {ASSET_TYPES.map(t => (
+                            <button key={t.value} onClick={() => setAssetTab(t.value as typeof assetTab)} className={cn('flex-1 pb-2 text-[10px] font-bold uppercase tracking-widest transition-colors',
+                                assetTab === t.value ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-500 hover:text-white'
+                            )}>{t.label}</button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                    {!selected ? (
+                        <p className="text-xs text-slate-600 text-center pt-8">Select a character first</p>
+                    ) : selectedAssets.length === 0 ? (
+                        <div className="text-center pt-8">
+                            <p className="text-xs text-slate-600 mb-2">No {assetTab}s yet</p>
+                            {!selected._shared && <button onClick={() => { setAssetType(assetTab); setShowAddAsset(true) }} className="text-xs text-emerald-400 hover:underline">+ Add {assetTab}</button>}
+                        </div>
+                    ) : selectedAssets.map(asset => (
+                        <AssetCard key={asset.id} asset={asset}
+                            uploading={uploadingAsset === asset.id}
+                            onUpload={files => uploadAssetImages(asset.id, files)}
+                            onDeleteImage={url => deleteAssetImage(asset.id, url)}
+                            onDelete={() => deleteAsset(asset.id)}
+                            onZoom={setLightbox}
+                            fileRef={el => { assetFileRefs.current[asset.id] = el }}
+                        />
+                    ))}
+                </div>
+
+                {selected && !selected._shared && (
+                    <div className="p-3 border-t border-white/5">
+                        <button onClick={() => { setAssetType(assetTab); setShowAddAsset(true) }}
+                            className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 text-black font-black text-xs rounded-xl hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(0,255,149,0.3)] transition-all">
+                            <Plus size={14} /> Add {assetTab}
+                        </button>
+                    </div>
+                )}
+            </aside>
+
+            {/* ══ Lightbox ══ */}
+            {lightbox && <Lightbox url={lightbox} onClose={() => setLightbox(null)} />}
+
+            {/* ══ Create Avatar Dialog ══ */}
+            <Dialog open={showCreate} onOpenChange={setShowCreate}>
+                <DialogContent className="bg-[#0d1411] border-white/10 max-w-md max-h-[90vh] overflow-y-auto">
+                    <DialogHeader><DialogTitle className="text-white">Create New Character</DialogTitle></DialogHeader>
+                    <div className="space-y-4 mt-2">
+                        <div><Label className="text-slate-400 text-xs">Name *</Label>
+                            <Input value={cName} onChange={e => setCName(e.target.value)} placeholder="e.g. Sophia" className="bg-white/5 border-white/10 text-white mt-1" /></div>
+                        <div><Label className="text-slate-400 text-xs">Prompt *</Label>
+                            <textarea value={cPrompt} onChange={e => setCPrompt(e.target.value)} placeholder="Describe the character..." rows={4} className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:border-emerald-500/50 resize-none mt-1" /></div>
+                        <div><Label className="text-slate-400 text-xs">Art Style</Label>
+                            <select value={cStyle} onChange={e => setCStyle(e.target.value)} className="w-full bg-white/5 border border-white/10 text-slate-300 rounded-lg px-2.5 py-2 text-xs mt-1 outline-none">
+                                {STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                            </select></div>
+                        <div><Label className="text-slate-400 text-xs">Description (optional)</Label>
+                            <input value={cDesc} onChange={e => setCDesc(e.target.value)} placeholder="Internal notes..." className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-slate-300 placeholder:text-slate-600 outline-none mt-1" /></div>
+                        <button onClick={createAvatar} disabled={creating || !cName.trim() || !cPrompt.trim()}
+                            className="w-full py-2.5 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                            {creating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Create Character
+                        </button>
                     </div>
                 </DialogContent>
             </Dialog>
 
-            {/* ── Lightbox Modal ── */}
-            {lightboxUrl && (
-                <div
-                    className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
-                    onClick={() => setLightboxUrl(null)}
-                    onKeyDown={e => e.key === 'Escape' && setLightboxUrl(null)}
-                >
-                    <button
-                        className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-                        onClick={() => setLightboxUrl(null)}
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                    <img
-                        src={lightboxUrl}
-                        alt="Avatar preview"
-                        className="max-w-full max-h-full rounded-2xl object-contain shadow-2xl"
-                        onClick={e => e.stopPropagation()}
-                    />
-                </div>
-            )}
+            {/* ══ Add Asset Dialog ══ */}
+            <Dialog open={showAddAsset} onOpenChange={setShowAddAsset}>
+                <DialogContent className="bg-[#0d1411] border-white/10 max-w-sm">
+                    <DialogHeader><DialogTitle className="text-white">Add {assetType.charAt(0).toUpperCase() + assetType.slice(1)}</DialogTitle></DialogHeader>
+                    <div className="space-y-3 mt-2">
+                        <div className="flex gap-2">
+                            {ASSET_TYPES.map(t => (
+                                <button key={t.value} onClick={() => setAssetType(t.value as typeof assetType)}
+                                    className={cn('flex-1 py-1.5 text-[10px] font-bold uppercase rounded-lg border transition-all',
+                                        assetType === t.value ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/10 bg-white/5 text-slate-500'
+                                    )}>{t.label}</button>
+                            ))}
+                        </div>
+                        <div><Label className="text-slate-400 text-xs">Name *</Label>
+                            <input value={assetName} onChange={e => setAssetName(e.target.value)} placeholder="e.g. Áo Vest Đen" className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-sm text-white placeholder:text-slate-600 outline-none mt-1" /></div>
+                        <div><Label className="text-slate-400 text-xs">Prompt (optional)</Label>
+                            <textarea value={assetPrompt} onChange={e => setAssetPrompt(e.target.value)} placeholder="Describe the item for AI reference..." rows={2} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white placeholder:text-slate-600 outline-none resize-none mt-1" /></div>
+                        <button onClick={createAsset} disabled={creatingAsset || !assetName.trim()}
+                            className="w-full py-2 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                            {creatingAsset ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create Asset
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ══ Add Pose Dialog ══ */}
+            <Dialog open={showAddPose} onOpenChange={setShowAddPose}>
+                <DialogContent className="bg-[#0d1411] border-white/10 max-w-sm">
+                    <DialogHeader><DialogTitle className="text-white">New Pose Folder</DialogTitle></DialogHeader>
+                    <div className="space-y-3 mt-2">
+                        <div><Label className="text-slate-400 text-xs">Tên pose *</Label>
+                            <input value={poseName} onChange={e => setPoseName(e.target.value)} placeholder="e.g. Ngồi café, Đứng hàng hiệu..." className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-sm text-white placeholder:text-slate-600 outline-none mt-1" onKeyDown={e => e.key === 'Enter' && createPose()} /></div>
+                        <button onClick={createPose} disabled={creatingPose || !poseName.trim()}
+                            className="w-full py-2 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                            {creatingPose ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />} Create Folder
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ══ Pose Detail Modal ══ */}
+            <Dialog open={!!openPose} onOpenChange={o => !o && setOpenPose(null)}>
+                <DialogContent className="bg-[#0d1411] border-white/10 max-w-2xl max-h-[85vh] overflow-y-auto">
+                    {openPose && (
+                        <>
+                            <DialogHeader>
+                                <div className="flex items-center justify-between">
+                                    <DialogTitle className="text-white flex items-center gap-2">
+                                        <FolderOpen size={16} className="text-emerald-400" /> {openPose.name}
+                                        <span className="text-xs text-slate-500 font-normal">({openPose.images.length} ảnh)</span>
+                                    </DialogTitle>
+                                    <button onClick={() => deletePose(openPose.id)} className="text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                                </div>
+                            </DialogHeader>
+                            <div className="mt-3">
+                                <div className="grid grid-cols-3 gap-2 mb-4">
+                                    {openPose.images.map((img, i) => (
+                                        <div key={i} className="group relative aspect-square bg-slate-900 rounded-lg overflow-hidden border border-white/5">
+                                            <img src={img.url} alt="" className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
+                                                <button onClick={() => setLightbox(img.url)} className="p-1.5 bg-white/10 rounded-lg"><ZoomIn size={12} className="text-white" /></button>
+                                                <button onClick={() => deletePoseImage(img.url)} className="p-1.5 bg-red-500/20 rounded-lg"><Trash2 size={12} className="text-red-400" /></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {/* Upload slot */}
+                                    <label className="aspect-square bg-white/5 border border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-emerald-500/40 transition-all">
+                                        {uploadingPose ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <><Upload size={16} className="text-slate-500" /><p className="text-[10px] text-slate-500">Upload ảnh</p></>}
+                                        <input ref={poseFileRef} type="file" accept="image/*" multiple className="hidden" onChange={e => e.target.files && uploadPoseImages(e.target.files)} />
+                                    </label>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+        </div>
+    )
+}
+
+/* ── Asset Card Component ── */
+function AssetCard({ asset, uploading, onUpload, onDeleteImage, onDelete, onZoom, fileRef }: {
+    asset: AvatarAsset; uploading: boolean
+    onUpload: (files: FileList) => void
+    onDeleteImage: (url: string) => void
+    onDelete: () => void
+    onZoom: (url: string) => void
+    fileRef: (el: HTMLInputElement | null) => void
+}) {
+    const inputRef = useRef<HTMLInputElement>(null)
+    return (
+        <div className="p-3 rounded-xl bg-[#0d1411] border border-white/5 hover:border-white/10 transition-all">
+            <div className="flex items-start justify-between mb-2">
+                <p className="text-xs font-bold text-white">{asset.name}</p>
+                <button onClick={onDelete} className="text-slate-600 hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
+            </div>
+            {asset.prompt && <p className="text-[10px] text-slate-500 mb-2 line-clamp-2">{asset.prompt}</p>}
+            {/* Multi-image grid */}
+            <div className="grid grid-cols-3 gap-1 mb-2">
+                {(asset.images || []).map((img, i) => (
+                    <div key={i} className="group relative aspect-square bg-slate-900 rounded-lg overflow-hidden border border-white/5">
+                        <img src={img.url} className="w-full h-full object-cover" alt="" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-all">
+                            <button onClick={() => onZoom(img.url)} className="p-1 bg-white/10 rounded"><ZoomIn size={10} className="text-white" /></button>
+                            <button onClick={() => onDeleteImage(img.url)} className="p-1 bg-red-500/20 rounded"><X size={10} className="text-red-400" /></button>
+                        </div>
+                    </div>
+                ))}
+                {/* Add image slot */}
+                <label className="aspect-square bg-white/5 border border-dashed border-white/20 rounded-lg flex items-center justify-center cursor-pointer hover:border-emerald-500/40 transition-all">
+                    {uploading ? <Loader2 size={12} className="animate-spin text-emerald-400" /> : <Plus size={12} className="text-slate-500" />}
+                    <input ref={el => { inputRef.current = el; fileRef(el) }} type="file" accept="image/*" multiple className="hidden" onChange={e => e.target.files && onUpload(e.target.files)} />
+                </label>
+            </div>
         </div>
     )
 }

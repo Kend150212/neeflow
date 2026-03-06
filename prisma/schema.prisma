@@ -1302,6 +1302,8 @@ model StudioAvatar {
   user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   channel Channel           @relation(fields: [channelId], references: [id], onDelete: Cascade)
   shares  StudioAvatarShare[]
+  poses   StudioAvatarPose[]
+  assets  StudioAvatarAsset[]
 
   @@index([userId])
   @@index([channelId])
@@ -1321,6 +1323,38 @@ model StudioAvatarShare {
   @@unique([avatarId, channelId])
   @@index([channelId])
   @@map("studio_avatar_shares")
+}
+
+// Named pose folder — user-defined, holds uploaded or AI-generated images
+model StudioAvatarPose {
+  id        String   @id @default(cuid())
+  avatarId  String   @map("avatar_id")
+  name      String
+  images    Json     @default("[]")  // [{ url, label?, prompt?, createdAt? }]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  avatar StudioAvatar @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+
+  @@index([avatarId])
+  @@map("studio_avatar_poses")
+}
+
+// Wardrobe asset: outfit, accessory, or prop for a character — supports multiple images
+model StudioAvatarAsset {
+  id        String   @id @default(cuid())
+  avatarId  String   @map("avatar_id")
+  type      String   @default("outfit")  // outfit | accessory | prop
+  name      String
+  images    Json     @default("[]")       // [{ url, label?, prompt? }] — multi-image
+  prompt    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  avatar StudioAvatar @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+
+  @@index([avatarId])
+  @@map("studio_avatar_assets")
 }
 
 // Project: container for 1 campaign / product line — scoped to a specific Channel
