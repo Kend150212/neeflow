@@ -47,11 +47,11 @@ export async function POST(
     })
     if (!avatar) return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
 
-    const body = await req.json().catch(() => ({}))
-    const numAngles = (body.numAngles as number) || 1
+    const numAngles = (body.numAngles as number) || 5
     const provider: string = (body.provider as string) || 'fal_ai'
     const model: string = body.model || ''
-    const referenceImage: string | undefined = body.referenceImage // Phase 2: approved front-view image URL
+    const referenceImage: string | undefined = body.referenceImage
+    const anglePrompt: string = body.anglePrompt || '' // per-slot override from Pose Matrix AI Generate
 
     const apiKey = await resolveKey(session.user.id, provider)
     if (!apiKey) {
@@ -60,15 +60,39 @@ export async function POST(
         }, { status: 400 })
     }
 
-    // Phase 1 (numAngles=1): generate a single front view character portrait
-    // Phase 2 (numAngles=4): generate all views, consistent with the approved Phase 1 image
-    const viewsLabel = numAngles === 1
-        ? 'single front view, full body portrait'
-        : `${numAngles} character views: front view, side view, back view, 3/4 view`
+    // ── Character Reference Sheet prompt ─────────────────────────────────────
+    // Always: white-grey studio background, 5 clearly separated panels, full body visible.
+    // We IGNORE any background descriptors in avatar.prompt — the studio bg is hardcoded.
+    const characterDesc = avatar.prompt
+    const styleLabel = avatar.style || 'realistic'
+
+    // Per-slot angle generation (from Pose Matrix "AI Generate" button)
+    const isSingleAngle = numAngles === 1 && !!anglePrompt
+    const basePrompt = isSingleAngle
+        ? [
+            `Character reference sheet, ${styleLabel} style, single panel.`,
+            `Character: ${characterDesc}.`,
+            `Pose / angle: ${anglePrompt}.`,
+            `MANDATORY background: clean white-grey studio backdrop, soft gradient, no props, no environment, neutral soft shadow below feet.`,
+            `Full body visible from head to toe. High detail, sharp, professional character design render.`,
+        ].join(' ')
+        : [
+            `CHARACTER REFERENCE SHEET — ${styleLabel} style.`,
+            `Character description: ${characterDesc}.`,
+            `LAYOUT: exactly 5 clearly separated panels arranged side by side in a single wide image, each panel has a thin white divider line:`,
+            `Panel 1 (leftmost): FULL BODY front view, head to toe.`,
+            `Panel 2: FACE CLOSE-UP (portrait), front facing.`,
+            `Panel 3: FULL BODY side profile (90 degrees), head to toe.`,
+            `Panel 4: FULL BODY 3/4 dynamic angle, head to toe.`,
+            `Panel 5 (rightmost): FULL BODY back view, head to toe.`,
+            `MANDATORY for ALL panels: pure white-grey studio background, subtle soft gradient from white to very light grey, professional studio lighting, soft shadow below feet, NO environment, NO props, NO scenery.`,
+            `Same character, same outfit, same face in every panel. High detail, sharp edges, professional character design sheet, concept art quality.`,
+        ].join(' ')
+
     const consistencyClause = referenceImage
-        ? `, MUST maintain identical: face features, skin tone, hair color & style, outfit, accessories — based on the reference character image provided`
+        ? ` MUST maintain identical face features, skin tone, hair color, outfit, accessories from the provided reference image.`
         : ''
-    const basePrompt = `${avatar.prompt}, ${avatar.style} style, ${viewsLabel}, white background, high detail, character design sheet${consistencyClause}`
+    const finalPrompt = basePrompt + consistencyClause
 
     await prisma.studioAvatar.update({ where: { id }, data: { status: 'generating' } })
 
@@ -80,9 +104,9 @@ export async function POST(
                 method: 'POST',
                 headers: { 'Authorization': `Key ${apiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    prompt: basePrompt,
-                    image_size: 'landscape_4_3',
-                    num_images: numAngles <= 2 ? 2 : 4,
+                    prompt: finalPrompt,
+                    image_size: isSingleAngle ? 'portrait_4_3' : 'landscape_16_9',
+                    num_images: 1,
                     num_inference_steps: 4,
                 }),
             })
@@ -106,11 +130,11 @@ export async function POST(
                 body: JSON.stringify([{
                     taskType: 'imageInference',
                     taskUUID: crypto.randomUUID(),
-                    positivePrompt: basePrompt,
+                    positivePrompt: finalPrompt,
                     model: runwareModel,
-                    width: 1024,
-                    height: 768,
-                    numberResults: numAngles <= 2 ? 2 : 4,
+                    width: isSingleAngle ? 768 : 1568,
+                    height: 896,
+                    numberResults: 1,
                     outputType: ['URL'],
                 }]),
             })
@@ -138,7 +162,7 @@ export async function POST(
             const isGptImage = oaiModel === 'gpt-image-1'
             const oaiBody: Record<string, unknown> = {
                 model: oaiModel,
-                prompt: basePrompt.slice(0, 4000),
+                prompt: finalPrompt.slice(0, 4000),
                 n: 1,
             }
             if (isGptImage) {
@@ -174,9 +198,9 @@ export async function POST(
 
         // ─── Gemini Imagen / Flash (fire-and-forget async bg) ────────
         if (provider === 'gemini') {
-            const gemModel = model || 'imagen-3.0-generate-001'
+            const gemModel = model || 'gemini-3.1-flash-image-preview'
             const isFlash = gemModel.startsWith('gemini-')
-            runGeminiBackground({ id, channelId, apiKey, gemModel, isFlash, basePrompt, referenceImage }).catch(console.error)
+            runGeminiBackground({ id, channelId, apiKey, gemModel, isFlash, basePrompt: finalPrompt, referenceImage }).catch(console.error)
             return NextResponse.json({ status: 'generating' })
         }
 
@@ -287,7 +311,7 @@ async function runGeminiBackground(opts: {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         instances: [{ prompt: basePrompt.slice(0, 2000) }],
-                        parameters: { sampleCount: 1, aspectRatio: '1:1' },
+                        parameters: { sampleCount: 1, aspectRatio: '16:9' },
                     }),
                 }
             )

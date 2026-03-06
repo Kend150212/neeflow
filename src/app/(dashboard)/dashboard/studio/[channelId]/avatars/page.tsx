@@ -81,7 +81,7 @@ const ASSET_TYPES = [
     { value: 'accessory', label: 'Phụ kiện', icon: Glasses, color: 'text-cyan-400' },
     { value: 'prop', label: 'Props', icon: Package, color: 'text-amber-400' },
 ]
-const ANGLE_LABELS = ['Toàn thân', 'Mặt trước', 'Mặt bên', 'Góc 3/4']
+const ANGLE_LABELS = ['Toàn thân (trước)', 'Mặt close-up', 'Góc bên (90°)', 'Góc 3/4', 'Sau lưng']
 
 /* ─── Lightbox ─── */
 function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
@@ -224,34 +224,31 @@ export default function ChannelAvatarsPage() {
         if (res.ok) { setAvatars(prev => prev.filter(a => a.id !== id)); if (selected?.id === id) setSelected(null); toast.success('Deleted') }
     }
 
-    async function generateAvatar(avatar: StudioAvatar, phase: 'preview' | 'full' = 'preview') {
+    async function generateAvatar(avatar: StudioAvatar) {
         setGenerating(avatar.id)
-        const toastId = toast.loading(`Đang tạo ảnh "${avatar.name}"...`)
+        const toastId = toast.loading(`Đang tạo reference sheet “${avatar.name}” (5 góc nhìn)...`)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider: genProvider, model: genModel, numAngles: phase === 'preview' ? 1 : 4 }),
+                body: JSON.stringify({ provider: genProvider, model: genModel, numAngles: 5 }),
             })
             if (res.ok) {
                 const data = await res.json()
                 if (data.status === 'done') {
-                    toast.success('✅ Xong!', { id: toastId })
+                    toast.success('✅ Reference sheet xong!', { id: toastId })
                     await fetchAvatarDetail(avatar.id)
-                    if (phase === 'preview') setGenPhase(prev => ({ ...prev, [avatar.id]: 'preview' }))
-                    else setGenPhase(prev => ({ ...prev, [avatar.id]: null }))
                 } else {
-                    toast.success('⏳ Đang tạo... (~30s)', { id: toastId })
+                    toast.success('⏳ Đang tạo... (~45s)', { id: toastId })
                     setAvatars(prev => prev.map(a => a.id === avatar.id ? { ...a, status: 'generating' } : a))
                     if (selected?.id === avatar.id) setSelected(prev => prev ? { ...prev, status: 'generating' } : null)
-                    if (phase === 'preview') setGenPhase(prev => ({ ...prev, [avatar.id]: 'preview' }))
-                    pollAvatarStatus(avatar.id, phase)
+                    pollAvatarStatus(avatar.id)
                 }
             } else { const d = await res.json(); toast.error(d.error || 'Failed', { id: toastId }) }
         } catch (err) { toast.error(`Network error: ${err instanceof Error ? err.message : String(err)}`, { id: toastId }) }
         finally { setGenerating(null) }
     }
 
-    async function pollAvatarStatus(id: string, phase: 'preview' | 'full' = 'preview') {
+    async function pollAvatarStatus(id: string) {
         let attempts = 0
         const interval = setInterval(async () => {
             attempts++
@@ -266,8 +263,7 @@ export default function ChannelAvatarsPage() {
                     setAvatars(prev => prev.map(a => a.id === id ? updated : a))
                     setSelected(prev => prev?.id === id ? updated : prev)
                     if (updated.status === 'idle' || updated.status === 'done') {
-                        if (phase === 'preview') { toast.success('✅ Ảnh xem trước sẵn sàng!'); setGenPhase(prev => ({ ...prev, [id]: 'preview' })) }
-                        else { toast.success('✅ Tất cả góc nhìn đã xong!'); setGenPhase(prev => ({ ...prev, [id]: null })) }
+                        toast.success('✅ Reference sheet (5 góc) đã xong!')
                     } else if (updated.status === 'failed') { toast.error('❌ Generation failed.') }
                 }
             } catch { }
@@ -292,7 +288,7 @@ export default function ChannelAvatarsPage() {
                 const data = await res.json()
                 toast.success(`✅ ${label} xong!`, { id: toastId })
                 if (data.status === 'done') { await fetchAvatarDetail(avatar.id) }
-                else { pollAvatarStatus(avatar.id, 'preview') }
+                else { pollAvatarStatus(avatar.id) }
             } else { const d = await res.json(); toast.error(d.error || 'Failed', { id: toastId }) }
         } catch (err) { toast.error(`Error: ${err instanceof Error ? err.message : String(err)}`, { id: toastId }) }
         finally { setGeneratingAngle(null) }
@@ -509,10 +505,10 @@ export default function ChannelAvatarsPage() {
                                         <select value={genModel} onChange={e => setGenModel(e.target.value)} className="bg-white/5 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1.5 outline-none max-w-[180px] truncate">
                                             {GEN_PROVIDERS.find(p => p.value === genProvider)?.models.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                                         </select>
-                                        <button onClick={() => generateAvatar(selected, genPhase[selected.id] === 'preview' ? 'full' : 'preview')}
+                                        <button onClick={() => generateAvatar(selected)}
                                             disabled={!!generating} className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-black font-bold text-xs rounded-xl hover:bg-emerald-400 disabled:opacity-50 transition-all">
                                             {generating === selected.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                                            {genPhase[selected.id] === 'preview' ? 'Tạo toàn bộ (4 góc)' : 'Tạo ảnh xem trước'}
+                                            Tạo 5 góc nhìn
                                         </button>
                                     </>
                                 )}
@@ -588,7 +584,7 @@ export default function ChannelAvatarsPage() {
                                         </button>
                                     )}
                                 </div>
-                                <div className="grid grid-cols-4 gap-3">
+                                <div className="grid grid-cols-5 gap-3">
                                     {ANGLE_LABELS.map((label, i) => {
                                         const imgs = selected.referenceImages || []
                                         const url = imgs[i]
