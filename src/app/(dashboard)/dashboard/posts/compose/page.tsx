@@ -5797,17 +5797,18 @@ export default function ComposePage() {
             <Dialog open={showImagePicker} onOpenChange={(open) => {
                 setShowImagePicker(open)
             }}>
-                <DialogContent className="max-w-2xl w-[95vw] max-h-[92vh] overflow-hidden p-0 bg-[#0d0f14] border-white/10 text-white flex flex-col" showCloseButton={false}>
+                <DialogContent className="max-w-4xl w-[95vw] max-h-[92vh] overflow-hidden p-0 text-white flex flex-col" showCloseButton={false}
+                    style={{ background: '#0e1a14', border: '1px solid rgba(43,238,157,0.12)' }}>
 
                     {/* ── Header ── */}
-                    <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
-                        <div className="flex items-center gap-2.5">
-                            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center">
-                                <Sparkles className="h-4 w-4 text-white" />
+                    <div className="flex items-center justify-between px-5 py-3 shrink-0" style={{ borderBottom: '1px solid rgba(43,238,157,0.1)', background: 'rgba(16,34,26,0.8)' }}>
+                        <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#2bee9d,#1ab87a)' }}>
+                                <Sparkles className="h-4 w-4 text-[#0e1a14]" />
                             </div>
-                            <span className="text-sm font-semibold tracking-tight">AI Image Studio</span>
+                            <span className="text-sm font-bold tracking-tight" style={{ color: '#2bee9d' }}>AI Image Studio</span>
                             {/* Tab switcher */}
-                            <div className="flex items-center ml-2 gap-0 p-0.5 rounded-md bg-white/5 border border-white/10">
+                            <div className="flex items-center ml-2 gap-0 p-0.5 rounded-lg" style={{ background: 'rgba(43,238,157,0.06)', border: '1px solid rgba(43,238,157,0.12)' }}>
                                 {([
                                     { key: 'ai' as const, label: 'Generate' },
                                     { key: 'article' as const, label: 'Article' },
@@ -5816,25 +5817,27 @@ export default function ComposePage() {
                                         key={t.key}
                                         type="button"
                                         onClick={() => setImagePickerTab(t.key)}
-                                        className={`px-3 py-1 rounded text-[11px] font-medium transition-all cursor-pointer ${imagePickerTab === t.key ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white/80'}`}
+                                        className="px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer"
+                                        style={imagePickerTab === t.key
+                                            ? { background: '#2bee9d', color: '#0e1a14' }
+                                            : { color: 'rgba(43,238,157,0.5)' }}
                                     >
                                         {t.label}
                                     </button>
                                 ))}
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            {/* Quota badge */}
+                        <div className="flex items-center gap-2.5">
                             {imageQuota.limit > 0 && (
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${imageQuota.used >= imageQuota.limit ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
+                                <span className="text-[11px] px-2.5 py-1 rounded-full font-bold" style={{ background: 'rgba(43,238,157,0.12)', color: '#2bee9d' }}>
                                     {imageQuota.used}/{imageQuota.limit} used
                                 </span>
                             )}
                             {imageQuota.limit === -1 && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/15 text-emerald-400">∞ unlimited</span>
+                                <span className="text-[11px] px-2.5 py-1 rounded-full font-bold" style={{ background: 'rgba(43,238,157,0.12)', color: '#2bee9d' }}>∞ unlimited</span>
                             )}
-                            <button type="button" onClick={() => setShowImagePicker(false)} className="h-7 w-7 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer">
-                                <X className="h-4 w-4 text-white/60" />
+                            <button type="button" onClick={() => setShowImagePicker(false)} className="h-8 w-8 rounded-full flex items-center justify-center transition-colors cursor-pointer" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                <X className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
                             </button>
                         </div>
                     </div>
@@ -5843,14 +5846,14 @@ export default function ComposePage() {
                     <div className="flex flex-1 min-h-0 overflow-hidden">
 
                         {/* ════ LEFT: Branding Kit + Recent AI Images ════ */}
-                        <div className="w-[220px] shrink-0 border-r border-white/10 flex flex-col overflow-y-auto p-4 gap-4">
+                        <div className="w-[240px] shrink-0 flex flex-col overflow-y-auto p-4 gap-5" style={{ borderRight: '1px solid rgba(43,238,157,0.1)' }}>
 
                             {/* BRANDING KIT */}
                             <div>
-                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3">Branding Kit</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(43,238,157,0.5)' }}>Branding Kit</p>
 
                                 {/* Toggle */}
-                                <label className="flex items-center gap-2 cursor-pointer mb-4">
+                                <label className="flex items-center gap-2.5 cursor-pointer mb-4">
                                     <div
                                         onClick={() => {
                                             const next = !brandingEnabled
@@ -5859,25 +5862,31 @@ export default function ComposePage() {
                                                 try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: brandLogoPosition, opacity: brandLogoOpacity, enabled: next })) } catch { }
                                             }
                                         }}
-                                        className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${brandingEnabled ? 'bg-violet-500' : 'bg-white/15'}`}
+                                        className="relative w-10 h-5 rounded-full transition-colors cursor-pointer"
+                                        style={{ background: brandingEnabled ? '#2bee9d' : 'rgba(255,255,255,0.12)' }}
                                     >
-                                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${brandingEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                        <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform" style={{ transform: brandingEnabled ? 'translateX(22px)' : 'translateX(2px)' }} />
                                     </div>
-                                    <span className="text-xs text-white/70">Apply Watermark</span>
+                                    <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>Apply Watermark</span>
                                 </label>
 
                                 {/* Logo upload */}
                                 <div
                                     onClick={() => brandLogoInputRef.current?.click()}
-                                    className={`relative rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-all overflow-hidden mb-3 ${brandingEnabled ? 'border-violet-500/40 hover:border-violet-400' : 'border-white/10 opacity-40 pointer-events-none'}`}
-                                    style={{ height: '80px' }}
+                                    className="relative rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all overflow-hidden mb-3"
+                                    style={{
+                                        height: '88px',
+                                        borderColor: brandingEnabled ? 'rgba(43,238,157,0.35)' : 'rgba(255,255,255,0.08)',
+                                        opacity: brandingEnabled ? 1 : 0.4,
+                                        pointerEvents: brandingEnabled ? 'auto' : 'none',
+                                    }}
                                 >
                                     {brandLogoDataUrl ? (
                                         <img src={brandLogoDataUrl} alt="Logo" className="max-h-full max-w-full object-contain p-2" />
                                     ) : (
                                         <>
-                                            <Upload className="h-4 w-4 text-white/40" />
-                                            <p className="text-[10px] text-white/40">Upload Logo</p>
+                                            <Upload className="h-4 w-4" style={{ color: 'rgba(43,238,157,0.4)' }} />
+                                            <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Upload Logo</p>
                                         </>
                                     )}
                                 </div>
@@ -5897,9 +5906,9 @@ export default function ComposePage() {
                                 }} />
 
                                 {/* Position grid */}
-                                <div className={`transition-opacity ${brandingEnabled ? '' : 'opacity-30 pointer-events-none'}`}>
-                                    <p className="text-[10px] text-white/40 mb-1.5">Position</p>
-                                    <div className="grid grid-cols-3 gap-1 p-1 bg-black/30 rounded-lg border border-white/5">
+                                <div style={{ opacity: brandingEnabled ? 1 : 0.3, pointerEvents: brandingEnabled ? 'auto' : 'none' }}>
+                                    <p className="text-[10px] mb-1.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Position</p>
+                                    <div className="grid grid-cols-3 gap-1 p-1 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(43,238,157,0.08)' }}>
                                         {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(pos => (
                                             <button
                                                 key={pos}
@@ -5910,16 +5919,19 @@ export default function ComposePage() {
                                                         try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: pos, opacity: brandLogoOpacity, enabled: brandingEnabled })) } catch { }
                                                     }
                                                 }}
-                                                className={`h-7 rounded transition-all cursor-pointer ${brandLogoPosition === pos ? 'bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)]' : 'bg-white/5 border border-white/10 hover:bg-white/15'}`}
+                                                className="h-7 rounded transition-all cursor-pointer"
+                                                style={brandLogoPosition === pos
+                                                    ? { background: '#2bee9d', boxShadow: '0 0 10px rgba(43,238,157,0.4)' }
+                                                    : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
                                             />
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Opacity */}
-                                <div className={`mt-3 transition-opacity ${brandingEnabled ? '' : 'opacity-30 pointer-events-none'}`}>
+                                <div className="mt-3" style={{ opacity: brandingEnabled ? 1 : 0.3, pointerEvents: brandingEnabled ? 'auto' : 'none' }}>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <p className="text-[10px] text-white/40">Opacity: {brandLogoOpacity}%</p>
+                                        <p className="text-[10px]" style={{ color: 'rgba(43,238,157,0.5)' }}>Opacity: {brandLogoOpacity}%</p>
                                     </div>
                                     <input
                                         type="range" min={10} max={100} value={brandLogoOpacity}
@@ -5930,27 +5942,29 @@ export default function ComposePage() {
                                                 try { localStorage.setItem(`studio-branding-${selectedChannel.id}`, JSON.stringify({ logoDataUrl: brandLogoDataUrl, position: brandLogoPosition, opacity: v, enabled: brandingEnabled })) } catch { }
                                             }
                                         }}
-                                        className="w-full h-1.5 rounded-full accent-violet-500 cursor-pointer"
+                                        className="w-full h-1.5 rounded-full cursor-pointer"
+                                        style={{ accentColor: '#2bee9d' }}
                                     />
                                 </div>
                             </div>
 
                             {/* RECENT AI IMAGES */}
                             <div>
-                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Recent AI Images</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(43,238,157,0.5)' }}>Recent AI Images</p>
                                 {loadingAiHistory ? (
-                                    <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-white/30" /></div>
+                                    <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin" style={{ color: 'rgba(43,238,157,0.4)' }} /></div>
                                 ) : aiHistoryMedia.length === 0 ? (
-                                    <p className="text-[11px] text-white/25 text-center py-3">No AI images yet</p>
+                                    <p className="text-[11px] text-center py-3" style={{ color: 'rgba(255,255,255,0.2)' }}>No AI images yet</p>
                                 ) : (
-                                    <div className="grid grid-cols-2 gap-1">
+                                    <div className="grid grid-cols-2 gap-1.5">
                                         {aiHistoryMedia.slice(0, 12).map(item => (
                                             <button
                                                 key={item.id}
                                                 type="button"
                                                 title={item.originalName || 'AI image'}
                                                 onClick={() => { addFromLibrary(item); setShowImagePicker(false) }}
-                                                className="aspect-square rounded-md overflow-hidden border border-white/10 hover:border-violet-400/60 transition-colors cursor-pointer"
+                                                className="aspect-square rounded-lg overflow-hidden transition-all cursor-pointer"
+                                                style={{ border: '1px solid rgba(43,238,157,0.1)' }}
                                             >
                                                 <img src={item.url} alt="" className="w-full h-full object-cover" />
                                             </button>
@@ -5961,14 +5975,14 @@ export default function ComposePage() {
                         </div>
 
                         {/* ════ RIGHT: AI Controls ════ */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
                             {/* AI Tab */}
                             {imagePickerTab === 'ai' && (
                                 <>
                                     {/* AI ENGINE */}
                                     <div>
-                                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">AI Engine</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>AI Engine</p>
                                         <div className="space-y-2">
                                             {/* Provider */}
                                             {(() => {
@@ -5988,46 +6002,36 @@ export default function ComposePage() {
                                                     if (providerName) {
                                                         if (source === 'plan') {
                                                             setLoadingImageModels(true)
-                                                            fetch('/api/admin/posts/plan-models', {
-                                                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({ provider: providerName }),
-                                                            }).then(r => r.json()).then(d => {
-                                                                setAvailableImageModels((d.models || []).map((m: { id: string; name?: string }) => ({ id: m.id, name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id, type: 'image' as const })))
-                                                            }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                                                            fetch('/api/admin/posts/plan-models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
+                                                                .then(r => r.json()).then(d => { setAvailableImageModels((d.models || []).map((m: { id: string; name?: string }) => ({ id: m.id, name: m.name || MODEL_DISPLAY_NAMES[m.id] || m.id, type: 'image' as const }))) })
+                                                                .catch(() => { }).finally(() => setLoadingImageModels(false))
                                                         } else {
                                                             setLoadingImageModels(true)
-                                                            fetch('/api/user/api-keys/models', {
-                                                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({ provider: providerName }),
-                                                            }).then(r => r.json()).then(d => {
-                                                                setAvailableImageModels((d.models || []).filter((m: { type?: string }) => m.type === 'image'))
-                                                            }).catch(() => { }).finally(() => setLoadingImageModels(false))
+                                                            fetch('/api/user/api-keys/models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: providerName }) })
+                                                                .then(r => r.json()).then(d => { setAvailableImageModels((d.models || []).filter((m: { type?: string }) => m.type === 'image')) })
+                                                                .catch(() => { }).finally(() => setLoadingImageModels(false))
                                                         }
                                                     }
                                                 }
                                                 return (
                                                     <Select value={currentSelectValue} onValueChange={handleProviderChange}>
-                                                        <SelectTrigger className="w-full h-9 text-xs bg-white/5 border-white/10 text-white focus:ring-violet-500">
+                                                        <SelectTrigger className="w-full h-10 text-sm focus:ring-0" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}>
                                                             <SelectValue>
                                                                 {rawProvider
                                                                     ? (byokProviders.find(p => p.provider === rawProvider)?.name || planProviders.find(p => p.provider === rawProvider)?.name || rawProvider)
                                                                     : 'Auto-detect provider'}
                                                             </SelectValue>
                                                         </SelectTrigger>
-                                                        <SelectContent className="bg-[#1a1d26] border-white/10 text-white">
-                                                            <SelectItem value="__auto__" className="text-xs">Auto-detect provider</SelectItem>
-                                                            {byokProviders.length > 0 && (
-                                                                <>
-                                                                    <div className="px-2 py-1 text-[10px] font-semibold text-white/40">📌 Your Keys (unlimited)</div>
-                                                                    {byokProviders.map(p => <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-xs">{p.name}</SelectItem>)}
-                                                                </>
-                                                            )}
-                                                            {planProviders.length > 0 && imageQuota.limit !== 0 && (
-                                                                <>
-                                                                    <div className="px-2 py-1 text-[10px] font-semibold text-white/40">⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
-                                                                    {planProviders.map(p => <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-xs">{p.name}</SelectItem>)}
-                                                                </>
-                                                            )}
+                                                        <SelectContent style={{ background: '#162e24', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}>
+                                                            <SelectItem value="__auto__" className="text-sm">Auto-detect provider</SelectItem>
+                                                            {byokProviders.length > 0 && (<>
+                                                                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: 'rgba(43,238,157,0.5)' }}>📌 YOUR KEYS (unlimited)</div>
+                                                                {byokProviders.map(p => <SelectItem key={`byok-${p.provider}`} value={`byok:${p.provider}`} className="text-sm">{p.name}</SelectItem>)}
+                                                            </>)}
+                                                            {planProviders.length > 0 && imageQuota.limit !== 0 && (<>
+                                                                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: 'rgba(43,238,157,0.5)' }}>⚡ PLAN ({imageQuota.limit === -1 ? '∞' : `${imageQuota.limit - imageQuota.used} left`})</div>
+                                                                {planProviders.map(p => <SelectItem key={`plan-${p.provider}`} value={`plan:${p.provider}`} className="text-sm">{p.name}</SelectItem>)}
+                                                            </>)}
                                                         </SelectContent>
                                                     </Select>
                                                 )
@@ -6039,17 +6043,18 @@ export default function ComposePage() {
                                                     value={overrideImageModel || selectedChannel?.defaultImageModel || ''}
                                                     onChange={e => setOverrideImageModel(e.target.value)}
                                                     disabled={loadingImageModels}
-                                                    className="w-full h-9 text-xs rounded-lg border bg-white/5 border-white/10 text-white px-3 focus:outline-none focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
+                                                    className="w-full h-10 text-sm rounded-lg px-3 focus:outline-none disabled:opacity-50"
+                                                    style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}
                                                 >
                                                     <option value="">Default model</option>
                                                     {availableImageModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                                 </select>
-                                                {loadingImageModels && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-white/40" />}
+                                                {loadingImageModels && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin" style={{ color: 'rgba(43,238,157,0.5)' }} />}
                                             </div>
 
                                             {byokProviders.length === 0 && planProviders.length === 0 && (
-                                                <p className="text-[10px] text-amber-400 bg-amber-500/10 rounded-md px-2 py-1.5">
-                                                    ⚠️ No image providers. Add an API key in <strong>API Hub</strong> or upgrade your plan.
+                                                <p className="text-[11px] rounded-lg px-3 py-2" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                                                    ⚠️ No providers. Add an API key in <strong>API Hub</strong> or upgrade your plan.
                                                 </p>
                                             )}
                                         </div>
@@ -6057,8 +6062,8 @@ export default function ComposePage() {
 
                                     {/* ASPECT RATIO */}
                                     <div>
-                                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Aspect Ratio</p>
-                                        <div className="grid grid-cols-3 gap-1.5">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Aspect Ratio</p>
+                                        <div className="grid grid-cols-3 gap-2">
                                             {([
                                                 { value: '1:1' as const, label: '1:1' },
                                                 { value: '16:9' as const, label: '16:9' },
@@ -6071,7 +6076,10 @@ export default function ComposePage() {
                                                     key={r.value}
                                                     type="button"
                                                     onClick={() => setImageAspectRatio(r.value)}
-                                                    className={`py-1.5 rounded-lg border text-[11px] font-medium transition-all cursor-pointer ${imageAspectRatio === r.value ? 'border-violet-500 bg-violet-500/20 text-violet-300' : 'border-white/10 text-white/50 hover:border-white/30 hover:text-white bg-white/5'}`}
+                                                    className="py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+                                                    style={imageAspectRatio === r.value
+                                                        ? { background: '#2bee9d', color: '#0e1a14', boxShadow: '0 0 12px rgba(43,238,157,0.3)' }
+                                                        : { background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)', color: 'rgba(255,255,255,0.5)' }}
                                                 >
                                                     {r.label}
                                                 </button>
@@ -6081,11 +6089,11 @@ export default function ComposePage() {
 
                                     {/* REFERENCE IMAGE */}
                                     <div>
-                                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Reference Image</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Reference Image</p>
                                         <div
                                             onClick={() => refImageInputRef.current?.click()}
-                                            className="relative rounded-xl border-2 border-dashed border-white/10 hover:border-violet-500/50 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all overflow-hidden"
-                                            style={{ height: '80px' }}
+                                            className="relative rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all overflow-hidden"
+                                            style={{ height: '90px', borderColor: 'rgba(43,238,157,0.2)' }}
                                         >
                                             {refImageDataUrl ? (
                                                 <>
@@ -6093,15 +6101,16 @@ export default function ComposePage() {
                                                     <button
                                                         type="button"
                                                         onClick={e => { e.stopPropagation(); setRefImageDataUrl(null); setRefImageFile(null) }}
-                                                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 flex items-center justify-center hover:bg-red-500/80 transition-colors"
+                                                        className="absolute top-1.5 right-1.5 h-5 w-5 rounded-full flex items-center justify-center"
+                                                        style={{ background: 'rgba(0,0,0,0.7)' }}
                                                     >
                                                         <X className="h-3 w-3 text-white" />
                                                     </button>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <ImageIcon className="h-5 w-5 text-white/30" />
-                                                    <p className="text-[10px] text-white/30">Upload reference image</p>
+                                                    <ImageIcon className="h-6 w-6" style={{ color: 'rgba(43,238,157,0.3)' }} />
+                                                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>Upload reference image</p>
                                                 </>
                                             )}
                                         </div>
@@ -6118,19 +6127,21 @@ export default function ComposePage() {
 
                                     {/* TYPOGRAPHY */}
                                     <div>
-                                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Typography</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Typography</p>
                                         <div className="space-y-2">
                                             <input
                                                 type="text"
                                                 placeholder="Text to render in image..."
                                                 value={typoText}
                                                 onChange={e => setTypoText(e.target.value)}
-                                                className="w-full h-9 bg-white/5 border border-white/10 rounded-lg px-3 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                                className="w-full h-10 rounded-lg px-3 text-sm placeholder:text-white/25 focus:outline-none"
+                                                style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}
                                             />
                                             <select
                                                 value={typoFont}
                                                 onChange={e => setTypoFont(e.target.value)}
-                                                className="w-full h-9 bg-white/5 border border-white/10 rounded-lg px-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                                className="w-full h-10 rounded-lg px-3 text-sm focus:outline-none"
+                                                style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}
                                             >
                                                 {['Inter', 'Space Grotesk', 'Playfair Display', 'Montserrat', 'Roboto', 'Oswald', 'Bebas Neue'].map(f => (
                                                     <option key={f} value={f}>{f}</option>
@@ -6139,41 +6150,57 @@ export default function ComposePage() {
                                         </div>
                                     </div>
 
-                                    {/* PROMPT */}
+                                    {/* PROMPT + STYLE PRESETS */}
                                     <div>
-                                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Prompt</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(43,238,157,0.5)' }}>Prompt</p>
 
-                                        {/* Style presets */}
-                                        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-2 scrollbar-none">
+                                        {/* Visual style presets */}
+                                        <div className="flex gap-2.5 overflow-x-auto pb-2 mb-3" style={{ scrollbarWidth: 'none' }}>
                                             {[
-                                                { id: '', label: 'None' },
-                                                { id: 'cinematic', label: 'Cinematic' },
-                                                { id: '3d-render', label: '3D Render' },
-                                                { id: 'cyberpunk', label: 'Cyberpunk' },
-                                                { id: 'anime', label: 'Anime' },
-                                                { id: 'neon', label: 'Neon' },
-                                                { id: 'minimalist', label: 'Minimalist' },
-                                                { id: 'ethereal', label: 'Ethereal' },
-                                                { id: 'vintage', label: 'Vintage' },
+                                                { id: '', label: 'None', emoji: '✨' },
+                                                { id: 'cinematic', label: 'Cinematic', emoji: '🎬' },
+                                                { id: '3d-render', label: '3D Render', emoji: '🧊' },
+                                                { id: 'cyberpunk', label: 'Cyberpunk', emoji: '⚡' },
+                                                { id: 'anime', label: 'Anime', emoji: '🌸' },
+                                                { id: 'neon', label: 'Neon', emoji: '🌟' },
+                                                { id: 'minimalist', label: 'Minimal', emoji: '◻️' },
+                                                { id: 'ethereal', label: 'Ethereal', emoji: '🌊' },
+                                                { id: 'vintage', label: 'Vintage', emoji: '📷' },
                                             ].map(s => (
                                                 <button
                                                     key={s.id}
                                                     type="button"
                                                     onClick={() => setSelectedStyle(s.id)}
-                                                    className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer ${selectedStyle === s.id ? 'bg-violet-500 text-white' : 'bg-white/5 border border-white/10 text-white/50 hover:text-white hover:border-white/30'}`}
+                                                    className="shrink-0 flex flex-col items-center gap-1.5 cursor-pointer transition-all group"
                                                 >
-                                                    {s.label}
+                                                    <div
+                                                        className="h-14 w-14 rounded-xl flex items-center justify-center text-2xl transition-all"
+                                                        style={selectedStyle === s.id
+                                                            ? { background: 'rgba(43,238,157,0.15)', border: '2px solid #2bee9d', boxShadow: '0 0 12px rgba(43,238,157,0.25)' }
+                                                            : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(43,238,157,0.1)' }}
+                                                    >
+                                                        {s.emoji}
+                                                    </div>
+                                                    <span
+                                                        className="text-[9px] font-bold uppercase tracking-tight"
+                                                        style={{ color: selectedStyle === s.id ? '#2bee9d' : 'rgba(255,255,255,0.35)' }}
+                                                    >
+                                                        {s.label}
+                                                    </span>
                                                 </button>
                                             ))}
                                         </div>
 
                                         {/* Dual mode toggle */}
                                         {content.trim() && (
-                                            <div className="flex gap-1.5 mb-2">
+                                            <div className="flex gap-1.5 mb-3">
                                                 <button
                                                     type="button"
                                                     onClick={() => { setUseContentAsPrompt(true); setAiImagePrompt(content.substring(0, 500)) }}
-                                                    className={`flex-1 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-all cursor-pointer ${useContentAsPrompt ? 'border-violet-500 bg-violet-500/15 text-violet-300' : 'border-white/10 bg-white/5 text-white/40 hover:border-white/25'}`}
+                                                    className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                                                    style={useContentAsPrompt
+                                                        ? { background: 'rgba(43,238,157,0.12)', border: '1px solid rgba(43,238,157,0.4)', color: '#2bee9d' }
+                                                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}
                                                 >
                                                     <Sparkles className="h-3 w-3 mx-auto mb-0.5" />
                                                     Auto from Content
@@ -6181,7 +6208,10 @@ export default function ComposePage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => { setUseContentAsPrompt(false); setAiImagePrompt('') }}
-                                                    className={`flex-1 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-all cursor-pointer ${!useContentAsPrompt ? 'border-violet-500 bg-violet-500/15 text-violet-300' : 'border-white/10 bg-white/5 text-white/40 hover:border-white/25'}`}
+                                                    className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                                                    style={!useContentAsPrompt
+                                                        ? { background: 'rgba(43,238,157,0.12)', border: '1px solid rgba(43,238,157,0.4)', color: '#2bee9d' }
+                                                        : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }}
                                                 >
                                                     <Pencil className="h-3 w-3 mx-auto mb-0.5" />
                                                     Custom Prompt
@@ -6191,9 +6221,9 @@ export default function ComposePage() {
 
                                         {/* Prompt textarea */}
                                         {useContentAsPrompt && content.trim() ? (
-                                            <div className="rounded-lg border border-white/10 bg-white/5 p-3 mb-2">
-                                                <p className="text-[11px] text-white/50 line-clamp-3">{content.substring(0, 250)}{content.length > 250 ? '...' : ''}</p>
-                                                <p className="text-[10px] text-white/25 mt-1.5">AI will match this content</p>
+                                            <div className="rounded-xl p-3 mb-3" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)' }}>
+                                                <p className="text-xs line-clamp-3" style={{ color: 'rgba(255,255,255,0.45)' }}>{content.substring(0, 250)}{content.length > 250 ? '...' : ''}</p>
+                                                <p className="text-[10px] mt-1.5" style={{ color: 'rgba(43,238,157,0.4)' }}>AI will match this content</p>
                                             </div>
                                         ) : (
                                             <textarea
@@ -6202,13 +6232,13 @@ export default function ComposePage() {
                                                 onChange={e => setAiImagePrompt(e.target.value)}
                                                 onKeyDown={e => e.key === 'Enter' && e.ctrlKey && aiImagePrompt.trim() && handleAiImageGenerate()}
                                                 rows={3}
-                                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none mb-2"
+                                                className="w-full rounded-xl px-4 py-3 text-sm placeholder:text-white/25 focus:outline-none resize-none mb-3"
+                                                style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.15)', color: 'white' }}
                                             />
                                         )}
 
-                                        {/* AI suggestion */}
                                         {visualIdea && !useContentAsPrompt && (
-                                            <p className="text-[10px] text-white/35 mb-2">💡 {visualIdea}</p>
+                                            <p className="text-[11px] mb-3" style={{ color: 'rgba(43,238,157,0.5)' }}>💡 {visualIdea}</p>
                                         )}
 
                                         {/* Generate button */}
@@ -6216,7 +6246,13 @@ export default function ComposePage() {
                                             type="button"
                                             onClick={handleAiImageGenerate}
                                             disabled={generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel}
-                                            className="w-full h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+                                            className="w-full h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                                            style={{
+                                                background: 'linear-gradient(135deg, #2bee9d, #1ab87a)',
+                                                color: '#0e1a14',
+                                                boxShadow: '0 0 24px rgba(43,238,157,0.25)',
+                                                opacity: (generatingImage || (!aiImagePrompt.trim() && !useContentAsPrompt) || !selectedChannel) ? 0.4 : 1,
+                                            }}
                                         >
                                             {generatingImage ? (
                                                 <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
@@ -6227,24 +6263,24 @@ export default function ComposePage() {
 
                                         {/* Result */}
                                         {aiGeneratedPreview && !generatingImage && (
-                                            <div className="mt-3 space-y-2">
-                                                <div className="relative rounded-xl overflow-hidden bg-black/30 aspect-video">
+                                            <div className="mt-4 space-y-3">
+                                                <div className="relative rounded-xl overflow-hidden aspect-video" style={{ background: 'rgba(0,0,0,0.4)' }}>
                                                     <img src={aiGeneratedPreview} alt="AI Generated" className="w-full h-full object-contain" />
                                                 </div>
                                                 {lastUsedImageModel && (
-                                                    <p className="text-[10px] text-white/40 flex items-center gap-1">
-                                                        <Check className="h-3 w-3 text-emerald-400" /> Generated with {lastUsedImageModel}
+                                                    <p className="text-[11px] flex items-center gap-1" style={{ color: 'rgba(43,238,157,0.6)' }}>
+                                                        <Check className="h-3 w-3" style={{ color: '#2bee9d' }} /> Generated with {lastUsedImageModel}
                                                     </p>
                                                 )}
                                                 <div className="flex gap-2">
-                                                    <button type="button" onClick={handleAiImageGenerate} disabled={generatingImage} className="flex-1 h-8 rounded-lg border border-white/15 text-white/60 hover:text-white text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer">
-                                                        <RefreshCw className="h-3 w-3" /> Regenerate
+                                                    <button type="button" onClick={handleAiImageGenerate} disabled={generatingImage} className="flex-1 h-9 rounded-lg text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
+                                                        <RefreshCw className="h-3.5 w-3.5" /> Regenerate
                                                     </button>
-                                                    <button type="button" onClick={() => setShowImagePicker(false)} className="flex-1 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer">
-                                                        <Check className="h-3 w-3" /> Done
+                                                    <button type="button" onClick={() => setShowImagePicker(false)} className="flex-1 h-9 rounded-lg text-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer font-semibold" style={{ background: 'rgba(43,238,157,0.15)', border: '1px solid rgba(43,238,157,0.3)', color: '#2bee9d' }}>
+                                                        <Check className="h-3.5 w-3.5" /> Done
                                                     </button>
                                                 </div>
-                                                <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                                                <p className="text-[11px] flex items-center gap-1" style={{ color: '#2bee9d' }}>
                                                     <Check className="h-3 w-3" /> Saved to media library &amp; attached
                                                 </p>
                                             </div>
@@ -6256,43 +6292,35 @@ export default function ComposePage() {
                             {/* Article Tab */}
                             {imagePickerTab === 'article' && (
                                 <div className="space-y-4 pt-2">
-                                    <p className="text-sm text-white/50">Download featured image from an article URL.</p>
+                                    <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Download featured image from an article URL.</p>
                                     {aiTopic.startsWith('http') ? (
                                         <div className="space-y-3">
-                                            <div className="flex items-center gap-2 text-xs bg-white/5 border border-white/10 rounded-lg p-2">
-                                                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-white/40" />
-                                                <span className="truncate text-white/60">{aiTopic}</span>
+                                            <div className="flex items-center gap-2 text-xs rounded-lg p-2.5" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)' }}>
+                                                <ExternalLink className="h-3.5 w-3.5 shrink-0" style={{ color: 'rgba(43,238,157,0.5)' }} />
+                                                <span className="truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{aiTopic}</span>
                                             </div>
-                                            <Button
-                                                size="sm" className="cursor-pointer w-full"
-                                                disabled={downloadingStock !== null}
-                                                onClick={async () => {
-                                                    if (!selectedChannel) return
-                                                    setDownloadingStock(-1)
-                                                    try {
-                                                        const res = await fetch('/api/admin/posts/stock-images', {
-                                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ action: 'download', channelId: selectedChannel.id, photoUrl: aiTopic, alt: 'Article image' }),
-                                                        })
-                                                        const data = await res.json()
-                                                        if (!res.ok) throw new Error(data.error)
-                                                        addFromLibrary(data.mediaItem)
-                                                        toast.success('Article image downloaded!')
-                                                        setShowImagePicker(false)
-                                                    } catch (err) {
-                                                        toast.error(err instanceof Error ? err.message : 'Failed to download image')
-                                                    } finally { setDownloadingStock(null) }
-                                                }}
-                                            >
+                                            <Button size="sm" className="cursor-pointer w-full" disabled={downloadingStock !== null} onClick={async () => {
+                                                if (!selectedChannel) return
+                                                setDownloadingStock(-1)
+                                                try {
+                                                    const res = await fetch('/api/admin/posts/stock-images', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'download', channelId: selectedChannel.id, photoUrl: aiTopic, alt: 'Article image' }) })
+                                                    const data = await res.json()
+                                                    if (!res.ok) throw new Error(data.error)
+                                                    addFromLibrary(data.mediaItem)
+                                                    toast.success('Article image downloaded!')
+                                                    setShowImagePicker(false)
+                                                } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to download image') }
+                                                finally { setDownloadingStock(null) }
+                                            }}>
                                                 {downloadingStock === -1 ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <ImageIcon className="h-4 w-4 mr-1.5" />}
                                                 Extract &amp; Download Article Image
                                             </Button>
                                         </div>
                                     ) : (
-                                        <div className="text-center py-10">
-                                            <Newspaper className="h-8 w-8 text-white/20 mx-auto mb-2" />
-                                            <p className="text-sm text-white/30">No article URL detected.</p>
-                                            <p className="text-xs text-white/20 mt-1">Paste an article URL in the AI topic input first.</p>
+                                        <div className="text-center py-12">
+                                            <Newspaper className="h-9 w-9 mx-auto mb-3" style={{ color: 'rgba(43,238,157,0.2)' }} />
+                                            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>No article URL detected.</p>
+                                            <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.2)' }}>Paste an article URL in the topic input first.</p>
                                         </div>
                                     )}
                                 </div>
