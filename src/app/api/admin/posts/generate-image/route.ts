@@ -325,9 +325,20 @@ async function generateWithRunware(
         // Runware expects base64 string (no data URI prefix) for seedImage
         const { base64 } = parseDataUri(refImageBase64)
         task.seedImage = base64
-        // Runware `strength` is inverted: 0 = use ref exactly, 1 = ignore ref
-        // So we invert: imageStrength=1.0 → strength=0.0 (copy), imageStrength=0.0 → strength=1.0 (creative)
-        task.strength = Math.max(0, Math.min(1, 1 - imageStrength))
+        // Runware strength: 0.0 = copy ref exactly, 1.0 = fully ignore ref (pure generation)
+        // Non-linear mapping so the slider feels meaningful:
+        //   100% (clone)   → 0.05 (nearly identical)
+        //    70% (similar) → 0.55 (recognizable subject, creative scene)
+        //    30% (creative) → 0.82 (very free, just vibes)
+        //    10%            → 0.92
+        const s = 1 - imageStrength  // 0.0..1.0 (linear inverse)
+        // Apply curve: lower strengths get more deviation than a straight line would give
+        task.strength = imageStrength >= 0.95
+            ? 0.05
+            : imageStrength >= 0.60
+                ? 0.45 + (1 - imageStrength) * 0.55
+                : 0.75 + (1 - imageStrength) * 0.20
+        task.strength = Math.max(0.02, Math.min(0.95, task.strength))
     }
 
     const res = await fetch('https://api.runware.ai/v1', {
@@ -419,9 +430,12 @@ async function generateWithOpenAI(
     }
 
     // Standard text-to-image generation (with ref image injected into prompt as description)
-    const enhancedPrompt = refImageBase64
-        ? buildRefPrompt(prompt, imageStrength)
-        : prompt
+    let enhancedPrompt = prompt
+    if (refImageBase64) {
+        const { base64: refB64, mime: refMime } = parseDataUri(refImageBase64)
+        const imageDescription = await analyzeImageWithGemini(apiKey, refB64, refMime)
+        enhancedPrompt = buildRefPrompt(prompt, imageDescription, imageStrength)
+    }
 
     const requestBody: Record<string, unknown> = {
         model,
@@ -479,7 +493,7 @@ async function generateWithGemini(
                     },
                     body: JSON.stringify({
                         instances: [{
-                            prompt: buildRefPrompt(prompt, imageStrength),
+                            prompt: buildRefPrompt(prompt, await analyzeImageWithGemini(apiKey, base64, mime), imageStrength),
                             referenceImages: [{
                                 referenceType: 'REFERENCE_TYPE_RAW',
                                 referenceId: 1,
@@ -513,7 +527,7 @@ async function generateWithGemini(
                 'x-goog-api-key': apiKey,
             },
             body: JSON.stringify({
-                instances: [{ prompt: refImageBase64 ? buildRefPrompt(prompt, imageStrength) : prompt }],
+                instances: [{ prompt: refImageBase64 ? buildRefPrompt(prompt, await analyzeImageWithGemini(apiKey, parseDataUri(refImageBase64).base64, parseDataUri(refImageBase64).mime), imageStrength) : prompt }],
                 parameters: { sampleCount: 1, aspectRatio },
             }),
         })
@@ -542,10 +556,15 @@ async function generateWithGemini(
 
         if (refImageBase64) {
             const { base64, mime } = parseDataUri(refImageBase64)
+            // For non-clone strengths: run a quick vision pre-pass to describe the image
+            // so the generation prompt can reference the subject by name
+            const imageDescription = imageStrength < 0.92
+                ? await analyzeImageWithGemini(apiKey, base64, mime)
+                : ''
             // Send reference image FIRST so the model anchors to it
             parts.push({ inlineData: { mimeType: mime, data: base64 } })
-            // Then add the instruction
-            parts.push({ text: buildGeminiRefPrompt(prompt, imageStrength) })
+            // Then add the instruction with context-aware prompt
+            parts.push({ text: buildGeminiRefPrompt(prompt, imageStrength, imageDescription) })
         } else {
             parts.push({ text: `Create a visually striking image that represents this concept:\n\n${prompt}` })
         }
@@ -598,29 +617,69 @@ async function generateWithGemini(
  * Build a prompt that instructs the AI to use the reference image at a given strength level.
  * Used when the native API doesn't support binary img2img (e.g. DALL-E 3, Imagen text-only endpoint).
  */
-function buildRefPrompt(prompt: string, imageStrength: number): string {
-    if (imageStrength >= 0.9) {
-        return `Reproduce the provided reference image as closely as possible. Maintain the same composition, color palette, lighting, style, and subjects. ${prompt}`
-    } else if (imageStrength >= 0.7) {
-        return `Using the provided reference image as your primary guide, generate an image that closely matches its style, composition, and visual elements. ${prompt}`
-    } else if (imageStrength >= 0.4) {
-        return `Inspired by the provided reference image, generate an image that borrows its general style and color palette while adapting to: ${prompt}`
+function buildRefPrompt(prompt: string, imageDescription: string, imageStrength: number): string {
+    if (imageStrength >= 0.92) {
+        return `Reproduce the reference image as closely as possible: same composition, subjects, colors, lighting, and style. ${prompt}`
+    } else if (imageStrength >= 0.60) {
+        return `The reference image shows: ${imageDescription}. Create a creative marketing scene or poster where this subject is the central focus, placed in a fresh and engaging new context or environment. The subject should be clearly recognizable. ${prompt}`
+    } else if (imageStrength >= 0.30) {
+        return `Inspired by the aesthetic and mood of a reference that shows: ${imageDescription}. Capture a similar visual style and color palette while creating an original image for: ${prompt}`
     } else {
-        return `Using the reference image only as a loose aesthetic inspiration, generate a creative image for: ${prompt}`
+        return `Using a very loose aesthetic inspiration from a reference showing: ${imageDescription}. Create an original creative image for: ${prompt}`
     }
 }
 
 /**
  * Gemini-specific ref prompt — more explicit since we're passing the image as inlineData.
+ * The image is included in the same request so Gemini can actually see it.
+ * We explicitly instruct it HOW to use the image based on strength.
  */
-function buildGeminiRefPrompt(prompt: string, imageStrength: number): string {
-    if (imageStrength >= 0.9) {
-        return `Look at the image I provided above. Generate a new image that is as close to the reference image as possible — same composition, colors, style, subjects, and layout. Additional instruction: ${prompt}`
-    } else if (imageStrength >= 0.7) {
-        return `Using the image I provided above as a strong reference, generate a new image that closely follows its visual style, composition, and subjects. Additional instruction: ${prompt}`
-    } else if (imageStrength >= 0.4) {
-        return `Using the image I provided above as general style inspiration, generate an image for: ${prompt}`
+function buildGeminiRefPrompt(prompt: string, imageStrength: number, imageDescription?: string): string {
+    if (imageStrength >= 0.92) {
+        // 100% clone: faithfully reproduce the image
+        return `Look at the reference image I provided. Generate a new image that reproduces it as closely as possible — same subjects, composition, colors, lighting, and overall style. Apply this additional instruction if any: ${prompt}`
+    } else if (imageStrength >= 0.60) {
+        // 60–91%: creative scene placement — identify the subject and build a new scene around it
+        const subjectHint = imageDescription ? ` Based on analysis, the image shows: ${imageDescription}.` : ''
+        return `Look at the reference image I provided carefully.${subjectHint}
+
+Step 1 — Identify: What is the main subject, product, or object shown in this image?
+Step 2 — Create: Design a creative, professional marketing poster or scene where this exact subject is the central, clearly recognizable element, but placed in a new, dynamic, or storytelling context. Examples: the subject displayed on a computer screen while someone works, a person interacting with it, the subject incorporated into a lifestyle scene, etc.
+Step 3 — Apply: ${prompt}
+
+Important: The result should be visually fresh and creative, NOT a direct copy. The reference subject must be clearly present and recognizable.`
+    } else if (imageStrength >= 0.30) {
+        // 30–59%: style/mood inspiration — capture the aesthetic, not the content
+        return `Look at the reference image I provided. Borrow its visual style, color palette, and mood — but create an entirely new original image for this concept: ${prompt}. The reference is for aesthetic inspiration only; do not copy its subjects or composition directly.`
     } else {
-        return `The image I provided is just a loose reference for mood and aesthetic. Create an original image for: ${prompt}`
+        // <30%: very loose — just vibes
+        return `Using the reference image as a very loose mood board, create a completely original creative image for: ${prompt}`
+    }
+}
+
+/**
+ * Use Gemini Flash (vision) to describe what a reference image shows.
+ * This description is then used to build smarter prompts for other providers.
+ */
+async function analyzeImageWithGemini(apiKey: string, base64: string, mime: string): Promise<string> {
+    try {
+        const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { inlineData: { mimeType: mime, data: base64 } },
+                        { text: 'Describe this image concisely in 1-2 sentences. Focus on: what the main subject/object is, key visual elements, colors, and style/mood. Do NOT use phrases like "the image shows" — just describe directly. Max 60 words.' },
+                    ],
+                }],
+            }),
+        })
+        if (!res.ok) return ''
+        const data = await res.json()
+        return data.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text?.trim() || ''
+    } catch {
+        return ''
     }
 }
