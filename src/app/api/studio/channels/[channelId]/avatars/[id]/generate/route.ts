@@ -253,9 +253,9 @@ async function runGeminiBackground(opts: {
             const candidates = flashData.candidates as Array<{
                 content?: { parts?: Array<{ inlineData?: { data: string; mimeType: string } }> }
             }> | undefined
-            const parts = candidates?.[0]?.content?.parts || []
-            console.log(`[generate:bg] Gemini Flash parts count: ${parts.length}`)
-            for (const part of parts) {
+            const responseParts = candidates?.[0]?.content?.parts || []
+            console.log(`[generate:bg] Gemini Flash parts count: ${responseParts.length}`)
+            for (const part of responseParts) {
                 if (part.inlineData?.data) {
                     const mimeType = part.inlineData.mimeType || 'image/png'
                     const ext = mimeType.split('/')[1] || 'png'
