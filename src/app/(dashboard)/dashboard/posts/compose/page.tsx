@@ -1111,9 +1111,10 @@ function SortableMediaCard({ media, index, mediaRatio, isLast, aiImageJustComple
                 <button
                     onClick={() => onEditInCanva(media.url, media.id)}
                     title="Edit in Canva"
-                    className="absolute bottom-0.5 left-0.5 h-4 w-4 rounded-full bg-violet-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    className="absolute bottom-1 left-1 flex items-center gap-1 px-1.5 py-1 rounded-lg bg-[#7d2ae8] text-white opacity-0 group-hover:opacity-100 transition-all cursor-pointer hover:bg-[#9037ff] hover:scale-105 shadow-lg"
                 >
-                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-2.5 w-2.5 object-contain" />
+                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-4 w-4 object-contain flex-shrink-0" />
+                    <span className="text-[9px] font-bold hidden group-hover:inline whitespace-nowrap">Edit in Canva</span>
                 </button>
             )}
         </div>
@@ -1195,6 +1196,7 @@ export default function ComposePage() {
     const [refImageDataUrl, setRefImageDataUrl] = useState<string | null>(null)         // base64 preview of reference image
     const [refImageFile, setRefImageFile] = useState<File | null>(null)
     const refImageInputRef = useRef<HTMLInputElement>(null)
+    const [refImageStrength, setRefImageStrength] = useState(70)             // 0 = ignore ref, 100 = copy ref exactly
     const [selectedStyle, setSelectedStyle] = useState('')                              // style preset keyword
     const [typoText, setTypoText] = useState('')                                        // text to render in image
     const [typoFont, setTypoFont] = useState('Inter')                                   // font for typography
@@ -2654,7 +2656,10 @@ export default function ComposePage() {
         }
         if (overrideImageModel) body.model = overrideImageModel
         // Ref image (image-to-image) — send base64 if model supports it
-        if (refImageDataUrl) body.refImageBase64 = refImageDataUrl
+        if (refImageDataUrl) {
+            body.refImageBase64 = refImageDataUrl
+            body.imageStrength = refImageStrength / 100  // 0.0–1.0: 1.0 = identical, 0.0 = ignore
+        }
 
         // Close modal immediately and show placeholder in media grid
         setShowImagePicker(false)
@@ -6049,9 +6054,9 @@ export default function ComposePage() {
                                     ) : (
                                         <>
                                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ color: 'rgba(43,238,157,0.4)' }}>
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                                <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                                <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                                             </svg>
                                             <p className="text-xs font-medium" style={{ color: 'rgba(43,238,157,0.5)' }}>Drop image or click to upload</p>
                                         </>
@@ -6066,6 +6071,38 @@ export default function ComposePage() {
                                     reader.readAsDataURL(file)
                                     if (e.target) e.target.value = ''
                                 }} />
+
+                                {/* Similarity strength slider — only when ref image uploaded */}
+                                {refImageDataUrl && (
+                                    <div className="mt-3 rounded-xl p-3" style={{ background: 'rgba(43,238,157,0.05)', border: '1px solid rgba(43,238,157,0.12)' }}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(43,238,157,0.6)' }}>Similarity to Reference</p>
+                                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(43,238,157,0.15)', color: '#2bee9d' }}>{refImageStrength}%</span>
+                                        </div>
+                                        <input
+                                            type="range" min={10} max={100} step={5} value={refImageStrength}
+                                            onChange={e => setRefImageStrength(Number(e.target.value))}
+                                            className="w-full h-1.5 rounded-full cursor-pointer"
+                                            style={{ accentColor: '#2bee9d' }}
+                                        />
+                                        <div className="flex justify-between mt-1.5">
+                                            <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>Creative freedom</span>
+                                            <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>Copy exactly</span>
+                                        </div>
+                                        {/* Quick presets */}
+                                        <div className="flex gap-1.5 mt-2">
+                                            {[{ v: 30, label: '30% Creative' }, { v: 70, label: '70% Similar' }, { v: 100, label: '100% Clone' }].map(p => (
+                                                <button key={p.v} type="button" onClick={() => setRefImageStrength(p.v)}
+                                                    className="flex-1 py-1 rounded-lg text-[9px] font-bold cursor-pointer transition-all"
+                                                    style={refImageStrength === p.v
+                                                        ? { background: '#2bee9d', color: '#0e1a14' }
+                                                        : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(43,238,157,0.12)', color: 'rgba(255,255,255,0.4)' }}>
+                                                    {p.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* TYPOGRAPHY */}
@@ -6089,33 +6126,51 @@ export default function ComposePage() {
                                 {/* Style preset grid — 3 columns so nothing is cut */}
                                 <div className="grid grid-cols-3 gap-2 mb-4">
                                     {([
-                                        { id: '', label: 'None', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74L12 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
-                                        )},
-                                        { id: 'cinematic', label: 'Cinematic', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M7 6V18M17 6V18M2 10h20M2 14h20" stroke="currentColor" strokeWidth="1.5"/></svg>
-                                        )},
-                                        { id: '3d-render', label: '3D Render', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
-                                        )},
-                                        { id: 'cyberpunk', label: 'Cyberpunk', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.5H11L10.5 22L19.5 10.5H13L13 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
-                                        )},
-                                        { id: 'anime', label: 'Anime', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M6 8c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" strokeWidth="1.5"/><path d="M3 20c0-3.87 4.03-7 9-7s9 3.13 9 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                                        )},
-                                        { id: 'neon', label: 'Neon', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M19.07 4.93l-2.12 2.12M7.05 16.95l-2.12 2.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                                        )},
-                                        { id: 'minimalist', label: 'Minimal', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                                        )},
-                                        { id: 'ethereal', label: 'Ethereal', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 12c2-4 5-6 10-6s8 2 10 6c-2 4-5 6-10 6S4 16 2 12z" stroke="currentColor" strokeWidth="1.5"/><path d="M6 6c0 4 2.5 7 6 7s6-3 6-7" stroke="currentColor" strokeWidth="1.5"/></svg>
-                                        )},
-                                        { id: 'vintage', label: 'Vintage', icon: (
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5"/><circle cx="18" cy="7" r="1" fill="currentColor"/></svg>
-                                        )},
+                                        {
+                                            id: '', label: 'None', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74L12 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+                                            )
+                                        },
+                                        {
+                                            id: 'cinematic', label: 'Cinematic', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M7 6V18M17 6V18M2 10h20M2 14h20" stroke="currentColor" strokeWidth="1.5" /></svg>
+                                            )
+                                        },
+                                        {
+                                            id: '3d-render', label: '3D Render', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+                                            )
+                                        },
+                                        {
+                                            id: 'cyberpunk', label: 'Cyberpunk', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.5H11L10.5 22L19.5 10.5H13L13 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+                                            )
+                                        },
+                                        {
+                                            id: 'anime', label: 'Anime', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.5" /><path d="M6 8c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" strokeWidth="1.5" /><path d="M3 20c0-3.87 4.03-7 9-7s9 3.13 9 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                                            )
+                                        },
+                                        {
+                                            id: 'neon', label: 'Neon', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M19.07 4.93l-2.12 2.12M7.05 16.95l-2.12 2.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                                            )
+                                        },
+                                        {
+                                            id: 'minimalist', label: 'Minimal', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" /><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                                            )
+                                        },
+                                        {
+                                            id: 'ethereal', label: 'Ethereal', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 12c2-4 5-6 10-6s8 2 10 6c-2 4-5 6-10 6S4 16 2 12z" stroke="currentColor" strokeWidth="1.5" /><path d="M6 6c0 4 2.5 7 6 7s6-3 6-7" stroke="currentColor" strokeWidth="1.5" /></svg>
+                                            )
+                                        },
+                                        {
+                                            id: 'vintage', label: 'Vintage', icon: (
+                                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" /><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5" /><circle cx="18" cy="7" r="1" fill="currentColor" /></svg>
+                                            )
+                                        },
                                     ] as { id: string, label: string, icon: React.ReactNode }[]).map(s => (
                                         <button key={s.id} type="button" onClick={() => setSelectedStyle(s.id)}
                                             className="flex flex-col items-center gap-2 py-3 px-2 rounded-xl transition-all cursor-pointer"
