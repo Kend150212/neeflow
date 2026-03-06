@@ -30,27 +30,48 @@ const GEN_PROVIDERS = [
             { value: 'fal-ai/flux/schnell', label: 'FLUX Schnell (fastest)' },
             { value: 'fal-ai/flux/dev', label: 'FLUX Dev (quality)' },
             { value: 'fal-ai/flux-pro', label: 'FLUX Pro' },
+            { value: 'fal-ai/flux-pro/v1.1', label: 'FLUX Pro v1.1' },
             { value: 'fal-ai/flux-realism', label: 'FLUX Realism' },
+            { value: 'fal-ai/flux-lora', label: 'FLUX LoRA' },
+            { value: 'fal-ai/stable-diffusion-v3-medium', label: 'Stable Diffusion 3 Medium' },
+            { value: 'fal-ai/stable-diffusion-xl', label: 'SDXL' },
+            { value: 'fal-ai/aura-flow', label: 'AuraFlow' },
+            { value: 'fal-ai/kolors', label: 'Kolors (Kwai)' },
+            { value: 'fal-ai/pixart-sigma', label: 'PixArt Sigma' },
+            { value: 'fal-ai/ideogram/v2', label: 'Ideogram v2' },
+            { value: 'fal-ai/recraft-v3', label: 'Recraft v3' },
         ]
     },
     {
         value: 'runware', label: 'Runware', models: [
             { value: 'runware:100@1', label: 'Runware Fast FLUX' },
             { value: 'runware:101@1', label: 'Runware FLUX Dev' },
+            { value: 'civitai:4201@501240', label: 'DreamShaper XL' },
+            { value: 'civitai:36520@76907', label: 'DREAMIX' },
+            { value: 'civitai:133005@782002', label: 'Realistic Vision v6' },
+            { value: 'civitai:43331@176425', label: 'AbsoluteReality v1.8.1' },
+            { value: 'civitai:25694@143906', label: 'Counterfeit-V3.0 (anime)' },
+            { value: 'civitai:7240@46846', label: 'ChilloutMix' },
         ]
     },
     {
         value: 'openai', label: 'OpenAI', models: [
-            { value: 'gpt-image-1', label: 'GPT Image 1' },
-            { value: 'dall-e-3', label: 'DALL-E 3' },
+            { value: 'gpt-image-1', label: 'GPT Image 1 (newest)' },
+            { value: 'dall-e-3', label: 'DALL-E 3 (1792×1024)' },
+            { value: 'dall-e-2', label: 'DALL-E 2 (1024×1024)' },
         ]
     },
     {
         value: 'gemini', label: 'Gemini', models: [
-            { value: 'gemini-3.1-flash-image-preview', label: '⚡ Flash 2 (mới nhất)' },
-            { value: 'gemini-3-pro-image-preview', label: '✨ Pro — studio quality' },
-            { value: 'imagen-4.0-generate-001', label: '🎨 Imagen 4' },
-            { value: 'imagen-4.0-ultra-generate-001', label: '🏆 Imagen 4 Ultra' },
+            { value: 'gemini-3.1-flash-image-preview', label: '⚡ Banana 2 (Flash 2) — mới nhất 2026' },
+            { value: 'gemini-3-pro-image-preview', label: '✨ Banana Pro — chất lượng studio' },
+            { value: 'gemini-2.5-flash-image', label: '⚡ Banana (Flash 1.5) — nhanh & ổn định' },
+            { value: 'gemini-2.0-flash-preview-image-generation', label: '⚡ Flash 1 — thế hệ đầu' },
+            { value: 'imagen-4.0-ultra-generate-001', label: '🏆 Imagen 4 Ultra — đỉnh nhất, 2K' },
+            { value: 'imagen-4.0-generate-001', label: '🎨 Imagen 4 — tiêu chuẩn 2025' },
+            { value: 'imagen-4.0-fast-generate-001', label: '🚀 Imagen 4 Fast — nhanh, số lượng lớn' },
+            { value: 'imagen-3.0-generate-001', label: '🎨 Imagen 3 — ổn định, phổ biến' },
+            { value: 'imagen-3.0-fast-generate-001', label: '🚀 Imagen 3 Fast' },
         ]
     },
 ]
@@ -93,6 +114,7 @@ export default function ChannelAvatarsPage() {
 
     // Generation
     const [generating, setGenerating] = useState<string | null>(null)
+    const [generatingAngle, setGeneratingAngle] = useState<number | null>(null)
     const [genProvider, setGenProvider] = useState('gemini')
     const [genModel, setGenModel] = useState('gemini-3.1-flash-image-preview')
     const [genPhase, setGenPhase] = useState<Record<string, 'preview' | 'approved' | null>>({})
@@ -250,6 +272,30 @@ export default function ChannelAvatarsPage() {
                 }
             } catch { }
         }, 2500)
+    }
+
+    async function generateAngle(avatar: StudioAvatar, angleIndex: number, extraPrompt: string) {
+        setGeneratingAngle(angleIndex)
+        const anglePrompts = ['full body front-facing', 'front view face portrait', 'side profile view', '3/4 dynamic angle view']
+        const angleDesc = anglePrompts[angleIndex] || 'character view'
+        const label = ANGLE_LABELS[angleIndex]
+        const toastId = toast.loading(`Đang tạo ${label}...`)
+        try {
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: genProvider, model: genModel, numAngles: 1,
+                    anglePrompt: `${angleDesc}. ${extraPrompt || ''}`.trim(),
+                }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                toast.success(`✅ ${label} xong!`, { id: toastId })
+                if (data.status === 'done') { await fetchAvatarDetail(avatar.id) }
+                else { pollAvatarStatus(avatar.id, 'preview') }
+            } else { const d = await res.json(); toast.error(d.error || 'Failed', { id: toastId }) }
+        } catch (err) { toast.error(`Error: ${err instanceof Error ? err.message : String(err)}`, { id: toastId }) }
+        finally { setGeneratingAngle(null) }
     }
 
     async function uploadRefImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -538,43 +584,29 @@ export default function ChannelAvatarsPage() {
                                     <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Pose Matrix & Body Angles</h3>
                                     {!selected._shared && (
                                         <button onClick={() => refCoverRef.current?.click()} className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors">
-                                            <Upload size={10} /> Upload angle
+                                            <Upload size={10} /> Upload
                                         </button>
                                     )}
                                 </div>
-                                {(selected.referenceImages || []).length > 0 ? (
-                                    <div className="grid grid-cols-4 gap-3">
-                                        {ANGLE_LABELS.map((label, i) => {
-                                            const imgs = selected.referenceImages || []
-                                            const url = imgs[i]
-                                            return (
-                                                <div key={label} className={cn('group relative aspect-[3/4] bg-[#0d1411] border rounded-xl overflow-hidden transition-all cursor-pointer',
-                                                    url ? 'border-white/5 hover:border-emerald-500/50' : 'border-dashed border-white/10'
-                                                )} onClick={() => url && setLightbox(url)}>
-                                                    {url ? (
-                                                        <img src={url} alt={label} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center">
-                                                            <ImagePlus size={16} className="text-slate-700" />
-                                                        </div>
-                                                    )}
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-3">
-                                                        <p className="text-[10px] font-bold text-white uppercase tracking-wider">{label}</p>
-                                                        <p className="text-[9px] text-slate-500">{url ? 'Click to zoom' : 'Empty'}</p>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="border border-dashed border-white/10 rounded-2xl p-8 text-center">
-                                        <ImagePlus size={20} className="mx-auto text-slate-600 mb-2" />
-                                        <p className="text-xs text-slate-500">Upload reference images to see pose matrix</p>
-                                        {!selected._shared && (
-                                            <button onClick={() => refCoverRef.current?.click()} className="mt-2 text-xs text-emerald-400 hover:underline">+ Upload angles</button>
-                                        )}
-                                    </div>
-                                )}
+                                <div className="grid grid-cols-4 gap-3">
+                                    {ANGLE_LABELS.map((label, i) => {
+                                        const imgs = selected.referenceImages || []
+                                        const url = imgs[i]
+                                        return (
+                                            <PoseMatrixSlot
+                                                key={label}
+                                                label={label}
+                                                url={url}
+                                                isShared={!!selected._shared}
+                                                generatingAngle={generatingAngle}
+                                                angleIndex={i}
+                                                onZoom={() => url && setLightbox(url)}
+                                                onUpload={uploadRefImage}
+                                                onGenerate={(prompt) => generateAngle(selected, i, prompt)}
+                                            />
+                                        )
+                                    })}
+                                </div>
                             </section>
 
                             {/* ── Section 3: Custom Poses ── */}
@@ -772,6 +804,75 @@ export default function ChannelAvatarsPage() {
 }
 
 /* ── Asset Card Component ── */
+/* ── Pose Matrix Slot ── */
+function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZoom, onUpload, onGenerate }: {
+    label: string; url?: string; isShared: boolean; generatingAngle: number | null; angleIndex: number
+    onZoom: () => void; onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onGenerate: (prompt: string) => void
+}) {
+    const [showGenInput, setShowGenInput] = useState(false)
+    const [prompt, setPrompt] = useState('')
+    const fileRef = useRef<HTMLInputElement>(null)
+    const isGenerating = generatingAngle === angleIndex
+    return (
+        <div className={cn('group relative aspect-[3/4] bg-[#0d1411] border rounded-xl overflow-hidden transition-all',
+            url ? 'border-white/5 hover:border-emerald-500/50' : 'border-dashed border-white/10 hover:border-emerald-500/30'
+        )}>
+            {url ? (
+                <img src={url} alt={label} className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity cursor-pointer" onClick={onZoom} />
+            ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                    <ImagePlus size={16} className="text-slate-700" />
+                </div>
+            )}
+
+            {/* Hover actions overlay */}
+            {!isShared && !showGenInput && (
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <p className="text-[9px] font-bold text-white uppercase tracking-wide mb-1">{label}</p>
+                    <label className="flex items-center gap-1 px-2 py-1 bg-white/10 rounded-lg text-[10px] text-white cursor-pointer hover:bg-white/20 transition-all">
+                        <Upload size={10} /> Upload
+                        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
+                    </label>
+                    <button onClick={() => setShowGenInput(true)} className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 rounded-lg text-[10px] text-emerald-400 hover:bg-emerald-500/30 transition-all">
+                        <Sparkles size={10} /> AI Generate
+                    </button>
+                </div>
+            )}
+
+            {/* Stable label when no hover */}
+            {!isShared && url && (
+                <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/70 rounded text-[9px] font-bold text-white uppercase opacity-80 group-hover:opacity-0 transition-all">{label}</div>
+            )}
+            {!url && !isShared && (
+                <div className="absolute bottom-2 left-0 right-0 text-center text-[9px] text-slate-600 uppercase group-hover:opacity-0 transition-all">{label}</div>
+            )}
+
+            {/* AI Gen inline prompt */}
+            {showGenInput && (
+                <div className="absolute inset-0 bg-black/90 flex flex-col p-2 gap-1.5" onClick={e => e.stopPropagation()}>
+                    <p className="text-[9px] font-bold text-emerald-400 uppercase">{label} — AI Generate</p>
+                    <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Thêm mô tả (optional)..." rows={3}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg p-1.5 text-[10px] text-white placeholder:text-slate-600 outline-none resize-none" />
+                    <div className="flex gap-1">
+                        <button onClick={() => setShowGenInput(false)} className="flex-1 py-1 bg-white/10 rounded text-[10px] text-slate-400">Cancel</button>
+                        <button onClick={() => { onGenerate(prompt); setShowGenInput(false); setPrompt('') }}
+                            className="flex-1 py-1 bg-emerald-500 rounded text-[10px] text-black font-bold flex items-center justify-center gap-1">
+                            <Sparkles size={10} /> Gen
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Generating spinner */}
+            {isGenerating && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                    <Loader2 size={20} className="animate-spin text-emerald-400" />
+                </div>
+            )}
+        </div>
+    )
+}
+
 function AssetCard({ asset, uploading, onUpload, onDeleteImage, onDelete, onZoom, fileRef }: {
     asset: AvatarAsset; uploading: boolean
     onUpload: (files: FileList) => void
