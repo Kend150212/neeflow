@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, Download, FolderOpen, Upload, Search, ChevronRight, MoreHorizontal, Shirt, Glasses, Package } from 'lucide-react'
+import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, FolderOpen, Upload, Search, ChevronRight, MoreHorizontal, Shirt, Glasses, Package } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -659,24 +659,9 @@ export default function ChannelAvatarsPage() {
                                                     style={{ background: img.type === 'sheet' ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)', color: img.type === 'sheet' ? '#34d399' : '#a5b4fc' }}>
                                                     {img.type === 'sheet' ? '5-panel' : 'preview'}
                                                 </div>
-                                                {/* Set as avatar / zoom / download overlay */}
+                                                {/* Set as avatar / zoom overlay */}
                                                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all bg-black/60 rounded-xl flex flex-col items-center justify-center gap-1 p-1">
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => setLightbox(img.url)} className="p-1.5 bg-white/10 rounded-lg hover:bg-white/20" title="Xem ảnh"><ZoomIn size={12} className="text-white" /></button>
-                                                        <button onClick={async () => {
-                                                            try {
-                                                                const res = await fetch(img.url)
-                                                                const blob = await res.blob()
-                                                                const a = document.createElement('a')
-                                                                a.href = URL.createObjectURL(blob)
-                                                                a.download = `${selected.name}-${img.type}-${Date.now()}.${blob.type.split('/')[1] || 'jpg'}`
-                                                                a.click()
-                                                                URL.revokeObjectURL(a.href)
-                                                            } catch { toast.error('Download thất bại') }
-                                                        }} className="p-1.5 bg-white/10 rounded-lg hover:bg-white/20" title="Tải về">
-                                                            <Download size={12} className="text-white" />
-                                                        </button>
-                                                    </div>
+                                                    <button onClick={() => setLightbox(img.url)} className="p-1 bg-white/10 rounded-lg hover:bg-white/20"><ZoomIn size={12} className="text-white" /></button>
                                                     {!selected._shared && selected.coverImage !== img.url && (
                                                         <button onClick={async () => {
                                                             await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coverImage: img.url }) })
