@@ -73,6 +73,7 @@ import {
     ZoomIn,
     Music,
     Plus,
+    TrendingUp,
 } from 'lucide-react'
 import { PlatformIcon } from '@/components/platform-icons'
 import { useTranslation } from '@/lib/i18n'
@@ -1319,6 +1320,20 @@ export default function ComposePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [aiScheduleSuggestions, setAiScheduleSuggestions] = useState<any[]>([])
     const [aiScheduleLoading, setAiScheduleLoading] = useState(false)
+    // AI Heatmap scheduler state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [aiHeatmap, setAiHeatmap] = useState<{
+        dayScores: Record<string, number>
+        holidays: { date: string; name: string }[]
+        bestDay: string
+        bestTime: string
+        bestDayHourlyScores: Record<string, number>
+        engagement: string
+        reason: string
+    } | null>(null)
+    const [heatmapViewMonth, setHeatmapViewMonth] = useState(() => new Date().getMonth() + 1)
+    const [heatmapViewYear, setHeatmapViewYear] = useState(() => new Date().getFullYear())
+    const [heatmapSelectedDay, setHeatmapSelectedDay] = useState<string | null>(null)
 
     // Load channels — only include active platforms
     useEffect(() => {
@@ -5690,17 +5705,23 @@ export default function ComposePage() {
                         {/* ── Schedule section (full) — below phone ── */}
                         <div className="mt-3 shrink-0 border border-border/60 rounded-xl overflow-hidden">
                             {/* Header */}
-                            <div className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-muted-foreground border-b border-border/60">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {t('compose.schedule')}
+                            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/60">
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    {t('compose.schedule')}
+                                </div>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-semibold">
+                                    📅 Today, {new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                                </span>
                             </div>
                             {/* Body */}
-                            <div className="px-3 py-2 space-y-2">
+                            <div className="px-3 py-2.5 space-y-3">
+
                                 {/* AI Best Time button */}
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="w-full text-xs cursor-pointer gap-2"
+                                    className="w-full text-xs cursor-pointer gap-2 border-amber-400/40 hover:border-amber-400 hover:bg-amber-50/10"
                                     disabled={!selectedChannel || generating || aiScheduleLoading}
                                     onClick={async () => {
                                         if (!selectedChannel) return
@@ -5712,6 +5733,7 @@ export default function ComposePage() {
                                             return
                                         }
                                         setAiScheduleLoading(true)
+                                        setAiHeatmap(null)
                                         try {
                                             const res = await fetch('/api/admin/posts/suggest-schedule', {
                                                 method: 'POST',
@@ -5721,6 +5743,8 @@ export default function ComposePage() {
                                                     platforms,
                                                     content: content.slice(0, 200),
                                                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                                    viewMonth: heatmapViewMonth,
+                                                    viewYear: heatmapViewYear,
                                                 }),
                                             })
                                             const data = await res.json()
@@ -5728,8 +5752,10 @@ export default function ComposePage() {
                                                 toast.error(data.error || 'Failed to get suggestions')
                                                 return
                                             }
-                                            setAiScheduleSuggestions(data.suggestions || [])
-                                            toast.success('AI schedule suggestions ready!')
+                                            setAiHeatmap(data)
+                                            // Auto-select best day to show hourly
+                                            if (data.bestDay) setHeatmapSelectedDay(data.bestDay)
+                                            toast.success('✨ AI schedule heatmap ready!')
                                         } catch {
                                             toast.error('Failed to get AI suggestions')
                                         } finally {
@@ -5738,60 +5764,228 @@ export default function ComposePage() {
                                     }}
                                 >
                                     {aiScheduleLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-amber-500" />}
-                                    {aiScheduleLoading ? 'Analyzing...' : '✨ AI Best Time'}
+                                    {aiScheduleLoading ? 'Analyzing best times...' : '✨ AI Best Time'}
                                 </Button>
 
-                                {/* AI Suggestions list */}
-                                {aiScheduleSuggestions.length > 0 && (
-                                    <div className="grid grid-cols-1 gap-1.5">
-                                        {aiScheduleSuggestions.map((s: { date: string; time: string; label: string; reason: string; score?: number }, i: number) => {
-                                            const isSelected = scheduleDate === s.date && scheduleTime === s.time
-                                            return (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => { setScheduleDate(s.date); setScheduleTime(s.time) }}
-                                                    className={`text-left px-2.5 py-2 rounded-md text-xs transition-colors cursor-pointer ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="font-medium">{s.label}</span>
-                                                        <div className="flex items-center gap-1.5">
-                                                            {s.score && (
-                                                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${isSelected ? 'bg-primary-foreground/20' : s.score >= 90 ? 'bg-green-100 text-green-700' : s.score >= 75 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                    {s.score}%
-                                                                </span>
-                                                            )}
-                                                            <span className="opacity-70">{s.date} {s.time}</span>
+                                {/* ── Heatmap Calendar ── */}
+                                {aiHeatmap && (() => {
+                                    const { dayScores, holidays, bestDay, bestTime, bestDayHourlyScores, engagement } = aiHeatmap
+                                    const today = new Date()
+                                    const todayStr2 = today.toISOString().split('T')[0]
+                                    const daysInViewMonth = new Date(heatmapViewYear, heatmapViewMonth, 0).getDate()
+                                    const firstDayOfMonth = new Date(heatmapViewYear, heatmapViewMonth - 1, 1).getDay() // 0=Sun
+                                    // Shift to Mon-start: Sun→6, Mon→0, Tue→1, …
+                                    const startOffset = (firstDayOfMonth + 6) % 7
+                                    const monthName = new Date(heatmapViewYear, heatmapViewMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                                    const holidayMap: Record<string, string> = {}
+                                    holidays.forEach(h => { holidayMap[h.date] = h.name })
+
+                                    // Color: score 0-19=very faint, 20-49=light, 50-79=medium, 80-100=dark/full
+                                    const scoreToClass = (score: number, isSelected: boolean, isBest: boolean) => {
+                                        if (isSelected) return 'bg-primary ring-2 ring-primary text-primary-foreground font-bold scale-110 shadow-md shadow-primary/30'
+                                        if (isBest && !isSelected) return 'bg-primary/90 text-primary-foreground font-bold ring-1 ring-primary/60'
+                                        if (score >= 80) return 'bg-emerald-500/80 dark:bg-emerald-400/70 text-white font-semibold'
+                                        if (score >= 60) return 'bg-emerald-500/55 dark:bg-emerald-500/50 text-white font-medium'
+                                        if (score >= 40) return 'bg-emerald-500/35 dark:bg-emerald-500/35 text-foreground'
+                                        if (score >= 20) return 'bg-emerald-500/18 dark:bg-emerald-500/20 text-muted-foreground'
+                                        return 'bg-muted/40 text-muted-foreground/50'
+                                    }
+
+                                    const activeDayHourly = heatmapSelectedDay === bestDay
+                                        ? bestDayHourlyScores
+                                        : {} // For non-best days we show bestDay hourly as fallback
+                                    const displayHourly = Object.keys(activeDayHourly).length > 0
+                                        ? activeDayHourly
+                                        : bestDayHourlyScores
+
+                                    const selectedDayLabel = heatmapSelectedDay
+                                        ? new Date(heatmapSelectedDay + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                        : ''
+
+                                    return (
+                                        <div className="space-y-2.5">
+                                            {/* Month header + nav */}
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-semibold text-foreground">{monthName}</span>
+                                                <div className="flex gap-0.5">
+                                                    <button
+                                                        onClick={() => {
+                                                            const prev = new Date(heatmapViewYear, heatmapViewMonth - 2, 1)
+                                                            setHeatmapViewMonth(prev.getMonth() + 1)
+                                                            setHeatmapViewYear(prev.getFullYear())
+                                                        }}
+                                                        className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+                                                    >
+                                                        <ChevronLeft className="h-3 w-3" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            const next = new Date(heatmapViewYear, heatmapViewMonth, 1)
+                                                            setHeatmapViewMonth(next.getMonth() + 1)
+                                                            setHeatmapViewYear(next.getFullYear())
+                                                        }}
+                                                        className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+                                                    >
+                                                        <ChevronRight className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Day-of-week headers — Mon-Sun */}
+                                            <div className="grid grid-cols-7 gap-0.5">
+                                                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                                                    <div key={i} className="text-center text-[9px] font-bold text-muted-foreground/60 pb-0.5">{d}</div>
+                                                ))}
+
+                                                {/* Empty cells before day 1 */}
+                                                {Array.from({ length: startOffset }).map((_, i) => (
+                                                    <div key={`empty-${i}`} className="aspect-square" />
+                                                ))}
+
+                                                {/* Day cells */}
+                                                {Array.from({ length: daysInViewMonth }).map((_, i) => {
+                                                    const dayNum = i + 1
+                                                    const mm = String(heatmapViewMonth).padStart(2, '0')
+                                                    const dd = String(dayNum).padStart(2, '0')
+                                                    const dateStr = `${heatmapViewYear}-${mm}-${dd}`
+                                                    const score = dayScores[dateStr] ?? 0
+                                                    const isToday = dateStr === todayStr2
+                                                    const isSelected = heatmapSelectedDay === dateStr
+                                                    const isBest = dateStr === bestDay
+                                                    const isPast = dateStr < todayStr2
+                                                    const holiday = holidayMap[dateStr]
+
+                                                    return (
+                                                        <div key={dateStr} className="relative">
+                                                            <button
+                                                                title={holiday ? `🎉 ${holiday} — Score: ${score}` : `Score: ${score}`}
+                                                                disabled={isPast}
+                                                                onClick={() => {
+                                                                    setHeatmapSelectedDay(dateStr)
+                                                                    setScheduleDate(dateStr)
+                                                                }}
+                                                                className={`w-full aspect-square rounded-[3px] flex items-center justify-center text-[10px] transition-all duration-150 cursor-pointer relative ${isPast ? 'opacity-20 cursor-not-allowed' : 'hover:scale-110 hover:z-10'} ${scoreToClass(score, isSelected, isBest)}`}
+                                                            >
+                                                                {dayNum}
+                                                                {isToday && !isSelected && (
+                                                                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-blue-500 border border-background" />
+                                                                )}
+                                                                {holiday && (
+                                                                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 border border-background" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+
+                                            {/* Legend dots */}
+                                            <div className="flex items-center gap-3 px-0.5 text-[9px] text-muted-foreground">
+                                                <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />Today</div>
+                                                {holidays.length > 0 && <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />Holiday</div>}
+                                                <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />Best day</div>
+                                            </div>
+
+                                            {/* Holidays list */}
+                                            {holidays.filter(h => h.date.startsWith(`${heatmapViewYear}-${String(heatmapViewMonth).padStart(2, '0')}`)).length > 0 && (
+                                                <div className="space-y-1">
+                                                    {holidays.filter(h => h.date.startsWith(`${heatmapViewYear}-${String(heatmapViewMonth).padStart(2, '0')}`)).map(h => (
+                                                        <div key={h.date} className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400">
+                                                            <span>🎉</span>
+                                                            <span className="font-medium">{new Date(h.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                                            <span className="text-muted-foreground">—</span>
+                                                            <span>{h.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Hourly heatmap for selected day */}
+                                            {heatmapSelectedDay && (
+                                                <div className="space-y-1.5">
+                                                    <div className="text-[10px] font-semibold text-foreground/70">
+                                                        Hourly engagement — {selectedDayLabel} {heatmapSelectedDay !== bestDay && <span className="text-muted-foreground text-[9px]">(showing best day pattern)</span>}
+                                                    </div>
+                                                    <div className="grid grid-cols-6 gap-1">
+                                                        {Array.from({ length: 24 }).map((_, hr) => {
+                                                            const hrStr = String(hr).padStart(2, '0')
+                                                            const hrScore = displayHourly[hrStr] ?? 0
+                                                            const isSelectedHour = scheduleTime === `${hrStr}:00`
+                                                            const hrOpacity = hrScore >= 80 ? 'bg-emerald-500/85 text-white font-bold'
+                                                                : hrScore >= 60 ? 'bg-emerald-500/60 text-white font-semibold'
+                                                                    : hrScore >= 40 ? 'bg-emerald-500/38 text-foreground'
+                                                                        : hrScore >= 20 ? 'bg-emerald-500/20 text-muted-foreground'
+                                                                            : 'bg-muted/40 text-muted-foreground/40'
+                                                            return (
+                                                                <button
+                                                                    key={hrStr}
+                                                                    title={`${hrStr}:00 — Score: ${hrScore}`}
+                                                                    onClick={() => setScheduleTime(`${hrStr}:00`)}
+                                                                    className={`h-7 rounded text-[9px] transition-all duration-100 cursor-pointer hover:scale-105 ${isSelectedHour ? 'ring-2 ring-primary bg-primary text-primary-foreground font-bold' : hrOpacity}`}
+                                                                >
+                                                                    {hrStr}
+                                                                </button>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                    {/* Legend gradient */}
+                                                    <div className="mt-1 space-y-0.5">
+                                                        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-muted/50 via-emerald-500/40 to-emerald-500/90" />
+                                                        <div className="flex justify-between text-[9px] text-muted-foreground">
+                                                            <span>Low</span><span>Good</span><span className="text-emerald-600 dark:text-emerald-400 font-bold">Best</span>
                                                         </div>
                                                     </div>
-                                                    <p className="opacity-60 mt-0.5 text-[10px]">{s.reason}</p>
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                )}
+                                                </div>
+                                            )}
 
-                                {/* Date */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-0.5">
+                                            {/* AI Recommended Slot */}
+                                            <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/8 border border-primary/25">
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">AI Recommended</p>
+                                                    <p className="text-sm font-bold text-foreground">
+                                                        {new Date(bestDay + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, {bestTime}
+                                                    </p>
+                                                    <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                                                        <TrendingUp className="h-2.5 w-2.5" />
+                                                        {engagement}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    className="h-7 text-[11px] px-3 cursor-pointer"
+                                                    onClick={() => {
+                                                        setScheduleDate(bestDay)
+                                                        setScheduleTime(bestTime)
+                                                        setHeatmapSelectedDay(bestDay)
+                                                        toast.success('Best time applied!')
+                                                    }}
+                                                >
+                                                    Use This
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
+
+                                {/* Manual Date + Time inputs (always visible) */}
+                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
+                                    <div>
                                         <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleDate')}</Label>
-                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-semibold">
-                                            📅 Today, {new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
-                                        </span>
+                                        <Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-0.5 h-7 text-xs" />
                                     </div>
-                                    <Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-0.5 h-7 text-xs" />
+                                    <div>
+                                        <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleTime')}</Label>
+                                        <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-0.5 h-7 text-xs" />
+                                    </div>
                                 </div>
-                                {/* Time */}
-                                <div>
-                                    <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleTime')}</Label>
-                                    <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="mt-0.5 h-7 text-xs" />
-                                </div>
-                                {/* Timezone */}
+
+                                {/* Timezone + Clear */}
                                 <div className="flex items-center justify-between">
                                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] text-muted-foreground">
                                         🌐 {(selectedChannel as any)?.timezone || 'UTC'}
                                     </span>
                                     {scheduleDate && (
-                                        <Button variant="ghost" size="sm" onClick={() => { setScheduleDate(''); setScheduleTime(''); setAiScheduleSuggestions([]) }} className="text-xs cursor-pointer h-6 px-2">
+                                        <Button variant="ghost" size="sm" onClick={() => { setScheduleDate(''); setScheduleTime(''); setAiScheduleSuggestions([]); setAiHeatmap(null); setHeatmapSelectedDay(null) }} className="text-xs cursor-pointer h-6 px-2">
                                             <X className="h-3 w-3 mr-1" /> Clear
                                         </Button>
                                     )}

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | AI Smart Scheduler</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#050d0a", // Ultra dark variation
+                        "neutral-dark": "#0f231b",
+                        "border-dark": "#1a3a2e",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .heatmap-cell {
+            transition: transform 0.2s ease;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="layout-container flex flex-col h-screen overflow-hidden">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-border-dark px-6 md:px-10 py-3 bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="text-primary">
+<span class="material-symbols-outlined text-4xl">database</span>
+</div>
+<h2 class="text-xl font-bold leading-tight tracking-tight">Neeflow</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8 items-center">
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Analytics</a>
+<a class="text-sm font-medium text-primary" href="#">Schedule</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-xl h-10 px-6 bg-primary text-background-dark text-sm font-bold tracking-tight hover:brightness-110 transition-all">
+                        Post
+                    </button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border border-border-dark" data-alt="User profile picture of a professional designer" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAIbnWVs6hzxdh7R0BT2Am-1tSOk1XYv-tUm_fv5K8RyjjwJw2QcOfIXoE3ilV4v23knx6pzD_3WJvVExs84xaWctwcdVUzsEUJT1L30nNaAzQxx4tVT_1fBODg1Skb8ktugTjaBzifdL6rOr5phuIz4xQTS-a3Pj5Jcy5s6_WYkYKQ0dqn1yVOVVIHJ7rYNSA8kytT5-Yj8WPGC3L9bQtAKg2QbUWuihz5MWJmrGLf_pe_LjNte7bixNztGsKZEdP4xN-CYKMUWIg");'></div>
+</div>
+</div>
+</header>
+<main class="flex-1 flex overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 border-r border-border-dark p-4 hidden lg:flex flex-col gap-6 bg-background-dark/50">
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined">home</span>
+<p class="text-sm font-medium">Home</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-primary bg-primary/10 rounded-xl">
+<span class="material-symbols-outlined">calendar_month</span>
+<p class="text-sm font-medium">Scheduler</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined">insights</span>
+<p class="text-sm font-medium">Analytics</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined">smart_toy</span>
+<p class="text-sm font-medium">AI Tools</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-primary transition-colors cursor-pointer mt-auto">
+<span class="material-symbols-outlined">settings</span>
+<p class="text-sm font-medium">Settings</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+<!-- Left Column: Compose & Preview -->
+<section class="flex-1 overflow-y-auto p-6 lg:p-10 border-r border-border-dark bg-background-dark/20">
+<div class="max-w-2xl mx-auto space-y-8">
+<div>
+<h1 class="text-3xl font-black tracking-tight mb-2">Compose Post</h1>
+<p class="text-slate-400">Craft your message and let AI optimize the delivery.</p>
+</div>
+<!-- Editor Card -->
+<div class="bg-neutral-dark/40 border border-border-dark rounded-xl p-6 space-y-4">
+<div class="flex items-center gap-3 mb-2">
+<div class="size-10 rounded-full border border-primary/30 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Small avatar of the current user" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHhQO2KLM16qnuhtXKwxSWKqe5Q-xl49bATLNvbwOJPCz_1nZauKjE4-sfFcO1lWfL2jsfVfAp7DlvNQTDTzfAjT3cEwXmqUWlkPbXZf07ABbBynUxhf3H9tJL89jD-mtWA5jOsh07WQfVvD4DgDAovJAliFfQdJUIFIelEItJW6jX8xITEdTml4SqgKLcoYiAZY7KG3QtPMJROvjbNjB19Upo5RsjDrA4zPkCLHs4e68oGqrr0BSOi79vvBTTTwCbtnvuuzfiG08"/>
+</div>
+<div>
+<p class="text-sm font-bold">Alex Rivera</p>
+<p class="text-xs text-primary/70">@arivera_design</p>
+</div>
+</div>
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-lg placeholder:text-slate-600 resize-none h-40" placeholder="What's the breakthrough today?"></textarea>
+<div class="flex items-center justify-between pt-4 border-t border-border-dark">
+<div class="flex gap-2">
+<button class="p-2 rounded-lg hover:bg-primary/10 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">image</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-primary/10 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">gif_box</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-primary/10 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">poll</span>
+</button>
+<button class="p-2 rounded-lg hover:bg-primary/10 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">sentiment_satisfied</span>
+</button>
+</div>
+<div class="text-xs text-slate-500 font-medium">
+                                    0 / 280
+                                </div>
+</div>
+</div>
+<!-- Social Media Preview Mockup -->
+<div class="space-y-3">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Live Preview</h3>
+<div class="bg-white rounded-xl p-4 text-slate-900 max-w-sm mx-auto shadow-2xl shadow-primary/5">
+<div class="flex gap-3">
+<div class="size-10 rounded-full bg-slate-200 shrink-0"></div>
+<div class="flex-1">
+<div class="flex items-center gap-1">
+<span class="font-bold text-sm">Alex Rivera</span>
+<span class="text-slate-500 text-sm">@arivera · 2m</span>
+</div>
+<p class="text-sm mt-1 text-slate-700 italic">Your caption will appear here...</p>
+<div class="mt-3 rounded-lg bg-slate-100 aspect-video flex items-center justify-center border border-slate-200">
+<span class="material-symbols-outlined text-slate-300 text-4xl">image</span>
+</div>
+<div class="flex justify-between mt-3 text-slate-400">
+<span class="material-symbols-outlined text-sm">chat_bubble</span>
+<span class="material-symbols-outlined text-sm">repeat</span>
+<span class="material-symbols-outlined text-sm">favorite</span>
+<span class="material-symbols-outlined text-sm">share</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Column: AI Smart Scheduler -->
+<section class="w-full md:w-[450px] lg:w-[550px] overflow-y-auto p-6 lg:p-8 bg-background-dark">
+<div class="space-y-8">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">auto_awesome</span>
+<h2 class="text-xl font-bold tracking-tight">AI Smart Scheduler</h2>
+</div>
+<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase tracking-tighter">Engine v4.2</span>
+</div>
+<!-- Monthly Calendar Heatmap -->
+<div class="space-y-4">
+<div class="flex items-center justify-between px-1">
+<h3 class="text-sm font-semibold">October 2024</h3>
+<div class="flex gap-1">
+<button class="p-1 hover:bg-neutral-dark rounded transition-colors"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+<button class="p-1 hover:bg-neutral-dark rounded transition-colors"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+</div>
+</div>
+<div class="grid grid-cols-7 gap-1">
+<!-- Day Labels -->
+<div class="text-center text-[10px] text-slate-500 font-bold mb-1">M</div>
+<div class="text-center text-[10px] text-slate-500 font-bold mb-1">T</div>
+<div class="text-center text-[10px] text-slate-500 font-bold mb-1">W</div>
+<div class="text-center text-[10px] text-slate-500 font-bold mb-1">T</div>
+<div class="text-center text-[10px] text-slate-500 font-bold mb-1">F</div>
+<div class="text-center text-[10px] text-slate-500 font-bold mb-1">S</div>
+<div class="text-center text-[10px] text-slate-500 font-bold mb-1">S</div>
+<!-- Calendar Cells (Heatmap) -->
+<!-- Dull/Empty start of month -->
+<div class="aspect-square rounded-sm bg-neutral-dark/20 text-slate-700 flex items-center justify-center text-xs opacity-30">27</div>
+<div class="aspect-square rounded-sm bg-neutral-dark/20 text-slate-700 flex items-center justify-center text-xs opacity-30">28</div>
+<div class="aspect-square rounded-sm bg-neutral-dark/20 text-slate-700 flex items-center justify-center text-xs opacity-30">29</div>
+<div class="aspect-square rounded-sm bg-neutral-dark/20 text-slate-700 flex items-center justify-center text-xs opacity-30">30</div>
+<div class="aspect-square rounded-sm bg-primary/5 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">1</div>
+<div class="aspect-square rounded-sm bg-primary/20 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">2</div>
+<div class="aspect-square rounded-sm bg-primary/40 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">3</div>
+<div class="aspect-square rounded-sm bg-primary/10 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">4</div>
+<div class="aspect-square rounded-sm bg-primary/20 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">5</div>
+<div class="aspect-square rounded-sm bg-primary/30 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">6</div>
+<div class="aspect-square rounded-sm bg-primary/50 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">7</div>
+<div class="aspect-square rounded-sm bg-primary/10 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">8</div>
+<div class="aspect-square rounded-sm bg-primary/80 border border-border-dark flex items-center justify-center text-xs font-bold text-background-dark heatmap-cell cursor-pointer ring-2 ring-primary">9</div>
+<div class="aspect-square rounded-sm bg-primary/60 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">10</div>
+<div class="aspect-square rounded-sm bg-primary/40 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">11</div>
+<div class="aspect-square rounded-sm bg-primary/20 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">12</div>
+<div class="aspect-square rounded-sm bg-primary/10 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">13</div>
+<div class="aspect-square rounded-sm bg-primary/50 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">14</div>
+<div class="aspect-square rounded-sm bg-primary border border-border-dark flex items-center justify-center text-xs font-bold text-background-dark heatmap-cell cursor-pointer ring-4 ring-primary/30 scale-110 shadow-lg shadow-primary/20">15</div>
+<div class="aspect-square rounded-sm bg-primary/70 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">16</div>
+<div class="aspect-square rounded-sm bg-primary/40 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">17</div>
+<div class="aspect-square rounded-sm bg-primary/20 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">18</div>
+<div class="aspect-square rounded-sm bg-primary/10 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">19</div>
+<div class="aspect-square rounded-sm bg-primary/5 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">20</div>
+<div class="aspect-square rounded-sm bg-primary/40 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">21</div>
+<div class="aspect-square rounded-sm bg-primary/60 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">22</div>
+<div class="aspect-square rounded-sm bg-primary/30 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">23</div>
+<div class="aspect-square rounded-sm bg-primary/10 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">24</div>
+<div class="aspect-square rounded-sm bg-primary/20 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">25</div>
+<div class="aspect-square rounded-sm bg-primary/50 border border-border-dark flex items-center justify-center text-xs heatmap-cell cursor-pointer">26</div>
+<div class="aspect-square rounded-sm bg-primary/80 border border-border-dark flex items-center justify-center text-xs font-bold text-background-dark heatmap-cell cursor-pointer">27</div>
+</div>
+</div>
+<!-- Hourly Grid Heatmap -->
+<div class="space-y-4">
+<h3 class="text-sm font-semibold px-1">Engagement by Hour (October 15)</h3>
+<div class="grid grid-cols-6 gap-2">
+<!-- 24 Hour Blocks -->
+<div class="h-10 rounded bg-primary/5 flex items-center justify-center text-[10px] text-slate-500">00:00</div>
+<div class="h-10 rounded bg-primary/5 flex items-center justify-center text-[10px] text-slate-500">01:00</div>
+<div class="h-10 rounded bg-primary/10 flex items-center justify-center text-[10px] text-slate-500">02:00</div>
+<div class="h-10 rounded bg-primary/10 flex items-center justify-center text-[10px] text-slate-500">03:00</div>
+<div class="h-10 rounded bg-primary/5 flex items-center justify-center text-[10px] text-slate-500">04:00</div>
+<div class="h-10 rounded bg-primary/5 flex items-center justify-center text-[10px] text-slate-500">05:00</div>
+<div class="h-10 rounded bg-primary/20 flex items-center justify-center text-[10px] text-slate-400">06:00</div>
+<div class="h-10 rounded bg-primary/40 flex items-center justify-center text-[10px] text-slate-300">07:00</div>
+<div class="h-10 rounded bg-primary/70 flex items-center justify-center text-[10px] text-background-dark font-bold">08:00</div>
+<div class="h-10 rounded bg-primary flex items-center justify-center text-[10px] text-background-dark font-black ring-2 ring-primary/40">09:00</div>
+<div class="h-10 rounded bg-primary/80 flex items-center justify-center text-[10px] text-background-dark font-bold">10:00</div>
+<div class="h-10 rounded bg-primary/50 flex items-center justify-center text-[10px] text-slate-200">11:00</div>
+<div class="h-10 rounded bg-primary/30 flex items-center justify-center text-[10px] text-slate-400">12:00</div>
+<div class="h-10 rounded bg-primary/20 flex items-center justify-center text-[10px] text-slate-400">13:00</div>
+<div class="h-10 rounded bg-primary/40 flex items-center justify-center text-[10px] text-slate-300">14:00</div>
+<div class="h-10 rounded bg-primary/60 flex items-center justify-center text-[10px] text-background-dark font-bold">15:00</div>
+<div class="h-10 rounded bg-primary/90 flex items-center justify-center text-[10px] text-background-dark font-black ring-2 ring-primary/40">16:00</div>
+<div class="h-10 rounded bg-primary/70 flex items-center justify-center text-[10px] text-background-dark font-bold">17:00</div>
+<div class="h-10 rounded bg-primary/40 flex items-center justify-center text-[10px] text-slate-300">18:00</div>
+<div class="h-10 rounded bg-primary/30 flex items-center justify-center text-[10px] text-slate-400">19:00</div>
+<div class="h-10 rounded bg-primary/20 flex items-center justify-center text-[10px] text-slate-400">20:00</div>
+<div class="h-10 rounded bg-primary/10 flex items-center justify-center text-[10px] text-slate-500">21:00</div>
+<div class="h-10 rounded bg-primary/5 flex items-center justify-center text-[10px] text-slate-500">22:00</div>
+<div class="h-10 rounded bg-primary/5 flex items-center justify-center text-[10px] text-slate-500">23:00</div>
+</div>
+</div>
+<!-- Heatmap Legend -->
+<div class="p-4 bg-neutral-dark rounded-xl border border-border-dark">
+<h4 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 text-center">Engagement Heatmap Legend</h4>
+<div class="flex items-center justify-between gap-4">
+<div class="flex-1 space-y-2">
+<div class="h-2 w-full rounded-full bg-gradient-to-r from-primary/5 via-primary/50 to-primary"></div>
+<div class="flex justify-between text-[10px] font-medium text-slate-400">
+<span>Average</span>
+<span>Good</span>
+<span class="text-primary font-bold">Best Time</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Selected Slot Summary -->
+<div class="bg-primary/5 border border-primary/20 p-5 rounded-xl flex items-center justify-between">
+<div>
+<p class="text-xs text-slate-400 uppercase font-bold tracking-tight">AI Recommended Slot</p>
+<p class="text-xl font-bold">Oct 15, 09:00 AM</p>
+<div class="flex items-center gap-1 text-primary mt-1">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span class="text-xs font-bold">+42% Expected Engagement</span>
+</div>
+</div>
+<button class="bg-primary text-background-dark px-4 py-2 rounded-lg font-bold text-sm hover:brightness-110 transition-all">
+                                Confirm
+                            </button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer Action Bar -->
+<footer class="border-t border-border-dark bg-background-dark/95 backdrop-blur-md px-10 py-4 flex items-center justify-between z-50">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">cloud_done</span>
+<span class="text-xs text-slate-400 font-medium">Draft saved</span>
+</div>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-2 rounded-xl text-slate-400 font-bold hover:bg-neutral-dark transition-colors">Save as Draft</button>
+<button class="bg-primary text-background-dark px-8 py-2 rounded-xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95">Schedule Post</button>
+</div>
+</footer>
+</div>
+</body></html>
