@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useTranslation } from '@/lib/i18n'
+import { useWorkspace } from '@/lib/workspace-context'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -41,6 +42,7 @@ interface StudioProject {
 
 export default function StudioPage() {
     const t = useTranslation()
+    const { activeChannelId } = useWorkspace()
     const [projects, setProjects] = useState<StudioProject[]>([])
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
     const [loadingProjects, setLoadingProjects] = useState(true)
@@ -53,7 +55,7 @@ export default function StudioPage() {
     useEffect(() => {
         fetchProjects()
         fetchAvatars()
-    }, [])
+    }, [activeChannelId])
 
     async function fetchProjects() {
         setLoadingProjects(true)
@@ -71,7 +73,10 @@ export default function StudioPage() {
     async function fetchAvatars() {
         setLoadingAvatars(true)
         try {
-            const res = await fetch('/api/studio/avatars')
+            const url = activeChannelId
+                ? `/api/studio/avatars?channelId=${activeChannelId}`
+                : '/api/studio/avatars'
+            const res = await fetch(url)
             if (res.ok) {
                 const data = await res.json()
                 setAvatars(data.avatars || [])

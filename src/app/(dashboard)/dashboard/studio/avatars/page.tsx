@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useWorkspace } from '@/lib/workspace-context'
 import {
     User, Plus, Loader2, Sparkles, ChevronLeft,
     CheckCircle2, AlertCircle, Trash2, RefreshCw
@@ -36,6 +37,7 @@ const STYLES = [
 ]
 
 export default function StudioAvatarsPage() {
+    const { activeChannelId } = useWorkspace()
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
     const [loading, setLoading] = useState(true)
     const [showCreate, setShowCreate] = useState(false)
@@ -49,12 +51,15 @@ export default function StudioAvatarsPage() {
     const [numAngles, setNumAngles] = useState(4)
     const [creating, setCreating] = useState(false)
 
-    useEffect(() => { fetchAvatars() }, [])
+    useEffect(() => { fetchAvatars() }, [activeChannelId])
 
     async function fetchAvatars() {
         setLoading(true)
         try {
-            const res = await fetch('/api/studio/avatars')
+            const url = activeChannelId
+                ? `/api/studio/avatars?channelId=${activeChannelId}`
+                : '/api/studio/avatars'
+            const res = await fetch(url)
             if (res.ok) {
                 const data = await res.json()
                 setAvatars(data.avatars || [])
@@ -68,7 +73,10 @@ export default function StudioAvatarsPage() {
         if (!name.trim() || !prompt.trim()) return
         setCreating(true)
         try {
-            const res = await fetch('/api/studio/avatars', {
+            const url = activeChannelId
+                ? `/api/studio/avatars?channelId=${activeChannelId}`
+                : '/api/studio/avatars'
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: name.trim(), description: description.trim() || undefined, prompt: prompt.trim(), style, numAngles }),
