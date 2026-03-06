@@ -1116,6 +1116,83 @@ interface StripeConfig {
     webhookSecret: string
 }
 
+// ─── Pinterest Sandbox section ────────────────────────────────────────────────
+function PinterestSandboxSection({
+    oauthConfig,
+    onOauthChange,
+}: {
+    oauthConfig: OAuthConfig | undefined
+    onOauthChange: (field: string, value: string) => void
+}) {
+    const [sandboxToken, setSandboxToken] = useState('')
+    const [applying, setApplying] = useState(false)
+    const isSandbox = oauthConfig?.sandbox === 'true'
+
+    const handleApply = async () => {
+        if (!sandboxToken.trim()) return
+        setApplying(true)
+        try {
+            const res = await fetch('/api/admin/integrations/pinterest-sandbox-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sandboxToken: sandboxToken.trim() }),
+            })
+            const data = await res.json()
+            if (res.ok) {
+                toast.success(`✅ Sandbox token applied to ${data.updated} channel(s) — expires in ~55 min`)
+                setSandboxToken('')
+            } else {
+                toast.error(data.error || 'Failed to apply sandbox token')
+            }
+        } catch {
+            toast.error('Failed to apply sandbox token')
+        } finally {
+            setApplying(false)
+        }
+    }
+
+    return (
+        <div className="pt-2 border-t border-dashed space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                    type="checkbox"
+                    checked={isSandbox}
+                    onChange={(e) => onOauthChange('sandbox', e.target.checked ? 'true' : '')}
+                    className="h-3.5 w-3.5 rounded border-white/20 accent-amber-500"
+                />
+                <span className="text-[11px] text-amber-400">
+                    🏖️ Sandbox Mode (Trial apps — uses api-sandbox.pinterest.com)
+                </span>
+            </label>
+
+            {isSandbox && (
+                <div className="ml-5 space-y-1.5">
+                    <p className="text-[10px] text-amber-300/70">
+                        ⚠️ Sandbox tokens expire in ~1 hour. Generate a new one in Pinterest Dev Portal → &quot;Generate Access Tokens&quot; and paste it below.
+                    </p>
+                    <textarea
+                        placeholder="Paste sandbox access token here (pina_...)"
+                        value={sandboxToken}
+                        onChange={(e) => setSandboxToken(e.target.value)}
+                        rows={3}
+                        className="w-full text-[10px] font-mono rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-amber-200 placeholder-amber-500/40 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                    />
+                    <button
+                        onClick={handleApply}
+                        disabled={applying || !sandboxToken.trim()}
+                        className="w-full text-[11px] font-medium rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                        {applying ? '⏳ Applying…' : '🔑 Apply Sandbox Token to All Channels'}
+                    </button>
+                    <p className="text-[9px] text-muted-foreground/60">
+                        This updates the access token for all channels that have Pinterest connected.
+                    </p>
+                </div>
+            )}
+        </div>
+    )
+}
+
 function IntegrationCard({
     integration,
     apiKey,
@@ -1738,21 +1815,9 @@ function IntegrationCard({
                             </p>
                         </div>
 
-                        {/* Pinterest Sandbox toggle */}
+                        {/* Pinterest Sandbox toggle + token input */}
                         {integration.provider === 'pinterest' && (
-                            <div className="pt-2 border-t border-dashed">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={oauthConfig.sandbox === 'true'}
-                                        onChange={(e) => onOauthChange('sandbox', e.target.checked ? 'true' : '')}
-                                        className="h-3.5 w-3.5 rounded border-white/20 accent-amber-500"
-                                    />
-                                    <span className="text-[11px] text-amber-400">
-                                        🏖️ Sandbox Mode (Trial apps — uses api-sandbox.pinterest.com)
-                                    </span>
-                                </label>
-                            </div>
+                            <PinterestSandboxSection oauthConfig={oauthConfig} onOauthChange={onOauthChange} />
                         )}
 
                         {/* TikTok Sandbox toggle */}
