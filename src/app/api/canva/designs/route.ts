@@ -338,7 +338,6 @@ export async function GET(req: NextRequest) {
             }
 
             const isMultiPage = urls.length > 1
-            const LARGE_THRESHOLD = 1.5 * 1024 * 1024 // 1.5MB
 
             // ── R2 path: server-side download + upload in queued batches ──
             if (channelId) {
@@ -357,8 +356,10 @@ export async function GET(req: NextRequest) {
                                 const imgBuffer = Buffer.from(await imgRes.arrayBuffer())
                                 console.log(`Canva page ${idx + 1}: ${imgBuffer.length} bytes`)
 
-                                // Small single-page → return base64, let client upload
-                                if (!isMultiPage && imgBuffer.length <= LARGE_THRESHOLD) {
+                                // When channelId is present: always upload to R2 server-side (no base64 round-trip)
+                                // Base64 path was unreliable for images >~600KB (atob silently fails in browser)
+                                const SMALL_THRESHOLD = 600 * 1024 // 600KB — safe limit for browser atob
+                                if (!isMultiPage && !channelId && imgBuffer.length <= SMALL_THRESHOLD) {
                                     const base64 = imgBuffer.toString('base64')
                                     return { base64, contentType: imgRes.headers.get('content-type') || 'image/png' }
                                 }
