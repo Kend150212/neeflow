@@ -103,13 +103,14 @@ export async function POST(req: NextRequest) {
     const isAdmin = (session.user as { role?: string }).role === 'admin'
 
     const body = await req.json()
-    const { action, jobId, jobIds, postId, platformStatusId, newStatus } = body as {
-        action: 'retry' | 'cancel' | 'retry_all_failed' | 'approve' | 'reject' | 'client_approve' | 'toggle_platform'
+    const { action, jobId, jobIds, postId, platformStatusId, newStatus, comment } = body as {
+        action: 'retry' | 'cancel' | 'retry_all_failed' | 'approve' | 'reject' | 'client_approve' | 'toggle_platform' | 'requeue'
         jobId?: string
         jobIds?: string[]
         postId?: string
         platformStatusId?: string
         newStatus?: string
+        comment?: string
     }
 
     // ─── Ownership helpers ────────────────────────────────────────────────────
@@ -191,10 +192,29 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true })
     }
 
-    // ─── Reject post ──────────────────────────────────────────────────────────
+    // ─── Reject post (with optional comment) ─────────────────────────────────
     if (action === 'reject' && postId) {
         if (!(await isPostOwner(postId))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         await prisma.post.update({ where: { id: postId }, data: { status: 'REJECTED' } })
+        if (comment?.trim()) {
+            await prisma.postApproval.create({
+                data: { postId, userId, action: 'REJECTED', comment: comment.trim() },
+            })
+        }
+        return NextResponse.json({ success: true })
+    }
+
+    // ─── Re-queue rejected post back to pending review ────────────────────────
+    if (action === 'requeue' && postId) {
+        if (!(await isPostOwner(postId))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        const post = await prisma.post.findUnique({
+            where: { id: postId },
+            include: { channel: { select: { pipelineApprovalMode: true } } },
+        })
+        if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+        // Return to appropriate review stage
+        const nextStatus = post.channel.pipelineApprovalMode === 'smartflow' ? 'CLIENT_REVIEW' : 'PENDING_APPROVAL'
+        await prisma.post.update({ where: { id: postId }, data: { status: nextStatus } })
         return NextResponse.json({ success: true })
     }
 
