@@ -115,6 +115,21 @@ import Image from 'next/image'
 import { ProviderLogo } from '@/components/ui/provider-logos'
 
 import { toast } from 'sonner'
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core'
+import {
+    SortableContext,
+    useSortable,
+    arrayMove,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 // ─── Types ──────────────────────────────────────────
 
@@ -971,6 +986,150 @@ function GenericPreview({ content, media, accountName, platform, mediaRatio }: {
     )
 }
 
+// ─── SortableMediaCard ──────────────────────────────
+
+interface SortableMediaCardProps {
+    media: MediaItem
+    index: number
+    mediaRatio: string
+    isLast: boolean
+    aiImageJustCompleted: boolean
+    onRemove: (id: string) => void
+    onZoom: (url: string | null) => void
+    onEditInCanva: (url?: string, id?: string) => void
+}
+
+function isVideoMedia(media: MediaItem) {
+    return media.type === 'video' || (media.url || '').match(/\.(mp4|mov|avi|webm|mkv)$/i) !== null
+}
+
+function SortableMediaCard({ media, index, mediaRatio, isLast, aiImageJustCompleted, onRemove, onZoom, onEditInCanva }: SortableMediaCardProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: media.id })
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 10 : undefined,
+    }
+
+    const aspectClass = mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'
+
+    // ── Canva placeholder ────────────────────────────
+    if (media.isCanvaLoading || media.canvaError) {
+        return (
+            <div
+                ref={setNodeRef}
+                style={style}
+                className={`relative group rounded-lg overflow-hidden border ${media.canvaError ? 'border-red-500/40 bg-red-950/20' : 'border-violet-500/30 bg-gradient-to-br from-violet-950/40 via-black/60 to-indigo-950/40'} ${aspectClass}`}
+            >
+                {media.isCanvaLoading && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
+                )}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-1">
+                    <div className="flex items-center gap-1">
+                        <img src="/logo.png" alt="NeeFlow" className="h-4 w-4 object-contain" />
+                        <span className="text-[8px] text-muted-foreground">×</span>
+                        <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-4 w-4 object-contain" />
+                    </div>
+                    {media.isCanvaLoading ? (
+                        <>
+                            <Loader2 className="h-3 w-3 text-violet-400 animate-spin" />
+                            <p className="text-[7px] text-violet-300 text-center leading-tight">Importing...</p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-[7px] text-red-400 text-center leading-tight">{media.canvaError}</p>
+                            {media.canvaRetryFn && (
+                                <button onClick={media.canvaRetryFn} className="text-[8px] px-1.5 py-0.5 rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors cursor-pointer">
+                                    Retry
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
+                <button onClick={() => onRemove(media.id)} className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <X className="h-2.5 w-2.5" />
+                </button>
+            </div>
+        )
+    }
+
+    // ── Normal media item ────────────────────────────
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`relative group rounded-lg overflow-hidden bg-muted ${aspectClass} ${aiImageJustCompleted && isLast ? 'animate-ai-reveal' : ''}`}
+        >
+            {/* Drag handle — top-center, visible on hover */}
+            <div
+                {...attributes}
+                {...listeners}
+                className="absolute top-0 inset-x-0 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-10"
+            >
+                <div className="flex gap-0.5">
+                    <div className="w-0.5 h-2.5 bg-white/70 rounded-full" />
+                    <div className="w-0.5 h-2.5 bg-white/70 rounded-full" />
+                    <div className="w-0.5 h-2.5 bg-white/70 rounded-full" />
+                </div>
+            </div>
+
+            {isVideoMedia(media) ? (
+                <div className="relative h-full w-full bg-muted">
+                    <img
+                        src={media.thumbnailUrl || media.url}
+                        alt={media.originalName || ''}
+                        className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center">
+                            <Play className="h-3 w-3 text-white ml-0.5" />
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <img
+                    src={media.thumbnailUrl || media.url}
+                    alt={media.originalName || ''}
+                    className="h-full w-full object-cover cursor-pointer"
+                    onClick={() => onZoom(media.url || media.thumbnailUrl)}
+                />
+            )}
+
+            {/* Delete button */}
+            <button
+                onClick={() => onRemove(media.id)}
+                className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            >
+                <X className="h-2.5 w-2.5" />
+            </button>
+
+            {/* Zoom button */}
+            {!isVideoMedia(media) && (
+                <button
+                    onClick={() => onZoom(media.url || media.thumbnailUrl)}
+                    title="View full size"
+                    className="absolute bottom-0.5 right-0.5 h-4 w-4 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/80"
+                >
+                    <ZoomIn className="h-2.5 w-2.5" />
+                </button>
+            )}
+
+            {/* Edit in Canva */}
+            {!isVideoMedia(media) && (
+                <button
+                    onClick={() => onEditInCanva(media.url, media.id)}
+                    title="Edit in Canva"
+                    className="absolute bottom-0.5 left-0.5 h-4 w-4 rounded-full bg-violet-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-2.5 w-2.5 object-contain" />
+                </button>
+            )}
+        </div>
+    )
+}
+
 // ─── Page ───────────────────────────────────────────
 
 export default function ComposePage() {
@@ -1642,6 +1801,21 @@ export default function ComposePage() {
 
     const removeMedia = (id: string) => {
         setAttachedMedia((prev) => prev.filter((m) => m.id !== id))
+    }
+
+    // ── Drag-and-drop reorder for media grid ──────────
+    const mediaDndSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    )
+    const handleMediaDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+        if (!over || active.id === over.id) return
+        setAttachedMedia((prev) => {
+            const oldIndex = prev.findIndex(m => m.id === active.id)
+            const newIndex = prev.findIndex(m => m.id === over.id)
+            if (oldIndex === -1 || newIndex === -1) return prev
+            return arrayMove(prev, oldIndex, newIndex)
+        })
     }
 
     // Track dimensions of ALL attached media items for validation
@@ -3732,111 +3906,47 @@ export default function ComposePage() {
                         </CardHeader>
                         <CardContent className="space-y-1.5 px-2.5 pb-2">
                             {(attachedMedia.length > 0 || aiImageBgGenerating) && (
-                                <div className={`grid gap-2 ${mediaRatio === '9:16' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'
-                                    }`}>
-                                    {attachedMedia.map((media, index) => {
-                                        // ── Canva import placeholder ──────────────────────────
-                                        if (media.isCanvaLoading || media.canvaError) {
-                                            return (
-                                                <div
+                                <DndContext
+                                    sensors={mediaDndSensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleMediaDragEnd}
+                                >
+                                    <SortableContext
+                                        items={attachedMedia.map(m => m.id)}
+                                        strategy={rectSortingStrategy}
+                                    >
+                                        <div className={`grid gap-1.5 ${mediaRatio === '9:16' ? 'grid-cols-5 sm:grid-cols-6' : 'grid-cols-4 sm:grid-cols-5'}`}>
+                                            {attachedMedia.map((media, index) => (
+                                                <SortableMediaCard
                                                     key={media.id}
-                                                    className={`relative group rounded-lg overflow-hidden border ${media.canvaError ? 'border-red-500/40 bg-red-950/20' : 'border-violet-500/30 bg-gradient-to-br from-violet-950/40 via-black/60 to-indigo-950/40'} ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}
-                                                >
-                                                    {media.isCanvaLoading && (
-                                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
-                                                    )}
-                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-2">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <img src="/logo.png" alt="NeeFlow" className="h-6 w-6 object-contain" />
-                                                            <span className="text-[10px] text-muted-foreground">×</span>
-                                                            <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-6 w-6 object-contain" />
-                                                        </div>
-                                                        {media.isCanvaLoading ? (
-                                                            <>
-                                                                <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />
-                                                                <p className="text-[9px] text-violet-300 text-center leading-tight">Importing from Canva...</p>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <p className="text-[9px] text-red-400 text-center leading-tight">{media.canvaError}</p>
-                                                                {media.canvaRetryFn && (
-                                                                    <button onClick={media.canvaRetryFn} className="text-[9px] px-2 py-0.5 rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors cursor-pointer">
-                                                                        Retry
-                                                                    </button>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                    <button onClick={() => removeMedia(media.id)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                        <X className="h-3 w-3" />
-                                                    </button>
-                                                </div>
-                                            )
-                                        }
-                                        // ── Normal media item ─────────────────────────────────
-                                        return (
-                                            <div
-                                                key={media.id}
-                                                className={`relative group rounded-lg overflow-hidden bg-muted ${mediaRatio === '16:9' ? 'aspect-video'
-                                                    : mediaRatio === '9:16' ? 'aspect-[9/16]'
-                                                        : 'aspect-square'
-                                                    } ${aiImageJustCompleted && index === attachedMedia.length - 1 ? 'animate-ai-reveal' : ''}`}
-                                            >
-                                                {isVideo(media) ? (
-                                                    <div className="relative h-full w-full bg-muted">
-                                                        <img
-                                                            src={media.thumbnailUrl || media.url}
-                                                            alt={media.originalName || ''}
-                                                            className="h-full w-full object-cover"
-                                                        />
-                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                            <div className="h-8 w-8 rounded-full bg-black/50 flex items-center justify-center">
-                                                                <Play className="h-4 w-4 text-white ml-0.5" />
+                                                    media={media}
+                                                    index={index}
+                                                    mediaRatio={mediaRatio}
+                                                    isLast={index === attachedMedia.length - 1}
+                                                    aiImageJustCompleted={aiImageJustCompleted}
+                                                    onRemove={removeMedia}
+                                                    onZoom={(url) => setLightboxUrl(url ?? null)}
+                                                    onEditInCanva={openCanvaDesign}
+                                                />
+                                            ))}
+                                            {/* AI Image Generating Placeholder — inside grid as a cell */}
+                                            {aiImageBgGenerating && (
+                                                <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+                                                        <div className="relative">
+                                                            <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" style={{ animationDuration: '2s' }} />
+                                                            <div className="relative h-6 w-6 rounded-full bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
+                                                                <img src="/logo.png" alt="" className="h-4 w-4 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
                                                             </div>
                                                         </div>
-                                                        <span className="absolute bottom-1 left-1 text-[9px] bg-black/60 text-white px-1 rounded">{media.originalName}</span>
-                                                    </div>
-                                                ) : (
-                                                    <img src={media.thumbnailUrl || media.url} alt={media.originalName || ''} className="h-full w-full object-cover cursor-pointer" onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)} />
-                                                )}
-                                                <button
-                                                    onClick={() => removeMedia(media.id)}
-                                                    className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                                {!isVideo(media) && (
-                                                    <button onClick={() => setLightboxUrl(media.url || media.thumbnailUrl)} title="View full size" className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/80">
-                                                        <ZoomIn className="h-3 w-3" />
-                                                    </button>
-                                                )}
-                                                {!isVideo(media) && (
-                                                    <button onClick={() => openCanvaDesign(media.url, media.id)} title="Edit in Canva" className="absolute top-1 left-1 h-5 w-5 rounded-full bg-violet-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                        <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3 w-3 object-contain" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
-                                    {/* AI Image Generating Placeholder — inside grid as a cell */}
-                                    {aiImageBgGenerating && (
-                                        <div className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-purple-950/40 via-black/60 to-fuchsia-950/40 border border-purple-500/20 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s ease-in-out infinite' }} />
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-                                                <div className="relative">
-                                                    <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" style={{ animationDuration: '2s' }} />
-                                                    <div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-purple-500/30 flex items-center justify-center backdrop-blur-sm">
-                                                        <img src="/logo.png" alt="" className="h-5 w-5 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
+                                                        <p className="text-[8px] font-medium text-purple-300 animate-pulse">Creating...</p>
                                                     </div>
                                                 </div>
-                                                <p className="text-[9px] font-medium text-purple-300 animate-pulse">Creating magic...</p>
-                                            </div>
-                                            <div className="absolute top-1.5 right-1.5">
-                                                <Sparkles className="h-2.5 w-2.5 text-purple-400/40 animate-pulse" />
-                                            </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+                                    </SortableContext>
+                                </DndContext>
                             )}
                             {/* Drop zone — always visible */}
                             <div
