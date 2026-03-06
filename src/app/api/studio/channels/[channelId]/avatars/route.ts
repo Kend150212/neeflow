@@ -60,16 +60,20 @@ export async function POST(
         return NextResponse.json({ error: 'name and prompt are required' }, { status: 400 })
     }
 
-    const avatar = await prisma.studioAvatar.create({
-        data: {
-            userId: session.user.id,
-            channelId,
-            name,
-            description: description || null,
-            prompt,
-            style: style || 'realistic',
-        },
-    })
-
-    return NextResponse.json({ avatar }, { status: 201 })
+    try {
+        const avatar = await prisma.studioAvatar.create({
+            data: {
+                userId: session.user.id,
+                channelId,
+                name,
+                description: description || null,
+                prompt,
+                style: style || 'realistic',
+            },
+        })
+        return NextResponse.json({ avatar }, { status: 201 })
+    } catch (err) {
+        console.error('[CREATE AVATAR]', err)
+        return NextResponse.json({ error: String(err) }, { status: 500 })
+    }
 }
