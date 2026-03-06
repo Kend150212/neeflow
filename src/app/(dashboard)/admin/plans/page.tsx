@@ -108,7 +108,7 @@ const QUOTA_FIELD_OPTIONS = [
     { value: 'maxPostsPerMonth', label: 'Posts/mo' },
     { value: 'maxMembersPerChannel', label: 'Members/ch' },
     { value: 'maxApiCallsPerMonth', label: 'API Calls/mo' },
-    { value: 'maxSmartFlowJobsPerMonth', label: 'SmartFlow Jobs/mo' },
+    { value: 'maxSmartFlowJobsPerMonth', label: 'Client Board Jobs/mo' },
 ]
 
 const FEATURE_FIELD_OPTIONS = [
@@ -117,7 +117,7 @@ const FEATURE_FIELD_OPTIONS = [
     { value: 'hasAdvancedReports', label: 'Advanced Reports' },
     { value: 'hasPrioritySupport', label: 'Priority Support' },
     { value: 'hasWhiteLabel', label: 'White Label' },
-    { value: 'hasSmartFlow', label: 'SmartFlow™' },
+    { value: 'hasSmartFlow', label: 'Client Board' },
 ]
 
 const INTEGRATION_SLUG_OPTIONS = [
@@ -527,7 +527,7 @@ export default function AdminPlansPage() {
                                     <div>AI Images/mo: <span className="font-medium text-foreground">{plan.maxAiImagesPerMonth === -1 ? '∞' : plan.maxAiImagesPerMonth === 0 ? 'BYOK only' : plan.maxAiImagesPerMonth}</span></div>
                                     <div>Storage: <span className="font-medium text-foreground">{plan.maxStorageMB === -1 ? '∞' : plan.maxStorageMB >= 1024 ? `${(plan.maxStorageMB / 1024).toFixed(0)} GB` : `${plan.maxStorageMB} MB`}</span></div>
                                     <div>API calls/mo: <span className="font-medium text-foreground">{plan.maxApiCallsPerMonth === -1 ? '∞' : plan.maxApiCallsPerMonth === 0 ? 'Disabled' : plan.maxApiCallsPerMonth.toLocaleString()}</span></div>
-                                    <div>SmartFlow/mo: <span className="font-medium text-foreground">{plan.maxSmartFlowJobsPerMonth === -1 ? '∞' : plan.maxSmartFlowJobsPerMonth === 0 ? 'BYOK only' : plan.maxSmartFlowJobsPerMonth}</span></div>
+                                    <div>Client Board/mo: <span className="font-medium text-foreground">{plan.maxSmartFlowJobsPerMonth === -1 ? '∞' : plan.maxSmartFlowJobsPerMonth === 0 ? 'BYOK only' : plan.maxSmartFlowJobsPerMonth}</span></div>
                                     <div className="flex flex-wrap gap-1 pt-1">
                                         {plan.maxApiCallsPerMonth !== 0 && <Badge variant="secondary" className="text-xs px-1">API Access</Badge>}
                                         {plan.hasAutoSchedule && <Badge variant="secondary" className="text-xs px-1">Auto-schedule</Badge>}
@@ -535,7 +535,7 @@ export default function AdminPlansPage() {
                                         {plan.hasAdvancedReports && <Badge variant="secondary" className="text-xs px-1">Reports</Badge>}
                                         {plan.hasPrioritySupport && <Badge variant="secondary" className="text-xs px-1">Priority</Badge>}
                                         {plan.hasWhiteLabel && <Badge variant="secondary" className="text-xs px-1">White-label</Badge>}
-                                        {plan.hasSmartFlow && <Badge variant="secondary" className="text-xs px-1">SmartFlow™</Badge>}
+                                        {plan.hasSmartFlow && <Badge variant="secondary" className="text-xs px-1">Client Board</Badge>}
                                         {(plan as any).hasBotUsageAnalytics && <Badge variant="secondary" className="text-xs px-1">📊 Usage Analytics</Badge>}
                                         {/* Integration badges */}
                                         {(plan as any).allowedIntegrations?.includes('external_db') && (
@@ -702,7 +702,7 @@ export default function AdminPlansPage() {
                                     <p className="text-xs text-muted-foreground mt-1">0=off, -1=∞</p>
                                 </div>
                                 <div>
-                                    {field('maxSmartFlowJobsPerMonth', 'SmartFlow Jobs/Month', 'number')}
+                                    {field('maxSmartFlowJobsPerMonth', 'Client Board Jobs/Month', 'number')}
                                     <p className="text-xs text-muted-foreground mt-1">0=BYOK, -1=∞</p>
                                 </div>
                             </div>
@@ -826,7 +826,7 @@ export default function AdminPlansPage() {
                                 {toggle('hasAdvancedReports', 'Advanced Reports')}
                                 {toggle('hasPrioritySupport', 'Priority Support')}
                                 {toggle('hasWhiteLabel', 'White Label')}
-                                {toggle('hasSmartFlow', 'SmartFlow™')}
+                                {toggle('hasSmartFlow', 'Client Board')}
                                 {toggle('hasBotUsageAnalytics', '📊 Bot Usage Analytics')}
                             </div>
                         </div>

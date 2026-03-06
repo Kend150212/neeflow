@@ -136,7 +136,7 @@ export async function checkFeature(
         advancedReports: 'Advanced Reports',
         prioritySupport: 'Priority Support',
         whiteLabel: 'White Label',
-        smartFlow: 'SmartFlow',
+        smartFlow: 'Client Board',
     }
 
     if (!featureMap[feature]) {
@@ -180,8 +180,8 @@ export async function checkSmartFlowAccess(
             feature: 'smartflow',
             limit: 0,
             current: 0,
-            message: 'SmartFlow is not available on your plan. Upgrade to unlock.',
-            messageVi: 'SmartFlow không có trong gói hiện tại. Nâng cấp để sử dụng.',
+            message: 'Client Board is not available on your plan. Upgrade to unlock.',
+            messageVi: 'Client Board không có trong gói hiện tại. Nâng cấp để sử dụng.',
         }
     }
 
@@ -211,8 +211,8 @@ export async function checkSmartFlowQuota(
                 feature: 'smartflow',
                 limit: 0,
                 current: 0,
-                message: 'SmartFlow is not available on your plan.',
-                messageVi: 'SmartFlow không có trong gói hiện tại.',
+                message: 'Client Board is not available on your plan.',
+                messageVi: 'Client Board không có trong gói hiện tại.',
             },
         }
     }
