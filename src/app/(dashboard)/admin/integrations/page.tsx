@@ -1158,17 +1158,17 @@ function PinterestSandboxSection({
                     type="checkbox"
                     checked={isSandbox}
                     onChange={(e) => onOauthChange('sandbox', e.target.checked ? 'true' : '')}
-                    className="h-3.5 w-3.5 rounded border-white/20 accent-amber-500"
+                    className="h-3.5 w-3.5 rounded border-white/20 accent-orange-500"
                 />
-                <span className="text-[11px] text-amber-400">
+                <span className="text-[11px] font-medium text-orange-500">
                     🏖️ Sandbox Mode (Trial apps — uses api-sandbox.pinterest.com)
                 </span>
             </label>
 
             {isSandbox && (
-                <div className="ml-5 space-y-1.5">
-                    <p className="text-[10px] text-amber-300/70">
-                        ⚠️ Sandbox tokens expire in ~1 hour. Generate a new one in Pinterest Dev Portal → &quot;Generate Access Tokens&quot; and paste it below.
+                <div className="ml-5 space-y-2 rounded-md border border-orange-500/40 bg-orange-500/5 p-2.5">
+                    <p className="text-[10px] text-gray-300">
+                        ⏱ Sandbox tokens expire in ~1 hour. Go to <strong className="text-white">Pinterest Dev Portal → your app → Generate Access Tokens</strong> and paste below.
                     </p>
                     <textarea
                         placeholder="Paste sandbox access token here (pina_...)"
@@ -1180,11 +1180,11 @@ function PinterestSandboxSection({
                     <button
                         onClick={handleApply}
                         disabled={applying || !sandboxToken.trim()}
-                        className="w-full text-[11px] font-medium rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="w-full text-[11px] font-semibold rounded-md bg-orange-500 hover:bg-orange-600 text-white py-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                         {applying ? '⏳ Applying…' : '🔑 Apply Sandbox Token to All Channels'}
                     </button>
-                    <p className="text-[9px] text-muted-foreground/60">
+                    <p className="text-[9px] text-gray-500">
                         This updates the access token for all channels that have Pinterest connected.
                     </p>
                 </div>

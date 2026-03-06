@@ -113,6 +113,7 @@ export async function GET(
 
     try {
         const pinterestBase = await getPinterestApiBase()
+        console.log(`[Pinterest Boards] Using base: ${pinterestBase}, token starts: ${accessToken?.slice(0, 20)}...`)
         const res = await fetch(`${pinterestBase}/v5/boards?page_size=50`, {
             headers: { Authorization: `Bearer ${accessToken}` },
         })
@@ -120,9 +121,10 @@ export async function GET(
         // If 401 in sandbox mode → token invalid/expired, must reconnect manually
         if (res.status === 401) {
             if (sandbox) {
-                console.log('[Pinterest Boards] Sandbox token rejected — needs new sandbox token')
+                const errBody = await res.text()
+                console.log('[Pinterest Boards] Sandbox token rejected — needs new sandbox token. Pinterest response:', errBody)
                 return NextResponse.json({
-                    error: 'Pinterest Sandbox token expired. Please generate a new Sandbox token.',
+                    error: 'Pinterest Sandbox token rejected. Please generate a new Sandbox token.',
                     needsReconnect: true,
                 }, { status: 401 })
             }
