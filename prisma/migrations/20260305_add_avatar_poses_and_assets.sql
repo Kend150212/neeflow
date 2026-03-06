@@ -25,3 +25,6 @@ CREATE TABLE IF NOT EXISTS "studio_avatar_assets" (
         FOREIGN KEY ("avatar_id") REFERENCES "studio_avatars"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "studio_avatar_assets_avatar_id_idx" ON "studio_avatar_assets"("avatar_id");
+
+-- Add generated_images column to studio_avatars
+ALTER TABLE studio_avatars ADD COLUMN IF NOT EXISTS generated_images JSONB NOT NULL DEFAULT '[]'::jsonb;

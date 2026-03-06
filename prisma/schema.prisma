@@ -1293,6 +1293,7 @@ model StudioAvatar {
   style           String   @default("realistic") // realistic, anime, cartoon, 3d
   referenceImages Json     @default("[]") @map("reference_images") // array of image URLs (up to 4 angles)
   coverImage      String?  @map("cover_image")
+  generatedImages Json     @default("[]") @map("generated_images") // [{url, type:'preview'|'sheet', createdAt}]
   falJobId        String?  @map("fal_job_id")
   status          String   @default("idle") // idle, generating, done, failed
   isActive        Boolean  @default(true) @map("is_active")

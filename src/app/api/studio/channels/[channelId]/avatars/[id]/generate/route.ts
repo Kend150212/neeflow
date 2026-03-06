@@ -47,6 +47,7 @@ export async function POST(
     })
     if (!avatar) return NextResponse.json({ error: 'Avatar not found' }, { status: 404 })
 
+    const body = await req.json().catch(() => ({}))
     const numAngles = (body.numAngles as number) || 5
     const provider: string = (body.provider as string) || 'fal_ai'
     const model: string = body.model || ''
@@ -149,10 +150,7 @@ export async function POST(
                 return NextResponse.json({ error: `Runware error: ${JSON.stringify(rwData.errors)}` }, { status: 500 })
             }
             const imageUrls: string[] = (rwData.data || []).map((r: { imageURL?: string }) => r.imageURL).filter(Boolean)
-            await prisma.studioAvatar.update({
-                where: { id },
-                data: { coverImage: imageUrls[0] || null, status: 'idle' },
-            })
+            await appendAndSave(id, imageUrls[0] || '', isSingleAngle ? 'preview' : 'sheet')
             return NextResponse.json({ status: 'done', imageUrls })
         }
 
@@ -189,10 +187,7 @@ export async function POST(
             if (!imageUrl && item?.b64_json) {
                 imageUrl = `data:image/png;base64,${item.b64_json}`
             }
-            await prisma.studioAvatar.update({
-                where: { id },
-                data: { coverImage: imageUrl || null, status: 'idle' },
-            })
+            await appendAndSave(id, imageUrl, isSingleAngle ? 'preview' : 'sheet')
             return NextResponse.json({ status: 'done', imageUrls: [imageUrl] })
         }
 
@@ -200,7 +195,7 @@ export async function POST(
         if (provider === 'gemini') {
             const gemModel = model || 'gemini-3.1-flash-image-preview'
             const isFlash = gemModel.startsWith('gemini-')
-            runGeminiBackground({ id, channelId, apiKey, gemModel, isFlash, basePrompt: finalPrompt, referenceImage }).catch(console.error)
+            runGeminiBackground({ id, channelId, apiKey, gemModel, isFlash, basePrompt: finalPrompt, referenceImage, imageType: isSingleAngle ? 'preview' : 'sheet' }).catch(console.error)
             return NextResponse.json({ status: 'generating' })
         }
 
@@ -215,6 +210,21 @@ export async function POST(
     }
 }
 
+// Helper: append a generated image URL to generatedImages[] and update coverImage + status
+async function appendAndSave(id: string, url: string, type: 'preview' | 'sheet') {
+    if (!url) return
+    const avatar = await prisma.studioAvatar.findFirst({ where: { id }, select: { generatedImages: true } })
+    const existing = (avatar?.generatedImages as Array<{ url: string; type: string; createdAt: string }>) || []
+    await prisma.studioAvatar.update({
+        where: { id },
+        data: {
+            coverImage: url,
+            status: 'idle',
+            generatedImages: [...existing, { url, type, createdAt: new Date().toISOString() }],
+        },
+    })
+}
+
 // ─── Background Gemini worker ─────────────────────────────────────────────
 // Runs entirely after the HTTP response is sent to avoid browser timeout.
 async function runGeminiBackground(opts: {
@@ -225,8 +235,9 @@ async function runGeminiBackground(opts: {
     isFlash: boolean
     basePrompt: string
     referenceImage?: string
+    imageType?: 'preview' | 'sheet'
 }) {
-    const { id, channelId, apiKey, gemModel, isFlash, basePrompt, referenceImage } = opts
+    const { id, channelId, apiKey, gemModel, isFlash, basePrompt, referenceImage, imageType = 'sheet' } = opts
     console.log(`[generate:bg] Gemini start: model=${gemModel} isFlash=${isFlash} ref=${!!referenceImage} avatarId=${id}`)
     const imageUrls: string[] = []
 
@@ -354,10 +365,7 @@ async function runGeminiBackground(opts: {
             }
         }
 
-        await prisma.studioAvatar.update({
-            where: { id },
-            data: { coverImage: imageUrls[0] || null, status: 'idle' },
-        })
+        await appendAndSave(id, imageUrls[0] || '', imageType)
         console.log(`[generate:bg] Gemini done ✓ coverImage=${imageUrls[0]?.slice(0, 80)}`)
     } catch (err) {
         console.error(`[generate:bg] Unhandled Gemini error avatarId=${id}:`, err)
