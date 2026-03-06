@@ -309,6 +309,26 @@ ${businessContext ? '- Include website link naturally: "Visit [website] for more
         .map(p => `    "${p}": "Complete, ready-to-post content for ${p} following the platform rules above"`)
         .join(',\n')
 
+    // ── Variation engine — force creative diversity on every call ──────────────────
+    // 12 content format archetypes: rotate randomly so no two calls produce the same structure
+    const CONTENT_FORMATS = [
+        { name: 'Personal Story', instruction: 'Write as a first-person story. Open with "I " or "We ". Share a real-seeming experience or lesson tied to the topic. Make it feel personal and vulnerable, not corporate.' },
+        { name: 'Bold Hot Take', instruction: 'Open with a controversial or counterintuitive opinion. Challenge conventional wisdom. Be direct, even provocative. Invite pushback.' },
+        { name: 'Numbered List', instruction: 'Structure the content as a concise numbered list (3–7 items). Each point must be punchy, specific, and non-obvious. Add a short intro and a CTA.' },
+        { name: 'Question-Led', instruction: 'Open with a rhetorical or thought-provoking question that touches a pain point or curiosity. Answer it progressively through the post. End with another question to drive replies.' },
+        { name: 'Surprising Stat', instruction: 'Lead with a startling statistic or data point (you may invent a plausible one). Then unpack what it means and why it matters to the audience.' },
+        { name: 'Myth Busting', instruction: 'Start with a common misconception: "❌ Myth: ...". Then reveal the truth: "✅ Reality: ...". Explain why the myth persists and what the audience should do instead.' },
+        { name: 'Step-by-Step How-To', instruction: 'Provide actionable steps (3–5) the reader can take right now. Use action verbs. Keep each step short and concrete. End with an outcome promise.' },
+        { name: 'Behind the Scenes', instruction: 'Share insider perspective. What does the brand/creator do that others don’t see? Give a peek behind the curtain. Tone: honest, revealing, slightly raw.' },
+        { name: 'Analogy / Metaphor', instruction: 'Explain the topic through a surprising analogy or metaphor from a completely different field (sports, cooking, movies, nature, etc.). The more unexpected the better.' },
+        { name: 'Trend Hook', instruction: 'Open by referencing a current cultural trend, viral moment, or collective mood. Connect it to the topic in a clever, non-forced way. Show cultural awareness.' },
+        { name: 'Before / After', instruction: 'Contrast a before state (problem / old way / frustration) with an after state (solution / result / transformation). Use specific, vivid language for both sides.' },
+        { name: 'Curated POV', instruction: 'Write as a confident, opinionated expert sharing their perspective. Avoid hedging. Use "Here’s what I know:", "The truth is:", "Stop doing X, start doing Y:" framing.' },
+    ]
+    const pickedFormat = CONTENT_FORMATS[Math.floor(Math.random() * CONTENT_FORMATS.length)]
+    // Unique per-request seed so identical inputs still diverge
+    const requestSeed = `REQ-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+
     const userPrompt = `Create platform-specific social media content. Generate a SEPARATE, COMPLETE post for EACH platform — do NOT create a generic version.
 
 Topic / Input: ${cleanTopic}
@@ -321,6 +341,11 @@ ${templateContext ? `\nContent Templates (use as style reference):\n${templateCo
 ${articleContext}
 ${businessContext ? `\n${businessContext}\nIMPORTANT: You MUST include the business contact information in each platform's content. Follow the platform-specific guidelines on HOW to include it (sign-off, link in bio, footer, etc.). Do NOT ignore this data.` : ''}
 ${allHashtags.length > 0 ? `\nAvailable hashtags to use/reference: ${allHashtags.join(' ')}` : ''}
+
+Mandatory Content Format for this request (${requestSeed}):
+Format: "${pickedFormat.name}"
+Instruction: ${pickedFormat.instruction}
+Apply this format consistently across ALL platform versions — adapt the platform-specific rules BUT keep the core format structure.
 
 PLATFORM RULES (follow these EXACTLY for each platform):
 
@@ -343,9 +368,12 @@ CRITICAL RULES:
 - TikTok MUST be under 150 chars. X/Twitter MUST be under 280 chars total.
 ${isUrlTopic ? `- REWRITE the article content into original, engaging posts. Paraphrase creatively — do NOT copy verbatim.
 - For article-based content: be thorough (500-2000 chars for long-form platforms like Facebook/LinkedIn/YouTube)` : '- Keep content engaging and platform-appropriate in length'}
-- Start each version with a powerful hook/attention-grabber SPECIFIC to that platform's style
+- Start each version with a powerful hook/attention-grabber SPECIFIC to that platform's style AND aligned with the mandatory format above
 - Sound AUTHENTIC — like a real person posting, NOT like an AI or a corporation
 - The visualIdea should describe a compelling image concept (art style, composition, mood, lighting, subject)
+- DIVERSITY IS MANDATORY: Do NOT use the same opening word, phrase, or sentence structure across any two platform versions
+- FORBIDDEN phrases (never use these): "In today's world", "In the digital age", "Are you ready?", "Game changer", "Dive in", "Unlock your potential", "Exciting news", "We are thrilled"
+- Every platform version must feel like it was written by a different writer in a different mood
 ${sourceUrlText}`
 
     try {

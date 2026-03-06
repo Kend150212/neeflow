@@ -84,7 +84,10 @@ async function callOpenAICompatibleWithUsage(
                 { role: 'system', content: system },
                 { role: 'user', content: user },
             ],
-            temperature: 0.7,
+            temperature: 0.95,       // High creativity for diverse outputs
+            presence_penalty: 0.6,    // Discourage reusing the same topics/phrases
+            frequency_penalty: 0.5,   // Penalise repeated word/phrase patterns
+            top_p: 0.95,
         }),
     })
 
@@ -129,7 +132,9 @@ async function callGeminiWithUsage(
             systemInstruction: { parts: [{ text: system }] },
             contents: [{ parts: [{ text: user }] }],
             generationConfig: {
-                temperature: 0.7,
+                temperature: 1.0,     // Max creativity for Gemini (safe ceiling)
+                topP: 0.95,           // Nucleus sampling — broader vocab selection
+                topK: 50,             // Sample from wider token pool each step
             },
         }),
     })
