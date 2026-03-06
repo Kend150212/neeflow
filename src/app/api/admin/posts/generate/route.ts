@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
         ? `\n- At the END of the post, append: "\n\n🔗 ${urls[0]}"`
         : ''
 
-    const systemPrompt = `You are a world-class social media content creator and copywriter who has managed accounts with millions of followers. You create content that feels native to each platform — never generic, never robotic. You understand how real people post on each platform and you replicate that authentic feel. You write content that gets ENGAGEMENT, not just impressions. Respond ONLY with valid JSON.`
+    const systemPrompt = `You are a world-class social media content creator and copywriter who has managed accounts with millions of followers. You create content that feels native to each platform — never generic, never robotic. You understand how real people post on each platform and you replicate that authentic feel. You write content that gets ENGAGEMENT, not just impressions. Respond ONLY with valid JSON. Do NOT wrap your response in markdown code fences (no \`\`\`json, no \`\`\`). Output raw JSON only.`
 
     // Build platform-specific instructions with much stronger detail
     const platformInstructions: Record<string, string> = {
@@ -358,12 +358,27 @@ ${sourceUrlText}`
             baseUrl,
         )
 
-        // Robust JSON parsing — handle markdown code fences and partial JSON
-        let cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        // ── Bulletproof JSON parsing ──────────────────────────────────────────
+        // Layer 1: strip ALL variants of markdown code fences
+        let cleaned = result
+            .replace(/```+json\s*/gi, '')
+            .replace(/```+\s*/g, '')
+            .trim()
 
-        // Try to extract JSON object if there's extra text around it
-        const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
-        if (jsonMatch) cleaned = jsonMatch[0]
+        // Layer 2: extract the outermost { ... } block (handles extra prose before/after)
+        const jsonBlock = cleaned.match(/\{[\s\S]*\}/)
+        if (jsonBlock) cleaned = jsonBlock[0]
+
+        // Layer 3: sometimes the model double-encodes — detect stringified JSON and parse it out
+        if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+            try { cleaned = JSON.parse(cleaned) } catch { /* ignore */ }
+        }
+
+        // Helper: strip any remaining code-fence artifacts from individual string values
+        const cleanStr = (s: string) => s
+            .replace(/```+json\s*/gi, '')
+            .replace(/```+\s*/g, '')
+            .trim()
 
         let parsed: {
             content?: string
@@ -373,10 +388,23 @@ ${sourceUrlText}`
             visualIdea?: string
         }
         try {
-            parsed = JSON.parse(cleaned)
-        } catch {
-            // Fallback: use the raw AI text as content
-            parsed = { content: result, hashtags: [], hook: '' }
+            const raw = JSON.parse(cleaned)
+            // Sanitize each platform string to remove any nested JSON artifacts
+            if (raw.contentPerPlatform && typeof raw.contentPerPlatform === 'object') {
+                for (const key of Object.keys(raw.contentPerPlatform)) {
+                    if (typeof raw.contentPerPlatform[key] === 'string') {
+                        raw.contentPerPlatform[key] = cleanStr(raw.contentPerPlatform[key])
+                    }
+                }
+            }
+            parsed = raw
+        } catch (jsonErr) {
+            // Hard failure: log the raw response and return error — never bleed raw JSON into content
+            console.error('[generate] JSON.parse failed. Raw AI output:', result.slice(0, 800))
+            return NextResponse.json(
+                { error: 'AI returned an invalid response. Please try again or switch AI model.', details: String(jsonErr) },
+                { status: 500 }
+            )
         }
 
         // Increment usage: count towards quota when using platform key
