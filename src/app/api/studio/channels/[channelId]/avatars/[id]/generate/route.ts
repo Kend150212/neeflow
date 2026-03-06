@@ -62,36 +62,44 @@ export async function POST(
     }
 
     // ── Character Reference Sheet prompt ─────────────────────────────────────
-    // Always: white-grey studio background, 5 clearly separated panels, full body visible.
-    // We IGNORE any background descriptors in avatar.prompt — the studio bg is hardcoded.
+    // Style-aware: realistic → hyperrealistic photo terms, not "design sheet/concept art"
     const characterDesc = avatar.prompt
-    const styleLabel = avatar.style || 'realistic'
+    const style = avatar.style || 'realistic'
+    const isRealistic = style === 'realistic'
 
-    // Per-slot angle generation (from Pose Matrix "AI Generate" button)
+    const qualityDesc = isRealistic
+        ? 'hyperrealistic photography, 8K ultra-sharp, professional photo studio, lifelike skin texture, cinematic lighting. MUST NOT look like illustration, cartoon, anime, or 3D render.'
+        : `${style} character design sheet, concept art quality, high detail illustration`
+
+    // Per-slot angle generation (from AI Generate button)
     const isSingleAngle = numAngles === 1 && !!anglePrompt
     const basePrompt = isSingleAngle
         ? [
-            `Character reference sheet, ${styleLabel} style, single panel.`,
+            isRealistic
+                ? 'Hyperrealistic photo, professional photography studio.'
+                : `${style} style character illustration, single panel.`,
             `Character: ${characterDesc}.`,
             `Pose / angle: ${anglePrompt}.`,
-            `MANDATORY background: clean white-grey studio backdrop, soft gradient, no props, no environment, neutral soft shadow below feet.`,
-            `Full body visible from head to toe. High detail, sharp, professional character design render.`,
+            `MANDATORY background: clean white-grey studio backdrop, soft gradient, no props, no environment, soft shadow below feet.`,
+            `Full body visible head to toe. ${qualityDesc}.`,
         ].join(' ')
         : [
-            `CHARACTER REFERENCE SHEET — ${styleLabel} style.`,
-            `Character description: ${characterDesc}.`,
-            `LAYOUT: exactly 5 clearly separated panels arranged side by side in a single wide image, each panel has a thin white divider line:`,
-            `Panel 1 (leftmost): FULL BODY front view, head to toe.`,
-            `Panel 2: FACE CLOSE-UP (portrait), front facing.`,
+            isRealistic
+                ? 'Multi-angle character reference sheet — HYPERREALISTIC PHOTOGRAPHY, NOT illustration, NOT cartoon, NOT 3D render, NOT anime.'
+                : `Character reference sheet — ${style} style.`,
+            `Character: ${characterDesc}.`,
+            `LAYOUT: exactly 5 clearly separated panels side by side in one wide image, thin white vertical divider between each panel:`,
+            `Panel 1 (leftmost): FULL BODY front view, head to toe, neutral stance.`,
+            `Panel 2: FACE & UPPER BODY close-up portrait, front facing.`,
             `Panel 3: FULL BODY side profile (90 degrees), head to toe.`,
             `Panel 4: FULL BODY 3/4 dynamic angle, head to toe.`,
             `Panel 5 (rightmost): FULL BODY back view, head to toe.`,
-            `MANDATORY for ALL panels: pure white-grey studio background, subtle soft gradient from white to very light grey, professional studio lighting, soft shadow below feet, NO environment, NO props, NO scenery.`,
-            `Same character, same outfit, same face in every panel. High detail, sharp edges, professional character design sheet, concept art quality.`,
+            `MANDATORY for ALL panels: pure white to very light grey studio background, soft gradient, professional studio lighting, soft shadow below feet, NO environment, NO props.`,
+            `Identical face, identical outfit, identical accessories in every panel. ${qualityDesc}.`,
         ].join(' ')
 
     const consistencyClause = referenceImage
-        ? ` MUST maintain identical face features, skin tone, hair color, outfit, accessories from the provided reference image.`
+        ? ` MUST maintain identical face features, skin tone, hair color, outfit from the provided reference image.`
         : ''
     const finalPrompt = basePrompt + consistencyClause
 
@@ -210,7 +218,7 @@ export async function POST(
     }
 }
 
-// Helper: append a generated image URL to generatedImages[] and update coverImage + status
+// Helper: append generated URL to generatedImages[]. Only updates coverImage for 'sheet' type.
 async function appendAndSave(id: string, url: string, type: 'preview' | 'sheet') {
     if (!url) return
     const avatar = await prisma.studioAvatar.findFirst({ where: { id }, select: { generatedImages: true } })
@@ -218,7 +226,8 @@ async function appendAndSave(id: string, url: string, type: 'preview' | 'sheet')
     await prisma.studioAvatar.update({
         where: { id },
         data: {
-            coverImage: url,
+            // Only make the 5-panel sheet the current avatar — preview images are saved but don't overwrite
+            ...(type === 'sheet' ? { coverImage: url } : {}),
             status: 'idle',
             generatedImages: [...existing, { url, type, createdAt: new Date().toISOString() }],
         },
