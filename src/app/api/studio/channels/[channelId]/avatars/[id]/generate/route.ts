@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/encryption'
 import { uploadToR2, generateR2Key } from '@/lib/r2'
 
-
 async function verifyMembership(userId: string, channelId: string) {
     return !!(await prisma.channelMember.findFirst({ where: { userId, channelId } }))
 }
@@ -30,7 +29,6 @@ async function resolveKey(userId: string, provider: string): Promise<string | nu
 }
 
 // POST /api/studio/channels/[channelId]/avatars/[id]/generate
-// Supported providers: fal_ai | runware | openai | gemini
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ channelId: string; id: string }> },
@@ -128,25 +126,23 @@ export async function POST(
         if (provider === 'openai') {
             const oaiModel = model || 'gpt-image-1'
             const isGptImage = oaiModel === 'gpt-image-1'
-            const body: Record<string, unknown> = {
+            const oaiBody: Record<string, unknown> = {
                 model: oaiModel,
                 prompt: basePrompt.slice(0, 4000),
                 n: 1,
             }
             if (isGptImage) {
-                // gpt-image-1: quality=high, no size constraint (auto)
-                body.quality = 'high'
+                oaiBody.quality = 'high'
             } else if (oaiModel === 'dall-e-3') {
-                body.size = '1792x1024'
-                body.quality = 'standard'
+                oaiBody.size = '1792x1024'
+                oaiBody.quality = 'standard'
             } else {
-                // dall-e-2
-                body.size = '1024x1024'
+                oaiBody.size = '1024x1024'
             }
             const oaiRes = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
+                body: JSON.stringify(oaiBody),
             })
             if (!oaiRes.ok) {
                 const err = await oaiRes.text()
@@ -154,7 +150,6 @@ export async function POST(
                 return NextResponse.json({ error: `OpenAI error: ${err}` }, { status: 500 })
             }
             const oaiData = await oaiRes.json()
-            // gpt-image-1 may return b64_json, DALL-E returns url
             const item = oaiData.data?.[0]
             let imageUrl = item?.url || ''
             if (!imageUrl && item?.b64_json) {
@@ -167,136 +162,15 @@ export async function POST(
             return NextResponse.json({ status: 'done', imageUrls: [imageUrl] })
         }
 
-        // ─── Gemini Imagen / Flash native image gen ──────────────────
+        // ─── Gemini Imagen / Flash (fire-and-forget async bg) ────────
+        // Returns immediately with status:'generating' to avoid browser timeout.
+        // The actual Gemini API call + R2 upload happens in the background.
+        // Client polls /status endpoint until status is no longer 'generating'.
         if (provider === 'gemini') {
             const gemModel = model || 'imagen-3.0-generate-001'
             const isFlash = gemModel.startsWith('gemini-')
-
-            console.log(`[generate] Gemini request: model=${gemModel} isFlash=${isFlash} avatarId=${id}`)
-
-            let imageUrls: string[] = []
-
-            if (isFlash) {
-                // Gemini Flash: uses generateContent with responseModalities: ['IMAGE','TEXT']
-                const flashRes = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:generateContent?key=${apiKey}`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: basePrompt.slice(0, 2000) }] }],
-                            generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
-                        }),
-                    }
-                )
-                const flashText = await flashRes.text()
-                if (!flashRes.ok) {
-                    console.error(`[generate] Gemini Flash HTTP ${flashRes.status} for model=${gemModel}: ${flashText}`)
-                    await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
-                    return NextResponse.json({
-                        error: `Gemini Flash lỗi ${flashRes.status}: ${flashText.slice(0, 500)}`
-                    }, { status: 500 })
-                }
-                let flashData: Record<string, unknown>
-                try {
-                    flashData = JSON.parse(flashText)
-                } catch (e) {
-                    console.error(`[generate] Gemini Flash JSON parse error: ${e} | raw: ${flashText.slice(0, 300)}`)
-                    await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
-                    return NextResponse.json({ error: `Gemini Flash response parse error: ${flashText.slice(0, 200)}` }, { status: 500 })
-                }
-                console.log(`[generate] Gemini Flash response keys: ${Object.keys(flashData).join(', ')}`)
-                const candidates = flashData.candidates as Array<{ content?: { parts?: Array<{ inlineData?: { data: string; mimeType: string } }> } }> | undefined
-                const parts = candidates?.[0]?.content?.parts || []
-                console.log(`[generate] Gemini Flash parts count: ${parts.length}`)
-                for (const part of parts) {
-                    if (part.inlineData?.data) {
-                        // Upload base64 to R2 instead of storing data URL directly in DB
-                        const mimeType = part.inlineData.mimeType || 'image/png'
-                        const ext = mimeType.split('/')[1] || 'png'
-                        const buffer = Buffer.from(part.inlineData.data, 'base64')
-                        console.log(`[generate] Gemini Flash image: mimeType=${mimeType} size=${buffer.length} bytes`)
-                        try {
-                            const key = generateR2Key(channelId, `avatar-gemini-${id}-${Date.now()}.${ext}`)
-                            const r2Url = await uploadToR2(buffer, key, mimeType)
-                            imageUrls.push(r2Url)
-                            console.log(`[generate] Gemini Flash image uploaded to R2: ${r2Url}`)
-                        } catch (r2Err) {
-                            console.error(`[generate] R2 upload failed: ${r2Err}`)
-                            // Fallback: use data URL (may be large)
-                            imageUrls.push(`data:${mimeType};base64,${part.inlineData.data}`)
-                        }
-                    }
-                }
-                if (imageUrls.length === 0) {
-                    console.error(`[generate] Gemini Flash returned 0 images. Full response: ${JSON.stringify(flashData).slice(0, 800)}`)
-                    await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
-                    return NextResponse.json({
-                        error: `Gemini Flash không trả về ảnh nào. Model "${gemModel}" có thể không khả dụng với API key này. Chi tiết: ${JSON.stringify(flashData).slice(0, 400)}`
-                    }, { status: 424 })
-                }
-            } else {
-                // Imagen models: use :predict endpoint
-                const imagenRes = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:predict?key=${apiKey}`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            instances: [{ prompt: basePrompt.slice(0, 2000) }],
-                            parameters: { sampleCount: 1, aspectRatio: '1:1' },
-                        }),
-                    }
-                )
-                const imagenText = await imagenRes.text()
-                if (!imagenRes.ok) {
-                    console.error(`[generate] Imagen HTTP ${imagenRes.status} for model=${gemModel}: ${imagenText}`)
-                    await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
-                    return NextResponse.json({
-                        error: `Imagen lỗi ${imagenRes.status}: ${imagenText.slice(0, 500)}`
-                    }, { status: 500 })
-                }
-                let imagenData: Record<string, unknown>
-                try {
-                    imagenData = JSON.parse(imagenText)
-                } catch (e) {
-                    console.error(`[generate] Imagen JSON parse error: ${e}`)
-                    await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
-                    return NextResponse.json({ error: 'Imagen response parse error' }, { status: 500 })
-                }
-                const predictions = (imagenData.predictions as Array<{ bytesBase64Encoded?: string; mimeType?: string }>) || []
-                console.log(`[generate] Imagen predictions count: ${predictions.length}`)
-                for (const p of predictions) {
-                    if (p.bytesBase64Encoded) {
-                        const mimeType = p.mimeType || 'image/png'
-                        const ext = mimeType.split('/')[1] || 'png'
-                        const buffer = Buffer.from(p.bytesBase64Encoded, 'base64')
-                        try {
-                            const key = generateR2Key(channelId, `avatar-imagen-${id}-${Date.now()}.${ext}`)
-                            const r2Url = await uploadToR2(buffer, key, mimeType)
-                            imageUrls.push(r2Url)
-                            console.log(`[generate] Imagen image uploaded to R2: ${r2Url}`)
-                        } catch (r2Err) {
-                            console.error(`[generate] R2 upload failed for Imagen: ${r2Err}`)
-                            imageUrls.push(`data:${mimeType};base64,${p.bytesBase64Encoded}`)
-                        }
-                    }
-                }
-                if (imageUrls.length === 0) {
-                    console.error(`[generate] Imagen returned 0 predictions. Full response: ${JSON.stringify(imagenData).slice(0, 800)}`)
-                    await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
-                    return NextResponse.json({
-                        error: `Imagen không trả về ảnh nào. Model "${gemModel}" có thể chưa hỗ trợ. Chi tiết: ${JSON.stringify(imagenData).slice(0, 400)}`
-                    }, { status: 424 })
-                }
-            }
-
-            await prisma.studioAvatar.update({
-                where: { id },
-                data: { coverImage: imageUrls[0] || null, status: 'idle' },
-            })
-            console.log(`[generate] Gemini done: saved coverImage=${imageUrls[0]?.slice(0, 80)}`)
-            return NextResponse.json({ status: 'done', imageUrls })
+            runGeminiBackground({ id, channelId, apiKey, gemModel, isFlash, basePrompt }).catch(console.error)
+            return NextResponse.json({ status: 'generating' })
         }
 
         // ─── Unknown provider ────────────────────────────────────────
@@ -304,9 +178,141 @@ export async function POST(
         return NextResponse.json({ error: `Unsupported provider: ${provider}` }, { status: 400 })
 
     } catch (err) {
-        console.error(`[generate] Unhandled error for provider=${provider} model=${model} avatarId=${id}:`, err)
+        console.error(`[generate] Unhandled error provider=${provider} model=${model} avatarId=${id}:`, err)
         await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
         return NextResponse.json({ error: `Server error: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 })
     }
 }
 
+// ─── Background Gemini worker ─────────────────────────────────────────────
+// Runs entirely after the HTTP response is sent to avoid browser timeout.
+async function runGeminiBackground(opts: {
+    id: string
+    channelId: string
+    apiKey: string
+    gemModel: string
+    isFlash: boolean
+    basePrompt: string
+}) {
+    const { id, channelId, apiKey, gemModel, isFlash, basePrompt } = opts
+    console.log(`[generate:bg] Gemini start: model=${gemModel} isFlash=${isFlash} avatarId=${id}`)
+    const imageUrls: string[] = []
+
+    try {
+        if (isFlash) {
+            // Gemini Flash: generateContent with responseModalities: ['IMAGE','TEXT']
+            const flashRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:generateContent?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: basePrompt.slice(0, 2000) }] }],
+                        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+                    }),
+                }
+            )
+            const flashText = await flashRes.text()
+            if (!flashRes.ok) {
+                console.error(`[generate:bg] Gemini Flash HTTP ${flashRes.status} model=${gemModel}: ${flashText.slice(0, 500)}`)
+                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                return
+            }
+            let flashData: Record<string, unknown>
+            try {
+                flashData = JSON.parse(flashText)
+            } catch {
+                console.error(`[generate:bg] Gemini Flash JSON parse error: ${flashText.slice(0, 300)}`)
+                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                return
+            }
+            console.log(`[generate:bg] Gemini Flash response keys: ${Object.keys(flashData).join(', ')}`)
+            const candidates = flashData.candidates as Array<{
+                content?: { parts?: Array<{ inlineData?: { data: string; mimeType: string } }> }
+            }> | undefined
+            const parts = candidates?.[0]?.content?.parts || []
+            console.log(`[generate:bg] Gemini Flash parts count: ${parts.length}`)
+            for (const part of parts) {
+                if (part.inlineData?.data) {
+                    const mimeType = part.inlineData.mimeType || 'image/png'
+                    const ext = mimeType.split('/')[1] || 'png'
+                    const buffer = Buffer.from(part.inlineData.data, 'base64')
+                    console.log(`[generate:bg] Flash image: ${mimeType} ${buffer.length} bytes`)
+                    try {
+                        const key = generateR2Key(channelId, `avatar-gemini-${id}-${Date.now()}.${ext}`)
+                        const r2Url = await uploadToR2(buffer, key, mimeType)
+                        imageUrls.push(r2Url)
+                        console.log(`[generate:bg] Flash image → R2: ${r2Url}`)
+                    } catch (r2Err) {
+                        console.error(`[generate:bg] R2 upload failed: ${r2Err}`)
+                        imageUrls.push(`data:${mimeType};base64,${part.inlineData.data}`)
+                    }
+                }
+            }
+            if (imageUrls.length === 0) {
+                console.error(`[generate:bg] Flash 0 images. Response: ${JSON.stringify(flashData).slice(0, 500)}`)
+                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                return
+            }
+        } else {
+            // Imagen models: use :predict endpoint
+            const imagenRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${gemModel}:predict?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        instances: [{ prompt: basePrompt.slice(0, 2000) }],
+                        parameters: { sampleCount: 1, aspectRatio: '1:1' },
+                    }),
+                }
+            )
+            const imagenText = await imagenRes.text()
+            if (!imagenRes.ok) {
+                console.error(`[generate:bg] Imagen HTTP ${imagenRes.status} model=${gemModel}: ${imagenText.slice(0, 500)}`)
+                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                return
+            }
+            let imagenData: Record<string, unknown>
+            try {
+                imagenData = JSON.parse(imagenText)
+            } catch {
+                console.error(`[generate:bg] Imagen JSON parse error`)
+                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                return
+            }
+            const predictions = (imagenData.predictions as Array<{ bytesBase64Encoded?: string; mimeType?: string }>) || []
+            console.log(`[generate:bg] Imagen predictions: ${predictions.length}`)
+            for (const p of predictions) {
+                if (p.bytesBase64Encoded) {
+                    const mimeType = p.mimeType || 'image/png'
+                    const ext = mimeType.split('/')[1] || 'png'
+                    const buffer = Buffer.from(p.bytesBase64Encoded, 'base64')
+                    try {
+                        const key = generateR2Key(channelId, `avatar-imagen-${id}-${Date.now()}.${ext}`)
+                        const r2Url = await uploadToR2(buffer, key, mimeType)
+                        imageUrls.push(r2Url)
+                        console.log(`[generate:bg] Imagen image → R2: ${r2Url}`)
+                    } catch (r2Err) {
+                        console.error(`[generate:bg] R2 upload failed: ${r2Err}`)
+                        imageUrls.push(`data:${mimeType};base64,${p.bytesBase64Encoded}`)
+                    }
+                }
+            }
+            if (imageUrls.length === 0) {
+                console.error(`[generate:bg] Imagen 0 predictions. Response: ${JSON.stringify(imagenData).slice(0, 500)}`)
+                await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } })
+                return
+            }
+        }
+
+        await prisma.studioAvatar.update({
+            where: { id },
+            data: { coverImage: imageUrls[0] || null, status: 'idle' },
+        })
+        console.log(`[generate:bg] Gemini done ✓ coverImage=${imageUrls[0]?.slice(0, 80)}`)
+    } catch (err) {
+        console.error(`[generate:bg] Unhandled Gemini error avatarId=${id}:`, err)
+        await prisma.studioAvatar.update({ where: { id }, data: { status: 'failed' } }).catch(() => { })
+    }
+}
