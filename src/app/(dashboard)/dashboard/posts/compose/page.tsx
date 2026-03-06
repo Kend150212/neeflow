@@ -5023,8 +5023,8 @@ export default function ComposePage() {
                                 className="py-2 px-3 cursor-pointer hover:bg-muted/50 transition-colors"
                                 onClick={() => {
                                     setPinSettingsOpen(!pinSettingsOpen)
-                                    // Fetch boards when opening settings for the first time
-                                    if (!pinSettingsOpen && pinBoards.length === 0 && !pinBoardsLoading) {
+                                    // Fetch boards when opening settings, or when we need to reconnect
+                                    if (!pinSettingsOpen && (pinBoards.length === 0 || pinNeedsReconnect) && !pinBoardsLoading) {
                                         const pinterestPlatform = activePlatforms.find(p => selectedPlatformIds.has(p.id) && p.platform === 'pinterest')
                                         if (pinterestPlatform && selectedChannel) {
                                             setPinBoardsLoading(true)
@@ -5032,7 +5032,8 @@ export default function ComposePage() {
                                                 .then(r => r.json())
                                                 .then(data => {
                                                     if (data.needsReconnect) { setPinNeedsReconnect(true); return }
-                                                    if (data.boards) { setPinNeedsReconnect(false); setPinBoards(data.boards) }
+                                                    setPinNeedsReconnect(false)
+                                                    if (Array.isArray(data.boards)) { setPinBoards(data.boards) }
                                                 })
                                                 .catch(() => { })
                                                 .finally(() => setPinBoardsLoading(false))
@@ -5060,7 +5061,8 @@ export default function ComposePage() {
                                                 .then(r => r.json())
                                                 .then(data => {
                                                     if (data.needsReconnect) return
-                                                    if (data.boards) { setPinNeedsReconnect(false); setPinBoards(data.boards) }
+                                                    setPinNeedsReconnect(false)
+                                                    if (Array.isArray(data.boards)) { setPinBoards(data.boards) }
                                                 })
                                                 .catch(() => { })
                                                 .finally(() => setPinBoardsLoading(false))

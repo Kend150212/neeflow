@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         },
     })
 
-    console.log(`[Pinterest] Sandbox token applied to ${platforms.length} platform(s)`)
+    console.log(`[Pinterest] Sandbox token applied to ${platforms.length} platform(s), token prefix: ${sandboxToken.trim().slice(0, 30)}...`)
     return NextResponse.json({
         success: true,
         updated: platforms.length,
