@@ -90,6 +90,10 @@ export async function POST() {
                 }
 
                 // ─── SmartFlow quota check ───────────────────────────
+                console.log(`[Pipeline] Job ${job.id}: uploaderUserId=${uploaderUserId}, uploadedBy=${job.uploadedBy}`)
+                const { getUserPlan } = await import('@/lib/plans')
+                const _debugPlan = await getUserPlan(uploaderUserId)
+                console.log(`[Pipeline] Plan check: hasSmartFlow=${_debugPlan.hasSmartFlow}, maxJobs=${_debugPlan.maxSmartFlowJobsPerMonth}, planName=${_debugPlan.planName}`)
                 const quotaResult = await checkSmartFlowQuota(uploaderUserId)
                 if (!quotaResult.allowed) {
                     throw new Error(quotaResult.error.message)
