@@ -300,36 +300,37 @@ export default function ChannelAvatarsPage() {
         let attempts = 0
         const interval = setInterval(async () => {
             attempts++
-            if (attempts > 72) { // 6 min timeout
+            if (attempts > 120) { // 5 min timeout at 2.5s interval
                 clearInterval(interval)
                 toast.error('Generation timed out. Please try again.')
                 return
             }
             try {
-                const res = await fetch(`/api/studio/channels/${channelId}/avatars`)
-                if (res.ok) {
-                    const data = await res.json()
-                    const allFetched: StudioAvatar[] = data.avatars || []
-                    const updated = allFetched.find((a: StudioAvatar) => a.id === id)
-                    if (updated && updated.status !== 'generating') {
-                        clearInterval(interval)
-                        setAvatars(allFetched)
-                        setSelectedAvatar(prev => prev?.id === id ? updated : prev)
-                        if (updated.status === 'idle' || updated.status === 'done') {
-                            if (phase === 'preview') {
-                                toast.success(`✅ Ảnh xem trước sẵn sàng! Xem và approve để tạo toàn bộ góc nhìn.`)
-                                setGenPhase(prev => ({ ...prev, [id]: 'preview' }))
-                            } else {
-                                toast.success(`✅ Avatar "${updated.name}" đã tạo xong tất cả góc nhìn!`)
-                                setGenPhase(prev => ({ ...prev, [id]: null }))
-                            }
-                        } else if (updated.status === 'failed') {
-                            toast.error(`❌ Avatar "${updated.name}" generation failed. Check your API key.`)
+                // Poll individual avatar — much faster than fetching the whole list
+                const res = await fetch(`/api/studio/channels/${channelId}/avatars/${id}`)
+                if (!res.ok) return
+                const data = await res.json()
+                const updated: StudioAvatar = data.avatar
+                if (!updated) return
+                if (updated.status !== 'generating') {
+                    clearInterval(interval)
+                    // Update avatar in list and panel immediately
+                    setAvatars(prev => prev.map(a => a.id === id ? updated : a))
+                    setSelectedAvatar(prev => prev?.id === id ? updated : prev)
+                    if (updated.status === 'idle' || updated.status === 'done') {
+                        if (phase === 'preview') {
+                            toast.success(`✅ Ảnh xem trước sẵn sàng! Xem và approve để tạo toàn bộ góc nhìn.`)
+                            setGenPhase(prev => ({ ...prev, [id]: 'preview' }))
+                        } else {
+                            toast.success(`✅ Avatar "${updated.name}" đã tạo xong tất cả góc nhìn!`)
+                            setGenPhase(prev => ({ ...prev, [id]: null }))
                         }
+                    } else if (updated.status === 'failed') {
+                        toast.error(`❌ Avatar "${updated.name}" generation failed. Check your API key.`)
                     }
                 }
             } catch { }
-        }, 5000)
+        }, 2500) // poll every 2.5s instead of 5s
     }
 
     async function deleteAvatar(id: string) {
