@@ -186,7 +186,7 @@ export async function getUserPlan(userId: string): Promise<PlanLimits> {
             hasPrioritySupport: p.hasPrioritySupport,
             hasWhiteLabel: p.hasWhiteLabel,
             hasSmartFlow: !!(p as any).hasSmartFlow || ((p as any).maxSmartFlowJobsPerMonth !== 0),
-            hasBotUsageAnalytics: !!(p as any).hasBotUsageAnalytics ?? false,
+            hasBotUsageAnalytics: !!(p as any).hasBotUsageAnalytics,
             maxSmartFlowJobsPerMonth: (p as any).maxSmartFlowJobsPerMonth ?? 0,
             isInTrial: false,
             trialEndsAt,
