@@ -88,34 +88,29 @@ ${content.slice(0, 1500)}
 ${vibeStr ? `Brand tone: ${vibeStr}` : ''}
 ${kbContext ? `Brand context:\n${kbContext}` : ''}
 
-Generate the following metadata as JSON. Write ENTIRELY in ${langLabel} unless noted otherwise:
+Generate the following metadata. Write ENTIRELY in ${langLabel} unless noted.
+Respond ONLY with a valid JSON object — no markdown, no explanation.
 
-{
-${hasFacebook ? `  "firstComment": "A relevant first comment for the Facebook post — should be engaging, add value (e.g. a question, extra tip, or CTA). 1-2 sentences. Don't repeat the post content.",` : ''}
-${hasPinterest ? `  "pinTitle": "A catchy, SEO-optimized pin title (max 100 chars) that describes the content. In ${langLabel}.",
-  "pinLink": "A suggested destination URL if the post mentions any link or website. Empty string if no link context.",` : ''}
-${hasYouTube ? `  "ytTitles": [
-    "Title option 1 — compelling, clickbait-worthy video title (max 100 chars). In ${langLabel}.",
-    "Title option 2 — different angle/approach, curiosity-driven. In ${langLabel}.",
-    "Title option 3 — with strong viral hook words (e.g. 'CẤM', 'BÍ MẬT', 'SHOCKING', 'PHẢI XEM'). In ${langLabel}."
-  ],
-  "ytTags": "Comma-separated relevant video tags (8-15 tags) for YouTube SEO. Mix of broad and specific. In ${langLabel}.",
-  "ytCategory": "The most relevant category from this list: [${ytCategories.join(', ')}]. Return the exact category name.",
-  "ytThumbnailPrompts": [
-    "Thumbnail prompt 1: ${selectedStyle.promptTemplate} Adapt to this video's content: describe specific visual elements, text overlays, and composition. Be specific about what the viewer should see. Write in English.",
-    "Thumbnail prompt 2: A variation of the same style with different composition, different hook text, and different focal point. Same style: ${selectedStyle.name}. Write in English.",
-    "Thumbnail prompt 3: Another variation with a completely different angle but same style. Different pose, color emphasis, or perspective. Same style: ${selectedStyle.name}. Write in English."
-  ],` : ''}
-}
+Required JSON fields:
+${hasFacebook ? `- "firstComment": string — A natural, engaging first comment to auto-post under the Facebook post. Should add value: a follow-up question, interesting fact, or CTA. 1-3 sentences. Do NOT repeat the main post content.` : ''}
+${hasPinterest ? `- "pinTitle": string — A catchy, SEO-optimized pin title (max 100 chars). In ${langLabel}.
+- "pinLink": string — A destination URL if the post mentions a website/link, otherwise empty string.` : ''}
+${hasYouTube ? `- "ytTitles": array of exactly 3 strings — Three different, compelling YouTube video title options (max 100 chars each). Each must use a different hook strategy:
+  1. Curiosity/question style (e.g. starts with a compelling why/how)
+  2. List/how-to style (numbers, steps)
+  3. Viral hook style using power words in ${langLabel} (urgency, surprise, exclusivity)
+  All in ${langLabel}.
+- "ytTags": string — 8-15 comma-separated YouTube video tags. Mix broad + specific. In ${langLabel}.
+- "ytCategory": string — Best matching YouTube category from: [${ytCategories.join(', ')}]. Return the exact category name.
+- "ytThumbnailPrompts": array of exactly 3 strings — Three different YouTube thumbnail image generation prompts.
+  Each prompt in English. Style to use: ${selectedStyle.name} (${selectedStyle.promptTemplate}).
+  Each prompt must fully describe: subject, composition, text overlay, colors, mood. Make them different from each other.` : ''}
 
-Rules:
-- ALL text fields in ${langLabel} (except ytThumbnailPrompts which MUST be in English)
-- YouTube titles should be 3 DIFFERENT approaches — each must feel unique and click-worthy
-- Include strong viral hook words in titles (urgency, curiosity, numbers, superlatives)
-- First comment should feel natural, not promotional
-- YouTube tags should be comma-separated and SEO-optimized
-- Each thumbnail prompt must be a detailed, complete image generation prompt
-- Return ONLY valid JSON, no extra text`
+IMPORTANT:
+- Return ONLY a valid JSON object. No trailing commas. No comments.
+- All string fields should contain ACTUAL content, not placeholder descriptions.
+- Arrays must contain exactly the number of items specified.
+- JSON must be parseable by JSON.parse() without any modification.`
 
     try {
         const result = await callAI(providerName, apiKey, model, systemPrompt, userPrompt, baseUrl)
@@ -129,7 +124,9 @@ Rules:
         let parsed: Record<string, any>
         try {
             parsed = JSON.parse(cleaned)
-        } catch {
+        } catch (jsonErr) {
+            // Log raw output for debugging so we can see what the model actually returned
+            console.error('[generate-metadata] JSON.parse failed. Raw output:', cleaned.slice(0, 500), 'Error:', jsonErr)
             parsed = {}
         }
 

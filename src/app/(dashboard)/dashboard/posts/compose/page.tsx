@@ -2810,7 +2810,7 @@ export default function ComposePage() {
 
             // Fill in the generated fields
             let filled = 0
-            if (data.firstComment) { setFbFirstComment(data.firstComment); filled++ }
+            if (typeof data.firstComment === 'string' && data.firstComment.trim()) { setFbFirstComment(data.firstComment.trim()); filled++ }
             if (data.pinTitle) { setPinTitle(data.pinTitle); filled++ }
             if (data.pinLink) { setPinLink(data.pinLink); filled++ }
             // YouTube: 3 titles
