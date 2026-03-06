@@ -2944,22 +2944,37 @@ export default function ComposePage() {
             if (scheduleDate) {
                 // Default time to 09:00 if user picked a date but left time blank
                 const time = scheduleTime || '09:00'
-                // Interpret date+time in channel's timezone, convert to UTC
+                // Interpret date+time as a wall-clock time in the channel's timezone,
+                // then convert to UTC for storage.
                 const channelTz = (selectedChannel as any)?.timezone || 'UTC'
-                // Parse the date/time parts directly (no browser timezone interference)
                 const [year, month, day] = scheduleDate.split('-').map(Number)
                 const [hour, minute] = time.split(':').map(Number)
-                // Create a UTC date with the same wall-clock values
-                const asUTC = new Date(Date.UTC(year, month - 1, day, hour, minute, 0))
-                // Find the offset of channelTz at this approximate moment
-                // by formatting asUTC in both UTC and channelTz, then computing the difference
-                const fmtOpts: Intl.DateTimeFormatOptions = { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
-                const utcStr = new Intl.DateTimeFormat('en-US', fmtOpts).format(asUTC)
-                const tzStr = new Intl.DateTimeFormat('en-US', { ...fmtOpts, timeZone: channelTz }).format(asUTC)
-                const parseMDYHMS = (s: string) => { const [d, t] = s.split(', '); const [m2, d2, y2] = d.split('/').map(Number); const [h2, mm2, s2] = t.split(':').map(Number); return Date.UTC(y2, m2 - 1, d2, h2, mm2, s2) }
-                const offsetMs = parseMDYHMS(tzStr) - parseMDYHMS(utcStr)
-                // Subtract the offset: if channelTz is UTC-5, offset is -5h, so we ADD 5h to get UTC
-                scheduledAt = new Date(asUTC.getTime() - offsetMs).toISOString()
+
+                // ── Reliable timezone-to-UTC conversion ─────────────────────────────────
+                // Step 1: create a candidate UTC instant with the same numeric values as
+                //         the user's local wall-clock time.
+                const candidate = new Date(Date.UTC(year, month - 1, day, hour, minute, 0))
+
+                // Step 2: format that candidate in channelTz to see what clock it shows.
+                //         Use en-CA which outputs unambiguous YYYY-MM-DD — no year truncation.
+                const formatter = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: channelTz,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false,
+                })
+                const parts = formatter.formatToParts(candidate)
+                const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0', 10)
+                const tzYear = get('year'), tzMonth = get('month'), tzDay = get('day')
+                const tzHour = get('hour'), tzMinute = get('minute'), tzSecond = get('second')
+
+                // Step 3: offset = tz wall-clock - UTC wall-clock (how far ahead tz is)
+                const tzWallMs = Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute, tzSecond)
+                const utcWallMs = candidate.getTime()
+                const offsetMs = tzWallMs - utcWallMs
+
+                // Step 4: true UTC = user's intended time minus the offset
+                scheduledAt = new Date(utcWallMs - offsetMs).toISOString()
             }
 
             const existingId = editPostId || postIdRef.current
