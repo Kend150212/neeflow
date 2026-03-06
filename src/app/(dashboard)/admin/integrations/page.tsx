@@ -1175,7 +1175,7 @@ function PinterestSandboxSection({
                         value={sandboxToken}
                         onChange={(e) => setSandboxToken(e.target.value)}
                         rows={3}
-                        className="w-full text-[10px] font-mono rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-amber-200 placeholder-amber-500/40 resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                        className="w-full text-[11px] font-mono rounded-md border border-orange-400 bg-zinc-900 px-2 py-1.5 text-white placeholder-zinc-500 resize-none focus:outline-none focus:ring-1 focus:ring-orange-400"
                     />
                     <button
                         onClick={handleApply}
