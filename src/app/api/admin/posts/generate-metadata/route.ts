@@ -77,7 +77,10 @@ export async function POST(req: NextRequest) {
     const hasPinterest = requestedPlatforms.includes('pinterest')
     const hasYouTube = requestedPlatforms.includes('youtube')
 
-    const systemPrompt = `You are a world-class social media strategist and YouTube growth expert. Generate platform-specific metadata for a post. Respond ONLY with valid JSON.`
+    const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
+    const systemPrompt = `You are a world-class social media strategist and YouTube growth expert. Generate platform-specific metadata for a post. Respond ONLY with valid JSON.
+
+IMPORTANT CONTEXT: Today's date is ${todayLabel}. Use this as your reference for any time-sensitive content, trends, or year context. Do NOT assume any other year or date.`
 
     const userPrompt = `Given this post content for the brand "${channel.displayName}" (${langLabel}):
 

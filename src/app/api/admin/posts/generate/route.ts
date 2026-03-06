@@ -201,7 +201,10 @@ export async function POST(req: NextRequest) {
         ? `\n- At the END of the post, append: "\n\n🔗 ${urls[0]}"`
         : ''
 
-    const systemPrompt = `You are a world-class social media content creator and copywriter who has managed accounts with millions of followers. You create content that feels native to each platform — never generic, never robotic. You understand how real people post on each platform and you replicate that authentic feel. You write content that gets ENGAGEMENT, not just impressions. Respond ONLY with valid JSON. Do NOT wrap your response in markdown code fences (no \`\`\`json, no \`\`\`). Output raw JSON only.`
+    const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
+    const systemPrompt = `You are a world-class social media content creator and copywriter who has managed accounts with millions of followers. You create content that feels native to each platform — never generic, never robotic. You understand how real people post on each platform and you replicate that authentic feel. You write content that gets ENGAGEMENT, not just impressions. Respond ONLY with valid JSON. Do NOT wrap your response in markdown code fences (no \`\`\`json, no \`\`\`). Output raw JSON only.
+
+IMPORTANT CONTEXT: Today's date is ${todayLabel}. Use this as your reference for any date-aware content, trending topics, seasonal references, or "current year" context. Do NOT assume any other year or date.`
 
     // Build platform-specific instructions with much stronger detail
     const platformInstructions: Record<string, string> = {

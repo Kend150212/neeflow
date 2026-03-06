@@ -5772,7 +5772,12 @@ export default function ComposePage() {
 
                                 {/* Date */}
                                 <div>
-                                    <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleDate')}</Label>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <Label className="text-[10px] text-muted-foreground">{t('compose.scheduleDate')}</Label>
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-semibold">
+                                            📅 Today, {new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                                        </span>
+                                    </div>
                                     <Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-0.5 h-7 text-xs" />
                                 </div>
                                 {/* Time */}
