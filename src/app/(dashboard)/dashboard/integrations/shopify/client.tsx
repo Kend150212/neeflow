@@ -83,7 +83,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     return (
         <button
             onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${checked ? 'bg-[#00ff95]' : 'bg-white/20'}`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${checked ? 'bg-[#00ff95]' : 'bg-muted'}`}
             role="switch"
             aria-checked={checked}
         >
@@ -169,14 +169,14 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
     useEffect(() => {
         const url = new URL(window.location.href)
         if (url.searchParams.get('connected') === '1') {
-            toast.success('✅ Shopify store connected successfully!')
+            toast.success(t('integrations.shopify.connectedSuccess'))
             // Clean URL
             url.searchParams.delete('connected')
             window.history.replaceState({}, '', url.pathname + (url.searchParams.size > 0 ? '?' + url.searchParams.toString() : ''))
         }
         const err = url.searchParams.get('error')
         if (err) {
-            toast.error(`Shopify connection failed: ${err}`)
+            toast.error(`${t('integrations.shopify.connectionFailedPrefix')} ${err}`)
             url.searchParams.delete('error')
             window.history.replaceState({}, '', url.pathname + (url.searchParams.size > 0 ? '?' + url.searchParams.toString() : ''))
         }
@@ -221,7 +221,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
     // ── Test connection ───────────────────────────────────────────────────────
     async function handleTest() {
         if (!shopDomain || !accessToken) {
-            toast.error('Enter shop domain and access token first')
+            toast.error(t('integrations.shopify.enterDomainToken'))
             return
         }
         setTesting(true)
@@ -312,7 +312,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
         setTestResult(null)
         setProducts([])
         setTab('connect')
-        toast.success('Disconnected')
+        toast.success(t('integrations.shopify.disconnectedOk'))
     }
 
     // ── Create AI Post from product ───────────────────────────────────────────
@@ -360,20 +360,20 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
 
     if (!channelId) {
         return (
-            <div className="flex items-center justify-center h-64 text-white/50">
-                Select a channel first
+            <div className="flex items-center justify-center h-64 text-muted-foreground">
+                {t('integrations.shopify.selectChannelFirst')}
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-white">
+        <div className="-mx-3 -mt-4 sm:-mx-6 sm:-mt-6">
             {/* ── Header ─────────────────────────────────────────────────────── */}
-            <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
+            <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-card/50">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => router.push('/dashboard/integrations')}
-                        className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                        className="p-2 rounded-lg hover:bg-muted/60 transition-colors"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
@@ -383,7 +383,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                         </div>
                         <div>
                             <h1 className="text-lg font-bold">{t('integrations.shopify.title')}</h1>
-                            <p className="text-xs text-white/50">{t('integrations.shopify.subtitle')}</p>
+                            <p className="text-xs text-muted-foreground">{t('integrations.shopify.subtitle')}</p>
                         </div>
                     </div>
                 </div>
@@ -408,16 +408,16 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto p-6">
+            <div className="p-6">
                 {/* ── Tabs ───────────────────────────────────────────────────── */}
-                <div className="flex gap-1 p-1 bg-white/5 rounded-xl w-fit mb-6">
+                <div className="flex gap-1 p-1 bg-muted/40 rounded-xl w-fit mb-6">
                     {(['connect', 'catalog'] as const).map((t2) => (
                         <button
                             key={t2}
                             onClick={() => setTab(t2)}
                             className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t2
                                 ? 'bg-[#00ff95] text-black shadow-sm'
-                                : 'text-white/60 hover:text-white'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             {t2 === 'connect' ? t('integrations.shopify.connectTab') : t('integrations.shopify.catalogTab')}
@@ -431,8 +431,8 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                         <div className="lg:col-span-5 space-y-6">
 
                             {/* Connection Card */}
-                            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                                <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10">
+                            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                                <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
                                     <div className="w-7 h-7 rounded-full bg-[#00ff95]/20 text-[#00ff95] flex items-center justify-center text-sm font-bold">1</div>
                                     <h2 className="font-bold">{t('integrations.shopify.connectTab')}</h2>
                                 </div>
@@ -444,32 +444,32 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                             <CheckCircle2 className="w-5 h-5 text-[#00ff95] shrink-0" />
                                             <div>
                                                 <p className="text-sm font-semibold text-[#00ff95]">{t('integrations.shopify.connected')}</p>
-                                                <p className="text-xs text-white/50">{config?.shopDomain}</p>
+                                                <p className="text-xs text-muted-foreground">{config?.shopDomain}</p>
                                             </div>
                                         </div>
                                     )}
 
                                     {/* Shop Domain */}
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-white/70">{t('integrations.shopify.shopDomain')}</label>
+                                        <label className="text-sm font-semibold text-foreground/70">{t('integrations.shopify.shopDomain')}</label>
                                         <div className="flex">
-                                            <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-white/20 bg-white/10 text-white/50 text-sm text-nowrap">https://</span>
+                                            <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-border bg-muted/60 text-muted-foreground text-sm text-nowrap">https://</span>
                                             <input
                                                 type="text"
                                                 value={shopDomain}
                                                 onChange={(e) => setShopDomain(e.target.value)}
                                                 placeholder={t('integrations.shopify.shopDomainPlaceholder')}
-                                                className="flex-1 bg-white/10 border border-white/20 rounded-r-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#00ff95] transition-colors"
+                                                className="flex-1 bg-muted/40 border border-border rounded-r-xl px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#00ff95] transition-colors"
                                             />
                                         </div>
-                                        <p className="text-xs text-white/40">{t('integrations.shopify.shopDomainHint')}</p>
+                                        <p className="text-xs text-muted-foreground">{t('integrations.shopify.shopDomainHint')}</p>
                                     </div>
 
                                     {/* ── Primary: OAuth button ── */}
                                     <button
                                         onClick={() => {
                                             if (!channelId || !shopDomain) {
-                                                toast.error('Enter your shop domain first')
+                                                toast.error(t('integrations.shopify.enterDomainFirst'))
                                                 return
                                             }
                                             const domain = shopDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -479,34 +479,34 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                         className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-[#96bf47] text-white font-bold text-sm hover:brightness-90 transition-all disabled:opacity-50"
                                     >
                                         <ShopifyLogo size={20} />
-                                        {isConnected ? 'Reconnect with Shopify' : 'Connect with Shopify'}
+                                        {isConnected ? t('integrations.shopify.reconnectOauth') : t('integrations.shopify.connectOauth')}
                                     </button>
 
                                     {/* ── Advanced: manual token ── */}
                                     <button
                                         onClick={() => setShowManualToken(!showManualToken)}
-                                        className="w-full text-xs text-white/40 hover:text-white/60 transition-colors text-center"
+                                        className="w-full text-xs text-muted-foreground hover:text-foreground/60 transition-colors text-center"
                                     >
-                                        {showManualToken ? '▲ Hide' : '▼ Use Admin API Token manually (advanced)'}
+                                        {showManualToken ? t('integrations.shopify.hideManual') : t('integrations.shopify.showManual')}
                                     </button>
 
                                     {showManualToken && (
-                                        <div className="space-y-4 pt-2 border-t border-white/10">
-                                            <p className="text-xs text-white/40">For legacy Shopify Custom Apps that provide a <code className="font-mono bg-white/10 px-1 rounded">shpat_</code> token directly.</p>
+                                        <div className="space-y-4 pt-2 border-t border-border">
+                                            <p className="text-xs text-muted-foreground">{t('integrations.shopify.manualTokenNote')} <code className="font-mono bg-muted px-1 rounded">shpat_</code></p>
                                             {/* Access Token */}
                                             <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-white/70">{t('integrations.shopify.accessToken')}</label>
+                                                <label className="text-sm font-semibold text-foreground/70">{t('integrations.shopify.accessToken')}</label>
                                                 <div className="relative">
                                                     <input
                                                         type={showToken ? 'text' : 'password'}
                                                         value={accessToken}
                                                         onChange={(e) => setAccessToken(e.target.value)}
                                                         placeholder={t('integrations.shopify.accessTokenPlaceholder')}
-                                                        className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#00ff95] transition-colors font-mono"
+                                                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 pr-10 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#00ff95] transition-colors font-mono"
                                                     />
                                                     <button
                                                         onClick={() => setShowToken(!showToken)}
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                                                     >
                                                         {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                     </button>
@@ -527,7 +527,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                                         </span>
                                                     </div>
                                                     {testResult.ok && (
-                                                        <div className="text-xs text-white/60 space-y-0.5 pl-6">
+                                                        <div className="text-xs text-muted-foreground space-y-0.5 pl-6">
                                                             {testResult.planName && <p>{t('integrations.shopify.shopPlan')}: {testResult.planName}</p>}
                                                             {testResult.currency && <p>{t('integrations.shopify.shopCurrency')}: {testResult.currency}</p>}
                                                             {testResult.email && <p>{testResult.email}</p>}
@@ -543,7 +543,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                                 <button
                                                     onClick={handleTest}
                                                     disabled={testing || !shopDomain || !accessToken}
-                                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/20 text-sm font-medium hover:bg-white/10 transition-colors disabled:opacity-50"
+                                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted/50 transition-colors disabled:opacity-50"
                                                 >
                                                     {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-[#00ff95]" />}
                                                     {testing ? t('integrations.shopify.testing') : t('integrations.shopify.testConnection')}
@@ -574,28 +574,28 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                             </div>
 
                             {/* OAuth setup guide */}
-                            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                            <div className="bg-card border border-border rounded-2xl overflow-hidden">
                                 <button
                                     onClick={() => setShowGuide(!showGuide)}
                                     className="w-full flex items-center justify-between px-6 py-4"
                                 >
                                     <div className="flex items-center gap-2 text-sm font-semibold">
                                         <Info className="w-4 h-4 text-[#00ff95]" />
-                                        How to set up Shopify OAuth app
+                                        {t('integrations.shopify.oauthGuideTitle')}
                                     </div>
-                                    <ChevronRight className={`w-4 h-4 text-white/40 transition-transform ${showGuide ? 'rotate-90' : ''}`} />
+                                    <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${showGuide ? 'rotate-90' : ''}`} />
                                 </button>
                                 {showGuide && (
                                     <div className="px-6 pb-6 space-y-3">
                                         {[
-                                            'Go to partners.shopify.com → Apps → Create app → Start from Dev Dashboard',
-                                            'App URL: https://neeflow.com/ — Scopes: read_products, read_inventory',
-                                            'In Versions → Release the app version',
-                                            'Then paste your store domain above and click "Connect with Shopify"',
+                                            t('integrations.shopify.oauthStep1'),
+                                            t('integrations.shopify.oauthStep2'),
+                                            t('integrations.shopify.oauthStep3'),
+                                            t('integrations.shopify.oauthStep4'),
                                         ].map((step, i) => (
                                             <div key={i} className="flex gap-3">
                                                 <div className="w-6 h-6 rounded-full bg-[#00ff95]/20 text-[#00ff95] text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">{i + 1}</div>
-                                                <p className="text-sm text-white/70">{step}</p>
+                                                <p className="text-sm text-foreground/70">{step}</p>
                                             </div>
                                         ))}
                                         <a
@@ -605,7 +605,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                             className="inline-flex items-center gap-1.5 text-xs text-[#00ff95] hover:underline mt-2"
                                         >
                                             <ExternalLink className="w-3 h-3" />
-                                            Open Shopify Partners
+                                            {t('integrations.shopify.openPartners')}
                                         </a>
                                     </div>
                                 )}
@@ -615,8 +615,8 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                         {/* ── Right: Sync Preferences + Stats ────────────────── */}
                         <div className="lg:col-span-7 space-y-6">
                             {/* Sync Preferences */}
-                            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                                <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10">
+                            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                                <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
                                     <div className="w-7 h-7 rounded-full bg-[#00ff95]/20 text-[#00ff95] flex items-center justify-center text-sm font-bold">2</div>
                                     <h2 className="font-bold">{t('integrations.shopify.syncPreferences')}</h2>
                                 </div>
@@ -644,10 +644,10 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                             onChange: setSyncImages,
                                         },
                                     ].map((item) => (
-                                        <div key={item.key} className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-start justify-between gap-3">
+                                        <div key={item.key} className="p-4 rounded-xl bg-muted/40 border border-border flex items-start justify-between gap-3">
                                             <div>
                                                 <p className="text-sm font-semibold">{item.label}</p>
-                                                <p className="text-xs text-white/50 mt-1">{item.desc}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">{item.desc}</p>
                                             </div>
                                             <Toggle checked={item.value} onChange={item.onChange} />
                                         </div>
@@ -657,19 +657,19 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
 
                             {/* Stats / Status card */}
                             {isConnected && config && (
-                                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                                    <h3 className="text-sm font-bold text-white/70 uppercase tracking-wider mb-4">{t('integrations.shopify.shopInfo')}</h3>
+                                <div className="bg-card border border-border rounded-2xl p-6">
+                                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">{t('integrations.shopify.shopInfo')}</h3>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="p-4 bg-[#00ff95]/5 border border-[#00ff95]/20 rounded-xl">
-                                            <p className="text-xs text-white/50">{t('integrations.shopify.productsSynced').replace('{count}', '')}</p>
+                                            <p className="text-xs text-muted-foreground">{t('integrations.shopify.productsSynced').replace('{count}', '')}</p>
                                             <p className="text-2xl font-black text-[#00ff95] mt-1">{config.productCount.toLocaleString()}</p>
                                         </div>
-                                        <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
-                                            <p className="text-xs text-white/50">Last Sync</p>
+                                        <div className="p-4 bg-muted/40 border border-border rounded-xl">
+                                            <p className="text-xs text-muted-foreground">{t('integrations.shopify.lastSync')}</p>
                                             <p className="text-sm font-bold mt-1">{relativeTime(config.lastSyncedAt)}</p>
                                             <div className="flex items-center gap-1 mt-1 text-[10px] text-[#00ff95]">
                                                 <RefreshCw className="w-3 h-3" />
-                                                Manual sync
+                                                {t('integrations.shopify.manualSync')}
                                             </div>
                                         </div>
                                     </div>
@@ -686,13 +686,13 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
 
                             {/* Placeholder when not connected */}
                             {!isConnected && (
-                                <div className="bg-white/5 border border-dashed border-white/20 rounded-2xl p-10 flex flex-col items-center justify-center text-center gap-4">
-                                    <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center">
-                                        <Store className="w-8 h-8 text-white/30" />
+                                <div className="bg-card border border-dashed border-border rounded-2xl p-10 flex flex-col items-center justify-center text-center gap-4">
+                                    <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+                                        <Store className="w-8 h-8 text-muted-foreground/40" />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-white/60">Your store will appear here</p>
-                                        <p className="text-sm text-white/30 mt-1">Connect your Shopify store to get started</p>
+                                        <p className="font-bold text-muted-foreground">{t('integrations.shopify.storePlaceholder')}</p>
+                                        <p className="text-sm text-muted-foreground/50 mt-1">{t('integrations.shopify.storePlaceholderSub')}</p>
                                     </div>
                                 </div>
                             )}
@@ -705,22 +705,22 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                         <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
                             <div className="flex items-center gap-2 flex-1 max-w-lg">
                                 <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <input
                                         type="text"
                                         value={productSearch}
                                         onChange={(e) => setProductSearch(e.target.value)}
                                         placeholder={t('integrations.shopify.searchProducts')}
-                                        className="w-full bg-white/10 border border-white/20 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#00ff95] transition-colors"
+                                        className="w-full bg-muted/40 border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#00ff95] transition-colors"
                                     />
                                 </div>
                             </div>
-                            <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+                            <div className="flex gap-1 p-1 bg-muted/40 rounded-xl">
                                 {(['all', 'in_stock', 'out_of_stock'] as const).map((f) => (
                                     <button
                                         key={f}
                                         onClick={() => { setProductFilter(f); setProductPage(1) }}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${productFilter === f ? 'bg-[#00ff95] text-black' : 'text-white/60 hover:text-white'}`}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${productFilter === f ? 'bg-[#00ff95] text-black' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         {f === 'all' ? t('integrations.shopify.filterAll')
                                             : f === 'in_stock' ? t('integrations.shopify.filterInStock')
@@ -731,17 +731,17 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                         </div>
 
                         {/* Stats bar + Bulk toolbar */}
-                        <div className="flex items-center justify-between text-xs text-white/40">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <div className="flex items-center gap-3">
                                 <button
                                     type="button"
                                     onClick={toggleSelectAll}
-                                    className="flex items-center gap-1.5 hover:text-white transition-colors"
+                                    className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                                 >
                                     {selectedProductIds.size === products.length && products.length > 0
                                         ? <SquareCheck className="w-3.5 h-3.5 text-[#00ff95]" />
                                         : <Square className="w-3.5 h-3.5" />}
-                                    <span className="text-[11px]">{productTotal} products{selectedProductIds.size > 0 ? ` · ${selectedProductIds.size} selected` : ''}</span>
+                                    <span className="text-[11px]">{productTotal} {t('integrations.shopify.filterAll').toLowerCase()}{selectedProductIds.size > 0 ? ` · ${selectedProductIds.size} selected` : ''}</span>
                                 </button>
                             </div>
                             <div className="flex items-center gap-2">
@@ -752,7 +752,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                         className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#00ff95] text-black text-[11px] font-bold hover:brightness-90 transition-all"
                                     >
                                         <Sparkles className="w-3 h-3" />
-                                        AI Post ({selectedProductIds.size})
+                                        {t('integrations.shopify.bulkAiPost').replace('{count}', String(selectedProductIds.size))}
                                     </button>
                                 )}
                                 {config?.lastSyncedAt && !selectedProductIds.size && <span>{relativeTime(config.lastSyncedAt)}</span>}
@@ -766,8 +766,8 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                             </div>
                         ) : products.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
-                                <Package className="w-12 h-12 text-white/20" />
-                                <p className="text-sm text-white/40">
+                                <Package className="w-12 h-12 text-muted-foreground/30" />
+                                <p className="text-sm text-muted-foreground">
                                     {productSearch ? t('integrations.shopify.noProductsSearch') : t('integrations.shopify.noProducts')}
                                 </p>
                                 {!productSearch && !isConnected && (
@@ -797,11 +797,11 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                 <button
                                     onClick={() => setProductPage(p => Math.max(1, p - 1))}
                                     disabled={productPage <= 1}
-                                    className="p-2 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 transition-colors"
+                                    className="p-2 rounded-lg bg-muted/40 hover:bg-muted disabled:opacity-30 transition-colors"
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
-                                <span className="text-sm text-white/60">
+                                <span className="text-sm text-muted-foreground">
                                     {t('integrations.shopify.page')
                                         .replace('{page}', String(productPage))
                                         .replace('{total}', String(productTotalPages))}
@@ -809,7 +809,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                 <button
                                     onClick={() => setProductPage(p => Math.min(productTotalPages, p + 1))}
                                     disabled={productPage >= productTotalPages}
-                                    className="p-2 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 transition-colors"
+                                    className="p-2 rounded-lg bg-muted/40 hover:bg-muted disabled:opacity-30 transition-colors"
                                 >
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
@@ -849,10 +849,10 @@ function ProductCard({
     const hasImage = product.images.length > 0
 
     return (
-        <div className={`bg-white/5 border rounded-2xl overflow-hidden group transition-all ${selected ? 'border-[#00ff95] shadow-[0_0_0_1px_#00ff95]' : 'border-white/10 hover:border-[#00ff95]/40'
+        <div className={`bg-card border rounded-2xl overflow-hidden group transition-all ${selected ? 'border-[#00ff95] shadow-[0_0_0_1px_#00ff95]' : 'border-border hover:border-[#00ff95]/40'
             }`}>
             {/* Image */}
-            <div className="aspect-square relative overflow-hidden bg-white/10">
+            <div className="aspect-square relative overflow-hidden bg-muted/60">
                 {hasImage ? (
                     <Image
                         src={product.images[0]}
@@ -864,7 +864,7 @@ function ProductCard({
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="w-10 h-10 text-white/20" />
+                        <ImageIcon className="w-10 h-10 text-muted-foreground/30" />
                     </div>
                 )}
                 {/* Stock badge */}
@@ -880,7 +880,7 @@ function ProductCard({
                 >
                     {selected
                         ? <Check className="h-3 w-3 text-black" />
-                        : <Square className="h-3 w-3 text-white/60" />}
+                        : <Square className="h-3 w-3 text-muted-foreground" />}
                 </button>
             </div>
 
@@ -889,7 +889,7 @@ function ProductCard({
                 <div>
                     <h5 className="font-bold text-sm truncate" title={product.name}>{product.name}</h5>
                     <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs text-white/40 truncate">{product.category || '—'}</span>
+                        <span className="text-xs text-muted-foreground truncate">{product.category || '—'}</span>
                         <span className="text-sm font-bold text-[#00ff95] shrink-0 ml-2">
                             {product.price ? `$${product.price.toFixed(2)}` : '—'}
                         </span>
@@ -899,8 +899,10 @@ function ProductCard({
                 {/* Dot indicator */}
                 <div className="flex items-center gap-1.5">
                     <div className={`h-1.5 w-1.5 rounded-full ${inStock ? 'bg-[#00ff95]' : 'bg-red-500'}`} />
-                    <span className="text-[11px] text-white/40">
-                        {product.images.length} image{product.images.length !== 1 ? 's' : ''}
+                    <span className="text-[11px] text-muted-foreground">
+                        {product.images.length > 1
+                            ? t('integrations.shopify.imageCountPlural').replace('{count}', String(product.images.length))
+                            : t('integrations.shopify.imageCount').replace('{count}', String(product.images.length))}
                     </span>
                 </div>
 

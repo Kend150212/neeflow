@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useBulkGen } from '@/lib/bulk-gen-context'
+import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
 import {
     Sparkles, X, Loader2, Zap, ExternalLink, Check, Calendar, Clock,
@@ -142,6 +143,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
     const router = useRouter()
     const { activeChannelId } = useWorkspace()
     const bulkGen = useBulkGen()
+    const t = useTranslation()
 
     // Channel / platforms
     const [availablePlatforms, setAvailablePlatforms] = useState<string[]>([])
@@ -281,8 +283,8 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
     }
 
     async function handleCreate() {
-        if (!activeChannelId) { toast.error('No channel selected'); return }
-        if (selectedPlatforms.size === 0) { toast.error('Select at least one platform'); return }
+        if (!activeChannelId) { toast.error(t('integrations.shopify.modal.noChannelError')); return }
+        if (selectedPlatforms.size === 0) { toast.error(t('integrations.shopify.modal.noPlatformError')); return }
 
         setStep('generating'); setLocalDone(0)
 
@@ -367,13 +369,13 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
 
             if (bulkGen.isStopped()) {
                 bulkGen.stop()
-                toast.info(`Stopped. Created ${created}/${products.length} posts.`)
+                toast.info(t('integrations.shopify.modal.stoppedToast').replace('{created}', String(created)).replace('{total}', String(products.length)))
             } else {
                 bulkGen.finish()
-                toast.success(`✅ Created ${created} posts from Shopify products!`, { duration: 5000 })
+                toast.success(t('integrations.shopify.modal.doneToast').replace('{created}', String(created)), { duration: 5000 })
             }
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Generation failed')
+            toast.error(err instanceof Error ? err.message : t('integrations.shopify.modal.errorToast'))
             setStep('config')
         }
     }
@@ -385,7 +387,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
     ]
     const selProvider = allProviders.find(p => `${p.source}:${p.provider}` === imageProvider)
     const selModel = availableImageModels.find(m => m.id === imageModel)
-    const quotaLabel = imageQuota.limit > 0 ? `${imageQuota.used}/${imageQuota.limit} used` : null
+    const quotaLabel = imageQuota.limit > 0 ? t('integrations.shopify.modal.quotaUsed').replace('{used}', String(imageQuota.used)).replace('{limit}', String(imageQuota.limit)) : null
     const anyProductHasImages = products.some(p => p.images.length > 0)
     const schedulePreview = (!enableSchedule || isSingle) ? null
         : distributeSchedule(scheduleStart, scheduleEnd, products.length, channelTimezone).slice(0, 3)
@@ -397,16 +399,18 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                 <DialogHeader className="pb-1">
                     <DialogTitle className="flex items-center gap-2 text-base font-semibold">
                         <ShoppingBag className="h-4 w-4 text-[#96bf47]" />
-                        AI Post Creator
+                        {t('integrations.shopify.modal.title')}
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
-                        Generate from <strong>{products.length} product{products.length > 1 ? 's' : ''}</strong>
+                        {products.length > 1
+                            ? t('integrations.shopify.modal.generateFromPlural').replace('{count}', String(products.length))
+                            : t('integrations.shopify.modal.generateFrom').replace('{count}', String(products.length))}
                         {isSingle && ` — ${products[0].name}`}
-                        {isSingle && ' → Compose Editor'}
+                        {isSingle && ` ${t('integrations.shopify.modal.toCompose')}`}
                     </DialogDescription>
                     <div className="flex items-center gap-1.5 mt-1">
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                            <Sparkles className="h-2.5 w-2.5" /> Using Channel KB & Brand Voice
+                            <Sparkles className="h-2.5 w-2.5" /> {t('integrations.shopify.modal.kbBadge')}
                         </span>
                     </div>
                 </DialogHeader>
@@ -417,16 +421,16 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                         {isSingle && (
                             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
                                 <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                                Sẽ mở Compose Editor với nội dung đã điền sẵn
+                                {t('integrations.shopify.modal.willOpenCompose')}
                             </div>
                         )}
 
                         {/* PLATFORMS */}
                         <div className="space-y-2.5">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Platforms</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.platforms')}</p>
                             {availablePlatforms.length === 0 ? (
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading platforms...
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('integrations.shopify.modal.loadingPlatforms')}
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-3 gap-2">
@@ -447,12 +451,12 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                     ))}
                                 </div>
                             )}
-                            <p className="text-[10px] text-muted-foreground">{selectedPlatforms.size} selected — AI will generate content for each</p>
+                            <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.selectedCount').replace('{count}', String(selectedPlatforms.size))}</p>
                         </div>
 
                         {/* TONE */}
                         <div className="space-y-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tone</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.tone')}</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {TONES.map(t => (
                                     <button key={t.value} type="button" onClick={() => setTone(t.value)}
@@ -481,7 +485,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Import Product Images</p>
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.importImages')}</p>
                                     </div>
                                     <button type="button" onClick={() => setEnableImport(v => !v)}
                                         className={cn('relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
@@ -502,9 +506,9 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                 {product.images.length > 1 && (
                                                     <div className="flex gap-2 mt-1 ml-1">
                                                         <button type="button" className="text-[10px] text-primary hover:underline"
-                                                            onClick={() => selectAllImages(product.id, product.images)}>Select all</button>
+                                                            onClick={() => selectAllImages(product.id, product.images)}>{t('integrations.shopify.modal.selectAll')}</button>
                                                         <button type="button" className="text-[10px] text-muted-foreground hover:underline"
-                                                            onClick={() => clearAllImages(product.id)}>Clear</button>
+                                                            onClick={() => clearAllImages(product.id)}>{t('integrations.shopify.modal.clear')}</button>
                                                     </div>
                                                 )}
                                             </div>
@@ -519,7 +523,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">AI Image</p>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.aiImage')}</p>
                                     {quotaLabel && (
                                         <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium',
                                             imageQuota.used >= imageQuota.limit ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400')}>
@@ -542,14 +546,14 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                         <div className="relative flex-1">
                                             <button type="button" onClick={() => { setProviderDropOpen(v => !v); setModelDropOpen(false) }}
                                                 className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/60 bg-background text-xs hover:border-border transition-colors">
-                                                <span className="truncate font-medium">{selProvider ? selProvider.name || selProvider.provider : allProviders.length === 0 ? 'No providers' : 'Select provider'}</span>
+                                                <span className="truncate font-medium">{selProvider ? selProvider.name || selProvider.provider : allProviders.length === 0 ? t('integrations.shopify.modal.noProvider') : t('integrations.shopify.modal.selectProvider')}</span>
                                                 <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
                                             </button>
                                             {providerDropOpen && allProviders.length > 0 && (
                                                 <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-xl border border-border/60 bg-popover shadow-xl overflow-hidden">
                                                     <div className="py-1">
                                                         {byokProviders.length > 0 && <>
-                                                            <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys</div>
+                                                            <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground">📌 {t('integrations.shopify.modal.yourKeys')}</div>
                                                             {byokProviders.map(p => (
                                                                 <button key={p.provider} type="button" onClick={() => { setImageProvider(`byok:${p.provider}`); setProviderDropOpen(false); fetchModels(`byok:${p.provider}`) }}
                                                                     className={cn('w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/50', imageProvider === `byok:${p.provider}` ? 'text-primary font-medium' : 'text-foreground')}>
@@ -558,7 +562,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                             ))}
                                                         </>}
                                                         {planProviders.length > 0 && <>
-                                                            <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground">⚡ Plan</div>
+                                                            <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground">⚡ {t('integrations.shopify.modal.planKeys')}</div>
                                                             {planProviders.map(p => (
                                                                 <button key={p.provider} type="button" onClick={() => { setImageProvider(`plan:${p.provider}`); setProviderDropOpen(false); fetchModels(`plan:${p.provider}`) }}
                                                                     className={cn('w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/50', imageProvider === `plan:${p.provider}` ? 'text-primary font-medium' : 'text-foreground')}>
@@ -573,7 +577,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                         <div className="relative flex-1">
                                             <button type="button" disabled={loadingModels} onClick={() => { setModelDropOpen(v => !v); setProviderDropOpen(false) }}
                                                 className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/60 bg-background text-xs hover:border-border transition-colors">
-                                                <span className="truncate font-medium">{loadingModels ? 'Loading…' : selModel ? selModel.name : 'Select model'}</span>
+                                                <span className="truncate font-medium">{loadingModels ? t('integrations.shopify.modal.loadingModel') : selModel ? selModel.name : t('integrations.shopify.modal.selectModel')}</span>
                                                 {loadingModels ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                                             </button>
                                             {modelDropOpen && availableImageModels.length > 0 && (
@@ -593,7 +597,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
 
                                     {/* Aspect */}
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Aspect Ratio</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('integrations.shopify.modal.aspectRatio')}</p>
                                         <div className="flex gap-1.5">
                                             {ASPECT_RATIOS.map(ar => (
                                                 <button key={ar.label} type="button" onClick={() => setSelectedAspect(ar.label)}
@@ -608,9 +612,9 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
 
                                     {/* Prompt */}
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Image Prompt (optional)</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('integrations.shopify.modal.imagePromptLabel')}</p>
                                         <textarea value={imagePrompt} onChange={e => setImagePrompt(e.target.value)}
-                                            placeholder="Leave empty to auto-generate from product content..."
+                                            placeholder={t('integrations.shopify.modal.imagePromptPlaceholder')}
                                             rows={2} className="w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-xs resize-none focus:outline-none focus:border-primary placeholder:text-muted-foreground/60" />
                                     </div>
 
@@ -620,11 +624,11 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                             <input type="checkbox" checked={useProductImageAsRef} onChange={e => setUseProductImageAsRef(e.target.checked)}
                                                 className="rounded border-border/60 text-primary accent-primary" />
                                             <span className="text-[11px] text-foreground">
-                                                📦 Use product image as AI reference <span className="text-muted-foreground">(img2img style)</span>
+                                                {t('integrations.shopify.modal.useProductRef')}
                                             </span>
                                         </label>
                                     )}
-                                    <p className="text-[10px] text-muted-foreground">Image generates automatically per post · prompt is optional</p>
+                                    <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.autoGenNote')}</p>
                                 </div>
                             )}
                         </div>
@@ -635,7 +639,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Auto Schedule</p>
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.autoSchedule')}</p>
                                     </div>
                                     <button type="button" onClick={() => setEnableSchedule(v => !v)}
                                         className={cn('relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
@@ -646,27 +650,30 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                 </div>
                                 {enableSchedule && (
                                     <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-                                        <p className="text-[10px] text-muted-foreground">AI phân bổ {products.length} bài đều trong khoảng thời gian{channelTimezone !== 'UTC' && <span className="ml-1 text-primary/70">· {channelTimezone}</span>}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {t('integrations.shopify.modal.scheduleDesc').replace('{count}', String(products.length))}
+                                            {channelTimezone !== 'UTC' && <span className="ml-1 text-primary/70">· {channelTimezone}</span>}
+                                        </p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Từ ngày</label>
+                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('integrations.shopify.modal.fromDate')}</label>
                                                 <input type="date" value={scheduleStart} min={today} onChange={e => setScheduleStart(e.target.value)}
                                                     className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Đến ngày</label>
+                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('integrations.shopify.modal.toDate')}</label>
                                                 <input type="date" value={scheduleEnd} min={scheduleStart || today} onChange={e => setScheduleEnd(e.target.value)}
                                                     className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
                                             </div>
                                         </div>
                                         {schedulePreview && (
                                             <div className="flex flex-wrap gap-1">
-                                                {schedulePreview.map((t, i) => (
+                                                {schedulePreview.map((ts, i) => (
                                                     <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
-                                                        <Clock className="h-2.5 w-2.5" /> Bài {i + 1}: {t}
+                                                        <Clock className="h-2.5 w-2.5" /> {t('integrations.shopify.modal.postN').replace('{n}', String(i + 1))}: {ts}
                                                     </span>
                                                 ))}
-                                                {products.length > 3 && <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">+{products.length - 3} bài nữa...</span>}
+                                                {products.length > 3 && <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">{t('integrations.shopify.modal.morePosts').replace('{n}', String(products.length - 3))}</span>}
                                             </div>
                                         )}
                                     </div>
@@ -680,7 +687,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                 <svg className="h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Approval</p>
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.approval')}</p>
                             </div>
                             {approvalMode === 'none' && (
                                 <div className="flex items-start gap-2.5 rounded-xl border border-dashed border-border/60 bg-muted/30 px-3 py-2.5">
@@ -688,11 +695,11 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                                     </svg>
                                     <div className="min-w-0">
-                                        <p className="text-[11px] text-muted-foreground leading-relaxed">Enable <strong>Approval Mode</strong> on this channel to request approval for bulk posts.</p>
+                                        <p className="text-[11px] text-muted-foreground leading-relaxed">{t('integrations.shopify.modal.enableApproval')}</p>
                                         {channelId4Settings && (
                                             <a href={`/dashboard/channels/${channelId4Settings}`} target="_blank" rel="noopener noreferrer"
                                                 className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-primary hover:underline">
-                                                Open Channel Settings
+                                                {t('integrations.shopify.modal.openChannelSettings')}
                                                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                             </a>
                                         )}
@@ -702,8 +709,8 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                             {approvalMode === 'optional' && (
                                 <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 px-3 py-2.5">
                                     <div className="space-y-0.5">
-                                        <p className="text-xs font-medium">Request Approval</p>
-                                        <p className="text-[10px] text-muted-foreground">Posts will be sent to approvers before publishing</p>
+                                        <p className="text-xs font-medium">{t('integrations.shopify.modal.requestApproval')}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.requestApprovalDesc')}</p>
                                     </div>
                                     <button type="button" onClick={() => setRequestApproval(v => !v)}
                                         className={cn('relative inline-flex h-5 w-9 items-center rounded-full border transition-colors shrink-0',
@@ -716,8 +723,8 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                             {approvalMode === 'required' && (
                                 <div className="flex items-center justify-between rounded-xl border border-orange-500/30 bg-orange-500/5 px-3 py-2.5">
                                     <div className="space-y-0.5">
-                                        <p className="text-xs font-medium text-orange-400">Approval Required</p>
-                                        <p className="text-[10px] text-muted-foreground">All posts must be approved before publishing</p>
+                                        <p className="text-xs font-medium text-orange-400">{t('integrations.shopify.modal.approvalRequired')}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.approvalRequiredDesc')}</p>
                                     </div>
                                     <div className="relative inline-flex h-5 w-9 items-center rounded-full bg-primary border-primary border opacity-70 cursor-not-allowed shrink-0">
                                         <span className="inline-block h-3.5 w-3.5 translate-x-[17px] rounded-full bg-white shadow" />
@@ -729,11 +736,11 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                         {/* ACTIONS */}
                         <div className="flex gap-2 pt-1">
                             <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>
-                                <X className="h-3.5 w-3.5 mr-1" /> Cancel
+                                <X className="h-3.5 w-3.5 mr-1" /> {t('integrations.shopify.modal.cancel')}
                             </Button>
                             <Button size="sm" className="flex-1 font-semibold" onClick={handleCreate} disabled={selectedPlatforms.size === 0}>
                                 <Zap className="h-3.5 w-3.5 mr-1" />
-                                {isSingle ? 'Generate & Edit' : `Create ${products.length} Drafts`}
+                                {isSingle ? t('integrations.shopify.modal.generateAndEdit') : t('integrations.shopify.modal.createDrafts').replace('{count}', String(products.length))}
                             </Button>
                         </div>
                     </div>
@@ -749,7 +756,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                             <Loader2 className="absolute inset-0 m-auto h-14 w-14 text-primary/30 animate-spin" />
                         </div>
                         <div className="text-center space-y-1">
-                            <p className="font-semibold text-sm">Đang tạo nội dung…</p>
+                            <p className="font-semibold text-sm">{t('integrations.shopify.modal.generating')}</p>
                             <p className="text-xs text-muted-foreground">{[...selectedPlatforms].map(p => PLATFORM_LABELS[p] || p).join(', ')}</p>
                         </div>
                     </div>
@@ -767,16 +774,16 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                         </div>
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
                             <Zap className="h-3 w-3 text-primary" />
-                            <span className="text-xs font-bold text-primary">{products.length} posts {pct}%</span>
+                            <span className="text-xs font-bold text-primary">{t('integrations.shopify.modal.postsProgress').replace('{count}', String(products.length)).replace('{pct}', String(pct))}</span>
                         </div>
                         <div className="space-y-1.5 px-2">
-                            <p className="font-bold text-base">Bulk Generation Started!</p>
+                            <p className="font-bold text-base">{t('integrations.shopify.modal.bulkStarted')}</p>
                             <p className="text-xs text-muted-foreground leading-relaxed">
-                                Creating {products.length} posts in the background. You can close this and track progress in the header.
+                                {t('integrations.shopify.modal.bulkDesc').replace('{count}', String(products.length))}
                             </p>
                         </div>
                         <Button variant="outline" size="sm" className="w-full mt-1" onClick={onClose}>
-                            <X className="h-3.5 w-3.5 mr-1" /> Close & Continue
+                            <X className="h-3.5 w-3.5 mr-1" /> {t('integrations.shopify.modal.closeAndContinue')}
                         </Button>
                     </div>
                 )}
