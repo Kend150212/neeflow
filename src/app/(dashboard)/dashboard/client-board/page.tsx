@@ -503,13 +503,13 @@ export default function SmartFlowPage() {
                         className="flex-1 overflow-x-auto select-none"
                         style={{ cursor: 'grab' }}
                     >
-                        <div className="flex gap-4 h-full min-h-[calc(100vh-220px)] pb-4" style={{ minWidth: `${(activeColumns.length + (failedJobs.length > 0 ? 1 : 0)) * 300}px` }}>
+                        <div className="flex gap-4 h-full min-h-[calc(100vh-220px)] pb-4">
 
                             {/* Status columns */}
                             {activeColumns.map(col => {
                                 const colJobs = jobs.filter(col.filter)
                                 return (
-                                    <div key={col.key} className="flex flex-col w-72 shrink-0">
+                                    <div key={col.key} className="flex flex-col flex-1 min-w-56">
                                         <div className="flex items-center justify-between px-1 mb-3">
                                             <span className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest ${col.colorText}`}>
                                                 <span className={`w-2 h-2 rounded-full ${col.colorDot}`} />
@@ -548,7 +548,7 @@ export default function SmartFlowPage() {
 
                             {/* Failed column */}
                             {failedJobs.length > 0 && (
-                                <div className="flex flex-col w-72 shrink-0">
+                                <div className="flex flex-col flex-1 min-w-56">
                                     <div className="flex items-center justify-between px-1 mb-3">
                                         <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-red-400">
                                             <span className="w-2 h-2 rounded-full bg-red-500" />
