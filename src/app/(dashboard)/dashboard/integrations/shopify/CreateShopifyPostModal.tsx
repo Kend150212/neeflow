@@ -50,10 +50,27 @@ const ASPECT_RATIOS = [
     { label: '9:16', w: 1024, h: 1792 }, { label: '4:3', w: 1024, h: 768 },
     { label: '3:4', w: 768, h: 1024 }, { label: '4:5', w: 819, h: 1024 },
 ]
-const TONES = [
-    { value: 'viral', label: '🚀 Viral' }, { value: 'promotional', label: '🛍️ Promo' },
-    { value: 'casual', label: '😊 Casual' }, { value: 'professional', label: '💼 Pro' },
-    { value: 'storytelling', label: '📖 Story' },
+const TONES: { value: string; label: string; icon: React.ReactNode }[] = [
+    {
+        value: 'viral', label: 'Viral',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+    },
+    {
+        value: 'promotional', label: 'Promo',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+    },
+    {
+        value: 'casual', label: 'Casual',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 13s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
+    },
+    {
+        value: 'professional', label: 'Pro',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" /><polyline points="16 2 12 6 8 2" /></svg>
+    },
+    {
+        value: 'storytelling', label: 'Story',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+    },
 ]
 const PLATFORM_LABELS: Record<string, string> = {
     facebook: 'Facebook', instagram: 'Instagram', twitter: 'X / Twitter',
@@ -87,6 +104,10 @@ function PlatformIcon({ platform, size = 28 }: { platform: string; size?: number
         linkedin: <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#0A66C2" /><path d="M7.5 9H9.5V17H7.5V9ZM8.5 8C7.9 8 7.5 7.6 7.5 7C7.5 6.4 7.9 6 8.5 6C9.1 6 9.5 6.4 9.5 7C9.5 7.6 9.1 8 8.5 8ZM11 9H12.9V10C13.3 9.4 14 9 15 9C16.9 9 17.5 10.2 17.5 12V17H15.5V12.5C15.5 11.7 15.3 11 14.5 11C13.7 11 13 11.6 13 12.5V17H11V9Z" fill="white" /></svg>,
         youtube: <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#FF0000" /><path d="M10.3 14.4V9.6L15.3 12L10.3 14.4Z" fill="white" /></svg>,
         twitter: <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#000" /><path d="M13.96 10.68L18.52 5.5H17.42L13.47 9.99L10.3 5.5H6.5L11.27 12.33L6.5 17.74H7.6L11.78 13.01L15.14 17.74H18.94L13.96 10.68Z" fill="white" /></svg>,
+        x: <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#000" /><path d="M13.96 10.68L18.52 5.5H17.42L13.47 9.99L10.3 5.5H6.5L11.27 12.33L6.5 17.74H7.6L11.78 13.01L15.14 17.74H18.94L13.96 10.68Z" fill="white" /></svg>,
+        pinterest: <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#E60023" /><path d="M12 4C7.58 4 4 7.58 4 12c0 3.4 2.07 6.32 5.04 7.56-.07-.65-.13-1.65.03-2.36.14-.64.92-3.88.92-3.88s-.23-.47-.23-1.16c0-1.09.63-1.9 1.41-1.9.67 0 .99.5.99 1.1 0 .67-.43 1.68-.65 2.6-.18.78.39 1.41 1.15 1.41 1.38 0 2.44-1.45 2.44-3.55 0-1.86-1.33-3.15-3.24-3.15-2.21 0-3.5 1.65-3.5 3.36 0 .66.26 1.37.57 1.76a.23.23 0 0 1 .05.22c-.06.24-.19.78-.21.89-.03.14-.11.17-.25.1C7.24 14.05 6.5 12.6 6.5 11.3c0-2.52 1.83-4.84 5.28-4.84 2.77 0 4.92 1.97 4.92 4.61 0 2.75-1.73 4.96-4.14 4.96-.81 0-1.57-.42-1.83-.91l-.5 1.86c-.18.69-.67 1.56-.99 2.08.75.23 1.54.35 2.37.35 4.42 0 8-3.58 8-8s-3.58-8-8-8z" fill="white" /></svg>,
+        threads: <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#101010" /><path d="M16.27 11.43c-.1-.05-.2-.09-.31-.13-.18-1.85-1.12-2.9-2.83-2.92h-.02c-1.02 0-1.87.43-2.39 1.2l.95.65c.39-.58.99-.71 1.44-.71h.01c.56 0 .97.17 1.25.49.2.24.33.56.39.97a6.73 6.73 0 0 0-1.55-.06c-1.55.09-2.55.96-2.49 2.17.03.62.34 1.15.88 1.49.46.29 1.05.43 1.67.4.81-.04 1.45-.36 1.9-.93.34-.43.55-.99.63-1.68.38.23.66.54.81.91.26.66.28 1.73-.63 2.63-.79.79-1.75 1.13-3.19 1.14-1.6-.01-2.81-.52-3.6-1.52-.73-.92-1.11-2.24-1.12-3.93.01-1.69.39-3.01 1.12-3.93.79-1 2-1.51 3.6-1.52 1.61.01 2.73.54 3.43 1.61l.97-.63C15.8 7.55 14.4 7 12.57 7c-1.95.01-3.47.66-4.5 1.93C7.11 10.05 6.58 11.72 6.57 14c.01 2.28.54 3.95 1.5 5.07 1.03 1.27 2.55 1.92 4.5 1.93 1.62-.01 2.9-.45 3.89-1.43 1.19-1.17 1.17-2.67.82-3.59-.25-.64-.72-1.16-1.31-1.55h-.2z" fill="white" /></svg>,
+        bluesky: <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#0085FF" /><path d="M12 9.5C10.67 7.5 7 5.5 5 7.5c-2.5 2.5.5 7 3.5 8.5C10 17 11 16 12 16s2 1 3.5-.5c3-1.5 6-6 3.5-8.5-2-2-5 0-7 2z" fill="white" /></svg>,
     }
     return icons[platform] ?? (
         <div style={{ width: size, height: size }} className="rounded-md bg-muted flex items-center justify-center text-[10px] uppercase font-bold text-muted-foreground">
@@ -155,7 +176,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
 
     // Content
     const [tone, setTone] = useState('viral')
-    const [language, setLanguage] = useState('vi')
+    const [language, setLanguage] = useState('vi')  // auto-set from channel
     const [step, setStep] = useState<'config' | 'generating' | 'starting'>('config')
     const [localDone, setLocalDone] = useState(0)
 
@@ -177,6 +198,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
     const [providerDropOpen, setProviderDropOpen] = useState(false)
     const [modelDropOpen, setModelDropOpen] = useState(false)
     const [useProductImageAsRef, setUseProductImageAsRef] = useState(false)
+    const [refImageUrl, setRefImageUrl] = useState<string | null>(null)  // selected single ref image
 
     // Schedule
     const [enableSchedule, setEnableSchedule] = useState(false)
@@ -213,6 +235,8 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                 if (ch?.requireApproval) setApprovalMode(ch.requireApproval as 'none' | 'optional' | 'required')
                 if (ch?.id) setChannelId4Settings(ch.id)
                 if (ch?.requireApproval === 'required') setRequestApproval(true)
+                // Auto-set language from channel setting
+                if (ch?.language) setLanguage(ch.language)
             }).catch(() => {
                 setAvailablePlatforms(['facebook', 'instagram'])
                 setSelectedPlatforms(new Set(['facebook', 'instagram']))
@@ -309,7 +333,8 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
             if (isSingle) {
                 const product = products[0]
                 const importUrls = enableImport ? (selectedImagesMap[product.id] || []) : []
-                const refUrl = (useProductImageAsRef && enableAiImage && product.images.length > 0) ? product.images[0] : undefined
+                const refUrl = (useProductImageAsRef && enableAiImage && refImageUrl) ? refImageUrl
+                    : (useProductImageAsRef && enableAiImage && product.images.length > 0) ? product.images[0] : undefined
 
                 const payload = {
                     channelId: activeChannelId,
@@ -345,7 +370,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                 if (bulkGen.isStopped()) break
                 const product = products[i]
                 const importUrls = enableImport ? (selectedImagesMap[product.id] || []) : []
-                const refUrl = (useProductImageAsRef && enableAiImage && product.images.length > 0) ? product.images[0] : undefined
+                const refUrl = (useProductImageAsRef && enableAiImage) ? (refImageUrl || (product.images[0] ?? undefined)) : undefined
                 try {
                     const res = await fetch('/api/posts/generate-from-shopify', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -458,26 +483,18 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                         <div className="space-y-2">
                             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.tone')}</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {TONES.map(t => (
-                                    <button key={t.value} type="button" onClick={() => setTone(t.value)}
-                                        className={cn('px-3 py-1.5 rounded-full text-xs border transition-all',
-                                            tone === t.value ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:text-foreground')}>
-                                        {t.label}
+                                {TONES.map(tone_ => (
+                                    <button key={tone_.value} type="button" onClick={() => setTone(tone_.value)}
+                                        className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all',
+                                            tone === tone_.value ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:text-foreground')}>
+                                        {tone_.icon}
+                                        {tone_.label}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        {/* LANGUAGE */}
-                        <div className="grid grid-cols-2 gap-2">
-                            {[{ value: 'vi', label: '🇻🇳 Tiếng Việt' }, { value: 'en', label: '🇺🇸 English' }].map(l => (
-                                <button key={l.value} type="button" onClick={() => setLanguage(l.value)}
-                                    className={cn('py-2 rounded-xl text-xs border transition-all font-medium',
-                                        language === l.value ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:text-foreground')}>
-                                    {l.label}
-                                </button>
-                            ))}
-                        </div>
+                        {/* LANGUAGE — auto-detected from channel, not shown to user */}
 
                         {/* PRODUCT IMAGES */}
                         {anyProductHasImages && (
@@ -620,13 +637,56 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
 
                                     {/* Use product image as reference */}
                                     {anyProductHasImages && (
-                                        <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                                            <input type="checkbox" checked={useProductImageAsRef} onChange={e => setUseProductImageAsRef(e.target.checked)}
-                                                className="rounded border-border/60 text-primary accent-primary" />
-                                            <span className="text-[11px] text-foreground">
+                                        <div className="space-y-2.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setUseProductImageAsRef(v => !v); if (useProductImageAsRef) setRefImageUrl(null) }}
+                                                className={cn('flex items-center gap-2 w-full px-2.5 py-2 rounded-lg border text-[11px] transition-all text-left',
+                                                    useProductImageAsRef
+                                                        ? 'border-primary bg-primary/10 text-primary'
+                                                        : 'border-border/60 bg-background text-muted-foreground hover:border-border hover:text-foreground')}
+                                            >
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                                    <polyline points="21 15 16 10 5 21" />
+                                                </svg>
                                                 {t('integrations.shopify.modal.useProductRef')}
-                                            </span>
-                                        </label>
+                                                <span className={cn('ml-auto w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0',
+                                                    useProductImageAsRef ? 'border-primary bg-primary' : 'border-border/60 bg-transparent')}>
+                                                    {useProductImageAsRef && <Check className="h-2 w-2 text-primary-foreground" />}
+                                                </span>
+                                            </button>
+
+                                            {/* Ref image picker — shows when checkbox is ON */}
+                                            {useProductImageAsRef && (() => {
+                                                const allImgs = products.flatMap(p => p.images)
+                                                if (allImgs.length === 0) return null
+                                                return (
+                                                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5 space-y-2">
+                                                        <p className="text-[10px] font-medium text-primary/80 uppercase tracking-wider">{t('integrations.shopify.modal.selectRefImage')}</p>
+                                                        <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                                                            {allImgs.slice(0, 20).map((url, i) => {
+                                                                const isRef = refImageUrl === url || (!refImageUrl && i === 0)
+                                                                return (
+                                                                    <button key={i} type="button" onClick={() => setRefImageUrl(url)}
+                                                                        className={cn('relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-all shrink-0',
+                                                                            isRef ? 'border-primary shadow-[0_0_0_1px] shadow-primary' : 'border-border/40 hover:border-border')}>
+                                                                        <NextImage src={url} alt={`ref-${i}`} fill className="object-cover" unoptimized />
+                                                                        {isRef && (
+                                                                            <span className="absolute inset-0 bg-primary/25 flex items-center justify-center">
+                                                                                <Check className="h-4 w-4 text-primary drop-shadow" />
+                                                                            </span>
+                                                                        )}
+                                                                    </button>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                        <p className="text-[9px] text-muted-foreground">{t('integrations.shopify.modal.refImageNote')}</p>
+                                                    </div>
+                                                )
+                                            })()}
+                                        </div>
                                     )}
                                     <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.autoGenNote')}</p>
                                 </div>

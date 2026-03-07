@@ -651,7 +651,8 @@ ${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available lis
         await incrementPostUsage(quotaUserId).catch(() => { /* non-fatal */ })
 
         // ── Generate & attach AI image if requested ─────────────────────────
-        let mediaAttached = false
+        // AI image gets sortOrder 0 (shown first in post)
+        let nextSortOrder = 0
         if (imageConfig && typeof imageConfig === 'object' && imageConfig.provider) {
             const effectivePrompt = (imageConfig.prompt ?? '').trim() || firstContent
             const aiMediaId = await generateAiImageForPost(
@@ -664,12 +665,13 @@ ${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available lis
                 await prisma.postMedia.create({
                     data: { postId: post.id, mediaItemId: aiMediaId, sortOrder: 0 },
                 }).catch(() => { })
-                mediaAttached = true
+                nextSortOrder = 1  // product images will follow after AI image
             }
         }
 
         // ── Import selected product images ───────────────────────────────────
-        if (!mediaAttached && importImageUrls && Array.isArray(importImageUrls) && importImageUrls.length > 0) {
+        // Always import product images regardless of whether an AI image was generated
+        if (importImageUrls && Array.isArray(importImageUrls) && importImageUrls.length > 0) {
             const mediaIds: string[] = []
             for (const url of importImageUrls as string[]) {
                 const mediaId = await importImageToMedia(url, channelId)
@@ -680,7 +682,7 @@ ${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available lis
                     data: mediaIds.map((mediaItemId, i) => ({
                         postId: post.id,
                         mediaItemId,
-                        sortOrder: i,
+                        sortOrder: nextSortOrder + i,
                     })),
                 })
             }
