@@ -200,25 +200,28 @@ export default function SmartFlowPage() {
         if (!el) return
 
         const onMouseDown = (e: MouseEvent) => {
+            // Ignore if clicking on interactive elements (buttons, links, inputs)
+            const tag = (e.target as HTMLElement).tagName
+            if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT') return
             isDragging.current = true
-            startX.current = e.pageX - el.offsetLeft
+            startX.current = e.pageX - el.getBoundingClientRect().left
             scrollLeft.current = el.scrollLeft
-            el.style.cursor = 'grabbing'
+            document.body.style.cursor = 'grabbing'
             document.body.style.userSelect = 'none'
         }
 
         const onMouseMove = (e: MouseEvent) => {
             if (!isDragging.current) return
             e.preventDefault()
-            const x = e.pageX - el.offsetLeft
-            const walk = (x - startX.current) * 1.2
+            const x = e.pageX - el.getBoundingClientRect().left
+            const walk = (x - startX.current) * 1.5
             el.scrollLeft = scrollLeft.current - walk
         }
 
         const stopDrag = () => {
             if (!isDragging.current) return
             isDragging.current = false
-            el.style.cursor = 'grab'
+            document.body.style.cursor = ''
             document.body.style.userSelect = ''
         }
 
@@ -503,13 +506,13 @@ export default function SmartFlowPage() {
                         className="flex-1 overflow-x-auto select-none"
                         style={{ cursor: 'grab' }}
                     >
-                        <div className="flex gap-4 h-full min-h-[calc(100vh-220px)] pb-4">
+                        <div className="flex gap-4 h-full min-h-[calc(100vh-220px)] pb-4" style={{ minWidth: `${(activeColumns.length + (failedJobs.length > 0 ? 1 : 0)) * 288 + 32}px` }}>
 
                             {/* Status columns */}
                             {activeColumns.map(col => {
                                 const colJobs = jobs.filter(col.filter)
                                 return (
-                                    <div key={col.key} className="flex flex-col flex-1 min-w-56">
+                                    <div key={col.key} className="flex flex-col w-72 shrink-0">
                                         <div className="flex items-center justify-between px-1 mb-3">
                                             <span className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest ${col.colorText}`}>
                                                 <span className={`w-2 h-2 rounded-full ${col.colorDot}`} />
@@ -548,7 +551,7 @@ export default function SmartFlowPage() {
 
                             {/* Failed column */}
                             {failedJobs.length > 0 && (
-                                <div className="flex flex-col flex-1 min-w-56">
+                                <div className="flex flex-col w-72 shrink-0">
                                     <div className="flex items-center justify-between px-1 mb-3">
                                         <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-red-400">
                                             <span className="w-2 h-2 rounded-full bg-red-500" />
