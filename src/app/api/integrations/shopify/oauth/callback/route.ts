@@ -8,6 +8,9 @@ const prisma = prismaClient as any
 // GET /api/integrations/shopify/oauth/callback?code=xxx&shop=xxx&state=xxx&hmac=xxx
 // Shopify redirects here after user authorizes the app
 export async function GET(req: NextRequest) {
+    // Use NEXTAUTH_URL as the base for all redirects (avoids localhost:3000 behind proxy)
+    const appUrl = process.env.NEXTAUTH_URL || 'https://neeflow.com'
+
     const { searchParams } = req.nextUrl
     const code = searchParams.get('code')
     const shop = searchParams.get('shop')
@@ -16,7 +19,7 @@ export async function GET(req: NextRequest) {
 
     if (!code || !shop || !state || !hmac) {
         return NextResponse.redirect(
-            new URL('/dashboard/integrations/shopify?error=missing_params', req.url)
+            `${appUrl}/dashboard/integrations/shopify?error=missing_params`
         )
     }
 
@@ -31,7 +34,7 @@ export async function GET(req: NextRequest) {
         if (!channelId || !userId) throw new Error('invalid state')
     } catch {
         return NextResponse.redirect(
-            new URL('/dashboard/integrations/shopify?error=invalid_state', req.url)
+            `${appUrl}/dashboard/integrations/shopify?error=invalid_state`
         )
     }
 
@@ -58,10 +61,9 @@ export async function GET(req: NextRequest) {
 
     if (!clientId || !clientSecret) {
         return NextResponse.redirect(
-            new URL('/dashboard/integrations/shopify?error=not_configured', req.url)
+            `${appUrl}/dashboard/integrations/shopify?error=not_configured`
         )
     }
-
 
     // Exchange code for access token
     const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
@@ -72,7 +74,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokenRes.ok) {
         return NextResponse.redirect(
-            new URL(`/dashboard/integrations/shopify?channelId=${channelId}&error=token_exchange_failed`, req.url)
+            `${appUrl}/dashboard/integrations/shopify?channelId=${channelId}&error=token_exchange_failed`
         )
     }
 
@@ -81,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     if (!accessToken) {
         return NextResponse.redirect(
-            new URL(`/dashboard/integrations/shopify?channelId=${channelId}&error=no_token`, req.url)
+            `${appUrl}/dashboard/integrations/shopify?channelId=${channelId}&error=no_token`
         )
     }
 
@@ -105,6 +107,6 @@ export async function GET(req: NextRequest) {
 
     // Redirect back to Shopify settings page with success
     return NextResponse.redirect(
-        new URL(`/dashboard/integrations/shopify?channelId=${channelId}&connected=1`, req.url)
+        `${appUrl}/dashboard/integrations/shopify?channelId=${channelId}&connected=1`
     )
 }
