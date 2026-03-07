@@ -10,11 +10,11 @@ import { useTranslation } from '@/lib/i18n'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationBell } from '@/components/notification-bell'
-import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -37,12 +37,9 @@ import {
     Plug,
     Activity,
     LogOut,
-    ChevronLeft,
-    Menu,
     Zap,
     UserCircle,
     Key,
-    X,
     Layers,
     ChevronDown,
     Check,
@@ -56,8 +53,10 @@ import {
     Tag,
     Sparkles,
     Clapperboard,
+    MoreHorizontal,
+    ChevronRight,
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useBranding } from '@/lib/use-branding'
 
@@ -73,10 +72,9 @@ interface NavItem {
     icon: React.ComponentType<{ className?: string }>
     badge?: string
     roles?: string[]
-    exact?: boolean  // use exact pathname match instead of startsWith
+    exact?: boolean
 }
 
-// Items above Studio (Dashboard → Media)
 const topNav: NavItem[] = [
     { titleKey: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true },
     { titleKey: 'nav.channels', href: '/dashboard/channels', icon: Megaphone },
@@ -86,7 +84,7 @@ const topNav: NavItem[] = [
     { titleKey: 'nav.approvals', href: '/dashboard/posts/approvals', icon: CheckCircle2 },
     { titleKey: 'nav.media', href: '/dashboard/media', icon: Image },
 ]
-// Items below Studio (Client Board → Billing)
+
 const bottomNav: NavItem[] = [
     { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Zap },
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
@@ -95,7 +93,6 @@ const bottomNav: NavItem[] = [
     { titleKey: 'nav.apiKeys', href: '/dashboard/api-keys', icon: Key },
     { titleKey: 'nav.billing', href: '/dashboard/billing', icon: CreditCard },
 ]
-
 
 const adminNav: NavItem[] = [
     { titleKey: 'nav.users', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
@@ -109,20 +106,313 @@ const adminNav: NavItem[] = [
     { titleKey: 'nav.guide', href: '/admin/guide', icon: BookOpen, roles: ['ADMIN'] },
 ]
 
+// ── Mobile bottom tab items ───────────────────────────────────────────────────
+const mobileTabItems: NavItem[] = [
+    { titleKey: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true },
+    { titleKey: 'nav.posts', href: '/dashboard/posts', icon: PenSquare, exact: true },
+    { titleKey: 'nav.studio', href: '/dashboard/studio', icon: Clapperboard },
+    { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Zap },
+]
+
+// ── Single nav item pill ──────────────────────────────────────────────────────
+function NavPill({
+    item,
+    isActive,
+    pendingCount,
+    t,
+}: {
+    item: NavItem
+    isActive: boolean
+    pendingCount?: number
+    t: (key: string) => string
+}) {
+    const showBadge = item.href === '/dashboard/client-board' && (pendingCount ?? 0) > 0
+    return (
+        <Link
+            href={item.href}
+            className={cn(
+                'relative flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl transition-all duration-150 group w-full',
+                isActive
+                    ? 'bg-primary/15 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+        >
+            <div className="relative">
+                <item.icon className={cn('h-5 w-5', isActive && 'text-primary')} />
+                {showBadge && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                    </span>
+                )}
+            </div>
+            <span className={cn(
+                'text-[9px] font-semibold uppercase tracking-wider leading-none',
+                isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+            )}>
+                {t(item.titleKey)}
+            </span>
+        </Link>
+    )
+}
+
+// ── Plan Usage Tooltip Widget ─────────────────────────────────────────────────
+function PlanUsageWidget({ usage }: { usage: PlanUsage }) {
+    const bars = [
+        {
+            icon: Sparkles,
+            color: 'from-violet-500 to-fuchsia-400',
+            label: 'AI',
+            ...usage.aiImage,
+        },
+        {
+            icon: PenSquare,
+            color: 'from-emerald-500 to-teal-400',
+            label: 'Posts',
+            ...usage.posts,
+        },
+        {
+            icon: Key,
+            color: 'from-amber-500 to-yellow-400',
+            label: 'API',
+            ...usage.apiCalls,
+        },
+    ]
+
+    return (
+        <div className="relative group px-2 py-2 cursor-default">
+            {/* Mini bars */}
+            <div className="flex flex-col gap-1.5">
+                {bars.map((bar) => {
+                    if (bar.label === 'API' && bar.limit === 0) return null
+                    const pct = bar.limit === -1 ? 8 : bar.limit === 0 ? 100 : Math.min(100, (bar.used / bar.limit) * 100)
+                    const isHot = bar.limit !== -1 && pct >= 80
+                    return (
+                        <div key={bar.label} className="h-1 rounded-full bg-muted/60 overflow-hidden">
+                            <div
+                                className={cn('h-full rounded-full transition-all duration-500', isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : `bg-gradient-to-r ${bar.color}`)}
+                                style={{ width: `${pct}%` }}
+                            />
+                        </div>
+                    )
+                })}
+            </div>
+            {/* Tooltip on hover */}
+            <div className="pointer-events-none absolute left-[88px] bottom-0 z-50 min-w-[200px] opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="bg-card border border-border rounded-xl shadow-xl p-3 space-y-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Plan Usage</p>
+                    {bars.map((bar) => {
+                        if (bar.label === 'API' && bar.limit === 0) return null
+                        const pct = bar.limit === -1 ? 0 : bar.limit === 0 ? 100 : Math.min(100, (bar.used / bar.limit) * 100)
+                        const isHot = bar.limit !== -1 && pct >= 80
+                        return (
+                            <div key={bar.label} className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                        <bar.icon className={cn('h-3 w-3', isHot ? 'text-red-400' : 'text-muted-foreground')} />
+                                        <span className="text-[11px] font-medium text-muted-foreground">{bar.label}</span>
+                                    </div>
+                                    <span className={cn('text-[11px] font-bold tabular-nums', isHot && 'text-red-400')}>
+                                        {bar.used.toLocaleString()}
+                                        <span className="font-normal text-muted-foreground">
+                                            {bar.limit === -1 ? ' / ∞' : ` / ${bar.limit.toLocaleString()}`}
+                                        </span>
+                                    </span>
+                                </div>
+                                <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
+                                    <div
+                                        className={cn('h-full rounded-full transition-all', isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : `bg-gradient-to-r ${bar.color}`)}
+                                        style={{ width: bar.limit === -1 ? '8%' : `${Math.min(100, (bar.used / bar.limit) * 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ── Workspace Picker (channel avatar + flyout) ────────────────────────────────
+function WorkspacePicker({
+    channels,
+    activeChannel,
+    loadingChannels,
+    onSwitch,
+    t,
+}: {
+    channels: { id: string; displayName: string }[]
+    activeChannel: { id: string; displayName: string } | undefined
+    loadingChannels: boolean
+    onSwitch: (ch: { id: string; displayName: string }) => void
+    t: (key: string) => string
+}) {
+    const [open, setOpen] = useState(false)
+    const ref = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+        }
+        if (open) document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [open])
+
+    const displayName = loadingChannels ? '…' : (activeChannel?.displayName || '?')
+    const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+
+    return (
+        <div ref={ref} className="relative flex flex-col items-center py-2">
+            <button
+                onClick={() => setOpen(p => !p)}
+                title={activeChannel?.displayName || t('workspace.selectChannel')}
+                className="relative flex flex-col items-center gap-1 w-full cursor-pointer group"
+            >
+                <div className={cn(
+                    'h-10 w-10 rounded-xl overflow-hidden flex items-center justify-center ring-2 transition-all duration-150',
+                    open ? 'ring-primary' : 'ring-border group-hover:ring-primary/60'
+                )}>
+                    <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                        <span className="text-[11px] font-bold text-primary">{initials}</span>
+                    </div>
+                </div>
+                <ChevronRight className={cn('h-2.5 w-2.5 text-muted-foreground absolute -right-0.5 top-3 transition-transform', open && 'rotate-90')} />
+            </button>
+
+            {/* Flyout panel */}
+            {open && (
+                <div className="absolute left-[52px] top-0 z-50 w-56 bg-card border border-border rounded-xl shadow-xl py-1.5 animate-in slide-in-from-left-2 duration-150">
+                    <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('workspace.label')}</p>
+                    {channels.map(ch => (
+                        <button
+                            key={ch.id}
+                            onClick={() => { onSwitch(ch); setOpen(false) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted transition-colors cursor-pointer"
+                        >
+                            <div className="h-6 w-6 rounded-lg overflow-hidden flex items-center justify-center bg-primary/15 shrink-0">
+                                <span className="text-[9px] font-bold text-primary">{ch.displayName.slice(0, 2).toUpperCase()}</span>
+                            </div>
+                            <span className="flex-1 text-left truncate font-medium">{ch.displayName}</span>
+                            {activeChannel?.id === ch.id && <Check className="h-3 w-3 text-primary shrink-0" />}
+                        </button>
+                    ))}
+                    {!loadingChannels && channels.length === 0 && (
+                        <div className="px-3 py-3 text-center">
+                            <p className="text-xs text-muted-foreground mb-2">{t('workspace.noChannels')}</p>
+                            <Link href="/dashboard/channels" onClick={() => setOpen(false)} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                                <Plus className="h-3 w-3" />{t('workspace.createFirstChannel')}
+                            </Link>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ── Mobile Bottom Tab Bar ─────────────────────────────────────────────────────
+function MobileBottomBar({
+    pathname,
+    pendingCount,
+    t,
+    session,
+    activeChannel,
+}: {
+    pathname: string | null
+    pendingCount: number
+    t: (key: string) => string
+    session: Session
+    activeChannel?: { id: string; displayName: string } | undefined
+}) {
+    const [moreOpen, setMoreOpen] = useState(false)
+    const allMoreItems = [...topNav.slice(2), ...bottomNav.filter(i => i.href !== '/dashboard/client-board'), {
+        titleKey: 'nav.studio',
+        href: activeChannel?.id ? `/dashboard/studio/${activeChannel.id}` : '/dashboard/studio',
+        icon: Clapperboard,
+    }] as NavItem[]
+
+    return (
+        <>
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-card/90 backdrop-blur-xl border-t border-border flex items-stretch">
+                {mobileTabItems.map(item => {
+                    const isActive = item.exact
+                        ? pathname === item.href
+                        : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                    const isPending = item.href === '/dashboard/client-board' && pendingCount > 0
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={cn(
+                                'flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors relative',
+                                isActive ? 'text-primary' : 'text-muted-foreground'
+                            )}
+                        >
+                            <div className="relative">
+                                <item.icon className="h-5 w-5" />
+                                {isPending && (
+                                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                                    </span>
+                                )}
+                            </div>
+                            <span className="text-[9px] font-semibold uppercase tracking-wider">{t(item.titleKey)}</span>
+                            {isActive && <span className="absolute top-0 inset-x-3 h-0.5 rounded-full bg-primary" />}
+                        </Link>
+                    )
+                })}
+                {/* More button */}
+                <button
+                    onClick={() => setMoreOpen(true)}
+                    className="flex-1 flex flex-col items-center justify-center gap-0.5 text-muted-foreground"
+                >
+                    <MoreHorizontal className="h-5 w-5" />
+                    <span className="text-[9px] font-semibold uppercase tracking-wider">More</span>
+                </button>
+            </div>
+
+            {/* More sheet */}
+            <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+                <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl px-0">
+                    <SheetHeader className="px-4 pb-3">
+                        <SheetTitle className="text-sm">{t('nav.menu') || 'Menu'}</SheetTitle>
+                    </SheetHeader>
+                    <ScrollArea className="h-full pb-6">
+                        <nav className="grid grid-cols-3 gap-2 px-4">
+                            {allMoreItems.map(item => {
+                                const isActive = item.exact
+                                    ? pathname === item.href
+                                    : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                                return (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        onClick={() => setMoreOpen(false)}
+                                        className={cn(
+                                            'flex flex-col items-center gap-2 p-4 rounded-xl text-center transition-all',
+                                            isActive ? 'bg-primary/15 text-primary' : 'bg-muted/40 text-muted-foreground hover:bg-muted'
+                                        )}
+                                    >
+                                        <item.icon className="h-6 w-6" />
+                                        <span className="text-[10px] font-semibold uppercase tracking-wide leading-tight">{t(item.titleKey)}</span>
+                                    </Link>
+                                )
+                            })}
+                        </nav>
+                    </ScrollArea>
+                </SheetContent>
+            </Sheet>
+        </>
+    )
+}
+
+// ── Main Sidebar Component ────────────────────────────────────────────────────
 export function Sidebar({ session }: { session: Session }) {
     const pathname = usePathname()
     const router = useRouter()
-    const [collapsed, setCollapsed] = useState(false)
-
-    // Auto-collapse sidebar on Inbox page for more space
-    useEffect(() => {
-        const isInbox = pathname?.includes('/dashboard/inbox')
-        const isCompose = pathname?.includes('/dashboard/posts/compose')
-        setCollapsed(!!(isInbox || isCompose))
-    }, [pathname])
-    const [mobileOpen, setMobileOpen] = useState(false)
-    const isAdmin = session?.user?.role === 'ADMIN' // Only system ADMIN sees Users/API Hub
-    const isOwnerOrAbove = session?.user?.role === 'ADMIN' || session?.user?.role === 'OWNER'
+    const isAdmin = session?.user?.role === 'ADMIN'
     const t = useTranslation()
     const { activeChannel, channels, setActiveChannel, loadingChannels } = useWorkspace()
     const branding = useBranding()
@@ -136,7 +426,7 @@ export function Sidebar({ session }: { session: Session }) {
             .catch(() => { })
     }, [])
 
-    // ─── Real-time pending badge for Client Board ──────────────
+    // ─── Real-time pending badge for Client Board ─────────────
     useEffect(() => {
         const fetchPending = () => {
             fetch('/api/admin/client-board/pending-count')
@@ -145,499 +435,177 @@ export function Sidebar({ session }: { session: Session }) {
                 .catch(() => { })
         }
         fetchPending()
-        const id = setInterval(fetchPending, 60_000) // refresh every 60s
+        const id = setInterval(fetchPending, 60_000)
         return () => clearInterval(id)
     }, [])
 
-    // Handle workspace channel switch — navigate to channel page
     const handleChannelSwitch = (ch: typeof channels[0]) => {
         setActiveChannel(ch)
-        // Navigate to channel settings page if we're on a channel page or dashboard
         if (pathname?.startsWith('/dashboard/channels/') || pathname === '/dashboard/channels' || pathname === '/dashboard') {
             router.push(`/dashboard/channels/${ch.id}`)
         }
     }
 
-    // Close mobile expanded sidebar on route change
-    useEffect(() => {
-        setMobileOpen(false)
-    }, [pathname])
-
     const initials = session?.user?.name
-        ?.split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || '?'
+        ?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
 
-    /** Shared content renderer for expanded sidebars (desktop full + mobile overlay) */
-    const expandedContent = (onClose?: () => void) => (
+    const allNavItems = [
+        ...topNav,
+        {
+            titleKey: 'nav.studio',
+            href: activeChannel?.id ? `/dashboard/studio/${activeChannel.id}` : '/dashboard/studio',
+            icon: Clapperboard,
+            exact: false,
+        } as NavItem,
+        ...bottomNav,
+    ]
+
+    return (
         <>
-            {/* Header */}
-            <div className="flex h-16 items-center justify-between px-4">
-                <Link href="/dashboard" className="flex items-center gap-2">
-                    <NextImage src={branding.logoUrl} alt={branding.appName} width={32} height={32} className="rounded-lg object-contain" unoptimized />
-                    <span className="text-lg font-bold tracking-tight">{branding.appName}</span>
-                </Link>
-                {onClose ? (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                ) : (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCollapsed(true)}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                )}
-            </div>
-
-            <Separator />
-
-            {/* Workspace Picker */}
-            <div className="px-3 py-2">
-                <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t('workspace.label')}
-                </p>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium bg-accent/50 hover:bg-accent transition-colors cursor-pointer">
-                            <Layers className="h-3.5 w-3.5 shrink-0 text-primary" />
-                            <span className="flex-1 text-left truncate text-xs">
-                                {loadingChannels ? t('workspace.loading') : (activeChannel?.displayName || t('workspace.selectChannel'))}
-                            </span>
-                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                        </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56">
-                        {channels.map((ch) => (
-                            <DropdownMenuItem
-                                key={ch.id}
-                                onClick={() => handleChannelSwitch(ch)}
-                                className="flex items-center gap-2 cursor-pointer"
-                            >
-                                <Megaphone className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="flex-1 truncate">{ch.displayName}</span>
-                                {activeChannel?.id === ch.id && <Check className="h-3.5 w-3.5 text-primary" />}
-                            </DropdownMenuItem>
-                        ))}
-                        {/* Empty state: no channels yet */}
-                        {!loadingChannels && channels.length === 0 && (
-                            <>
-                                <DropdownMenuSeparator />
-                                <div className="px-2 py-3 text-center">
-                                    <p className="text-xs text-muted-foreground mb-2">
-                                        {t('workspace.noChannels')}
-                                    </p>
-                                    <Link
-                                        href="/dashboard/channels"
-                                        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                                    >
-                                        <Plus className="h-3.5 w-3.5" />
-                                        {t('workspace.createFirstChannel')}
-                                    </Link>
-                                </div>
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-
-            <Separator />
-
-            {/* Navigation */}
-            <div className="flex-1 overflow-y-auto overscroll-contain py-4">
-                <nav className="space-y-1 px-3">
-                    {topNav.map((item) => {
-                        const isActive = item.exact
-                            ? pathname === item.href
-                            : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                                    isActive
-                                        ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
-                                        : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
-                                )}
-                            >
-                                <item.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
-                                <span>{t(item.titleKey)}</span>
-                                {item.badge && (
-                                    <Badge variant="secondary" className="ml-auto text-xs">
-                                        {item.badge}
-                                    </Badge>
-                                )}
-                            </Link>
-                        )
-                    })}
-
-                    {/* Studio — channel-scoped, sits between Media and Client Board */}
-                    <Link
-                        href={activeChannel?.id ? `/dashboard/studio/${activeChannel.id}` : '/dashboard/studio'}
-                        className={cn(
-                            'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                            pathname?.startsWith('/dashboard/studio')
-                                ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
-                                : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
-                        )}
-                    >
-                        <Clapperboard className={cn('h-4 w-4 shrink-0', pathname?.startsWith('/dashboard/studio') && 'text-primary')} />
-                        <span>{t('nav.studio')}</span>
+            {/* ── Desktop: Fixed 84px icon+label sidebar ── */}
+            <aside className="hidden md:flex h-screen w-[84px] flex-col border-r bg-card shrink-0">
+                {/* Logo */}
+                <div className="flex items-center justify-center h-[60px] shrink-0">
+                    <Link href="/dashboard">
+                        <NextImage
+                            src={branding.logoUrl}
+                            alt={branding.appName}
+                            width={36}
+                            height={36}
+                            className="rounded-xl object-contain"
+                            unoptimized
+                        />
                     </Link>
+                </div>
 
-                    {bottomNav.map((item) => {
-                        const isActive = item.exact
-                            ? pathname === item.href
-                            : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                        const isClientBoard = item.href === '/dashboard/client-board'
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                                    isActive
-                                        ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
-                                        : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
-                                )}
-                            >
-                                <item.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
-                                <span>{t(item.titleKey)}</span>
-                                {isClientBoard && pendingCount > 0 ? (
-                                    <span className="ml-auto flex items-center gap-1">
-                                        <span className="relative flex h-2 w-2">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                                        </span>
-                                        <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                                            {pendingCount > 99 ? '99+' : pendingCount}
-                                        </span>
-                                    </span>
-                                ) : item.badge ? (
-                                    <Badge variant="secondary" className="ml-auto text-xs">
-                                        {item.badge}
-                                    </Badge>
-                                ) : null}
-                            </Link>
-                        )
-                    })}
-                </nav>
+                <Separator />
 
-                {isAdmin && (
-                    <>
-                        <Separator className="my-4" />
-                        <div className="px-3">
-                            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                {t('nav.administration')}
-                            </p>
-                            <nav className="space-y-1">
-                                {adminNav.map((item) => {
+                {/* Workspace picker */}
+                <div className="px-3 py-1 shrink-0">
+                    <WorkspacePicker
+                        channels={channels}
+                        activeChannel={activeChannel ?? undefined}
+                        loadingChannels={loadingChannels}
+                        onSwitch={(ch) => {
+                            const full = channels.find(c => c.id === ch.id)
+                            if (full) handleChannelSwitch(full)
+                        }}
+                        t={t}
+                    />
+                </div>
+
+                <Separator />
+
+                {/* Nav items */}
+                <ScrollArea className="flex-1 py-2">
+                    <nav className="flex flex-col gap-0.5 px-2">
+                        {allNavItems.map(item => {
+                            const isStudio = item.titleKey === 'nav.studio'
+                            const isActive = isStudio
+                                ? pathname?.startsWith('/dashboard/studio') ?? false
+                                : item.exact
+                                    ? pathname === item.href
+                                    : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                            return (
+                                <NavPill
+                                    key={item.href}
+                                    item={item}
+                                    isActive={isActive}
+                                    pendingCount={pendingCount}
+                                    t={t}
+                                />
+                            )
+                        })}
+
+                        {/* Admin nav */}
+                        {isAdmin && (
+                            <>
+                                <div className="my-2 px-1">
+                                    <Separator />
+                                </div>
+                                {adminNav.map(item => {
                                     const isActive = item.exact
                                         ? pathname === item.href
                                         : (pathname === item.href || pathname?.startsWith(item.href + '/'))
                                     return (
-                                        <Link
+                                        <NavPill
                                             key={item.href}
-                                            href={item.href}
-                                            className={cn(
-                                                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                                                isActive
-                                                    ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
-                                                    : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
-                                            )}
-                                        >
-                                            <item.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
-                                            <span>{t(item.titleKey)}</span>
-                                        </Link>
+                                            item={item}
+                                            isActive={isActive}
+                                            t={t}
+                                        />
                                     )
                                 })}
-                            </nav>
-                        </div>
-                    </>
-                )}
-            </div>
+                            </>
+                        )}
+                    </nav>
+                </ScrollArea>
 
-            {/* ── Plan Usage Widget — compact single card ── */}
-            {usage && (
-                <div className="px-3 py-2 hidden md:block">
-                    <div className="rounded-xl border border-border/60 bg-card/80 p-3 space-y-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Plan Usage</p>
+                <Separator />
 
-                        {/* AI Images row */}
-                        {(() => {
-                            const { used, limit } = usage.aiImage
-                            const pct = limit === -1 ? 0 : limit === 0 ? 100 : Math.min(100, (used / limit) * 100)
-                            const isHot = limit !== -1 && pct >= 80
-                            return (
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5">
-                                            <Sparkles className={`h-3 w-3 ${isHot ? 'text-red-400' : 'text-violet-400'}`} />
-                                            <span className="text-[11px] font-medium text-muted-foreground">AI Images</span>
-                                        </div>
-                                        <span className={`text-[11px] font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
-                                            {used.toLocaleString()}
-                                            <span className="font-normal text-muted-foreground">
-                                                {limit === -1 ? ' / ∞' : ` / ${limit.toLocaleString()}`}
-                                            </span>
-                                        </span>
-                                    </div>
-                                    <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
-                                        <div className={`h-full rounded-full transition-all duration-500 ${isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-violet-500 to-fuchsia-400'}`}
-                                            style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
-                                    </div>
-                                </div>
-                            )
-                        })()}
+                {/* Plan usage bars */}
+                {usage && <PlanUsageWidget usage={usage} />}
 
-                        {/* Posts row */}
-                        {(() => {
-                            const { used, limit } = usage.posts
-                            const pct = limit === -1 ? 0 : limit === 0 ? 100 : Math.min(100, (used / limit) * 100)
-                            const isHot = limit !== -1 && pct >= 80
-                            return (
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5">
-                                            <PenSquare className={`h-3 w-3 ${isHot ? 'text-red-400' : 'text-emerald-500'}`} />
-                                            <span className="text-[11px] font-medium text-muted-foreground">Posts</span>
-                                        </div>
-                                        <span className={`text-[11px] font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
-                                            {used.toLocaleString()}
-                                            <span className="font-normal text-muted-foreground">
-                                                {limit === -1 ? ' / ∞' : ` / ${limit.toLocaleString()}`}
-                                            </span>
-                                        </span>
-                                    </div>
-                                    <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
-                                        <div className={`h-full rounded-full transition-all duration-500 ${isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400'}`}
-                                            style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
-                                    </div>
-                                </div>
-                            )
-                        })()}
+                <Separator />
 
-                        {/* API Calls row — only when plan has API access */}
-                        {usage.apiCalls.limit !== 0 && (() => {
-                            const { used, limit } = usage.apiCalls
-                            const pct = limit === -1 ? 0 : Math.min(100, (used / limit) * 100)
-                            const isHot = limit !== -1 && pct >= 80
-                            return (
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5">
-                                            <Key className={`h-3 w-3 ${isHot ? 'text-red-400' : 'text-amber-400'}`} />
-                                            <span className="text-[11px] font-medium text-muted-foreground">API Calls</span>
-                                        </div>
-                                        <span className={`text-[11px] font-bold tabular-nums ${isHot ? 'text-red-400' : ''}`}>
-                                            {used.toLocaleString()}
-                                            <span className="font-normal text-muted-foreground">
-                                                {limit === -1 ? ' / ∞' : ` / ${limit.toLocaleString()}`}
-                                            </span>
-                                        </span>
-                                    </div>
-                                    <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
-                                        <div className={`h-full rounded-full transition-all duration-500 ${isHot ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-amber-500 to-yellow-400'}`}
-                                            style={{ width: limit === -1 ? '8%' : `${pct}%` }} />
-                                    </div>
-                                </div>
-                            )
-                        })()}
-                    </div>
-                </div>
-            )}
-
-            <Separator />
-
-            {/* Footer */}
-            <div className="p-3">
-                <div className="flex items-center gap-2">
+                {/* Utility buttons */}
+                <div className="flex flex-col items-center gap-1 py-2 px-2 shrink-0">
                     <ThemeToggle />
                     <LanguageSwitcher />
                     <NotificationBell />
                 </div>
 
-                <Separator className="my-2" />
+                <Separator />
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-primary/8">
-                            <Avatar className="h-8 w-8">
-                                <AvatarFallback className="bg-primary/10 text-xs font-medium">
-                                    {initials}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 truncate">
+                {/* Profile */}
+                <div className="py-3 px-2 shrink-0">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="w-full flex flex-col items-center gap-1 cursor-pointer group" title={session?.user?.name ?? ''}>
+                                <Avatar className="h-9 w-9 group-hover:ring-2 group-hover:ring-primary/50 transition-all">
+                                    <AvatarFallback className="bg-primary/10 text-xs font-semibold">
+                                        {initials}
+                                    </AvatarFallback>
+                                </Avatar>
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" side="right" className="w-56 ml-2">
+                            <div className="px-2 py-1.5">
                                 <p className="text-sm font-medium truncate">{session?.user?.name}</p>
                                 <p className="text-xs text-muted-foreground truncate">{session?.user?.email}</p>
+                                <Badge className="mt-1" variant="outline">{session?.user?.role}</Badge>
                             </div>
-                        </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        <div className="px-2 py-1.5">
-                            <p className="text-sm font-medium">{session?.user?.name}</p>
-                            <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
-                            <Badge className="mt-1" variant="outline">
-                                {session?.user?.role}
-                            </Badge>
-                        </div>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                            <a href="/dashboard/profile" className="flex items-center cursor-pointer">
-                                <UserCircle className="mr-2 h-4 w-4" />
-                                {t('nav.profile')}
-                            </a>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                            <a href="/dashboard/developer" className="flex items-center cursor-pointer">
-                                <Code2 className="mr-2 h-4 w-4" />
-                                {t('nav.developerApi') || 'Developer API'}
-                            </a>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/login' })}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            {t('common.signOut')}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        </>
-    )
-
-    /** Collapsed content for desktop collapsed state */
-    const collapsedContent = () => (
-        <>
-            <div className="flex h-16 items-center justify-center px-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCollapsed(false)}>
-                    <Menu className="h-4 w-4" />
-                </Button>
-            </div>
-
-            <Separator />
-
-            <ScrollArea className="flex-1 py-4">
-                <nav className="space-y-1 px-2">
-                    {[...topNav, ...bottomNav].map((item: NavItem) => {
-                        const isActive = item.exact
-                            ? pathname === item.href
-                            : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                    'relative flex items-center justify-center rounded-xl p-2.5 transition-all duration-150',
-                                    isActive
-                                        ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
-                                        : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
-                                )}
-                                title={t(item.titleKey)}
-                            >
-                                <item.icon className={cn('h-4 w-4', isActive && 'text-primary')} />
-                                {item.href === '/dashboard/client-board' && pendingCount > 0 && (
-                                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                                    </span>
-                                )}
-                            </Link>
-                        )
-                    })}
-                    {/* Studio icon in collapsed mode */}
-                    <Link
-                        href={activeChannel?.id ? `/dashboard/studio/${activeChannel.id}` : '/dashboard/studio'}
-                        className={cn(
-                            'flex items-center justify-center rounded-xl p-2.5 transition-all duration-150',
-                            pathname?.startsWith('/dashboard/studio')
-                                ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
-                                : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
-                        )}
-                        title={t('nav.studio')}
-                    >
-                        <Clapperboard className={cn('h-4 w-4', pathname?.startsWith('/dashboard/studio') && 'text-primary')} />
-                    </Link>
-                </nav>
-
-                {isAdmin && (
-                    <>
-                        <Separator className="my-4" />
-                        <nav className="space-y-1 px-2">
-                            {adminNav.map((item) => {
-                                const isActive = item.exact
-                                    ? pathname === item.href
-                                    : (pathname === item.href || pathname?.startsWith(item.href + '/'))
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        className={cn(
-                                            'flex items-center justify-center rounded-xl p-2.5 transition-all duration-150',
-                                            isActive
-                                                ? 'bg-primary/12 text-primary border border-primary/25'
-                                                : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
-                                        )}
-                                        title={t(item.titleKey)}
-                                    >
-                                        <item.icon className={cn('h-4 w-4', isActive && 'text-primary')} />
-                                    </Link>
-                                )
-                            })}
-                        </nav>
-                    </>
-                )}
-            </ScrollArea>
-
-            <Separator />
-
-            <div className="flex flex-col items-center gap-2 p-2">
-                <ThemeToggle />
-                <Avatar className="h-7 w-7">
-                    <AvatarFallback className="bg-primary/10 text-[10px] font-medium">
-                        {initials}
-                    </AvatarFallback>
-                </Avatar>
-            </div>
-        </>
-    )
-
-    return (
-        <>
-            {/* ── Mobile: Floating hamburger FAB (hidden on desktop) ── */}
-            <div className="md:hidden fixed top-3 left-3 z-40">
-                <button
-                    onClick={() => setMobileOpen(true)}
-                    aria-label={t('nav.openMenu')}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-card border border-border/60 shadow-md text-muted-foreground hover:text-foreground hover:bg-accent transition-all active:scale-95"
-                >
-                    <Menu className="h-5 w-5" />
-                </button>
-            </div>
-
-            {/* ── Mobile: full-screen slide-in overlay ── */}
-            {mobileOpen && (
-                <div className="md:hidden fixed inset-0 z-50 flex">
-                    {/* Backdrop */}
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setMobileOpen(false)}
-                    />
-                    {/* Slide-in panel */}
-                    <aside className="relative z-10 flex h-full w-[300px] flex-col bg-card border-r shadow-2xl animate-in slide-in-from-left duration-250">
-                        {expandedContent(() => setMobileOpen(false))}
-                    </aside>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                                <a href="/dashboard/profile" className="flex items-center cursor-pointer">
+                                    <UserCircle className="mr-2 h-4 w-4" />
+                                    {t('nav.profile')}
+                                </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <a href="/dashboard/developer" className="flex items-center cursor-pointer">
+                                    <Code2 className="mr-2 h-4 w-4" />
+                                    {t('nav.developerApi') || 'Developer API'}
+                                </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/login' })}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                {t('common.signOut')}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
-            )}
-
-            {/* ── Desktop sidebar ── */}
-            <aside
-                className={cn(
-                    'hidden md:flex h-screen flex-col border-r bg-card transition-all duration-300',
-                    collapsed ? 'w-[68px]' : 'w-[260px]'
-                )}
-            >
-                {collapsed ? collapsedContent() : expandedContent()}
             </aside>
+
+            {/* ── Mobile: Bottom Tab Bar ── */}
+            <MobileBottomBar
+                pathname={pathname}
+                pendingCount={pendingCount}
+                t={t}
+                session={session}
+                activeChannel={activeChannel ?? undefined}
+            />
         </>
     )
 }

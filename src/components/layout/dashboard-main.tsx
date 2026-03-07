@@ -23,7 +23,7 @@ export function DashboardMain({ children }: { children: ReactNode }) {
             <div
                 className={cn(
                     'relative px-3 py-4 sm:p-6 max-w-full h-full overflow-y-auto transition-opacity duration-200',
-                    'pt-14 sm:pt-6',   // mobile: top clearance for floating hamburger FAB
+                    'pb-16 md:pb-0',   // mobile: bottom clearance for fixed bottom tab bar
                     isSwitching ? 'opacity-50 pointer-events-none' : 'opacity-100'
                 )}
             >
