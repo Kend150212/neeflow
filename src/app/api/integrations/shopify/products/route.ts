@@ -58,6 +58,8 @@ export async function GET(req: NextRequest) {
                 images: true,
                 inStock: true,
                 syncedAt: true,
+                lastPostedAt: true,
+                postCount: true,
             },
         }),
         prisma.productCatalog.count({ where }),

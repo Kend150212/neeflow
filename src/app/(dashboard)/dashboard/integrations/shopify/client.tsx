@@ -30,10 +30,25 @@ import {
     LayoutGrid,
     List,
     Tag,
+    CalendarCheck,
 } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import CreateShopifyPostModal from './CreateShopifyPostModal'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function relativeTime(dateStr: string | null | undefined): string {
+    if (!dateStr) return ''
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 60) return mins <= 1 ? 'just now' : `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.floor(hrs / 24)
+    if (days < 30) return `${days}d ago`
+    const months = Math.floor(days / 30)
+    return `${months}mo ago`
+}
 
 // ── Shopify SVG Logo ─────────────────────────────────────────────────────────
 function ShopifyLogo({ size = 32 }: { size?: number }) {
@@ -70,6 +85,8 @@ interface Product {
     images: string[]
     inStock: boolean
     syncedAt: string | null
+    lastPostedAt: string | null
+    postCount: number
 }
 
 interface TestResult {
@@ -923,6 +940,7 @@ function ProductCard({
 }) {
     const inStock = product.inStock
     const hasImage = product.images.length > 0
+    const hasPosted = !!product.lastPostedAt
 
     return (
         <div className={`bg-card border rounded-xl overflow-hidden group transition-all ${selected ? 'border-primary shadow-[0_0_0_1px] shadow-primary' : 'border-border hover:border-primary/40'
@@ -957,6 +975,13 @@ function ProductCard({
                         ? <Check className="h-3 w-3 text-primary-foreground" />
                         : <Square className="h-3 w-3 text-muted-foreground" />}
                 </button>
+                {/* Posted badge */}
+                {hasPosted && (
+                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-sm text-[9px] font-semibold text-emerald-400">
+                        <CalendarCheck className="w-2.5 h-2.5" />
+                        {relativeTime(product.lastPostedAt)}
+                    </div>
+                )}
             </div>
 
             {/* Content */}
@@ -998,6 +1023,7 @@ function ProductListRow({
 }) {
     const inStock = product.inStock
     const hasImage = product.images.length > 0
+    const hasPosted = !!product.lastPostedAt
 
     return (
         <div className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${selected ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/30 hover:bg-muted/20'}`}>
@@ -1039,8 +1065,14 @@ function ProductListRow({
                 </div>
             )}
 
-            {/* Stock + price */}
+            {/* Stock + price + posted badge */}
             <div className="flex items-center gap-2 shrink-0">
+                {hasPosted && (
+                    <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-[10px] font-medium text-emerald-500">
+                        <CalendarCheck className="w-3 h-3" />
+                        {relativeTime(product.lastPostedAt)}
+                    </div>
+                )}
                 <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${inStock ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
                     {inStock ? t('integrations.shopify.inStock') : t('integrations.shopify.outOfStock')}
                 </div>

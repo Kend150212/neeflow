@@ -410,6 +410,10 @@ model ProductCatalog {
   sheetUrl    String?  @map("sheet_url")      // Google Sheet URL if synced from there
   syncedAt    DateTime? @map("synced_at")
 
+  // Post tracking — updated whenever an AI post is created from this product
+  lastPostedAt DateTime? @map("last_posted_at")
+  postCount    Int       @default(0) @map("post_count")
+
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

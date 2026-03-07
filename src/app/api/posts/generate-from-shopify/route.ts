@@ -411,6 +411,7 @@ export async function POST(req: NextRequest) {
         const userId = session.user.id
         const {
             channelId,
+            productId,            // ProductCatalog.id — for tracking lastPostedAt / postCount
             productData,          // { name, price, description, category, tags, images }
             importImageUrls,      // string[] — selected product images to import as post media
             tone = 'viral',
@@ -644,11 +645,23 @@ ${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available lis
                 metadata: {
                     source: 'shopify',
                     productName: prod.name,
+                    productId: productId || null,
                 },
             },
         })
 
         await incrementPostUsage(quotaUserId).catch(() => { /* non-fatal */ })
+
+        // ── Stamp lastPostedAt + increment postCount on the source product ────
+        if (productId) {
+            prisma.productCatalog.update({
+                where: { id: productId },
+                data: {
+                    lastPostedAt: new Date(),
+                    postCount: { increment: 1 },
+                },
+            }).catch(err => console.warn('[generate-from-shopify] Could not stamp product:', err))
+        }
 
         // ── Generate & attach AI image if requested ─────────────────────────
         // AI image gets sortOrder 0 (shown first in post)
