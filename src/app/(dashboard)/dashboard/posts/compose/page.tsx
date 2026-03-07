@@ -3082,7 +3082,7 @@ export default function ComposePage() {
                 body: JSON.stringify({ action: 'requeue', postId }),
             })
             if (res.ok) {
-                toast.success('Đã gửi duyệt lại!')
+                toast.success(t('compose.resubmitSuccess'))
                 router.back()
             } else {
                 const d = await res.json()
@@ -3291,7 +3291,7 @@ export default function ComposePage() {
                                 {approving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : (
                                     <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                                 )}
-                                {approving ? 'Approving...' : 'Approve'}
+                                {approving ? t('compose.approving') : t('compose.approve')}
                             </Button>
                         </>
                     ) : isResubmitMode ? (
@@ -3299,7 +3299,7 @@ export default function ComposePage() {
                         <>
                             <Button variant="outline" size="sm" className="h-7 text-xs cursor-pointer" onClick={handleSaveDraft} disabled={saving}>
                                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-                                {saving ? t('compose.saving') : 'Lưu'}
+                                {saving ? t('compose.saving') : t('compose.save')}
                             </Button>
                             <Button
                                 size="sm"
@@ -3310,7 +3310,7 @@ export default function ComposePage() {
                                 {resubmitting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : (
                                     <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l3-3 3 3" /></svg>
                                 )}
-                                {resubmitting ? 'Đang gửi...' : 'Gửi duyệt lại'}
+                                {resubmitting ? t('compose.resubmitting') : t('compose.resubmit')}
                             </Button>
                         </>
                     ) : scheduleDate ? (
