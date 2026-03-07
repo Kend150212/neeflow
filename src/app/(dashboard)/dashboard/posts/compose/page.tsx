@@ -1131,6 +1131,8 @@ export default function ComposePage() {
     const searchParams = useSearchParams()
     const { activeChannelId } = useWorkspace()
     const editPostId = searchParams.get('edit')
+    const editSource = searchParams.get('source') // 'client-board' when opened from approval flow
+    const [editPostStatus, setEditPostStatus] = useState<string | null>(null) // status of the post being edited
     // Mobile tab: 'settings' | 'editor' | 'preview'
     const [mobileTab, setMobileTab] = useState<'settings' | 'editor' | 'preview'>('editor')
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1410,6 +1412,7 @@ export default function ComposePage() {
             .then((r) => r.json())
             .then((post) => {
                 setContent(post.content || '')
+                setEditPostStatus(post.status || null)
                 setAttachedMedia((post.media || []).map((m: { mediaItem: MediaItem }) => m.mediaItem))
                 // Find and select the channel
                 const ch = channels.find((c) => c.id === post.channel.id)
@@ -3021,6 +3024,62 @@ export default function ComposePage() {
         finally { setSaving(false) }
     }
 
+    // ─── Approval flow actions (from client-board) ────────────────────────────
+    const [approving, setApproving] = useState(false)
+    const [resubmitting, setResubmitting] = useState(false)
+
+    const handleApprove = async () => {
+        const postId = editPostId || postIdRef.current
+        if (!postId) return
+        setApproving(true)
+        try {
+            const res = await fetch('/api/admin/content-pipeline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'approve', postId }),
+            })
+            if (res.ok) {
+                toast.success('Post approved!')
+                router.back()
+            } else {
+                const d = await res.json()
+                toast.error(d.error || 'Failed to approve')
+            }
+        } catch {
+            toast.error('Network error')
+        } finally {
+            setApproving(false)
+        }
+    }
+
+    const handleResubmit = async () => {
+        const postId = editPostId || postIdRef.current
+        if (!postId) return
+        await handleSaveDraft() // save latest content first
+        setResubmitting(true)
+        try {
+            const res = await fetch('/api/admin/content-pipeline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'requeue', postId }),
+            })
+            if (res.ok) {
+                toast.success('Đã gửi duyệt lại!')
+                router.back()
+            } else {
+                const d = await res.json()
+                toast.error(d.error || 'Failed to resubmit')
+            }
+        } catch {
+            toast.error('Network error')
+        } finally {
+            setResubmitting(false)
+        }
+    }
+
+    const isApprovalMode = editSource === 'client-board' && editPostStatus === 'PENDING_APPROVAL'
+    const isResubmitMode = editSource === 'client-board' && editPostStatus === 'REJECTED'
+
     // Publish now (fire-and-forget — publishes in background on server)
     const handlePublishNow = async () => {
         if (!selectedChannel || !content.trim()) { toast.error('Select a channel and add content'); return }
@@ -3198,7 +3257,45 @@ export default function ComposePage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    {scheduleDate ? (
+                    {isApprovalMode ? (
+                        // ── PENDING_APPROVAL: Approve + Save ──────────────────────────────
+                        <>
+                            <Button variant="outline" size="sm" className="h-7 text-xs cursor-pointer" onClick={handleSaveDraft} disabled={saving}>
+                                {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                                {saving ? t('compose.saving') : t('compose.saveDraft')}
+                            </Button>
+                            <Button
+                                size="sm"
+                                className="h-7 text-xs cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                                onClick={handleApprove}
+                                disabled={approving}
+                            >
+                                {approving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : (
+                                    <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                )}
+                                {approving ? 'Approving...' : 'Approve'}
+                            </Button>
+                        </>
+                    ) : isResubmitMode ? (
+                        // ── REJECTED: Save + Gửi duyệt lại ──────────────────────────────
+                        <>
+                            <Button variant="outline" size="sm" className="h-7 text-xs cursor-pointer" onClick={handleSaveDraft} disabled={saving}>
+                                {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                                {saving ? t('compose.saving') : 'Lưu'}
+                            </Button>
+                            <Button
+                                size="sm"
+                                className="h-7 text-xs cursor-pointer bg-amber-500 hover:bg-amber-600 text-white border-0"
+                                onClick={handleResubmit}
+                                disabled={resubmitting || saving}
+                            >
+                                {resubmitting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : (
+                                    <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l3-3 3 3" /></svg>
+                                )}
+                                {resubmitting ? 'Đang gửi...' : 'Gửi duyệt lại'}
+                            </Button>
+                        </>
+                    ) : scheduleDate ? (
                         // Schedule mode — amber button
                         <Button
                             size="sm"

@@ -484,7 +484,7 @@ export default function SmartFlowPage() {
                                                     onAction={handleAction}
                                                     onReject={(postId) => setRejectModal({ postId })}
                                                     onTogglePlatform={handleTogglePlatform}
-                                                    onEdit={(postId) => router.push(`/dashboard/posts/${postId}`)}
+                                                    onEdit={(postId) => router.push(`/dashboard/posts/compose?edit=${postId}&source=client-board`)}
                                                 />
                                             ))}
                                         </div>
@@ -518,7 +518,7 @@ export default function SmartFlowPage() {
                                                 onAction={handleAction}
                                                 onReject={(postId) => setRejectModal({ postId })}
                                                 onTogglePlatform={handleTogglePlatform}
-                                                onEdit={(postId) => router.push(`/dashboard/posts/${postId}`)}
+                                                onEdit={(postId) => router.push(`/dashboard/posts/compose?edit=${postId}&source=client-board`)}
                                             />
                                         ))}
                                     </div>
