@@ -611,9 +611,10 @@ export default function ReportsPage() {
                                             {(accountsTab === 'overall' ? platformInsights : platformInsights.filter(p => p.platform === accountsTab)).map((pi, i) => {
                                                 const dbPlatform = data.platformBreakdown.find(p => p.platform === pi.platform)
                                                 const posts = dbPlatform?.published || 0
-                                                // Sparkline data — simulated trend over 7 days proportional to reach
+                                                // Sparkline data — deterministic 7-day trend (no random, stable across renders)
+                                                const base = Math.round((pi.reach || 0) / 7)
                                                 const sparkData = Array.from({ length: 7 }, (_, idx) => ({
-                                                    v: Math.max(0, Math.round(((pi.reach || 0) / 7) * (0.5 + Math.random() * 0.5)))
+                                                    v: Math.max(0, Math.round(base * (0.6 + 0.4 * Math.sin(idx * 0.9))))
                                                 }))
                                                 return (
                                                     <div key={i} className="border rounded-lg p-3 space-y-3 hover:border-primary/40 transition-colors">

@@ -13,16 +13,19 @@ async function fetchFacebookInsights(channelPlatform: {
     const pageId = channelPlatform.accountId
 
     try {
-        // Page-level metrics (followers, likes)
+        // Page-level info (followers)
         const pageRes = await fetch(
             `https://graph.facebook.com/v21.0/${pageId}?fields=followers_count,fan_count,name&access_token=${token}`
         )
         const pageData = await pageRes.json()
         if (pageData.error) return null
 
-        // Page insights (last 30 days)
+        // Page insights — v21 valid metrics
+        // page_post_engagements was deprecated in v18, use page_total_actions
+        const since = Math.floor((Date.now() - 30 * 86400000) / 1000)
+        const until = Math.floor(Date.now() / 1000)
         const insightsRes = await fetch(
-            `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_post_engagements,page_impressions,page_reach,page_fans_adds_unique&period=day&since=${Math.floor((Date.now() - 30 * 86400000) / 1000)}&until=${Math.floor(Date.now() / 1000)}&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_total_actions,page_impressions,page_reach,page_fan_adds_unique&period=day&since=${since}&until=${until}&access_token=${token}`
         )
         const insightsData = await insightsRes.json()
 
@@ -30,10 +33,10 @@ async function fetchFacebookInsights(channelPlatform: {
         if (insightsData.data) {
             for (const metric of insightsData.data) {
                 const sum = metric.values?.reduce((acc: number, v: { value: number }) => acc + (v.value || 0), 0) || 0
-                if (metric.name === 'page_post_engagements') totalEngagement = sum
+                if (metric.name === 'page_total_actions') totalEngagement = sum
                 if (metric.name === 'page_impressions') totalImpressions = sum
                 if (metric.name === 'page_reach') totalReach = sum
-                if (metric.name === 'page_fans_adds_unique') newFollowers = sum
+                if (metric.name === 'page_fan_adds_unique') newFollowers = sum
             }
         }
 
@@ -61,7 +64,6 @@ async function fetchInstagramInsights(channelPlatform: {
     if (!channelPlatform.accessToken) return null
     const token = channelPlatform.accessToken
     const cfg = (channelPlatform.config as Record<string, string>) || {}
-    // Instagram Business Account ID (stored in config.instagramAccountId or use accountId)
     const igAccountId = cfg.instagramAccountId || channelPlatform.accountId
 
     try {
@@ -76,7 +78,7 @@ async function fetchInstagramInsights(channelPlatform: {
         const since = Math.floor((Date.now() - 30 * 86400000) / 1000)
         const until = Math.floor(Date.now() / 1000)
         const insightRes = await fetch(
-            `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=impressions,reach,profile_views,follower_count&period=day&since=${since}&until=${until}&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=impressions,reach&period=day&since=${since}&until=${until}&access_token=${token}`
         )
         const insightData = await insightRes.json()
 
@@ -89,6 +91,16 @@ async function fetchInstagramInsights(channelPlatform: {
             }
         }
 
+        // Engagement from recent media (likes + comments on last 20 posts)
+        const mediaRes = await fetch(
+            `https://graph.facebook.com/v21.0/${igAccountId}/media?fields=id,like_count,comments_count&limit=20&access_token=${token}`
+        )
+        const mediaData = await mediaRes.json()
+        let totalEngagement = 0
+        for (const media of mediaData.data || []) {
+            totalEngagement += (media.like_count || 0) + (media.comments_count || 0)
+        }
+
         return {
             platform: 'instagram',
             accountName: accountData.username || channelPlatform.accountName,
@@ -96,7 +108,7 @@ async function fetchInstagramInsights(channelPlatform: {
             mediaCount: accountData.media_count ?? 0,
             impressions: totalImpressions,
             reach: totalReach,
-            engagement: 0, // calculated from posts below
+            engagement: totalEngagement,
         }
     } catch {
         return null
@@ -111,28 +123,33 @@ async function fetchYouTubeInsights(channelPlatform: {
 }) {
     if (!channelPlatform.accessToken) return null
     const token = channelPlatform.accessToken
+    // Use Authorization header (not query-string) per Google best practices
+    const headers = { Authorization: `Bearer ${token}` }
 
     try {
-        // Channel statistics
         const channelRes = await fetch(
-            `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&mine=true&access_token=${token}`
+            'https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&mine=true',
+            { headers }
         )
         const channelData = await channelRes.json()
         if (channelData.error || !channelData.items?.length) return null
 
         const stats = channelData.items[0].statistics
         const snippet = channelData.items[0].snippet
+        const ytChannelId = channelData.items[0].id
 
         // Recent videos (last 10)
         const searchRes = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${channelData.items[0].id}&maxResults=10&order=date&type=video&access_token=${token}`
+            `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${ytChannelId}&maxResults=10&order=date&type=video`,
+            { headers }
         )
         const searchData = await searchRes.json()
         let totalViews = 0, totalLikes = 0, totalComments = 0
         if (searchData.items?.length) {
             const videoIds = searchData.items.map((i: { id: { videoId: string } }) => i.id.videoId).join(',')
             const videoRes = await fetch(
-                `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&access_token=${token}`
+                `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}`,
+                { headers }
             )
             const videoData = await videoRes.json()
             for (const v of videoData.items || []) {
@@ -160,12 +177,73 @@ async function fetchYouTubeInsights(channelPlatform: {
     }
 }
 
-// ─── Post-level insights (Facebook/Instagram per-post) ───────────────
-async function fetchPostInsights(channelId: string | null, userChannelIds: string[] | null = null) {
+// ─── TikTok API v2 ───────────────────────────────────────────────────
+async function fetchTikTokInsights(channelPlatform: {
+    accountId: string
+    accountName: string
+    accessToken: string | null
+}) {
+    if (!channelPlatform.accessToken) return null
+    const token = channelPlatform.accessToken
+    const headers = { Authorization: `Bearer ${token}` }
+
+    try {
+        // User info with stats (requires user.info.stats scope)
+        const userRes = await fetch(
+            'https://open.tiktokapis.com/v2/user/info/?fields=display_name,follower_count,following_count,likes_count,video_count',
+            { headers }
+        )
+        const userData = await userRes.json()
+        // TikTok uses error.code === 'ok' for success
+        if (userData.error?.code && userData.error.code !== 'ok') return null
+        const user = userData.data?.user
+
+        // Recent video list — POST request required
+        const videoListRes = await fetch(
+            'https://open.tiktokapis.com/v2/video/list/?fields=id,title,cover_image_url,view_count,like_count,comment_count,share_count',
+            {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json; charset=UTF-8' },
+                body: JSON.stringify({ max_count: 20 }),
+            }
+        )
+        const videoListData = await videoListRes.json()
+        let totalViews = 0, totalLikes = 0, totalComments = 0, totalShares = 0
+        for (const video of videoListData.data?.videos || []) {
+            totalViews += video.view_count || 0
+            totalLikes += video.like_count || 0
+            totalComments += video.comment_count || 0
+            totalShares += video.share_count || 0
+        }
+
+        return {
+            platform: 'tiktok',
+            accountName: user?.display_name || channelPlatform.accountName,
+            followers: user?.follower_count ?? 0,
+            videoCount: user?.video_count ?? 0,
+            engagement: totalLikes + totalComments + totalShares,
+            impressions: totalViews,
+            reach: totalViews,
+            recentViews: totalViews,
+            recentLikes: totalLikes,
+            recentComments: totalComments,
+        }
+    } catch {
+        return null
+    }
+}
+
+// ─── Post-level insights ─────────────────────────────────────────────
+// Fetches live stats for recently published posts from each platform API
+async function fetchPostInsights(
+    channelId: string | null,
+    userChannelIds: string[] | null,
+    platformCredentials: { platform: string; accountId: string; accessToken: string | null; config: unknown }[]
+) {
     const buildWhere = () => {
-        if (channelId) return { post: { channelId }, status: 'published' }
-        if (userChannelIds !== null) return { post: { channelId: { in: userChannelIds } }, status: 'published' }
-        return { status: 'published' } // admin: all
+        if (channelId) return { post: { channelId }, status: 'published' as const }
+        if (userChannelIds !== null) return { post: { channelId: { in: userChannelIds } }, status: 'published' as const }
+        return { status: 'published' as const }
     }
 
     const publishedStatuses = await prisma.postPlatformStatus.findMany({
@@ -188,26 +266,132 @@ async function fetchPostInsights(channelId: string | null, userChannelIds: strin
             },
         },
         orderBy: { publishedAt: 'desc' },
-        take: 20,
+        take: 30,
     })
 
-    // Return stored config stats (already saved during publish or periodic sync)
-    return publishedStatuses.map(ps => {
-        const cfg = (ps.config as Record<string, unknown>) || {}
-        return {
-            postId: ps.post.id,
-            platform: ps.platform,
-            externalId: ps.externalId,
-            publishedAt: ps.publishedAt,
-            content: ps.post.content?.slice(0, 100),
-            thumbnail: ps.post.media[0]?.mediaItem?.thumbnailUrl || ps.post.media[0]?.mediaItem?.url || null,
-            likes: cfg.likes ?? 0,
-            comments: cfg.comments ?? 0,
-            shares: cfg.shares ?? 0,
-            reach: cfg.reach ?? 0,
-            impressions: cfg.impressions ?? 0,
-        }
-    })
+    // Build credential lookup by platform
+    const credMap: Record<string, typeof platformCredentials[0]> = {}
+    for (const cred of platformCredentials) {
+        credMap[cred.platform] = cred
+    }
+
+    // Fetch fresh stats for FB/IG/TikTok
+    const facebookToken = credMap['facebook']?.accessToken
+    const instagramToken = credMap['instagram']?.accessToken
+    const instagramCfg = (credMap['instagram']?.config as Record<string, string>) || {}
+    const igAccountId = instagramCfg.instagramAccountId || credMap['instagram']?.accountId
+    const tiktokToken = credMap['tiktok']?.accessToken
+
+    // Prefetch TikTok video list (batch, not per-post)
+    const tiktokVideoMap: Record<string, { likes: number; comments: number; shares: number; views: number }> = {}
+    if (tiktokToken) {
+        try {
+            const res = await fetch(
+                'https://open.tiktokapis.com/v2/video/list/?fields=id,view_count,like_count,comment_count,share_count',
+                {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${tiktokToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({ max_count: 20 }),
+                }
+            )
+            const data = await res.json()
+            for (const v of data.data?.videos || []) {
+                tiktokVideoMap[v.id] = {
+                    likes: v.like_count || 0,
+                    comments: v.comment_count || 0,
+                    shares: v.share_count || 0,
+                    views: v.view_count || 0,
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
+    const results = await Promise.all(
+        publishedStatuses.map(async (ps) => {
+            const cfg = (ps.config as Record<string, unknown>) || {}
+            let likes = (cfg.likes as number) ?? 0
+            let comments = (cfg.comments as number) ?? 0
+            let shares = (cfg.shares as number) ?? 0
+            let reach = (cfg.reach as number) ?? 0
+            let impressions = (cfg.impressions as number) ?? 0
+
+            try {
+                if (ps.platform === 'facebook' && facebookToken && ps.externalId) {
+                    // Per-post Facebook insights
+                    const res = await fetch(
+                        `https://graph.facebook.com/v21.0/${ps.externalId}/insights?metric=post_impressions_unique,post_impressions,post_reactions_by_type_total,post_clicks&access_token=${facebookToken}`
+                    )
+                    const data = await res.json()
+                    if (data.data) {
+                        for (const m of data.data) {
+                            if (m.name === 'post_reactions_by_type_total') {
+                                const vals = m.values?.[0]?.value || {}
+                                likes = Object.values(vals).reduce((a: number, v) => a + (v as number), 0)
+                            }
+                            if (m.name === 'post_impressions_unique') reach = m.values?.[0]?.value || 0
+                            if (m.name === 'post_impressions') impressions = m.values?.[0]?.value || 0
+                        }
+                        // Fetch comments count separately
+                        const commRes = await fetch(
+                            `https://graph.facebook.com/v21.0/${ps.externalId}?fields=comments.summary(true)&access_token=${facebookToken}`
+                        )
+                        const commData = await commRes.json()
+                        comments = commData.comments?.summary?.total_count || comments
+                    }
+                } else if (ps.platform === 'instagram' && instagramToken && ps.externalId && igAccountId) {
+                    // Instagram media fields (no insights endpoint needed for basic counts)
+                    const res = await fetch(
+                        `https://graph.facebook.com/v21.0/${ps.externalId}?fields=like_count,comments_count,media_product_type&access_token=${instagramToken}`
+                    )
+                    const data = await res.json()
+                    if (!data.error) {
+                        likes = data.like_count || 0
+                        comments = data.comments_count || 0
+                        // Try media insights for reach/impressions
+                        const insRes = await fetch(
+                            `https://graph.facebook.com/v21.0/${ps.externalId}/insights?metric=impressions,reach&access_token=${instagramToken}`
+                        )
+                        const insData = await insRes.json()
+                        for (const m of insData.data || []) {
+                            if (m.name === 'impressions') impressions = m.values?.[0]?.value || 0
+                            if (m.name === 'reach') reach = m.values?.[0]?.value || 0
+                        }
+                    }
+                } else if (ps.platform === 'tiktok' && ps.externalId && tiktokVideoMap[ps.externalId]) {
+                    const v = tiktokVideoMap[ps.externalId]
+                    likes = v.likes
+                    comments = v.comments
+                    shares = v.shares
+                    reach = v.views
+                    impressions = v.views
+                }
+            } catch { /* fall back to cfg values */ }
+
+            // Persist fresh stats back to config (fire-and-forget)
+            if (likes || comments || shares || reach || impressions) {
+                void prisma.postPlatformStatus.update({
+                    where: { id: ps.id },
+                    data: { config: { ...cfg, likes, comments, shares, reach, impressions } },
+                }).catch(() => { /* non-blocking */ })
+            }
+
+            return {
+                postId: ps.post.id,
+                platform: ps.platform,
+                externalId: ps.externalId,
+                publishedAt: ps.publishedAt,
+                content: ps.post.content?.slice(0, 100),
+                thumbnail: ps.post.media[0]?.mediaItem?.thumbnailUrl || ps.post.media[0]?.mediaItem?.url || null,
+                likes,
+                comments,
+                shares,
+                reach,
+                impressions,
+            }
+        })
+    )
+
+    return results
 }
 
 // ─── Main Handler ────────────────────────────────────────────────────
@@ -221,7 +405,6 @@ export async function GET(req: NextRequest) {
     const isAdmin = session.user.role === 'ADMIN'
     const userId = session.user.id
 
-    // ── Determine user's accessible channels ─────────────────────────
     let userChannelIds: string[] | null = null
     if (!isAdmin) {
         const memberships = await prisma.channelMember.findMany({
@@ -231,12 +414,11 @@ export async function GET(req: NextRequest) {
         userChannelIds = memberships.map(m => m.channelId)
     }
 
-    // Validate channelId access if specified
     if (channelId && userChannelIds !== null && !userChannelIds.includes(channelId)) {
         return NextResponse.json({ platformInsights: [], postInsights: [] })
     }
 
-    // Fetch connected platforms for this channel (scoped to user)
+    // Fetch connected active platforms
     const platforms = await prisma.channelPlatform.findMany({
         where: channelId
             ? { channelId, isActive: true }
@@ -252,13 +434,14 @@ export async function GET(req: NextRequest) {
         },
     })
 
-    // Fetch insights in parallel per platform
+    // Fetch platform-level insights in parallel
     const insights = await Promise.all(
         platforms.map(async (cp) => {
             if (cp.platform === 'facebook') return fetchFacebookInsights(cp)
             if (cp.platform === 'instagram') return fetchInstagramInsights(cp)
             if (cp.platform === 'youtube') return fetchYouTubeInsights(cp)
-            // Other platforms (tiktok, linkedin, pinterest) — pending API approval
+            if (cp.platform === 'tiktok') return fetchTikTokInsights(cp)
+            // LinkedIn / Pinterest — API not yet active
             return {
                 platform: cp.platform,
                 accountName: cp.accountName,
@@ -271,7 +454,7 @@ export async function GET(req: NextRequest) {
         })
     )
 
-    const postInsights = await fetchPostInsights(channelId, userChannelIds)
+    const postInsights = await fetchPostInsights(channelId, userChannelIds, platforms)
 
     return NextResponse.json({
         platformInsights: insights.filter(Boolean),
