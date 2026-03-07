@@ -541,6 +541,9 @@ export default function AdminPlansPage() {
                                         {(plan as any).allowedIntegrations?.includes('external_db') && (
                                             <Badge variant="secondary" className="text-xs px-1 bg-orange-500/10 text-orange-600 border-orange-500/20">🗄️ Ext DB</Badge>
                                         )}
+                                        {(plan as any).allowedIntegrations?.includes('shopify') && (
+                                            <Badge variant="secondary" className="text-xs px-1 bg-green-500/10 text-green-600 border-green-500/20">🛍️ Shopify</Badge>
+                                        )}
                                         {plan.trialEnabled && (
                                             <Badge className="text-xs px-1 bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-400">
                                                 🎁 {plan.trialDays}d trial
@@ -837,7 +840,8 @@ export default function AdminPlansPage() {
                             <p className="text-[11px] text-muted-foreground mb-3">Control which integration features plan users can access.</p>
                             <div className="space-y-2">
                                 {[
-                                    { slug: 'external_db', label: '🗄️ External Database (MySQL / Airtable / Shopify)', desc: 'Connect & generate posts from external DBs' },
+                                    { slug: 'external_db', label: '🗄️ External Database (MySQL / Airtable)', desc: 'Connect & generate posts from external DBs' },
+                                    { slug: 'shopify', label: '🛍️ Shopify', desc: 'Sync Shopify product catalog & create AI posts from products' },
                                 ].map(({ slug, label, desc }) => {
                                     const enabled = (editPlan.allowedIntegrations ?? []).includes(slug)
                                     return (
