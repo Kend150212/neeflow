@@ -127,12 +127,26 @@ export function Sidebar({ session }: { session: Session }) {
     const { activeChannel, channels, setActiveChannel, loadingChannels } = useWorkspace()
     const branding = useBranding()
     const [usage, setUsage] = useState<PlanUsage | null>(null)
+    const [pendingCount, setPendingCount] = useState(0)
 
     useEffect(() => {
         fetch('/api/user/plan-usage')
             .then(r => r.ok ? r.json() : null)
             .then(d => d && setUsage(d))
             .catch(() => { })
+    }, [])
+
+    // ─── Real-time pending badge for Client Board ──────────────
+    useEffect(() => {
+        const fetchPending = () => {
+            fetch('/api/admin/client-board/pending-count')
+                .then(r => r.ok ? r.json() : { count: 0 })
+                .then(d => setPendingCount(d.count ?? 0))
+                .catch(() => { })
+        }
+        fetchPending()
+        const id = setInterval(fetchPending, 60_000) // refresh every 60s
+        return () => clearInterval(id)
     }, [])
 
     // Handle workspace channel switch — navigate to channel page
@@ -276,6 +290,7 @@ export function Sidebar({ session }: { session: Session }) {
                         const isActive = item.exact
                             ? pathname === item.href
                             : (pathname === item.href || pathname?.startsWith(item.href + '/'))
+                        const isClientBoard = item.href === '/dashboard/client-board'
                         return (
                             <Link
                                 key={item.href}
@@ -289,11 +304,21 @@ export function Sidebar({ session }: { session: Session }) {
                             >
                                 <item.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
                                 <span>{t(item.titleKey)}</span>
-                                {item.badge && (
+                                {isClientBoard && pendingCount > 0 ? (
+                                    <span className="ml-auto flex items-center gap-1">
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                                        </span>
+                                        <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                            {pendingCount > 99 ? '99+' : pendingCount}
+                                        </span>
+                                    </span>
+                                ) : item.badge ? (
                                     <Badge variant="secondary" className="ml-auto text-xs">
                                         {item.badge}
                                     </Badge>
-                                )}
+                                ) : null}
                             </Link>
                         )
                     })}
@@ -502,7 +527,7 @@ export function Sidebar({ session }: { session: Session }) {
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    'flex items-center justify-center rounded-xl p-2.5 transition-all duration-150',
+                                    'relative flex items-center justify-center rounded-xl p-2.5 transition-all duration-150',
                                     isActive
                                         ? 'bg-primary/12 text-primary border border-primary/25 shadow-[0_0_10px_rgba(25,230,94,0.08)]'
                                         : 'text-muted-foreground hover:bg-primary/8 hover:text-primary/90 border border-transparent',
@@ -510,6 +535,12 @@ export function Sidebar({ session }: { session: Session }) {
                                 title={t(item.titleKey)}
                             >
                                 <item.icon className={cn('h-4 w-4', isActive && 'text-primary')} />
+                                {item.href === '/dashboard/client-board' && pendingCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                                    </span>
+                                )}
                             </Link>
                         )
                     })}

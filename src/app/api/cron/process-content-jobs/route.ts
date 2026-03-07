@@ -4,7 +4,7 @@ import { callAI } from '@/lib/ai-caller'
 import { decrypt } from '@/lib/encryption'
 import sharp from 'sharp'
 import { uploadToR2, generateR2Key } from '@/lib/r2'
-import { checkSmartFlowQuota, incrementSmartFlowUsage } from '@/lib/billing/check-limits'
+import { checkSmartFlowQuota, incrementSmartFlowUsage, incrementPostUsage } from '@/lib/billing/check-limits'
 
 const BATCH_SIZE = 5 // process up to 5 jobs per cron invocation
 
@@ -387,6 +387,13 @@ export async function POST() {
                     await incrementSmartFlowUsage(ownerUserId)
                 } catch (e) {
                     console.warn('[Pipeline] Failed to increment SmartFlow usage:', e)
+                }
+
+                // ─── Step 9b: Increment post quota counter (so portal posts count toward plan limit) ────
+                try {
+                    await incrementPostUsage(ownerUserId)
+                } catch (e) {
+                    console.warn('[Pipeline] Failed to increment post usage:', e)
                 }
 
             } catch (error) {
