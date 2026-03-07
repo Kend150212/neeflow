@@ -189,54 +189,26 @@ export default function SmartFlowPage() {
     const [channelDropOpen, setChannelDropOpen] = useState(false)
     const [rejectModal, setRejectModal] = useState<{ postId: string } | null>(null)
 
-    // ─── Click-and-drag horizontal scroll (window-level listeners) ────────
-    const scrollRef = useRef<HTMLDivElement>(null)
-    const isDragging = useRef(false)
-    const startX = useRef(0)
-    const scrollLeft = useRef(0)
+    // ─── Column visibility (persisted to localStorage) ─────────
+    const ALL_COLUMN_KEYS = ['queued', 'pending', 'client_review', 'rejected', 'scheduled']
+    const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
+        if (typeof window === 'undefined') return new Set()
+        try {
+            const saved = localStorage.getItem('clientboard_hidden_cols')
+            return saved ? new Set(JSON.parse(saved)) : new Set()
+        } catch { return new Set() }
+    })
+    const [colFilterOpen, setColFilterOpen] = useState(false)
 
-    useEffect(() => {
-        const el = scrollRef.current
-        if (!el) return
-
-        const onMouseDown = (e: MouseEvent) => {
-            // Ignore if clicking on interactive elements (buttons, links, inputs)
-            const tag = (e.target as HTMLElement).tagName
-            if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT') return
-            isDragging.current = true
-            startX.current = e.pageX - el.getBoundingClientRect().left
-            scrollLeft.current = el.scrollLeft
-            document.body.style.cursor = 'grabbing'
-            document.body.style.userSelect = 'none'
-        }
-
-        const onMouseMove = (e: MouseEvent) => {
-            if (!isDragging.current) return
-            e.preventDefault()
-            const x = e.pageX - el.getBoundingClientRect().left
-            const walk = (x - startX.current) * 1.5
-            el.scrollLeft = scrollLeft.current - walk
-        }
-
-        const stopDrag = () => {
-            if (!isDragging.current) return
-            isDragging.current = false
-            document.body.style.cursor = ''
-            document.body.style.userSelect = ''
-        }
-
-        el.addEventListener('mousedown', onMouseDown)
-        window.addEventListener('mousemove', onMouseMove)
-        window.addEventListener('mouseup', stopDrag)
-        window.addEventListener('mouseleave', stopDrag)
-
-        return () => {
-            el.removeEventListener('mousedown', onMouseDown)
-            window.removeEventListener('mousemove', onMouseMove)
-            window.removeEventListener('mouseup', stopDrag)
-            window.removeEventListener('mouseleave', stopDrag)
-        }
-    }, [])
+    const toggleColumn = (key: string) => {
+        setHiddenColumns(prev => {
+            const next = new Set(prev)
+            if (next.has(key)) next.delete(key)
+            else next.add(key)
+            localStorage.setItem('clientboard_hidden_cols', JSON.stringify([...next]))
+            return next
+        })
+    }
     const [smartFlowQuota, setSmartFlowQuota] = useState<{
         hasAccess: boolean; maxPerMonth: number; usedThisMonth: number; hasByokKey: boolean
     } | null>(null)
@@ -338,7 +310,7 @@ export default function SmartFlowPage() {
 
     const ALL_COLUMNS = buildColumns(t)
     const activeColumnKeys = MODE_COLUMNS[detectedMode] || MODE_COLUMNS.smartflow
-    const activeColumns = ALL_COLUMNS.filter(c => activeColumnKeys.includes(c.key))
+    const activeColumns = ALL_COLUMNS.filter(c => activeColumnKeys.includes(c.key) && !hiddenColumns.has(c.key))
     const failedJobs = jobs.filter(j => j.status === 'FAILED')
     const showChannelBadge = selectedChannelId === 'all'
 
@@ -470,6 +442,43 @@ export default function SmartFlowPage() {
                             </button>
                         )}
 
+                        {/* Columns filter */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setColFilterOpen(p => !p)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 border border-border rounded-xl text-xs font-medium text-foreground hover:bg-muted transition-all cursor-pointer"
+                            >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
+                                Columns
+                                {hiddenColumns.size > 0 && (
+                                    <span className="bg-primary text-primary-foreground text-[9px] rounded-full px-1.5 py-0.5 font-bold">{hiddenColumns.size} hidden</span>
+                                )}
+                            </button>
+                            {colFilterOpen && (
+                                <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-xl shadow-lg z-20 py-2 min-w-[180px]">
+                                    <p className="px-3 pb-1.5 text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Show/hide columns</p>
+                                    {ALL_COLUMNS.filter(c => (MODE_COLUMNS[detectedMode] || MODE_COLUMNS.smartflow).includes(c.key)).map(col => (
+                                        <button
+                                            key={col.key}
+                                            onClick={() => toggleColumn(col.key)}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted transition-colors cursor-pointer"
+                                        >
+                                            <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${hiddenColumns.has(col.key)
+                                                ? 'border-border bg-transparent'
+                                                : 'border-primary bg-primary'
+                                                }`}>
+                                                {!hiddenColumns.has(col.key) && (
+                                                    <svg className="w-2 h-2 text-primary-foreground" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                                )}
+                                            </span>
+                                            <span className={`w-2 h-2 rounded-full shrink-0 ${col.colorDot}`} />
+                                            <span className={hiddenColumns.has(col.key) ? 'text-muted-foreground line-through' : 'text-foreground'}>{col.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Refresh */}
                         <button
                             onClick={fetchJobs}
@@ -501,39 +510,75 @@ export default function SmartFlowPage() {
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <div
-                        ref={scrollRef}
-                        className="flex-1 overflow-x-auto select-none"
-                        style={{ cursor: 'grab' }}
-                    >
-                        <div className="flex gap-4 h-full min-h-[calc(100vh-220px)] pb-4" style={{ minWidth: `${(activeColumns.length + (failedJobs.length > 0 ? 1 : 0)) * 288 + 32}px` }}>
+                    <div className="flex-1 flex flex-col min-h-0">
+                        {activeColumns.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/40 gap-3">
+                                <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" /></svg>
+                                <p className="text-sm">All columns hidden — click <strong>Columns</strong> to show them</p>
+                            </div>
+                        ) : (
+                            <div className="flex gap-4 h-full min-h-[calc(100vh-260px)] pb-4">
 
-                            {/* Status columns */}
-                            {activeColumns.map(col => {
-                                const colJobs = jobs.filter(col.filter)
-                                return (
-                                    <div key={col.key} className="flex flex-col w-72 shrink-0">
+                                {/* Status columns */}
+                                {activeColumns.map(col => {
+                                    const colJobs = jobs.filter(col.filter)
+                                    return (
+                                        <div key={col.key} className="flex flex-col flex-1 min-w-[180px]">
+                                            <div className="flex items-center justify-between px-1 mb-3">
+                                                <span className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest ${col.colorText}`}>
+                                                    <span className={`w-2 h-2 rounded-full ${col.colorDot}`} />
+                                                    {col.label}
+                                                </span>
+                                                <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
+                                                    {colJobs.length}
+                                                </span>
+                                            </div>
+                                            <div className={`h-0.5 rounded-full mb-3 ${col.colorLine}`} />
+                                            <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
+                                                {colJobs.length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/30 gap-2">
+                                                        <Zap className="h-6 w-6" />
+                                                        <p className="text-xs">{col.key === 'scheduled' ? '✅ All clear' : '—'}</p>
+                                                    </div>
+                                                ) : colJobs.map(job => (
+                                                    <JobCard
+                                                        key={job.id}
+                                                        job={job}
+                                                        columnKey={col.key}
+                                                        actionLoading={actionLoading}
+                                                        detectedMode={detectedMode}
+                                                        showChannelBadge={showChannelBadge}
+                                                        t={t}
+                                                        onAction={handleAction}
+                                                        onReject={(postId) => setRejectModal({ postId })}
+                                                        onTogglePlatform={handleTogglePlatform}
+                                                        onEdit={(postId) => router.push(`/dashboard/posts/compose?edit=${postId}&source=client-board`)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+
+                                {/* Failed column */}
+                                {failedJobs.length > 0 && (
+                                    <div className="flex flex-col flex-1 min-w-[180px]">
                                         <div className="flex items-center justify-between px-1 mb-3">
-                                            <span className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest ${col.colorText}`}>
-                                                <span className={`w-2 h-2 rounded-full ${col.colorDot}`} />
-                                                {col.label}
+                                            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-red-400">
+                                                <span className="w-2 h-2 rounded-full bg-red-500" />
+                                                {t('smartflow.queue.statusFailed')}
                                             </span>
-                                            <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
-                                                {colJobs.length}
+                                            <span className="text-xs font-bold bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">
+                                                {failedJobs.length}
                                             </span>
                                         </div>
-                                        <div className={`h-0.5 rounded-full mb-3 ${col.colorLine}`} />
+                                        <div className="h-0.5 rounded-full bg-red-500/30 mb-3" />
                                         <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
-                                            {colJobs.length === 0 ? (
-                                                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/30 gap-2">
-                                                    <Zap className="h-6 w-6" />
-                                                    <p className="text-xs">{col.key === 'scheduled' ? '✅ All clear' : '—'}</p>
-                                                </div>
-                                            ) : colJobs.map(job => (
+                                            {failedJobs.map(job => (
                                                 <JobCard
                                                     key={job.id}
                                                     job={job}
-                                                    columnKey={col.key}
+                                                    columnKey="failed"
                                                     actionLoading={actionLoading}
                                                     detectedMode={detectedMode}
                                                     showChannelBadge={showChannelBadge}
@@ -546,42 +591,9 @@ export default function SmartFlowPage() {
                                             ))}
                                         </div>
                                     </div>
-                                )
-                            })}
-
-                            {/* Failed column */}
-                            {failedJobs.length > 0 && (
-                                <div className="flex flex-col w-72 shrink-0">
-                                    <div className="flex items-center justify-between px-1 mb-3">
-                                        <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-red-400">
-                                            <span className="w-2 h-2 rounded-full bg-red-500" />
-                                            {t('smartflow.queue.statusFailed')}
-                                        </span>
-                                        <span className="text-xs font-bold bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">
-                                            {failedJobs.length}
-                                        </span>
-                                    </div>
-                                    <div className="h-0.5 rounded-full bg-red-500/30 mb-3" />
-                                    <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
-                                        {failedJobs.map(job => (
-                                            <JobCard
-                                                key={job.id}
-                                                job={job}
-                                                columnKey="failed"
-                                                actionLoading={actionLoading}
-                                                detectedMode={detectedMode}
-                                                showChannelBadge={showChannelBadge}
-                                                t={t}
-                                                onAction={handleAction}
-                                                onReject={(postId) => setRejectModal({ postId })}
-                                                onTogglePlatform={handleTogglePlatform}
-                                                onEdit={(postId) => router.push(`/dashboard/posts/compose?edit=${postId}&source=client-board`)}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
