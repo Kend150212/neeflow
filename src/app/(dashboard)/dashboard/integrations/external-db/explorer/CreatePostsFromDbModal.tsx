@@ -11,6 +11,7 @@ import { Sparkles, X, Loader2, Zap, ExternalLink, Check, Calendar, Clock, Image,
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { platformIcons } from '@/components/platform-icons'
 
 interface Props {
     open: boolean
@@ -58,58 +59,19 @@ function AspectRatioShape({ label, active }: { label: string; active: boolean })
 }
 
 // ── Platform logos / labels ───────────────────────────────────────────────────
+// Uses official brand SVGs from platform-icons.tsx (shared component)
 const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number }) => {
-    const logos: Record<string, React.ReactNode> = {
-        facebook: (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                <rect width="24" height="24" rx="6" fill="#1877F2" />
-                <path d="M16.5 8H14.5C14.2 8 14 8.2 14 8.5V10H16.5L16.1 12.5H14V19H11.5V12.5H9.5V10H11.5V8.5C11.5 6.8 12.8 5.5 14.5 5.5H16.5V8Z" fill="white" />
-            </svg>
-        ),
-        instagram: (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                <defs>
-                    <linearGradient id="ig-g2" x1="0%" y1="100%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#FFDC80" /><stop offset="25%" stopColor="#FCAF45" />
-                        <stop offset="50%" stopColor="#F77737" /><stop offset="75%" stopColor="#E1306C" />
-                        <stop offset="100%" stopColor="#833AB4" />
-                    </linearGradient>
-                </defs>
-                <rect width="24" height="24" rx="6" fill="url(#ig-g2)" />
-                <rect x="6" y="6" width="12" height="12" rx="3.5" stroke="white" strokeWidth="1.5" fill="none" />
-                <circle cx="12" cy="12" r="3" stroke="white" strokeWidth="1.5" fill="none" />
-                <circle cx="16" cy="8" r="0.8" fill="white" />
-            </svg>
-        ),
-        twitter: (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                <rect width="24" height="24" rx="6" fill="#000" />
-                <path d="M13.96 10.68L18.52 5.5H17.42L13.47 9.99L10.3 5.5H6.5L11.27 12.33L6.5 17.74H7.6L11.78 13.01L15.14 17.74H18.94L13.96 10.68ZM12.33 12.38L11.85 11.71L8 6.28H9.77L12.77 10.62L13.25 11.29L17.41 17.01H15.64L12.33 12.38Z" fill="white" />
-            </svg>
-        ),
-        tiktok: (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                <rect width="24" height="24" rx="6" fill="#010101" />
-                <path d="M17.5 9.5a5.5 5.5 0 0 1-3.5-1.2V15a4 4 0 1 1-4-4v2a2 2 0 1 0 2 2V5.5h2a3.5 3.5 0 0 0 3.5 3.5v0.5z" fill="white" />
-            </svg>
-        ),
-        linkedin: (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                <rect width="24" height="24" rx="6" fill="#0A66C2" />
-                <path d="M7.5 9H9.5V17H7.5V9ZM8.5 8C7.9 8 7.5 7.6 7.5 7C7.5 6.4 7.9 6 8.5 6C9.1 6 9.5 6.4 9.5 7C9.5 7.6 9.1 8 8.5 8ZM11 9H12.9V10C13.3 9.4 14 9 15 9C16.9 9 17.5 10.2 17.5 12V17H15.5V12.5C15.5 11.7 15.3 11 14.5 11C13.7 11 13 11.6 13 12.5V17H11V9Z" fill="white" />
-            </svg>
-        ),
-        youtube: (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                <rect width="24" height="24" rx="6" fill="#FF0000" />
-                <path d="M19.5 8.5C19.5 8.5 19.3 7.3 18.7 6.7C17.9 5.9 17 5.9 16.6 5.8C14.5 5.7 12 5.7 12 5.7C12 5.7 9.5 5.7 7.4 5.8C7 5.9 6.1 5.9 5.3 6.7C4.7 7.3 4.5 8.5 4.5 8.5C4.5 8.5 4.3 9.9 4.3 11.3V12.6C4.3 14 4.5 15.4 4.5 15.4C4.5 15.4 4.7 16.6 5.3 17.2C6.1 18 7.1 17.9 7.6 18C9.1 18.2 12 18.2 12 18.2C12 18.2 14.5 18.2 16.6 18C17 17.9 17.9 17.9 18.7 17.1C19.3 16.5 19.5 15.3 19.5 15.3C19.5 15.3 19.7 13.9 19.7 12.5V11.2C19.7 9.8 19.5 8.5 19.5 8.5Z" fill="#FF0000" />
-                <path d="M10.3 14.4V9.6L15.3 12L10.3 14.4Z" fill="white" />
-            </svg>
-        ),
+    const icon = platformIcons[platform]
+    if (!icon) {
+        return (
+            <div style={{ width: size, height: size }} className="rounded-md bg-muted flex items-center justify-center text-[10px] uppercase font-bold text-muted-foreground">
+                {platform.slice(0, 2)}
+            </div>
+        )
     }
-    return logos[platform] ?? (
-        <div style={{ width: size, height: size }} className="rounded-md bg-muted flex items-center justify-center text-[10px] uppercase font-bold text-muted-foreground">
-            {platform.slice(0, 2)}
+    return (
+        <div style={{ width: size, height: size }} className="shrink-0 flex items-center justify-center">
+            <div style={{ width: size, height: size }}>{icon}</div>
         </div>
     )
 }
@@ -117,14 +79,30 @@ const PlatformLogo = ({ platform, size = 28 }: { platform: string; size?: number
 const PLATFORM_LABELS: Record<string, string> = {
     facebook: 'Facebook', instagram: 'Instagram', twitter: 'X / Twitter',
     tiktok: 'TikTok', linkedin: 'LinkedIn', youtube: 'YouTube',
+    pinterest: 'Pinterest', threads: 'Threads', bluesky: 'Bluesky',
 }
 
-const TONES = [
-    { value: 'viral', label: '🚀 Viral' },
-    { value: 'promotional', label: '🛍️ Promo' },
-    { value: 'casual', label: '😊 Casual' },
-    { value: 'professional', label: '💼 Pro' },
-    { value: 'storytelling', label: '📖 Story' },
+const TONES: { value: string; label: string; icon: React.ReactNode }[] = [
+    {
+        value: 'viral', label: 'Viral',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+    },
+    {
+        value: 'promotional', label: 'Promo',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+    },
+    {
+        value: 'casual', label: 'Casual',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 13s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
+    },
+    {
+        value: 'professional', label: 'Pro',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" /><polyline points="16 2 12 6 8 2" /></svg>
+    },
+    {
+        value: 'storytelling', label: 'Story',
+        icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+    },
 ]
 
 const BEST_HOURS = [8, 12, 18, 20, 9, 15, 21]
@@ -507,15 +485,16 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         <div className="space-y-2">
                             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tone</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {TONES.map(t => (
-                                    <button key={t.value} type="button" onClick={() => setTone(t.value)}
+                                {TONES.map(tone_ => (
+                                    <button key={tone_.value} type="button" onClick={() => setTone(tone_.value)}
                                         className={cn(
-                                            'px-3 py-1.5 rounded-full text-xs border transition-all',
-                                            tone === t.value
+                                            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all',
+                                            tone === tone_.value
                                                 ? 'border-primary bg-primary/10 text-primary font-semibold'
                                                 : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:text-foreground'
                                         )}>
-                                        {t.label}
+                                        {tone_.icon}
+                                        {tone_.label}
                                     </button>
                                 ))}
                             </div>
@@ -585,7 +564,10 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                                     <div className="py-1">
                                                         {byokProviders.length > 0 && (
                                                             <>
-                                                                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground">📌 Your Keys (unlimited)</div>
+                                                                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                                                    Your Keys (unlimited)
+                                                                </div>
                                                                 {byokProviders.map(p => (
                                                                     <button key={`byok:${p.provider}`} type="button"
                                                                         onClick={() => handleProviderSelect(`byok:${p.provider}`)}
@@ -599,8 +581,9 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                                                         )}
                                                         {planProviders.length > 0 && (
                                                             <>
-                                                                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground">
-                                                                    ⚡ Plan ({imageQuota.limit === -1 ? '∞' : `${Math.max(0, imageQuota.limit - imageQuota.used)} left`})
+                                                                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                                                                    Plan ({imageQuota.limit === -1 ? '∞' : `${Math.max(0, imageQuota.limit - imageQuota.used)} left`})
                                                                 </div>
                                                                 {planProviders.map(p => (
                                                                     <button key={`plan:${p.provider}`} type="button"
