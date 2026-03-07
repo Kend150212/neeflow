@@ -35,13 +35,33 @@ export async function GET(req: NextRequest) {
         )
     }
 
-    const clientId = process.env.SHOPIFY_CLIENT_ID
-    const clientSecret = process.env.SHOPIFY_CLIENT_SECRET
+    // Resolve credentials: env takes priority, then DB (ApiIntegration shopify record)
+    let clientId = process.env.SHOPIFY_CLIENT_ID
+    let clientSecret = process.env.SHOPIFY_CLIENT_SECRET
+
+    if (!clientId || !clientSecret) {
+        try {
+            const integration = await prisma.apiIntegration.findFirst({
+                where: { provider: 'shopify' },
+            })
+            if (integration) {
+                const cfg = (integration.config || {}) as Record<string, string>
+                if (!clientId) clientId = cfg.shopifyClientId || ''
+                // apiKey stores the encrypted client secret
+                if (!clientSecret && integration.apiKey) {
+                    const { decrypt } = await import('@/lib/encryption')
+                    try { clientSecret = decrypt(integration.apiKey) } catch { /* ignore */ }
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
     if (!clientId || !clientSecret) {
         return NextResponse.redirect(
             new URL('/dashboard/integrations/shopify?error=not_configured', req.url)
         )
     }
+
 
     // Exchange code for access token
     const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {

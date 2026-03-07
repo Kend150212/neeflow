@@ -65,6 +65,16 @@ export async function POST() {
             status: 'INACTIVE' as const,
             baseUrl: 'https://accounts.google.com',
         },
+        {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            category: 'SOCIAL' as any,
+            provider: 'shopify',
+            name: 'Shopify',
+            isActive: false,
+            isDefault: false,
+            status: 'INACTIVE' as const,
+            baseUrl: 'https://shopify.com',
+        },
     ]
 
     const results = []

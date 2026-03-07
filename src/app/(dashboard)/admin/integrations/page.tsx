@@ -109,6 +109,7 @@ const providerColors: Record<string, string> = {
     stripe: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
     google_oauth: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     recaptcha: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    shopify: 'bg-[#96bf47]/10 text-[#96bf47] border-[#96bf47]/20',
 }
 
 const providerGuideUrls: Record<string, string> = {
@@ -134,6 +135,7 @@ const providerGuideUrls: Record<string, string> = {
     stripe: 'https://dashboard.stripe.com/apikeys',
     google_oauth: 'https://console.cloud.google.com/apis/credentials',
     recaptcha: 'https://www.google.com/recaptcha/admin',
+    shopify: 'https://partners.shopify.com/',
 }
 
 interface PlatformGuide {
@@ -454,8 +456,27 @@ const platformGuides: Record<string, PlatformGuide> = {
         url: 'https://dash.cloudflare.com/?to=/:account/r2/overview',
         urlLabel: 'Open Cloudflare R2 Dashboard',
     },
+    shopify: {
+        title: '🛍️ Shopify OAuth App Setup Guide',
+        description: 'Allow users to connect their Shopify stores via OAuth for catalog sync and inventory management.',
+        steps: [
+            { title: 'Go to Shopify Partners', detail: 'Visit partners.shopify.com → log in → click "Apps" in the top nav.' },
+            { title: 'Create a new app', detail: 'Click "Create app" → "Create app manually" → give it a name (e.g. Neeflow).' },
+            { title: 'Set App URL & Redirect URL', detail: 'App URL: https://neeflow.com/\nAllowed redirect URL:\n{YOUR_DOMAIN}/api/integrations/shopify/oauth/callback' },
+            { title: 'Set Scopes', detail: 'Go to Configuration → Optional scopes and add:\n• read_products\n• read_inventory' },
+            { title: 'Copy Client ID & Secret', detail: 'Go to Overview tab → copy the "Client ID" and "Client secret" → paste them below.' },
+            { title: 'Release a version', detail: 'Go to Versions → click "Release" on the latest version to make the app available.' },
+        ],
+        tips: [
+            '✅ Redirect URL: {YOUR_DOMAIN}/api/integrations/shopify/oauth/callback',
+            '✅ Scopes: read_products, read_inventory',
+            '⚠️ After saving here, users can connect from Neeflow → Integrations → Shopify',
+            '💡 Each Shopify store owner must consent — OAuth grants per-store access tokens',
+        ],
+        url: 'https://partners.shopify.com/',
+        urlLabel: 'Open Shopify Partners',
+    },
 }
-
 
 export default function IntegrationsPage() {
     const branding = useBranding()
@@ -613,6 +634,12 @@ export default function IntegrationsPage() {
                 if (i.provider === 'zalo') {
                     oauthConfigMap[i.id] = {
                         clientId: config.zaloAppId || '',
+                        clientSecret: '',
+                    }
+                }
+                if (i.provider === 'shopify') {
+                    oauthConfigMap[i.id] = {
+                        clientId: config.shopifyClientId || '',
                         clientSecret: '',
                     }
                 }
@@ -826,6 +853,15 @@ export default function IntegrationsPage() {
                 const oauth = oauthConfigs[integration.id]
                 if (oauth) {
                     body.config = { zaloAppId: oauth.clientId }
+                    if (oauth.clientSecret) body.apiKey = oauth.clientSecret
+                }
+            }
+
+            // Shopify OAuth app config
+            if (integration.provider === 'shopify') {
+                const oauth = oauthConfigs[integration.id]
+                if (oauth) {
+                    body.config = { shopifyClientId: oauth.clientId }
                     if (oauth.clientSecret) body.apiKey = oauth.clientSecret
                 }
             }
@@ -1272,7 +1308,7 @@ function IntegrationCard({
     const isGDrive = integration.provider === 'gdrive'
     const isR2 = integration.provider === 'r2'
     const isStripe = integration.provider === 'stripe'
-    const isOAuth = ['youtube', 'tiktok', 'facebook', 'instagram', 'linkedin', 'x', 'pinterest', 'canva', 'google_oauth', 'threads', 'gbp', 'zalo'].includes(integration.provider)
+    const isOAuth = ['youtube', 'tiktok', 'facebook', 'instagram', 'linkedin', 'x', 'pinterest', 'canva', 'google_oauth', 'threads', 'gbp', 'zalo', 'shopify'].includes(integration.provider)
     const textModels = providerModels.filter((m) => m.type === 'text')
     const imageModels = providerModels.filter((m) => m.type === 'image')
     const videoModels = providerModels.filter((m) => m.type === 'video')
