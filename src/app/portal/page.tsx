@@ -1298,11 +1298,21 @@ function UploadTab({
     const [jobsLoading, setJobsLoading] = useState(true)
     const [dragOver, setDragOver] = useState(false)
 
-    // Load recent jobs
+    // ─── Active channel (internal state scoped to this tab) ───────
+    // If parent selected a specific channel, use it; else start with first channel
+    const [activeChannelId, setActiveChannelId] = useState<string>(
+        selectedChannel !== 'all' ? selectedChannel : (channels[0]?.id ?? '')
+    )
+    // Keep activeChannelId in sync if parent's selectedChannel changes to a specific one
+    useEffect(() => {
+        if (selectedChannel !== 'all') setActiveChannelId(selectedChannel)
+    }, [selectedChannel])
+
+    // Load recent jobs — scoped to the active channel
     useEffect(() => {
         const loadJobs = async () => {
             try {
-                const params = selectedChannel !== 'all' ? `?channelId=${selectedChannel}` : ''
+                const params = activeChannelId ? `?channelId=${activeChannelId}` : ''
                 const res = await fetch(`/api/portal/upload/status${params}`)
                 if (res.ok) {
                     const data = await res.json()
@@ -1314,7 +1324,7 @@ function UploadTab({
         loadJobs()
         const interval = setInterval(loadJobs, 10000) // auto-refresh every 10s
         return () => clearInterval(interval)
-    }, [selectedChannel])
+    }, [activeChannelId])
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault()
@@ -1339,8 +1349,7 @@ function UploadTab({
     }
 
     const handleUpload = async () => {
-        const targetChannel = selectedChannel !== 'all' ? selectedChannel : channels[0]?.id
-        if (!targetChannel) { alert('Vui lòng chọn channel'); return }
+        if (!activeChannelId) { alert('Please select a channel first'); return }
         if (files.length === 0) return
 
         setUploading(true)
@@ -1363,7 +1372,7 @@ function UploadTab({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        channelId: targetChannel,
+                        channelId: activeChannelId,
                         fileName: file.name,
                         mimeType: file.type,
                         fileSize: file.size,
@@ -1387,7 +1396,7 @@ function UploadTab({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        channelId: targetChannel,
+                        channelId: activeChannelId,
                         storage: initData.storage || 'r2',
                         r2Key: initData.r2Key,
                         publicUrl: initData.publicUrl,
@@ -1419,7 +1428,7 @@ function UploadTab({
 
         // Refresh jobs list
         setTimeout(async () => {
-            const params = selectedChannel !== 'all' ? `?channelId=${selectedChannel}` : ''
+            const params = activeChannelId ? `?channelId=${activeChannelId}` : ''
             const res = await fetch(`/api/portal/upload/status${params}`)
             if (res.ok) {
                 const data = await res.json()
@@ -1448,20 +1457,33 @@ function UploadTab({
                 </p>
             </div>
 
-            {/* Select channel if "all" */}
-            {selectedChannel === 'all' && channels.length > 1 && (
+            {/* Channel Selector — always visible in Upload tab */}
+            {channels.length > 1 && (
                 <div className={`${c.card} border ${c.cardBorder} rounded-2xl p-4 mb-4`}>
-                    <p className={`text-sm ${c.textSoft} mb-2`}>Chọn channel để upload:</p>
+                    <p className={`text-sm font-medium mb-2.5`}>Upload to channel:</p>
                     <div className="flex flex-wrap gap-2">
                         {channels.map(ch => (
                             <button
                                 key={ch.id}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${c.activeBg} ${c.activeText} border-primary/30`}
+                                onClick={() => setActiveChannelId(ch.id)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${activeChannelId === ch.id
+                                        ? `${c.activeBg} ${c.activeText} border-primary/40`
+                                        : `${c.cardBorder} ${c.textMuted} hover:border-primary/30 hover:${c.activeText}`
+                                    }`}
                             >
                                 {ch.displayName}
                             </button>
                         ))}
                     </div>
+                    {!activeChannelId && (
+                        <p className="text-xs text-amber-400 mt-2">⚠️ Please select a channel before uploading</p>
+                    )}
+                </div>
+            )}
+            {channels.length === 1 && (
+                <div className={`${c.card} border ${c.cardBorder} rounded-xl px-4 py-2 mb-4 flex items-center gap-2`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                    <span className={`text-xs ${c.textMuted}`}>Channel: <span className="font-medium text-foreground">{channels[0].displayName}</span></span>
                 </div>
             )}
 
