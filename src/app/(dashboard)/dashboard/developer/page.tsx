@@ -398,9 +398,9 @@ export default function DeveloperPortalPage() {
                 className="hidden lg:flex flex-col w-56 shrink-0 border-r bg-muted/20 overflow-y-auto py-4 px-2"
                 style={{
                     position: 'fixed',
-                    top: 0,
+                    top: 48,
                     left: navLeft,
-                    height: '100vh',
+                    height: 'calc(100vh - 48px)',
                     zIndex: 30,
                 }}
             >
