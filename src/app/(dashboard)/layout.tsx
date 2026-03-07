@@ -8,6 +8,7 @@ import { WorkspaceProvider } from '@/lib/workspace-context'
 import { DashboardMain } from '@/components/layout/dashboard-main'
 import { TrialBanner } from '@/components/trial-banner'
 import { DashboardClientShell } from '@/components/layout/dashboard-client-shell'
+import { DashboardHeader } from '@/components/layout/dashboard-header'
 
 export default async function DashboardLayout({
     children,
@@ -49,6 +50,7 @@ export default async function DashboardLayout({
                 <DashboardClientShell>
                     <Sidebar session={session} />
                     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+                        <DashboardHeader session={session} />
                         <TrialBanner />
                         <DashboardMain>
                             {children}
