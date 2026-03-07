@@ -22,7 +22,7 @@ import {
     Users,
     Plug,
     Activity,
-    Zap,
+    Kanban,
     CreditCard,
     LayoutList,
     Paintbrush,
@@ -55,7 +55,7 @@ const topNav: NavItem[] = [
 ]
 
 const bottomNav: NavItem[] = [
-    { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Zap },
+    { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Kanban },
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
     { titleKey: 'nav.reports', href: '/dashboard/reports', icon: BarChart3 },
     { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },
@@ -77,7 +77,7 @@ const mobileTabItems: NavItem[] = [
     { titleKey: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true },
     { titleKey: 'nav.posts', href: '/dashboard/posts', icon: PenSquare, exact: true },
     { titleKey: 'nav.studio', href: '/dashboard/studio', icon: Clapperboard },
-    { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Zap },
+    { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Kanban },
 ]
 
 // ── Navigation pill: icon stacked above label ─────────────────────────────────
@@ -113,10 +113,9 @@ function NavPill({
             </div>
             <span
                 className={cn(
-                    'w-full text-center text-[8.5px] font-semibold uppercase tracking-wide leading-tight line-clamp-2',
+                    'w-full text-center text-[8.5px] font-semibold uppercase tracking-wide truncate',
                     isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
                 )}
-                style={{ wordBreak: 'break-word' }}
             >
                 {t(item.titleKey)}
             </span>
