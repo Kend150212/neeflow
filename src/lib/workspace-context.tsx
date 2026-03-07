@@ -10,6 +10,7 @@ interface WorkspaceChannel {
     displayName: string
     name: string
     timezone?: string
+    avatarUrl?: string | null
 }
 
 interface WorkspaceContextType {

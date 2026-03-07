@@ -34,7 +34,7 @@ import {
     UserCircle,
 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 interface PlanUsage {
     aiImage: { used: number; limit: number }
@@ -107,13 +107,29 @@ function PlanUsageBars({ usage }: { usage: PlanUsage }) {
 }
 
 // ── Workspace dropdown in header ──────────────────────────────────────────────
+function ChannelAvatar({ avatarUrl, displayName, size = 6 }: { avatarUrl?: string | null; displayName: string; size?: number }) {
+    const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    const sizeClass = `h-${size} w-${size}`
+    if (avatarUrl) {
+        return (
+            <div className={`${sizeClass} rounded-md overflow-hidden shrink-0`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+            </div>
+        )
+    }
+    return (
+        <div className={`${sizeClass} rounded-md bg-primary/20 flex items-center justify-center shrink-0`}>
+            <span className="text-[9px] font-bold text-primary">{initials}</span>
+        </div>
+    )
+}
+
 function WorkspaceDropdown() {
     const { channels, activeChannel, setActiveChannel, loadingChannels } = useWorkspace()
-    const router = useRouter()
     const t = useTranslation()
 
     const displayName = loadingChannels ? '…' : (activeChannel?.displayName || t('workspace.selectChannel'))
-    const initials = displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
 
     const handleSwitch = (ch: typeof channels[0]) => {
         setActiveChannel(ch)
@@ -123,9 +139,10 @@ function WorkspaceDropdown() {
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer group">
-                    <div className="h-6 w-6 rounded-md bg-primary/20 flex items-center justify-center shrink-0">
-                        <span className="text-[9px] font-bold text-primary">{initials}</span>
-                    </div>
+                    {activeChannel
+                        ? <ChannelAvatar avatarUrl={activeChannel.avatarUrl} displayName={activeChannel.displayName} size={6} />
+                        : <div className="h-6 w-6 rounded-md bg-muted animate-pulse shrink-0" />
+                    }
                     <span className="text-sm font-medium max-w-[140px] truncate hidden sm:block">{displayName}</span>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                 </button>
@@ -140,11 +157,9 @@ function WorkspaceDropdown() {
                         onClick={() => handleSwitch(ch)}
                         className="cursor-pointer"
                     >
-                        <div className="h-5 w-5 rounded bg-primary/15 flex items-center justify-center mr-2 shrink-0">
-                            <span className="text-[8px] font-bold text-primary">{ch.displayName.slice(0, 2).toUpperCase()}</span>
-                        </div>
-                        <span className="flex-1 truncate">{ch.displayName}</span>
-                        {activeChannel?.id === ch.id && <Check className="h-3.5 w-3.5 text-primary" />}
+                        <ChannelAvatar avatarUrl={ch.avatarUrl} displayName={ch.displayName} size={5} />
+                        <span className="flex-1 truncate ml-2">{ch.displayName}</span>
+                        {activeChannel?.id === ch.id && <Check className="h-3.5 w-3.5 text-primary ml-1" />}
                     </DropdownMenuItem>
                 ))}
                 {!loadingChannels && channels.length === 0 && (
