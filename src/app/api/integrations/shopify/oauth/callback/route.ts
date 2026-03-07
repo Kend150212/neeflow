@@ -47,10 +47,10 @@ export async function GET(req: NextRequest) {
             if (integration) {
                 const cfg = (integration.config || {}) as Record<string, string>
                 if (!clientId) clientId = cfg.shopifyClientId || ''
-                // apiKey stores the encrypted client secret
-                if (!clientSecret && integration.apiKey) {
+                // apiKeyEncrypted stores the encrypted client secret
+                if (!clientSecret && integration.apiKeyEncrypted) {
                     const { decrypt } = await import('@/lib/encryption')
-                    try { clientSecret = decrypt(integration.apiKey) } catch { /* ignore */ }
+                    try { clientSecret = decrypt(integration.apiKeyEncrypted) } catch { /* ignore */ }
                 }
             }
         } catch { /* ignore */ }
