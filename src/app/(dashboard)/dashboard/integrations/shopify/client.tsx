@@ -27,6 +27,9 @@ import {
     Info,
     SquareCheck,
     Square,
+    LayoutGrid,
+    List,
+    Tag,
 } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
@@ -134,6 +137,11 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
     const [aiModalProducts, setAiModalProducts] = useState<Product[]>([])
     const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set())
 
+    // ── View / Collection filter state ────────────────────────────────────────
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+    const [collections, setCollections] = useState<string[]>([])
+    const [selectedCollection, setSelectedCollection] = useState<string>('')
+
     // Resolve channelId: prefer workspace context (live), fallback to server prop
     const channelId = activeChannel?.id ?? serverChannelId ?? null
 
@@ -183,7 +191,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
     }, []) // run once on mount
 
     // ── Load products ─────────────────────────────────────────────────────────
-    const loadProducts = useCallback(async (page = 1, search = '', filter = 'all') => {
+    const loadProducts = useCallback(async (page = 1, search = '', filter = 'all', collection = '') => {
         if (!channelId) return
         setLoadingProducts(true)
         try {
@@ -193,11 +201,13 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                 search,
                 status: filter,
             })
+            if (collection) params.set('collection', collection)
             const res = await fetch(`/api/integrations/shopify/products?${params}`)
             const data = await res.json()
             setProducts(data.products || [])
             setProductTotal(data.total || 0)
             setProductTotalPages(data.totalPages || 1)
+            if (data.collections) setCollections(data.collections)
         } catch {
             setProducts([])
         } finally {
@@ -206,14 +216,14 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
     }, [channelId])
 
     useEffect(() => {
-        if (tab === 'catalog') loadProducts(productPage, productSearch, productFilter)
-    }, [tab, productPage, productFilter, channelId]) // eslint-disable-line
+        if (tab === 'catalog') loadProducts(productPage, productSearch, productFilter, selectedCollection)
+    }, [tab, productPage, productFilter, channelId, selectedCollection]) // eslint-disable-line
 
     // Debounced search
     useEffect(() => {
         if (searchTimeout.current) clearTimeout(searchTimeout.current)
         searchTimeout.current = setTimeout(() => {
-            if (tab === 'catalog') loadProducts(1, productSearch, productFilter)
+            if (tab === 'catalog') loadProducts(1, productSearch, productFilter, selectedCollection)
         }, 400)
         return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current) }
     }, [productSearch]) // eslint-disable-line
@@ -700,121 +710,189 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                     </div>
                 ) : (
                     /* ── Catalog Tab ─────────────────────────────────────────── */
-                    <div className="space-y-6">
-                        {/* Toolbar */}
-                        <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
-                            <div className="flex items-center gap-2 flex-1 max-w-lg">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <input
-                                        type="text"
-                                        value={productSearch}
-                                        onChange={(e) => setProductSearch(e.target.value)}
-                                        placeholder={t('integrations.shopify.searchProducts')}
-                                        className="w-full bg-muted/40 border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors"
-                                    />
+                    <div className="flex gap-4">
+
+                        {/* ── Collection Sidebar ───────────────────────────── */}
+                        {collections.length > 0 && (
+                            <div className="hidden lg:flex flex-col gap-1 w-44 shrink-0">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 mb-1">Collections</p>
+                                <button
+                                    onClick={() => { setSelectedCollection(''); setProductPage(1) }}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${!selectedCollection ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                        }`}
+                                >
+                                    <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">All Products</span>
+                                    <span className="ml-auto text-[10px] opacity-60">{productTotal}</span>
+                                </button>
+                                {collections.map(col => (
+                                    <button
+                                        key={col}
+                                        onClick={() => { setSelectedCollection(col); setProductPage(1) }}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${selectedCollection === col ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                            }`}
+                                    >
+                                        <Tag className="w-3.5 h-3.5 shrink-0" />
+                                        <span className="truncate">{col}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* ── Main Content ─────────────────────────────────── */}
+                        <div className="flex-1 min-w-0 space-y-4">
+                            {/* Toolbar */}
+                            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+                                <div className="flex items-center gap-2 flex-1 max-w-sm">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <input
+                                            type="text"
+                                            value={productSearch}
+                                            onChange={(e) => setProductSearch(e.target.value)}
+                                            placeholder={t('integrations.shopify.searchProducts')}
+                                            className="w-full bg-muted/40 border border-border rounded-xl pl-9 pr-4 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {/* Stock filter */}
+                                    <div className="flex gap-0.5 p-1 bg-muted/40 rounded-xl">
+                                        {(['all', 'in_stock', 'out_of_stock'] as const).map((f) => (
+                                            <button
+                                                key={f}
+                                                onClick={() => { setProductFilter(f); setProductPage(1) }}
+                                                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${productFilter === f ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                            >
+                                                {f === 'all' ? t('integrations.shopify.filterAll')
+                                                    : f === 'in_stock' ? t('integrations.shopify.filterInStock')
+                                                        : t('integrations.shopify.filterOutOfStock')}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* View toggle */}
+                                    <div className="flex gap-0.5 p-1 bg-muted/40 rounded-xl">
+                                        <button
+                                            onClick={() => setViewMode('grid')}
+                                            className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                            title="Grid view"
+                                        >
+                                            <LayoutGrid className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => setViewMode('list')}
+                                            className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                            title="List view"
+                                        >
+                                            <List className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex gap-1 p-1 bg-muted/40 rounded-xl">
-                                {(['all', 'in_stock', 'out_of_stock'] as const).map((f) => (
-                                    <button
-                                        key={f}
-                                        onClick={() => { setProductFilter(f); setProductPage(1) }}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${productFilter === f ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                    >
-                                        {f === 'all' ? t('integrations.shopify.filterAll')
-                                            : f === 'in_stock' ? t('integrations.shopify.filterInStock')
-                                                : t('integrations.shopify.filterOutOfStock')}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
 
-                        {/* Stats bar + Bulk toolbar */}
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={toggleSelectAll}
-                                    className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-                                >
-                                    {selectedProductIds.size === products.length && products.length > 0
-                                        ? <SquareCheck className="w-3.5 h-3.5 text-primary" />
-                                        : <Square className="w-3.5 h-3.5" />}
-                                    <span className="text-[11px]">{productTotal} {t('integrations.shopify.filterAll').toLowerCase()}{selectedProductIds.size > 0 ? ` · ${selectedProductIds.size} selected` : ''}</span>
-                                </button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {selectedProductIds.size > 0 && (
+                            {/* Stats bar + Bulk toolbar */}
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <div className="flex items-center gap-3">
                                     <button
                                         type="button"
-                                        onClick={handleBulkCreatePost}
-                                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-90 transition-all"
+                                        onClick={toggleSelectAll}
+                                        className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                                     >
-                                        <Sparkles className="w-3 h-3" />
-                                        {t('integrations.shopify.bulkAiPost').replace('{count}', String(selectedProductIds.size))}
+                                        {selectedProductIds.size === products.length && products.length > 0
+                                            ? <SquareCheck className="w-3.5 h-3.5 text-primary" />
+                                            : <Square className="w-3.5 h-3.5" />}
+                                        <span className="text-[11px]">{
+                                            selectedCollection
+                                                ? `${selectedCollection} · ${productTotal}`
+                                                : `${productTotal} ${t('integrations.shopify.filterAll').toLowerCase()}`
+                                        }{selectedProductIds.size > 0 ? ` · ${selectedProductIds.size} selected` : ''}</span>
                                     </button>
-                                )}
-                                {config?.lastSyncedAt && !selectedProductIds.size && <span>{relativeTime(config.lastSyncedAt)}</span>}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {selectedProductIds.size > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={handleBulkCreatePost}
+                                            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-90 transition-all"
+                                        >
+                                            <Sparkles className="w-3 h-3" />
+                                            {t('integrations.shopify.bulkAiPost').replace('{count}', String(selectedProductIds.size))}
+                                        </button>
+                                    )}
+                                    {config?.lastSyncedAt && !selectedProductIds.size && <span>{relativeTime(config.lastSyncedAt)}</span>}
+                                </div>
                             </div>
+
+                            {/* Products */}
+                            {loadingProducts ? (
+                                <div className="flex items-center justify-center h-48">
+                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                </div>
+                            ) : products.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
+                                    <Package className="w-12 h-12 text-muted-foreground/30" />
+                                    <p className="text-sm text-muted-foreground">
+                                        {productSearch ? t('integrations.shopify.noProductsSearch') : t('integrations.shopify.noProducts')}
+                                    </p>
+                                    {!productSearch && !isConnected && (
+                                        <button onClick={() => setTab('connect')} className="text-xs text-primary hover:underline">
+                                            {t('integrations.shopify.connectTab')} →
+                                        </button>
+                                    )}
+                                </div>
+                            ) : viewMode === 'grid' ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                                    {products.map((product) => (
+                                        <ProductCard
+                                            key={product.id}
+                                            product={product}
+                                            onCreatePost={handleCreatePost}
+                                            selected={selectedProductIds.has(product.id)}
+                                            onToggleSelect={() => toggleSelectProduct(product.id)}
+                                            t={t}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-1">
+                                    {products.map((product) => (
+                                        <ProductListRow
+                                            key={product.id}
+                                            product={product}
+                                            onCreatePost={handleCreatePost}
+                                            selected={selectedProductIds.has(product.id)}
+                                            onToggleSelect={() => toggleSelectProduct(product.id)}
+                                            t={t}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Pagination */}
+                            {productTotalPages > 1 && (
+                                <div className="flex items-center justify-center gap-2 pt-4">
+                                    <button
+                                        onClick={() => setProductPage(p => Math.max(1, p - 1))}
+                                        disabled={productPage <= 1}
+                                        className="p-2 rounded-lg bg-muted/40 hover:bg-muted disabled:opacity-30 transition-colors"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <span className="text-sm text-muted-foreground">
+                                        {t('integrations.shopify.page')
+                                            .replace('{page}', String(productPage))
+                                            .replace('{total}', String(productTotalPages))}
+                                    </span>
+                                    <button
+                                        onClick={() => setProductPage(p => Math.min(productTotalPages, p + 1))}
+                                        disabled={productPage >= productTotalPages}
+                                        className="p-2 rounded-lg bg-muted/40 hover:bg-muted disabled:opacity-30 transition-colors"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
-
-                        {/* Products Grid */}
-                        {loadingProducts ? (
-                            <div className="flex items-center justify-center h-48">
-                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                            </div>
-                        ) : products.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
-                                <Package className="w-12 h-12 text-muted-foreground/30" />
-                                <p className="text-sm text-muted-foreground">
-                                    {productSearch ? t('integrations.shopify.noProductsSearch') : t('integrations.shopify.noProducts')}
-                                </p>
-                                {!productSearch && !isConnected && (
-                                    <button onClick={() => setTab('connect')} className="text-xs text-primary hover:underline">
-                                        {t('integrations.shopify.connectTab')} →
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                                {products.map((product) => (
-                                    <ProductCard
-                                        key={product.id}
-                                        product={product}
-                                        onCreatePost={handleCreatePost}
-                                        selected={selectedProductIds.has(product.id)}
-                                        onToggleSelect={() => toggleSelectProduct(product.id)}
-                                        t={t}
-                                    />
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Pagination */}
-                        {productTotalPages > 1 && (
-                            <div className="flex items-center justify-center gap-2 pt-4">
-                                <button
-                                    onClick={() => setProductPage(p => Math.max(1, p - 1))}
-                                    disabled={productPage <= 1}
-                                    className="p-2 rounded-lg bg-muted/40 hover:bg-muted disabled:opacity-30 transition-colors"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                                <span className="text-sm text-muted-foreground">
-                                    {t('integrations.shopify.page')
-                                        .replace('{page}', String(productPage))
-                                        .replace('{total}', String(productTotalPages))}
-                                </span>
-                                <button
-                                    onClick={() => setProductPage(p => Math.min(productTotalPages, p + 1))}
-                                    disabled={productPage >= productTotalPages}
-                                    className="p-2 rounded-lg bg-muted/40 hover:bg-muted disabled:opacity-30 transition-colors"
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>
@@ -829,7 +907,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
     )
 }
 
-// ── Product Card ─────────────────────────────────────────────────────────────
+// ── Product Card (compact grid) ───────────────────────────────────────────────
 function ProductCard({
     product,
     onCreatePost,
@@ -844,12 +922,10 @@ function ProductCard({
     t: (key: string) => string
 }) {
     const inStock = product.inStock
-    const badgeColor = inStock ? 'bg-primary/90 text-primary-foreground' : 'bg-destructive text-destructive-foreground'
-    const badgeText = inStock ? t('integrations.shopify.inStock') : t('integrations.shopify.outOfStock')
     const hasImage = product.images.length > 0
 
     return (
-        <div className={`bg-card border rounded-2xl overflow-hidden group transition-all ${selected ? 'border-primary shadow-[0_0_0_1px] shadow-primary' : 'border-border hover:border-primary/40'
+        <div className={`bg-card border rounded-xl overflow-hidden group transition-all ${selected ? 'border-primary shadow-[0_0_0_1px] shadow-primary' : 'border-border hover:border-primary/40'
             }`}>
             {/* Image */}
             <div className="aspect-square relative overflow-hidden bg-muted/60">
@@ -859,24 +935,23 @@ function ProductCard({
                         alt={product.name}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+                        sizes="(max-width: 640px) 50vw, 25vw"
                         unoptimized
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="w-10 h-10 text-muted-foreground/30" />
+                        <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
                     </div>
                 )}
                 {/* Stock badge */}
-                <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${badgeColor}`}>
-                    {badgeText}
+                <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase ${inStock ? 'bg-primary/90 text-primary-foreground' : 'bg-destructive text-destructive-foreground'}`}>
+                    {inStock ? t('integrations.shopify.inStock') : t('integrations.shopify.outOfStock')}
                 </div>
-                {/* Select checkbox */}
+                {/* Select */}
                 <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
-                    className={`absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-md transition-all ${selected ? 'bg-primary' : 'bg-black/50 hover:bg-black/70'
-                        }`}
+                    className={`absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-md transition-all ${selected ? 'bg-primary' : 'bg-black/50 hover:bg-black/70'}`}
                 >
                     {selected
                         ? <Check className="h-3 w-3 text-primary-foreground" />
@@ -885,36 +960,104 @@ function ProductCard({
             </div>
 
             {/* Content */}
-            <div className="p-4 space-y-3">
+            <div className="p-2.5 space-y-2">
                 <div>
-                    <h5 className="font-bold text-sm truncate" title={product.name}>{product.name}</h5>
-                    <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs text-muted-foreground truncate">{product.category || '—'}</span>
-                        <span className="text-sm font-bold text-primary shrink-0 ml-2">
+                    <h5 className="font-semibold text-xs truncate leading-tight" title={product.name}>{product.name}</h5>
+                    <div className="flex items-center justify-between mt-0.5">
+                        <span className="text-[10px] text-muted-foreground truncate">{product.category || '—'}</span>
+                        <span className="text-xs font-bold text-primary shrink-0 ml-1">
                             {product.price ? `$${product.price.toFixed(2)}` : '—'}
                         </span>
                     </div>
                 </div>
-
-                {/* Dot indicator */}
-                <div className="flex items-center gap-1.5">
-                    <div className={`h-1.5 w-1.5 rounded-full ${inStock ? 'bg-primary' : 'bg-destructive'}`} />
-                    <span className="text-[11px] text-muted-foreground">
-                        {product.images.length > 1
-                            ? t('integrations.shopify.imageCountPlural').replace('{count}', String(product.images.length))
-                            : t('integrations.shopify.imageCount').replace('{count}', String(product.images.length))}
-                    </span>
-                </div>
-
-                {/* CTA */}
                 <button
                     onClick={() => onCreatePost(product)}
-                    className="w-full py-2.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:brightness-90 transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-lg hover:brightness-90 transition-all flex items-center justify-center gap-1"
                 >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Sparkles className="w-3 h-3" />
                     {t('integrations.shopify.createAiPost')}
                 </button>
             </div>
         </div>
     )
 }
+
+// ── Product List Row ──────────────────────────────────────────────────────────
+function ProductListRow({
+    product,
+    onCreatePost,
+    selected,
+    onToggleSelect,
+    t,
+}: {
+    product: Product
+    onCreatePost: (p: Product) => void
+    selected: boolean
+    onToggleSelect: () => void
+    t: (key: string) => string
+}) {
+    const inStock = product.inStock
+    const hasImage = product.images.length > 0
+
+    return (
+        <div className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${selected ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/30 hover:bg-muted/20'}`}>
+            {/* Select */}
+            <button
+                type="button"
+                onClick={onToggleSelect}
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all ${selected ? 'bg-primary' : 'bg-muted hover:bg-muted/80'}`}
+            >
+                {selected
+                    ? <Check className="h-3 w-3 text-primary-foreground" />
+                    : <Square className="h-3 w-3 text-muted-foreground" />}
+            </button>
+
+            {/* Thumbnail */}
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted/60 shrink-0 relative">
+                {hasImage ? (
+                    <Image src={product.images[0]} alt={product.name} fill className="object-cover" unoptimized />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon className="w-4 h-4 text-muted-foreground/30" />
+                    </div>
+                )}
+            </div>
+
+            {/* Name + category */}
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate" title={product.name}>{product.name}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{product.category || '—'}</p>
+            </div>
+
+            {/* Tags (hidden on small) */}
+            {product.tags.length > 0 && (
+                <div className="hidden md:flex items-center gap-1 shrink-0">
+                    {product.tags.slice(0, 2).map(tag => (
+                        <span key={tag} className="px-1.5 py-0.5 bg-muted rounded text-[10px] text-muted-foreground truncate max-w-[80px]">{tag}</span>
+                    ))}
+                    {product.tags.length > 2 && <span className="text-[10px] text-muted-foreground">+{product.tags.length - 2}</span>}
+                </div>
+            )}
+
+            {/* Stock + price */}
+            <div className="flex items-center gap-2 shrink-0">
+                <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${inStock ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'}`}>
+                    {inStock ? t('integrations.shopify.inStock') : t('integrations.shopify.outOfStock')}
+                </div>
+                <span className="text-sm font-bold text-primary min-w-[50px] text-right">
+                    {product.price ? `$${product.price.toFixed(2)}` : '—'}
+                </span>
+            </div>
+
+            {/* CTA */}
+            <button
+                onClick={() => onCreatePost(product)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-[11px] font-bold rounded-lg hover:brightness-90 transition-all shrink-0"
+            >
+                <Sparkles className="w-3 h-3" />
+                AI Post
+            </button>
+        </div>
+    )
+}
+

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// GET /api/integrations/shopify/products?channelId=xxx&page=1&search=xxx&status=all
+// GET /api/integrations/shopify/products?channelId=xxx&page=1&search=xxx&status=all&collection=xxx
 export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -11,8 +11,9 @@ export async function GET(req: NextRequest) {
     const channelId = searchParams.get('channelId')
     const page = parseInt(searchParams.get('page') || '1')
     const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || 'all' // all | in_stock | low_stock | out_of_stock
-    const limit = 20
+    const status = searchParams.get('status') || 'all' // all | in_stock | out_of_stock
+    const collection = searchParams.get('collection') || '' // filter by category/collection
+    const limit = 24
 
     if (!channelId) return NextResponse.json({ error: 'Missing channelId' }, { status: 400 })
 
@@ -33,6 +34,10 @@ export async function GET(req: NextRequest) {
         where.inStock = true
     } else if (status === 'out_of_stock') {
         where.inStock = false
+    }
+
+    if (collection) {
+        where.category = collection
     }
 
     const [products, total] = await Promise.all([
@@ -58,13 +63,22 @@ export async function GET(req: NextRequest) {
         prisma.productCatalog.count({ where }),
     ])
 
+    // Also return list of unique collections for this channel (for sidebar filter)
+    const collectionsRaw = await prisma.productCatalog.findMany({
+        where: { channelId, syncSource: 'shopify', category: { not: null } },
+        select: { category: true },
+        distinct: ['category'],
+        orderBy: { category: 'asc' },
+    })
+    const collections = collectionsRaw
+        .map(c => c.category)
+        .filter((c): c is string => !!c)
+
     return NextResponse.json({
         products,
         total,
         page,
         totalPages: Math.ceil(total / limit),
+        collections,
     })
 }
-
-// GET /api/integrations/shopify/products/[id] — single product for compose pre-fill
-// We handle this via search param: ?productId=xxx
