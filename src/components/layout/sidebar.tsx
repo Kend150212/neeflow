@@ -111,7 +111,7 @@ function NavPill({
             </div>
             <span
                 className={cn(
-                    'w-full text-center text-[8.5px] font-semibold uppercase tracking-wide truncate',
+                    'w-full text-center text-[7px] font-semibold uppercase tracking-normal truncate',
                     isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
                 )}
             >
