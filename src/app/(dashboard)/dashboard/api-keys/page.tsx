@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,15 +24,6 @@ import {
     RefreshCw,
     Star,
     Zap,
-    HardDrive,
-    Link2,
-    Unlink,
-    FolderOpen,
-    Mail,
-    Calendar,
-    AlertCircle,
-    Palette,
-    ImageIcon,
 } from 'lucide-react'
 import {
     Dialog,
@@ -493,22 +483,10 @@ function ProviderCard({
     )
 }
 
-// ─── Google Drive Status Type ──────────────────────────────
-interface GDriveStatus {
-    connected: boolean
-    email: string | null
-    folderId: string | null
-    folderName: string | null
-    folderUrl: string | null
-    connectedAt: string | null
-    isAdminConfigured: boolean
-}
 
 // ─── Main Page ─────────────────────────────────────────────
 export default function UserApiKeysPage() {
     const t = useTranslation()
-    const searchParams = useSearchParams()
-    const router = useRouter()
     const [providers, setProviders] = useState<AiProvider[]>([])
     const [keys, setKeys] = useState<UserApiKeyData[]>([])
     const [loading, setLoading] = useState(true)
@@ -523,106 +501,7 @@ export default function UserApiKeysPage() {
     const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({})
     const [selectedModels, setSelectedModels] = useState<Record<string, string>>({})
 
-    // Google Drive state
-    const [gdriveStatus, setGdriveStatus] = useState<GDriveStatus | null>(null)
-    const [gdriveLoading, setGdriveLoading] = useState(false)
-    const [gdriveConnecting, setGdriveConnecting] = useState(false)
 
-    // Canva state
-    const [canvaStatus, setCanvaStatus] = useState<{ connected: boolean; isAdminConfigured: boolean; userName: string | null; connectedAt: string | null } | null>(null)
-    const [canvaLoading, setCanvaLoading] = useState(false)
-    const [canvaConnecting, setCanvaConnecting] = useState(false)
-
-    const fetchGDriveStatus = useCallback(async () => {
-        try {
-            const res = await fetch('/api/user/gdrive/status')
-            if (res.ok) setGdriveStatus(await res.json())
-        } catch { /* */ }
-    }, [])
-
-    const fetchCanvaStatus = useCallback(async () => {
-        try {
-            const res = await fetch('/api/user/canva/status')
-            if (res.ok) setCanvaStatus(await res.json())
-        } catch { /* */ }
-    }, [])
-
-    const handleGDriveConnect = async () => {
-        setGdriveConnecting(true)
-        try {
-            const res = await fetch('/api/user/gdrive/auth')
-            const data = await res.json()
-            if (data.authUrl) {
-                window.location.href = data.authUrl
-            } else {
-                toast.error(data.error || t('apiKeys.gdriveFailed'))
-                setGdriveConnecting(false)
-            }
-        } catch {
-            toast.error(t('apiKeys.gdriveFailed'))
-            setGdriveConnecting(false)
-        }
-    }
-
-    const handleCanvaConnect = async () => {
-        setCanvaConnecting(true)
-        window.location.href = `/api/oauth/canva?returnUrl=${encodeURIComponent('/dashboard/api-keys')}`
-    }
-
-    const handleCanvaDisconnect = async () => {
-        setCanvaLoading(true)
-        try {
-            const res = await fetch('/api/user/canva/disconnect', { method: 'POST' })
-            if (res.ok) {
-                toast.success(t('apiKeys.canvaDisconnected'))
-                fetchCanvaStatus()
-            } else {
-                toast.error(t('apiKeys.canvaFailed'))
-            }
-        } catch {
-            toast.error('Failed to disconnect')
-        }
-        setCanvaLoading(false)
-    }
-
-    const handleGDriveDisconnect = async () => {
-        setGdriveLoading(true)
-        try {
-            const res = await fetch('/api/user/gdrive/disconnect', { method: 'POST' })
-            if (res.ok) {
-                toast.success(t('apiKeys.gdriveDisconnected'))
-                fetchGDriveStatus()
-            } else {
-                toast.error(t('apiKeys.gdriveFailed'))
-            }
-        } catch {
-            toast.error('Failed to disconnect')
-        }
-        setGdriveLoading(false)
-    }
-
-    // Handle OAuth redirect params
-    useEffect(() => {
-        const gdrive = searchParams.get('gdrive')
-        if (gdrive === 'connected') {
-            toast.success('Google Drive connected successfully!')
-            fetchGDriveStatus()
-            router.replace('/dashboard/api-keys')
-        } else if (gdrive === 'error') {
-            toast.error(searchParams.get('message') || 'Google Drive connection failed')
-            router.replace('/dashboard/api-keys')
-        }
-
-        const canva = searchParams.get('canva')
-        if (canva === 'connected') {
-            toast.success('🎨 Canva connected successfully!')
-            fetchCanvaStatus()
-            router.replace('/dashboard/api-keys')
-        } else if (canva === 'error') {
-            toast.error(searchParams.get('message') || 'Canva connection failed')
-            router.replace('/dashboard/api-keys')
-        }
-    }, [searchParams, router, fetchGDriveStatus, fetchCanvaStatus])
 
     const fetchProviders = useCallback(async () => {
         try {
@@ -645,8 +524,8 @@ export default function UserApiKeysPage() {
     }, [])
 
     useEffect(() => {
-        Promise.all([fetchProviders(), fetchKeys(), fetchGDriveStatus(), fetchCanvaStatus()]).then(() => setLoading(false))
-    }, [fetchProviders, fetchKeys, fetchGDriveStatus, fetchCanvaStatus])
+        Promise.all([fetchProviders(), fetchKeys()]).then(() => setLoading(false))
+    }, [fetchProviders, fetchKeys])
 
     const handleSave = async (providerSlug: string) => {
         const apiKey = apiKeyValues[providerSlug]
@@ -783,194 +662,7 @@ export default function UserApiKeysPage() {
 
 
 
-            {/* ─── Google Drive (Import) Section ─── */}
-            <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                    <HardDrive className="h-5 w-5" />
-                    <h2 className="text-xl font-semibold">{t('apiKeys.googleDrive')}</h2>
-                    {gdriveStatus?.connected && (
-                        <Badge variant="default" className="ml-2 gap-1 bg-green-500/10 text-green-600 border-green-500/20">
-                            <CheckCircle className="h-3 w-3" />
-                            Connected
-                        </Badge>
-                    )}
-                </div>
 
-                <Card className="border-dashed">
-                    <CardContent className="pt-6">
-                        {gdriveStatus?.connected ? (
-                            <div className="space-y-4">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="space-y-3 flex-1">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <Mail className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-muted-foreground">{t('apiKeys.account')}</span>
-                                            <span className="font-medium">{gdriveStatus.email}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-muted-foreground">{t('apiKeys.folder')}</span>
-                                            {gdriveStatus.folderUrl ? (
-                                                <a
-                                                    href={gdriveStatus.folderUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="font-medium text-blue-500 hover:underline inline-flex items-center gap-1"
-                                                >
-                                                    {gdriveStatus.folderName}
-                                                    <ExternalLink className="h-3 w-3" />
-                                                </a>
-                                            ) : (
-                                                <span className="font-medium">{gdriveStatus.folderName}</span>
-                                            )}
-                                        </div>
-                                        {gdriveStatus.connectedAt && (
-                                            <div className="flex items-center gap-2 text-sm">
-                                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-muted-foreground">Connected:</span>
-                                                <span className="font-medium">
-                                                    {new Date(gdriveStatus.connectedAt).toLocaleDateString()}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleGDriveDisconnect}
-                                        disabled={gdriveLoading}
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                    >
-                                        {gdriveLoading ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <Unlink className="h-4 w-4" />
-                                        )}
-                                        <span className="ml-1.5">{gdriveLoading ? t('apiKeys.disconnecting') : t('apiKeys.disconnectGDrive')}</span>
-                                    </Button>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Import images and videos from your Google Drive directly into your R2 media library.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="text-center py-4 space-y-4">
-                                <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                                    <HardDrive className="h-6 w-6 text-muted-foreground" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">{t('apiKeys.connectGDrive')}</h3>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        {t('apiKeys.gdriveDesc')}
-                                    </p>
-                                </div>
-                                {!gdriveStatus?.isAdminConfigured ? (
-                                    <div className="flex items-center justify-center gap-2 text-sm text-amber-500">
-                                        <AlertCircle className="h-4 w-4" />
-                                        <span>{t('apiKeys.gdriveNotConfigured')}</span>
-                                    </div>
-                                ) : (
-                                    <Button onClick={handleGDriveConnect} disabled={gdriveConnecting}>
-                                        {gdriveConnecting ? (
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        ) : (
-                                            <Link2 className="h-4 w-4 mr-2" />
-                                        )}
-                                        {gdriveConnecting ? t('apiKeys.connecting') : t('apiKeys.connectGDrive')}
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Separator />
-
-            {/* ─── Canva Design Tools Section ─── */}
-            <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                    <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-5 w-5 object-contain" />
-                    <h2 className="text-xl font-semibold">Canva Design</h2>
-                    {canvaStatus?.connected && (
-                        <Badge variant="default" className="ml-2 gap-1 bg-violet-500/10 text-violet-600 border-violet-500/20">
-                            <CheckCircle className="h-3 w-3" />
-                            {t('apiKeys.connected')}
-                        </Badge>
-                    )}
-                </div>
-
-                <Card className="border-dashed">
-                    <CardContent className="pt-6">
-                        {canvaStatus?.connected ? (
-                            <div className="space-y-4">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="space-y-3 flex-1">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-4 w-4 object-contain" />
-                                            <span className="text-muted-foreground">{t('apiKeys.account')}</span>
-                                            <span className="font-medium">{canvaStatus.userName}</span>
-                                        </div>
-                                        {canvaStatus.connectedAt && (
-                                            <div className="flex items-center gap-2 text-sm">
-                                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-muted-foreground">{t('apiKeys.connectedOn')}</span>
-                                                <span className="font-medium">
-                                                    {new Date(canvaStatus.connectedAt).toLocaleDateString()}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleCanvaDisconnect}
-                                        disabled={canvaLoading}
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                    >
-                                        {canvaLoading ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <Unlink className="h-4 w-4" />
-                                        )}
-                                        <span className="ml-1.5">{canvaLoading ? t('apiKeys.disconnecting') : t('apiKeys.disconnectCanva')}</span>
-                                    </Button>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Create stunning social media graphics using Canva directly from the Compose page.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="text-center py-4 space-y-4">
-                                <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="mx-auto h-12 w-12 object-contain" />
-                                <div>
-                                    <h3 className="font-semibold">{t('apiKeys.connectCanva')}</h3>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        {t('apiKeys.canvaDesc')}
-                                    </p>
-                                </div>
-                                {!canvaStatus?.isAdminConfigured ? (
-                                    <div className="flex items-center justify-center gap-2 text-sm text-amber-500">
-                                        <AlertCircle className="h-4 w-4" />
-                                        <span>{t('apiKeys.canvaNotConfigured')}</span>
-                                    </div>
-                                ) : (
-                                    <Button onClick={handleCanvaConnect} disabled={canvaConnecting} className="bg-violet-600 hover:bg-violet-700">
-                                        {canvaConnecting ? (
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        ) : (
-                                            <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-4 w-4 mr-2 object-contain" />
-                                        )}
-                                        {canvaConnecting ? t('apiKeys.connecting') : t('apiKeys.connectCanva')}
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            <Separator />
 
             {/* AI Providers Section */}
             <div className="space-y-4">

@@ -19,11 +19,11 @@ export async function GET(req: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
     if (error) {
-        return NextResponse.redirect(`${baseUrl}/dashboard/api-keys?gdrive=error&message=${encodeURIComponent(error)}`)
+        return NextResponse.redirect(`${baseUrl}/dashboard/integrations?gdrive=error&message=${encodeURIComponent(error)}`)
     }
 
     if (!code || !stateParam) {
-        return NextResponse.redirect(`${baseUrl}/dashboard/api-keys?gdrive=error&message=${encodeURIComponent('Missing params')}`)
+        return NextResponse.redirect(`${baseUrl}/dashboard/integrations?gdrive=error&message=${encodeURIComponent('Missing params')}`)
     }
 
     // Parse state to get user ID
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     try {
         state = JSON.parse(Buffer.from(stateParam, 'base64url').toString())
     } catch {
-        return NextResponse.redirect(`${baseUrl}/dashboard/api-keys?gdrive=error&message=${encodeURIComponent('Invalid state')}`)
+        return NextResponse.redirect(`${baseUrl}/dashboard/integrations?gdrive=error&message=${encodeURIComponent('Invalid state')}`)
     }
 
     try {
@@ -41,14 +41,14 @@ export async function GET(req: NextRequest) {
         })
 
         if (!integration) {
-            return NextResponse.redirect(`${baseUrl}/dashboard/api-keys?gdrive=error&message=${encodeURIComponent('Integration not found')}`)
+            return NextResponse.redirect(`${baseUrl}/dashboard/integrations?gdrive=error&message=${encodeURIComponent('Integration not found')}`)
         }
 
         const config = (integration.config || {}) as Record<string, string>
         const clientId = config.gdriveClientId
 
         if (!clientId || !integration.apiKeyEncrypted) {
-            return NextResponse.redirect(`${baseUrl}/dashboard/api-keys?gdrive=error&message=${encodeURIComponent('Not configured')}`)
+            return NextResponse.redirect(`${baseUrl}/dashboard/integrations?gdrive=error&message=${encodeURIComponent('Not configured')}`)
         }
 
         const clientSecret = decrypt(integration.apiKeyEncrypted)
@@ -107,9 +107,9 @@ export async function GET(req: NextRequest) {
             },
         })
 
-        return NextResponse.redirect(`${baseUrl}/dashboard/api-keys?gdrive=connected`)
+        return NextResponse.redirect(`${baseUrl}/dashboard/integrations?gdrive=connected`)
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Connection failed'
-        return NextResponse.redirect(`${baseUrl}/dashboard/api-keys?gdrive=error&message=${encodeURIComponent(message)}`)
+        return NextResponse.redirect(`${baseUrl}/dashboard/integrations?gdrive=error&message=${encodeURIComponent(message)}`)
     }
 }
