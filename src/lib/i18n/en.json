@@ -1753,6 +1753,7 @@
       "statusPendingApproval": "Pending Approval",
       "statusClientReview": "Client Review",
       "statusScheduled": "Scheduled",
+      "statusRejected": "Needs Revision",
       "portalCopied": "Portal link copied",
       "dateToday": "Today",
       "dateWeek": "This Week",
@@ -1761,7 +1762,12 @@
       "platformActive": "Active",
       "platformInactive": "Disabled",
       "staticImage": "static image",
-      "media": "Media"
+      "media": "Media",
+      "rejectModalTitle": "Request Revision",
+      "rejectModalDesc": "The post will be moved to the \"Needs Revision\" column",
+      "rejectModalPlaceholder": "Add a note for the client or team... (optional)",
+      "rejectModalCancel": "Cancel",
+      "rejectModalConfirm": "Request Revision"
     },
     "quota": {
       "upgradeTitle": "Unlock Client Board",

@@ -1753,6 +1753,7 @@
       "statusPendingApproval": "Chờ duyệt",
       "statusClientReview": "Client đang xem",
       "statusScheduled": "Đã lên lịch",
+      "statusRejected": "Cần chỉnh sửa",
       "portalCopied": "Đã copy link Portal",
       "dateToday": "Hôm nay",
       "dateWeek": "Tuần này",
@@ -1761,7 +1762,12 @@
       "platformActive": "Đang đăng",
       "platformInactive": "Đã tắt",
       "staticImage": "ảnh tĩnh",
-      "media": "Tệp phương tiện"
+      "media": "Tệp phương tiện",
+      "rejectModalTitle": "Yêu cầu chỉnh sửa",
+      "rejectModalDesc": "Bài post sẽ được giữ lại trong cột \"Cần chỉnh sửa\"",
+      "rejectModalPlaceholder": "Nhập ghi chú cho khách hàng hoặc đội ngũ... (tùy chọn)",
+      "rejectModalCancel": "Huỷ",
+      "rejectModalConfirm": "Yêu cầu chỉnh sửa"
     },
     "quota": {
       "upgradeTitle": "Mở khóa Client Board",

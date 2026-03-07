@@ -104,7 +104,7 @@ function buildColumns(t: (k: string) => string): KanbanColumn[] {
             filter: (j) => j.post?.status === 'CLIENT_REVIEW',
         },
         {
-            key: 'rejected', label: 'Cần chỉnh sửa',
+            key: 'rejected', label: t('smartflow.queue.statusRejected'),
             icon: <AlertOctagon className="h-4 w-4" />,
             colorDot: 'bg-orange-500', colorText: 'text-orange-400', colorLine: 'bg-orange-500/30',
             filter: (j) => j.post?.status === 'REJECTED',
@@ -131,6 +131,7 @@ function RejectModal({ postId, onClose, onConfirm }: {
     onClose: () => void
     onConfirm: (postId: string, comment: string) => Promise<void>
 }) {
+    const t = useTranslation()
     const [comment, setComment] = useState('')
     const [loading, setLoading] = useState(false)
     return (
@@ -141,19 +142,19 @@ function RejectModal({ postId, onClose, onConfirm }: {
                         <AlertOctagon className="h-4 w-4 text-orange-400" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-sm">Yêu cầu chỉnh sửa</h3>
-                        <p className="text-[11px] text-muted-foreground">Bài post sẽ được giữ lại trong cột "Cần chỉnh sửa"</p>
+                        <h3 className="font-semibold text-sm">{t('smartflow.queue.rejectModalTitle')}</h3>
+                        <p className="text-[11px] text-muted-foreground">{t('smartflow.queue.rejectModalDesc')}</p>
                     </div>
                 </div>
                 <textarea
                     value={comment}
                     onChange={e => setComment(e.target.value)}
-                    placeholder="Nhập ghi chú cho khách hàng hoặc đội ngũ... (tùy chọn)"
+                    placeholder={t('smartflow.queue.rejectModalPlaceholder')}
                     className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm resize-none h-24 focus:outline-none focus:ring-1 focus:ring-orange-500/50 placeholder:text-muted-foreground/50"
                 />
                 <div className="flex gap-2 mt-4">
                     <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-all cursor-pointer">
-                        Huỷ
+                        {t('smartflow.queue.rejectModalCancel')}
                     </button>
                     <button
                         onClick={async () => {
@@ -165,7 +166,7 @@ function RejectModal({ postId, onClose, onConfirm }: {
                         className="flex-1 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm font-medium hover:bg-orange-500/20 transition-all cursor-pointer flex items-center justify-center gap-1"
                     >
                         {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsDown className="h-3 w-3" />}
-                        Xác nhận
+                        {t('smartflow.queue.rejectModalConfirm')}
                     </button>
                 </div>
             </div>
@@ -332,12 +333,15 @@ export default function SmartFlowPage() {
                         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
                             <Zap className="h-6 w-6 text-amber-500" />
                             {t('smartflow.queue.title')}
-                            {/* Channel name badge */}
-                            {selectedChannel && (
+                            {selectedChannelId === 'all' ? (
+                                <span className="text-base font-normal text-muted-foreground">
+                                    — <span className="text-foreground font-semibold">All Channels</span>
+                                </span>
+                            ) : selectedChannel ? (
                                 <span className="text-base font-normal text-muted-foreground">
                                     — <span className="text-foreground font-semibold">{selectedChannel.displayName}</span>
                                 </span>
-                            )}
+                            ) : null}
                         </h1>
                         <p className="text-sm text-muted-foreground mt-0.5">{t('smartflow.queue.subtitle')}</p>
                     </div>
