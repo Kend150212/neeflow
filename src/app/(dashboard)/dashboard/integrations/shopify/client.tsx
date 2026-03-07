@@ -102,6 +102,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
     const [shopDomain, setShopDomain] = useState('')
     const [accessToken, setAccessToken] = useState('')
     const [showToken, setShowToken] = useState(false)
+    const [showManualToken, setShowManualToken] = useState(false)
     const [syncInventory, setSyncInventory] = useState(true)
     const [syncCollections, setSyncCollections] = useState(true)
     const [syncImages, setSyncImages] = useState(true)
@@ -155,6 +156,23 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
             .catch(console.error)
             .finally(() => setLoading(false))
     }, [channelId])
+
+    // ── Handle OAuth callback success ─────────────────────────────────────────
+    useEffect(() => {
+        const url = new URL(window.location.href)
+        if (url.searchParams.get('connected') === '1') {
+            toast.success('✅ Shopify store connected successfully!')
+            // Clean URL
+            url.searchParams.delete('connected')
+            window.history.replaceState({}, '', url.pathname + (url.searchParams.size > 0 ? '?' + url.searchParams.toString() : ''))
+        }
+        const err = url.searchParams.get('error')
+        if (err) {
+            toast.error(`Shopify connection failed: ${err}`)
+            url.searchParams.delete('error')
+            window.history.replaceState({}, '', url.pathname + (url.searchParams.size > 0 ? '?' + url.searchParams.toString() : ''))
+        }
+    }, []) // run once on mount
 
     // ── Load products ─────────────────────────────────────────────────────────
     const loadProducts = useCallback(async (page = 1, search = '', filter = 'all') => {
@@ -389,6 +407,18 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                     <h2 className="font-bold">{t('integrations.shopify.connectTab')}</h2>
                                 </div>
                                 <div className="p-6 space-y-5">
+
+                                    {/* ── Already connected state ── */}
+                                    {isConnected && (
+                                        <div className="rounded-xl p-4 bg-[#00ff95]/10 border border-[#00ff95]/30 flex items-center gap-3">
+                                            <CheckCircle2 className="w-5 h-5 text-[#00ff95] shrink-0" />
+                                            <div>
+                                                <p className="text-sm font-semibold text-[#00ff95]">{t('integrations.shopify.connected')}</p>
+                                                <p className="text-xs text-white/50">{config?.shopDomain}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Shop Domain */}
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-white/70">{t('integrations.shopify.shopDomain')}</label>
@@ -405,72 +435,100 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                         <p className="text-xs text-white/40">{t('integrations.shopify.shopDomainHint')}</p>
                                     </div>
 
-                                    {/* Access Token */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-white/70">{t('integrations.shopify.accessToken')}</label>
-                                        <div className="relative">
-                                            <input
-                                                type={showToken ? 'text' : 'password'}
-                                                value={accessToken}
-                                                onChange={(e) => setAccessToken(e.target.value)}
-                                                placeholder={t('integrations.shopify.accessTokenPlaceholder')}
-                                                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#00ff95] transition-colors font-mono"
-                                            />
-                                            <button
-                                                onClick={() => setShowToken(!showToken)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                                            >
-                                                {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                            </button>
-                                        </div>
-                                        <p className="text-xs text-white/40">{t('integrations.shopify.accessTokenHint')}</p>
-                                    </div>
+                                    {/* ── Primary: OAuth button ── */}
+                                    <button
+                                        onClick={() => {
+                                            if (!channelId || !shopDomain) {
+                                                toast.error('Enter your shop domain first')
+                                                return
+                                            }
+                                            const domain = shopDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')
+                                            window.location.href = `/api/integrations/shopify/oauth/install?channelId=${channelId}&shop=${domain}`
+                                        }}
+                                        disabled={!shopDomain}
+                                        className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-[#96bf47] text-white font-bold text-sm hover:brightness-90 transition-all disabled:opacity-50"
+                                    >
+                                        <ShopifyLogo size={20} />
+                                        {isConnected ? 'Reconnect with Shopify' : 'Connect with Shopify'}
+                                    </button>
 
-                                    {/* Test result */}
-                                    {testResult && (
-                                        <div className={`rounded-xl p-4 border ${testResult.ok ? 'bg-[#00ff95]/10 border-[#00ff95]/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                {testResult.ok
-                                                    ? <CheckCircle2 className="w-4 h-4 text-[#00ff95]" />
-                                                    : <AlertCircle className="w-4 h-4 text-red-400" />}
-                                                <span className={`text-sm font-semibold ${testResult.ok ? 'text-[#00ff95]' : 'text-red-400'}`}>
-                                                    {testResult.ok
-                                                        ? t('integrations.shopify.connectionOk').replace('{shopName}', testResult.shopName || '')
-                                                        : t('integrations.shopify.connectionFailed')}
-                                                </span>
+                                    {/* ── Advanced: manual token ── */}
+                                    <button
+                                        onClick={() => setShowManualToken(!showManualToken)}
+                                        className="w-full text-xs text-white/40 hover:text-white/60 transition-colors text-center"
+                                    >
+                                        {showManualToken ? '▲ Hide' : '▼ Use Admin API Token manually (advanced)'}
+                                    </button>
+
+                                    {showManualToken && (
+                                        <div className="space-y-4 pt-2 border-t border-white/10">
+                                            <p className="text-xs text-white/40">For legacy Shopify Custom Apps that provide a <code className="font-mono bg-white/10 px-1 rounded">shpat_</code> token directly.</p>
+                                            {/* Access Token */}
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-white/70">{t('integrations.shopify.accessToken')}</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type={showToken ? 'text' : 'password'}
+                                                        value={accessToken}
+                                                        onChange={(e) => setAccessToken(e.target.value)}
+                                                        placeholder={t('integrations.shopify.accessTokenPlaceholder')}
+                                                        className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#00ff95] transition-colors font-mono"
+                                                    />
+                                                    <button
+                                                        onClick={() => setShowToken(!showToken)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                                                    >
+                                                        {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                    </button>
+                                                </div>
                                             </div>
-                                            {testResult.ok && (
-                                                <div className="text-xs text-white/60 space-y-0.5 pl-6">
-                                                    {testResult.planName && <p>{t('integrations.shopify.shopPlan')}: {testResult.planName}</p>}
-                                                    {testResult.currency && <p>{t('integrations.shopify.shopCurrency')}: {testResult.currency}</p>}
-                                                    {testResult.email && <p>{testResult.email}</p>}
+
+                                            {/* Test result */}
+                                            {testResult && (
+                                                <div className={`rounded-xl p-4 border ${testResult.ok ? 'bg-[#00ff95]/10 border-[#00ff95]/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        {testResult.ok
+                                                            ? <CheckCircle2 className="w-4 h-4 text-[#00ff95]" />
+                                                            : <AlertCircle className="w-4 h-4 text-red-400" />}
+                                                        <span className={`text-sm font-semibold ${testResult.ok ? 'text-[#00ff95]' : 'text-red-400'}`}>
+                                                            {testResult.ok
+                                                                ? t('integrations.shopify.connectionOk').replace('{shopName}', testResult.shopName || '')
+                                                                : t('integrations.shopify.connectionFailed')}
+                                                        </span>
+                                                    </div>
+                                                    {testResult.ok && (
+                                                        <div className="text-xs text-white/60 space-y-0.5 pl-6">
+                                                            {testResult.planName && <p>{t('integrations.shopify.shopPlan')}: {testResult.planName}</p>}
+                                                            {testResult.currency && <p>{t('integrations.shopify.shopCurrency')}: {testResult.currency}</p>}
+                                                            {testResult.email && <p>{testResult.email}</p>}
+                                                        </div>
+                                                    )}
+                                                    {!testResult.ok && testResult.error && (
+                                                        <p className="text-xs text-red-300 pl-6">{testResult.error}</p>
+                                                    )}
                                                 </div>
                                             )}
-                                            {!testResult.ok && testResult.error && (
-                                                <p className="text-xs text-red-300 pl-6">{testResult.error}</p>
-                                            )}
+
+                                            <div className="flex gap-3">
+                                                <button
+                                                    onClick={handleTest}
+                                                    disabled={testing || !shopDomain || !accessToken}
+                                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/20 text-sm font-medium hover:bg-white/10 transition-colors disabled:opacity-50"
+                                                >
+                                                    {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-[#00ff95]" />}
+                                                    {testing ? t('integrations.shopify.testing') : t('integrations.shopify.testConnection')}
+                                                </button>
+                                                <button
+                                                    onClick={handleSave}
+                                                    disabled={saving || !shopDomain || (!accessToken && !config?.hasToken)}
+                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00ff95] text-black text-sm font-bold hover:brightness-90 transition-all disabled:opacity-50"
+                                                >
+                                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                                    {saving ? t('integrations.shopify.saving') : t('integrations.shopify.saveConfig')}
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
-
-                                    {/* Actions */}
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={handleTest}
-                                            disabled={testing || !shopDomain || !accessToken}
-                                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/20 text-sm font-medium hover:bg-white/10 transition-colors disabled:opacity-50"
-                                        >
-                                            {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-[#00ff95]" />}
-                                            {testing ? t('integrations.shopify.testing') : t('integrations.shopify.testConnection')}
-                                        </button>
-                                        <button
-                                            onClick={handleSave}
-                                            disabled={saving || !shopDomain || (!accessToken && !config?.hasToken)}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00ff95] text-black text-sm font-bold hover:brightness-90 transition-all disabled:opacity-50"
-                                        >
-                                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                                            {saving ? t('integrations.shopify.saving') : t('integrations.shopify.saveConfig')}
-                                        </button>
-                                    </div>
 
                                     {/* Disconnect */}
                                     {isConnected && (
@@ -485,7 +543,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                 </div>
                             </div>
 
-                            {/* How to get token guide */}
+                            {/* OAuth setup guide */}
                             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
                                 <button
                                     onClick={() => setShowGuide(!showGuide)}
@@ -493,26 +551,31 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                 >
                                     <div className="flex items-center gap-2 text-sm font-semibold">
                                         <Info className="w-4 h-4 text-[#00ff95]" />
-                                        {t('integrations.shopify.howToGet')}
+                                        How to set up Shopify OAuth app
                                     </div>
                                     <ChevronRight className={`w-4 h-4 text-white/40 transition-transform ${showGuide ? 'rotate-90' : ''}`} />
                                 </button>
                                 {showGuide && (
                                     <div className="px-6 pb-6 space-y-3">
-                                        {['howToStep1', 'howToStep2', 'howToStep3', 'howToStep4'].map((key, i) => (
-                                            <div key={key} className="flex gap-3">
+                                        {[
+                                            'Go to partners.shopify.com → Apps → Create app → Start from Dev Dashboard',
+                                            'App URL: https://neeflow.com/ — Scopes: read_products, read_inventory',
+                                            'In Versions → Release the app version',
+                                            'Then paste your store domain above and click "Connect with Shopify"',
+                                        ].map((step, i) => (
+                                            <div key={i} className="flex gap-3">
                                                 <div className="w-6 h-6 rounded-full bg-[#00ff95]/20 text-[#00ff95] text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">{i + 1}</div>
-                                                <p className="text-sm text-white/70">{t(`integrations.shopify.${key}`)}</p>
+                                                <p className="text-sm text-white/70">{step}</p>
                                             </div>
                                         ))}
                                         <a
-                                            href={`https://${shopDomain || 'your-store.myshopify.com'}/admin/settings/apps`}
+                                            href="https://partners.shopify.com/"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1.5 text-xs text-[#00ff95] hover:underline mt-2"
                                         >
                                             <ExternalLink className="w-3 h-3" />
-                                            Open Shopify Admin
+                                            Open Shopify Partners
                                         </a>
                                     </div>
                                 )}
