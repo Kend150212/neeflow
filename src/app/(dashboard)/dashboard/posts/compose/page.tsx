@@ -3055,9 +3055,27 @@ export default function ComposePage() {
     const handleResubmit = async () => {
         const postId = editPostId || postIdRef.current
         if (!postId) return
-        await handleSaveDraft() // save latest content first
         setResubmitting(true)
         try {
+            // Step 1: Save content silently (no status change, no navigation)
+            if (content.trim()) {
+                const saveRes = await fetch(`/api/admin/posts/${postId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: content.trim(),
+                        contentPerPlatform: Object.keys(contentPerPlatform).length > 0 ? contentPerPlatform : undefined,
+                        mediaIds: attachedMedia.map((m) => m.id),
+                        // NOTE: no 'status' field — preserves current status, lets requeue set it
+                    }),
+                })
+                if (!saveRes.ok) {
+                    const err = await saveRes.json()
+                    toast.error(err.error || 'Failed to save content')
+                    return
+                }
+            }
+            // Step 2: Requeue — sets status back to PENDING_APPROVAL (or CLIENT_REVIEW for smartflow)
             const res = await fetch('/api/admin/content-pipeline', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
