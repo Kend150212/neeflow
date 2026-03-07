@@ -77,7 +77,8 @@
     "legal": "Legal Pages",
     "guide": "Setup Guide",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "admin": "Admin"
   },
   "auth": {
     "signIn": "Sign In",

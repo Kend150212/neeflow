@@ -77,7 +77,8 @@
     "legal": "Trang pháp lý",
     "guide": "Hướng dẫn cài đặt",
     "openMenu": "Mở menu",
-    "closeMenu": "Đóng menu"
+    "closeMenu": "Đóng menu",
+    "admin": "Quản trị"
   },
   "auth": {
     "signIn": "Đăng nhập",

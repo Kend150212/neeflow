@@ -19,17 +19,10 @@ import {
     Image,
     Mail,
     BarChart3,
-    Users,
     Plug,
-    Activity,
-    CreditCard,
-    LayoutList,
-    Paintbrush,
-    FileText,
-    BookOpen,
-    Tag,
     Clapperboard,
     MoreHorizontal,
+    ShieldCheck,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -65,15 +58,7 @@ const bottomNav: NavItem[] = [
 ]
 
 const adminNav: NavItem[] = [
-    { titleKey: 'nav.users', href: '/admin/users', icon: Users },
-    { titleKey: 'nav.apiHub', href: '/admin/integrations', icon: Plug },
-    { titleKey: 'nav.plans', href: '/admin/plans', icon: LayoutList },
-    { titleKey: 'nav.billing', href: '/admin/billing', icon: CreditCard, exact: true },
-    { titleKey: 'nav.coupons', href: '/admin/billing/coupons', icon: Tag },
-    { titleKey: 'nav.activity', href: '/admin/activity', icon: Activity },
-    { titleKey: 'nav.branding', href: '/admin/branding', icon: Paintbrush },
-    { titleKey: 'nav.legal', href: '/admin/legal', icon: FileText },
-    { titleKey: 'nav.guide', href: '/admin/guide', icon: BookOpen },
+    { titleKey: 'nav.admin', href: '/admin', icon: ShieldCheck, exact: true },
 ]
 
 const mobileTabItems: NavItem[] = [
