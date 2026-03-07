@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     try {
         // Cursor-based pagination (Shopify 2024-10)
         do {
-            const url = pageInfo
+            const url: string = pageInfo
                 ? `https://${domain}/admin/api/2024-10/products.json?limit=250&page_info=${pageInfo}&fields=id,title,body_html,vendor,product_type,tags,status,variants,images`
                 : `https://${domain}/admin/api/2024-10/products.json?limit=250&fields=id,title,body_html,vendor,product_type,tags,status,variants,images`
 
