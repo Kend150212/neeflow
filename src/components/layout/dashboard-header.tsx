@@ -232,6 +232,18 @@ export function DashboardHeader({ session }: { session: Session }) {
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
+                            <Link href="/dashboard/billing" className="flex items-center cursor-pointer">
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                {t('nav.billing') || 'Billing'}
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <Link href="/dashboard/api-keys" className="flex items-center cursor-pointer">
+                                <Key className="mr-2 h-4 w-4" />
+                                {t('nav.apiKeys') || 'AI API Keys'}
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
                             <Link href="/dashboard/developer" className="flex items-center cursor-pointer">
                                 <Code2 className="mr-2 h-4 w-4" />
                                 Developer API
