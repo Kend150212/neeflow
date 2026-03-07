@@ -1398,6 +1398,47 @@ export default function ComposePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // run once on mount
 
+    // Pre-fill from ?shopifyProductId= (redirect from Shopify Catalog)
+    useEffect(() => {
+        const shopifyProductId = searchParams.get('shopifyProductId')
+        if (!shopifyProductId) return
+
+        fetch(`/api/integrations/shopify/products/${shopifyProductId}`)
+            .then((r) => r.json())
+            .then((product) => {
+                if (!product || product.error) return
+
+                // Set content to product name + description
+                const productContent = [
+                    product.name,
+                    product.description ? `\n\n${product.description}` : '',
+                ].join('').trim()
+                setContent(productContent)
+
+                // Pre-fill AI topic with product name
+                setAiTopic(product.name)
+
+                // Attach product images
+                if (product.images && product.images.length > 0) {
+                    setAttachedMedia(product.images.slice(0, 10).map((url: string, i: number) => ({
+                        id: `shopify-img-${i}`,
+                        url,
+                        type: 'IMAGE' as const,
+                        filename: url.split('/').pop() || `product-${i}.jpg`,
+                        originalName: url.split('/').pop() || `product-${i}.jpg`,
+                        thumbnailUrl: url,
+                        size: 0,
+                        width: null,
+                        height: null,
+                        mimeType: 'image/jpeg',
+                        createdAt: new Date().toISOString(),
+                    })))
+                }
+            })
+            .catch(console.error)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // run once on mount
+
     // Re-select channel when workspace changes (and channels already loaded)
     useEffect(() => {
         if (!activeChannelId || channels.length === 0 || editPostId) return

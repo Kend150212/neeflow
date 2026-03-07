@@ -304,6 +304,7 @@ model Channel {
   studioProjects       StudioProject[]
   studioAvatars        StudioAvatar[]
   studioAvatarShares   StudioAvatarShare[]
+  shopifyConfig        ShopifyConfig?
 
 
   @@map("channels")
@@ -1430,4 +1431,34 @@ model StudioOutput {
 
   @@index([projectId])
   @@map("studio_outputs")
+}
+
+// ==========================================
+// SHOPIFY INTEGRATION
+// ==========================================
+
+model ShopifyConfig {
+  id          String   @id @default(cuid())
+  channelId   String   @unique @map("channel_id")
+
+  // Shopify store credentials
+  shopDomain  String   @map("shop_domain")              // your-store.myshopify.com
+  accessToken String   @map("access_token") @db.Text    // AES-256 encrypted Admin API token
+
+  // Sync preferences
+  syncInventory   Boolean @default(true)  @map("sync_inventory")
+  syncCollections Boolean @default(true)  @map("sync_collections")
+  syncImages      Boolean @default(true)  @map("sync_images")
+
+  // Sync state
+  lastSyncedAt DateTime? @map("last_synced_at")
+  productCount Int      @default(0) @map("product_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@map("shopify_configs")
 }

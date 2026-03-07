@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | Shopify Integration &amp; Catalog Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#0f231b",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #204b39;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Header / TopNavBar -->
+<header class="flex items-center justify-between border-b border-primary/10 px-6 py-4 lg:px-10 bg-background-light dark:bg-background-dark sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-background-dark">
+<span class="material-symbols-outlined font-bold">account_tree</span>
+</div>
+<h2 class="text-xl font-bold tracking-tight">Neeflow</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium text-primary border-b-2 border-primary pb-1" href="#">Catalog</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Integrations</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input class="bg-slate-200 dark:bg-primary/10 border-none rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-1 focus:ring-primary w-64" placeholder="Search catalog..." type="text"/>
+</div>
+<button class="p-2 rounded-xl bg-slate-200 dark:bg-primary/10 hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="size-10 rounded-full border-2 border-primary p-0.5">
+<img class="w-full h-full object-cover rounded-full" data-alt="User profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzRnlKwBEc_zMkofq4TnV9nrJTUdvZyEHhbzDYUO-MiycqsCgT2UBBZGS0e3SeTeMo1SDtwtnLDLg8FA9wzsHHmZZZHyV-IYjn6mx6_SroCwlqT1uRm_wj-e5VbEpBI7KqFSMacnr8qk_lh2lA__7wdjrXtwBYDOT6Cb46LCzEc26OVknF5Mm5lg6DoRvlD6nDt3ktHW_Wu9NUOeuqu4B0Qa3nwloliwr2_Rw1jjPn0BHF8s6g0-PRLiVogFEiOkfPsLIWNFVvNDY"/>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col lg:flex-row">
+<!-- Left Sidebar: Stats & Navigation -->
+<aside class="w-full lg:w-72 border-r border-primary/10 p-6 flex flex-col gap-8">
+<div>
+<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-primary/50 mb-4">Shopify Overview</h3>
+<div class="space-y-4">
+<div class="p-4 rounded-xl bg-primary/5 border border-primary/10">
+<p class="text-xs text-slate-400">Total Products Synced</p>
+<p class="text-2xl font-bold text-primary">1,284</p>
+<div class="mt-2 w-full bg-primary/10 h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[85%]"></div>
+</div>
+</div>
+<div class="p-4 rounded-xl bg-primary/5 border border-primary/10">
+<p class="text-xs text-slate-400">Last Catalog Update</p>
+<p class="text-sm font-semibold mt-1">12 mins ago</p>
+<div class="flex items-center gap-1 mt-2 text-[10px] text-primary">
+<span class="material-symbols-outlined text-xs">sync</span>
+                                Auto-sync active
+                            </div>
+</div>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-primary/50 mb-4">Quick Links</h3>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary text-background-dark font-bold text-sm" href="#">
+<span class="material-symbols-outlined">shopping_bag</span>
+                        Products
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-primary/10 transition-colors text-sm font-medium" href="#">
+<span class="material-symbols-outlined">inventory</span>
+                        Inventory
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-primary/10 transition-colors text-sm font-medium" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                        Analytics
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-primary/10 transition-colors text-sm font-medium" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        Sync Settings
+                    </a>
+</nav>
+<div class="mt-auto pt-6">
+<button class="w-full py-3 px-4 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary/20 transition-all">
+<span class="material-symbols-outlined text-lg">support_agent</span>
+                        Contact Support
+                    </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10 space-y-10">
+<!-- Page Title -->
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+<div>
+<h1 class="text-4xl font-black tracking-tight mb-2">Shopify Integration</h1>
+<p class="text-slate-500 dark:text-slate-400 max-w-xl">Manage your store connection, synchronize product data, and monitor inventory in real-time.</p>
+</div>
+<button class="bg-primary text-background-dark px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">
+<span class="material-symbols-outlined">sync</span>
+                        Force Sync Now
+                    </button>
+</div>
+<!-- Step 1: Connection -->
+<section class="bg-slate-100 dark:bg-primary/5 border border-primary/10 rounded-2xl overflow-hidden">
+<div class="p-6 border-b border-primary/10 flex items-center gap-3">
+<div class="size-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">1</div>
+<h2 class="text-xl font-bold">Connect Shopify Store</h2>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-sm font-semibold text-slate-400">Store URL</label>
+<div class="flex">
+<span class="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-primary/20 bg-primary/10 text-slate-400 text-sm">https://</span>
+<input class="flex-1 bg-transparent border-primary/20 focus:ring-primary focus:border-primary rounded-r-xl py-3 text-sm" placeholder="your-store.myshopify.com" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-semibold text-slate-400">Admin API Access Token</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">key</span>
+<input class="w-full bg-transparent border-primary/20 focus:ring-primary focus:border-primary rounded-xl pl-10 py-3 text-sm" placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxx" type="password"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Step 2: Sync Settings -->
+<section class="space-y-6">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">2</div>
+<h2 class="text-xl font-bold">Sync Preferences</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<div class="p-5 rounded-2xl border border-primary/10 bg-slate-100 dark:bg-primary/5 flex items-start justify-between">
+<div>
+<h4 class="font-bold">Real-time Inventory</h4>
+<p class="text-xs text-slate-500 mt-1">Updates stock levels instantly</p>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+<div class="p-5 rounded-2xl border border-primary/10 bg-slate-100 dark:bg-primary/5 flex items-start justify-between">
+<div>
+<h4 class="font-bold">Sync Collections</h4>
+<p class="text-xs text-slate-500 mt-1">Keep Shopify tags and groups</p>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+<div class="p-5 rounded-2xl border border-primary/10 bg-slate-100 dark:bg-primary/5 flex items-start justify-between">
+<div>
+<h4 class="font-bold">Auto-import Images</h4>
+<p class="text-xs text-slate-500 mt-1">Pull high-res thumbnails</p>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Step 3: Product Catalog Grid -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">3</div>
+<h2 class="text-xl font-bold">Product Catalog</h2>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">grid_view</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+<!-- Product Card 1 -->
+<div class="bg-slate-100 dark:bg-primary/5 rounded-2xl border border-primary/10 overflow-hidden group">
+<div class="aspect-square relative overflow-hidden bg-slate-200 dark:bg-primary/10">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Sneaker product photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSxMYELmHOBs0ssIharzc09sD3yH091WvUOvRpU-OaxKn_mkCef_hjwseXXe5cPRkcEIlHA1LxB9nrcr5AOTGbHd_l-VdQ5pbyRPCjGwksH5csqzxdAMmAhAGGxG0Z0fLtty67XimVqtBSxWcXYsBDgvM5FOo94DaEHUFZwScnlPVo7QL21knLrlG30gEkIOuYyQLB1GNF3tRajApy6DLG272yKubw-4VNhcD2B28NbdxuPrwJiw7JLLzWm8eM4iczk-G4rjQg-6E"/>
+<div class="absolute top-3 left-3 px-2 py-1 rounded bg-background-dark/80 text-primary text-[10px] font-bold uppercase">In Stock</div>
+<div class="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="size-8 rounded-full bg-primary text-background-dark flex items-center justify-center shadow-lg"><span class="material-symbols-outlined text-sm">visibility</span></button>
+</div>
+</div>
+<div class="p-4 space-y-3">
+<div>
+<h5 class="font-bold text-sm truncate">Speedflow Performance 2.0</h5>
+<div class="flex items-center justify-between mt-1">
+<span class="text-xs text-slate-500">12 Variants</span>
+<span class="text-sm font-bold text-primary">$129.00</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="h-1.5 w-1.5 rounded-full bg-primary"></div>
+<span class="text-[11px] font-medium text-slate-400">458 in inventory</span>
+</div>
+<div class="pt-2 flex flex-col gap-2">
+<button class="w-full py-2 bg-primary text-background-dark text-xs font-bold rounded-lg hover:brightness-90 transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">magic_button</span>
+                                        Create AI Post
+                                    </button>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-primary/10 text-primary text-[10px] font-bold rounded-lg hover:bg-primary/20 transition-all">View Store</button>
+<button class="flex-1 py-2 bg-primary/10 text-primary text-[10px] font-bold rounded-lg hover:bg-primary/20 transition-all">Sync Details</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-slate-100 dark:bg-primary/5 rounded-2xl border border-primary/10 overflow-hidden group">
+<div class="aspect-square relative overflow-hidden bg-slate-200 dark:bg-primary/10">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Watch product photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDue4TMS6eN1Y3t1IBZvUOHWV5M3YLOsc8eO-i9NSSXavdPFDLXiFW0WE3byLU-vG6ddGM4DuETSZkSmnmZkLWwZGbh2L6rOhNH8X8dZ_cOJccB8F9rQc5t_4v0sut1VljJcFkpZ7HeI3g4EibDM78dUmtjnxel5sKVLopRHennYAKKLvRy3sEvOdK2Jkaw2O2yAYIpzpE-u8Va0e5l-i6vt7ywJzScvoElzM2QXIEJajX1i9J2j8p8QBOeLcxhiXuoRrPHA2B-GEk"/>
+<div class="absolute top-3 left-3 px-2 py-1 rounded bg-orange-500 text-white text-[10px] font-bold uppercase">Low Stock</div>
+</div>
+<div class="p-4 space-y-3">
+<div>
+<h5 class="font-bold text-sm truncate">Minimalist Slate Watch</h5>
+<div class="flex items-center justify-between mt-1">
+<span class="text-xs text-slate-500">3 Variants</span>
+<span class="text-sm font-bold text-primary">$89.00</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
+<span class="text-[11px] font-medium text-slate-400">4 in inventory</span>
+</div>
+<div class="pt-2 flex flex-col gap-2">
+<button class="w-full py-2 bg-primary text-background-dark text-xs font-bold rounded-lg hover:brightness-90 transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">magic_button</span>
+                                        Create AI Post
+                                    </button>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-primary/10 text-primary text-[10px] font-bold rounded-lg hover:bg-primary/20 transition-all">View Store</button>
+<button class="flex-1 py-2 bg-primary/10 text-primary text-[10px] font-bold rounded-lg hover:bg-primary/20 transition-all">Sync Details</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-slate-100 dark:bg-primary/5 rounded-2xl border border-primary/10 overflow-hidden group">
+<div class="aspect-square relative overflow-hidden bg-slate-200 dark:bg-primary/10">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Headphones product photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtvJYVVJo8qlb1h-s9YzSJFantxDua8JHrX6tk5xfaIvcewJt59zi4rn2M9hxQGtvZqBUHK10qIZEVeX11o6Kwzzp5CPQiZhUbG4bPh1VmS8VJhqPevLIb5UXA7SHuoqoFAxOFDBRvijkONb9nsurU3kLvzEeYgJHiR_KuoAapTuOZD9W5W7LAk81_E-UK9x-_wTAdNRi0zrbx36IzlkTULUrZcLHGHFB-fzuNk7785qh7lOSFVeG2iheHB7FnDaflnDzF_39CftE"/>
+<div class="absolute top-3 left-3 px-2 py-1 rounded bg-background-dark/80 text-primary text-[10px] font-bold uppercase">In Stock</div>
+</div>
+<div class="p-4 space-y-3">
+<div>
+<h5 class="font-bold text-sm truncate">Studio Noise Cancel Pro</h5>
+<div class="flex items-center justify-between mt-1">
+<span class="text-xs text-slate-500">1 Variant</span>
+<span class="text-sm font-bold text-primary">$299.00</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="h-1.5 w-1.5 rounded-full bg-primary"></div>
+<span class="text-[11px] font-medium text-slate-400">120 in inventory</span>
+</div>
+<div class="pt-2 flex flex-col gap-2">
+<button class="w-full py-2 bg-primary text-background-dark text-xs font-bold rounded-lg hover:brightness-90 transition-all flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">magic_button</span>
+                                        Create AI Post
+                                    </button>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-primary/10 text-primary text-[10px] font-bold rounded-lg hover:bg-primary/20 transition-all">View Store</button>
+<button class="flex-1 py-2 bg-primary/10 text-primary text-[10px] font-bold rounded-lg hover:bg-primary/20 transition-all">Sync Details</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="bg-slate-100 dark:bg-primary/5 rounded-2xl border border-primary/10 overflow-hidden group">
+<div class="aspect-square relative overflow-hidden bg-slate-200 dark:bg-primary/10">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Camera product photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-gxwBrU8xjyEfK5N-5M0oa9O6j6Cw7G_PdwB_RPAJO00APEjDDAYgwVchVvu52jQ4I5sEvkvy4G5-ejI-sbwLgf3SNWCAA9ftqf2rSeJHBtKmmTANBi1i4GkB3E2JX4vDTXq0Irlnar9T-zsYddEO5Qo4MUXD4WFzJcsk3uIld5ZNgvT-94KygBLLzz5PFW8OE7_mUWN57B4qyz8woRnnDCpVJVKKFeyv0ayRZSHrSosJhm8Jw8cTzSaE_qAUYuqRr1cDhUa5Res"/>
+<div class="absolute top-3 left-3 px-2 py-1 rounded bg-red-500 text-white text-[10px] font-bold uppercase">Out of Stock</div>
+</div>
+<div class="p-4 space-y-3">
+<div>
+<h5 class="font-bold text-sm truncate">Retro Instant Lens Kit</h5>
+<div class="flex items-center justify-between mt-1">
+<span class="text-xs text-slate-500">5 Variants</span>
+<span class="text-sm font-bold text-primary">$45.00</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="h-1.5 w-1.5 rounded-full bg-red-500"></div>
+<span class="text-[11px] font-medium text-slate-400">0 in inventory</span>
+</div>
+<div class="pt-2 flex flex-col gap-2">
+<button class="w-full py-2 bg-primary text-background-dark text-xs font-bold rounded-lg hover:brightness-90 transition-all flex items-center justify-center gap-1 opacity-50 cursor-not-allowed">
+<span class="material-symbols-outlined text-sm">magic_button</span>
+                                        Create AI Post
+                                    </button>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-primary/10 text-primary text-[10px] font-bold rounded-lg hover:bg-primary/20 transition-all">View Store</button>
+<button class="flex-1 py-2 bg-primary/10 text-primary text-[10px] font-bold rounded-lg hover:bg-primary/20 transition-all">Sync Details</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="flex items-center justify-center pt-8">
+<div class="flex gap-1">
+<button class="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20"><span class="material-symbols-outlined">chevron_left</span></button>
+<button class="size-10 rounded-xl bg-primary text-background-dark font-bold">1</button>
+<button class="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20">2</button>
+<button class="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20">3</button>
+<span class="px-2 flex items-center">...</span>
+<button class="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20">42</button>
+<button class="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20"><span class="material-symbols-outlined">chevron_right</span></button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

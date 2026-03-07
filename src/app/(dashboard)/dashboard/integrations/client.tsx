@@ -115,10 +115,10 @@ const integrations: IntegrationCard[] = [
         slug: 'shopify',
         name: 'Shopify',
         description: 'Sync products, orders and inventory from your Shopify store.',
-        badge: 'Coming Soon',
+        href: '/dashboard/integrations/shopify',
         logo: <LogoShopify />,
         category: 'E-commerce',
-        tags: ['Products', 'Orders', 'Inventory'],
+        tags: ['Products', 'AI Post', 'Inventory'],
     },
     {
         slug: 'wordpress',
