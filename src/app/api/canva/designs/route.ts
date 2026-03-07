@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { token, connected } = await getCanvaToken(session.user.id)
+    let { token, connected } = await getCanvaToken(session.user.id)
     if (!connected || !token) {
         return NextResponse.json({
             error: 'canva_not_connected',
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
 
     console.log('Creating Canva design with body:', JSON.stringify(body))
 
-    const res = await fetch('https://api.canva.com/rest/v1/designs', {
+    let res = await fetch('https://api.canva.com/rest/v1/designs', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -209,6 +209,28 @@ export async function POST(req: NextRequest) {
         },
         body: JSON.stringify(body),
     })
+
+    // If token expired — refresh once and retry
+    if (res.status === 401) {
+        console.log('Canva create design got 401 — refreshing token and retrying...')
+        const refreshed = await getCanvaToken(session.user.id, true)
+        if (!refreshed.token) {
+            return NextResponse.json({
+                error: 'canva_token_expired',
+                message: 'Your Canva session has expired. Please reconnect your account.',
+                reconnectUrl: `/api/oauth/canva?returnUrl=${encodeURIComponent('/dashboard/posts/compose')}`,
+            }, { status: 401 })
+        }
+        token = refreshed.token
+        res = await fetch('https://api.canva.com/rest/v1/designs', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        })
+    }
 
     if (!res.ok) {
         const errorText = await res.text()
