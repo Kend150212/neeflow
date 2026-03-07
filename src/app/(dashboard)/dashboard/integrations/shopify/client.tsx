@@ -25,9 +25,12 @@ import {
     Image as ImageIcon,
     ExternalLink,
     Info,
+    SquareCheck,
+    Square,
 } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import CreateShopifyPostModal from './CreateShopifyPostModal'
 
 // ── Shopify SVG Logo ─────────────────────────────────────────────────────────
 function ShopifyLogo({ size = 32 }: { size?: number }) {
@@ -125,6 +128,11 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
     const [productFilter, setProductFilter] = useState<'all' | 'in_stock' | 'out_of_stock'>('all')
     const [loadingProducts, setLoadingProducts] = useState(false)
     const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // ── AI Post Modal state ───────────────────────────────────────────────────
+    const [aiModalOpen, setAiModalOpen] = useState(false)
+    const [aiModalProducts, setAiModalProducts] = useState<Product[]>([])
+    const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set())
 
     // Resolve channelId: prefer workspace context (live), fallback to server prop
     const channelId = activeChannel?.id ?? serverChannelId ?? null
@@ -309,9 +317,31 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
 
     // ── Create AI Post from product ───────────────────────────────────────────
     function handleCreatePost(product: Product) {
-        router.push(
-            `/dashboard/posts/compose?shopifyProductId=${product.id}`
-        )
+        setAiModalProducts([product])
+        setAiModalOpen(true)
+    }
+
+    function handleBulkCreatePost() {
+        const selected = products.filter(p => selectedProductIds.has(p.id))
+        if (selected.length === 0) return
+        setAiModalProducts(selected)
+        setAiModalOpen(true)
+    }
+
+    function toggleSelectProduct(id: string) {
+        setSelectedProductIds(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id); else next.add(id)
+            return next
+        })
+    }
+
+    function toggleSelectAll() {
+        if (selectedProductIds.size === products.length) {
+            setSelectedProductIds(new Set())
+        } else {
+            setSelectedProductIds(new Set(products.map(p => p.id)))
+        }
     }
 
     // ── Relative time helper ──────────────────────────────────────────────────
@@ -700,10 +730,33 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                             </div>
                         </div>
 
-                        {/* Stats bar */}
+                        {/* Stats bar + Bulk toolbar */}
                         <div className="flex items-center justify-between text-xs text-white/40">
-                            <span>{productTotal} products</span>
-                            {config?.lastSyncedAt && <span>{relativeTime(config.lastSyncedAt)}</span>}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={toggleSelectAll}
+                                    className="flex items-center gap-1.5 hover:text-white transition-colors"
+                                >
+                                    {selectedProductIds.size === products.length && products.length > 0
+                                        ? <SquareCheck className="w-3.5 h-3.5 text-[#00ff95]" />
+                                        : <Square className="w-3.5 h-3.5" />}
+                                    <span className="text-[11px]">{productTotal} products{selectedProductIds.size > 0 ? ` · ${selectedProductIds.size} selected` : ''}</span>
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {selectedProductIds.size > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleBulkCreatePost}
+                                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#00ff95] text-black text-[11px] font-bold hover:brightness-90 transition-all"
+                                    >
+                                        <Sparkles className="w-3 h-3" />
+                                        AI Post ({selectedProductIds.size})
+                                    </button>
+                                )}
+                                {config?.lastSyncedAt && !selectedProductIds.size && <span>{relativeTime(config.lastSyncedAt)}</span>}
+                            </div>
                         </div>
 
                         {/* Products Grid */}
@@ -730,6 +783,8 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                         key={product.id}
                                         product={product}
                                         onCreatePost={handleCreatePost}
+                                        selected={selectedProductIds.has(product.id)}
+                                        onToggleSelect={() => toggleSelectProduct(product.id)}
                                         t={t}
                                     />
                                 ))}
@@ -763,6 +818,13 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                     </div>
                 )}
             </div>
+
+            {/* ── AI Post Creator Modal ─────────────────────── */}
+            <CreateShopifyPostModal
+                open={aiModalOpen}
+                onClose={() => { setAiModalOpen(false); setSelectedProductIds(new Set()) }}
+                products={aiModalProducts}
+            />
         </div>
     )
 }
@@ -771,10 +833,14 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
 function ProductCard({
     product,
     onCreatePost,
+    selected,
+    onToggleSelect,
     t,
 }: {
     product: Product
     onCreatePost: (p: Product) => void
+    selected: boolean
+    onToggleSelect: () => void
     t: (key: string) => string
 }) {
     const inStock = product.inStock
@@ -783,7 +849,8 @@ function ProductCard({
     const hasImage = product.images.length > 0
 
     return (
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden group hover:border-[#00ff95]/40 transition-all">
+        <div className={`bg-white/5 border rounded-2xl overflow-hidden group transition-all ${selected ? 'border-[#00ff95] shadow-[0_0_0_1px_#00ff95]' : 'border-white/10 hover:border-[#00ff95]/40'
+            }`}>
             {/* Image */}
             <div className="aspect-square relative overflow-hidden bg-white/10">
                 {hasImage ? (
@@ -804,6 +871,17 @@ function ProductCard({
                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${badgeColor}`}>
                     {badgeText}
                 </div>
+                {/* Select checkbox */}
+                <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
+                    className={`absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-md transition-all ${selected ? 'bg-[#00ff95]' : 'bg-black/50 hover:bg-black/70'
+                        }`}
+                >
+                    {selected
+                        ? <Check className="h-3 w-3 text-black" />
+                        : <Square className="h-3 w-3 text-white/60" />}
+                </button>
             </div>
 
             {/* Content */}
