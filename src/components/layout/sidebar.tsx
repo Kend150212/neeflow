@@ -22,7 +22,6 @@ import {
     Users,
     Plug,
     Activity,
-    Kanban,
     CreditCard,
     LayoutList,
     Paintbrush,
@@ -55,7 +54,6 @@ const topNav: NavItem[] = [
 ]
 
 const bottomNav: NavItem[] = [
-    { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Kanban },
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
     { titleKey: 'nav.reports', href: '/dashboard/reports', icon: BarChart3 },
     { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },
@@ -77,7 +75,7 @@ const mobileTabItems: NavItem[] = [
     { titleKey: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true },
     { titleKey: 'nav.posts', href: '/dashboard/posts', icon: PenSquare, exact: true },
     { titleKey: 'nav.studio', href: '/dashboard/studio', icon: Clapperboard },
-    { titleKey: 'nav.clientBoard', href: '/dashboard/client-board', icon: Kanban },
+    { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
 ]
 
 // ── Navigation pill: icon stacked above label ─────────────────────────────────

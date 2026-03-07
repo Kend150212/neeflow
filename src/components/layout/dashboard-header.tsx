@@ -26,6 +26,7 @@ import {
     Code2,
     CreditCard,
     Key,
+    Kanban,
     LogOut,
     PenSquare,
     Plus,
@@ -33,7 +34,7 @@ import {
     UserCircle,
 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 interface PlanUsage {
     aiImage: { used: number; limit: number }
@@ -162,7 +163,9 @@ function WorkspaceDropdown() {
 // ── Main Header ───────────────────────────────────────────────────────────────
 export function DashboardHeader({ session }: { session: Session }) {
     const t = useTranslation()
+    const pathname = usePathname()
     const [usage, setUsage] = useState<PlanUsage | null>(null)
+    const [pendingCount, setPendingCount] = useState(0)
 
     useEffect(() => {
         fetch('/api/user/plan-usage')
@@ -171,15 +174,50 @@ export function DashboardHeader({ session }: { session: Session }) {
             .catch(() => { })
     }, [])
 
+    useEffect(() => {
+        const fetchPending = () => {
+            fetch('/api/admin/client-board/pending-count')
+                .then(r => r.ok ? r.json() : { count: 0 })
+                .then(d => setPendingCount(d.count ?? 0))
+                .catch(() => { })
+        }
+        fetchPending()
+        const id = setInterval(fetchPending, 60_000)
+        return () => clearInterval(id)
+    }, [])
+
     const initials = session?.user?.name
         ?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
+
+    const isClientBoardActive = pathname?.startsWith('/dashboard/client-board')
 
     return (
         <header className="flex-shrink-0 h-12 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-3 gap-2 z-30">
 
-            {/* ── Left: Workspace switcher ── */}
+            {/* ── Left: Workspace + Client Board ── */}
             <div className="flex items-center gap-1 min-w-0">
                 <WorkspaceDropdown />
+                {/* Divider */}
+                <div className="w-px h-5 bg-border mx-1 shrink-0" />
+                {/* Client Board link */}
+                <Link
+                    href="/dashboard/client-board"
+                    className={cn(
+                        'relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors shrink-0',
+                        isClientBoardActive
+                            ? 'bg-primary/15 text-primary'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                >
+                    <Kanban className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:block">{t('nav.clientBoard') || 'Client Board'}</span>
+                    {pendingCount > 0 && (
+                        <span className="flex h-2 w-2 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-amber-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                        </span>
+                    )}
+                </Link>
             </div>
 
             {/* ── Right: Utilities ── */}
