@@ -83,7 +83,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     return (
         <button
             onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${checked ? 'bg-[#00ff95]' : 'bg-muted'}`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${checked ? 'bg-primary' : 'bg-muted'}`}
             role="switch"
             aria-checked={checked}
         >
@@ -378,7 +378,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#96bf47]/20 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                             <ShopifyLogo size={24} />
                         </div>
                         <div>
@@ -391,14 +391,14 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                 <div className="flex items-center gap-3">
                     {isConnected && (
                         <>
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00ff95]/10 border border-[#00ff95]/20">
-                                <div className="w-1.5 h-1.5 rounded-full bg-[#00ff95] animate-pulse" />
-                                <span className="text-xs font-medium text-[#00ff95]">{t('integrations.shopify.connected')}</span>
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                <span className="text-xs font-medium text-primary">{t('integrations.shopify.connected')}</span>
                             </div>
                             <button
                                 onClick={handleSync}
                                 disabled={syncing}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00ff95] text-black text-sm font-bold hover:brightness-90 transition-all disabled:opacity-50"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:brightness-90 transition-all disabled:opacity-50"
                             >
                                 {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                                 {syncing ? t('integrations.shopify.syncing') : t('integrations.shopify.forceSyncNow')}
@@ -416,7 +416,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                             key={t2}
                             onClick={() => setTab(t2)}
                             className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t2
-                                ? 'bg-[#00ff95] text-black shadow-sm'
+                                ? 'bg-primary text-primary-foreground shadow-sm'
                                 : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
@@ -433,17 +433,17 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                             {/* Connection Card */}
                             <div className="bg-card border border-border rounded-2xl overflow-hidden">
                                 <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
-                                    <div className="w-7 h-7 rounded-full bg-[#00ff95]/20 text-[#00ff95] flex items-center justify-center text-sm font-bold">1</div>
+                                    <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold">1</div>
                                     <h2 className="font-bold">{t('integrations.shopify.connectTab')}</h2>
                                 </div>
                                 <div className="p-6 space-y-5">
 
                                     {/* ── Already connected state ── */}
                                     {isConnected && (
-                                        <div className="rounded-xl p-4 bg-[#00ff95]/10 border border-[#00ff95]/30 flex items-center gap-3">
-                                            <CheckCircle2 className="w-5 h-5 text-[#00ff95] shrink-0" />
+                                        <div className="rounded-xl p-4 bg-primary/10 border border-primary/30 flex items-center gap-3">
+                                            <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
                                             <div>
-                                                <p className="text-sm font-semibold text-[#00ff95]">{t('integrations.shopify.connected')}</p>
+                                                <p className="text-sm font-semibold text-primary">{t('integrations.shopify.connected')}</p>
                                                 <p className="text-xs text-muted-foreground">{config?.shopDomain}</p>
                                             </div>
                                         </div>
@@ -459,7 +459,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                                 value={shopDomain}
                                                 onChange={(e) => setShopDomain(e.target.value)}
                                                 placeholder={t('integrations.shopify.shopDomainPlaceholder')}
-                                                className="flex-1 bg-muted/40 border border-border rounded-r-xl px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#00ff95] transition-colors"
+                                                className="flex-1 bg-muted/40 border border-border rounded-r-xl px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors"
                                             />
                                         </div>
                                         <p className="text-xs text-muted-foreground">{t('integrations.shopify.shopDomainHint')}</p>
@@ -476,7 +476,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                             window.location.href = `/api/integrations/shopify/oauth/install?channelId=${channelId}&shop=${domain}`
                                         }}
                                         disabled={!shopDomain}
-                                        className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-[#96bf47] text-white font-bold text-sm hover:brightness-90 transition-all disabled:opacity-50"
+                                        className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:brightness-90 transition-all disabled:opacity-50"
                                     >
                                         <ShopifyLogo size={20} />
                                         {isConnected ? t('integrations.shopify.reconnectOauth') : t('integrations.shopify.connectOauth')}
@@ -502,7 +502,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                                         value={accessToken}
                                                         onChange={(e) => setAccessToken(e.target.value)}
                                                         placeholder={t('integrations.shopify.accessTokenPlaceholder')}
-                                                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 pr-10 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#00ff95] transition-colors font-mono"
+                                                        className="w-full bg-muted/40 border border-border rounded-xl px-4 py-2.5 pr-10 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors font-mono"
                                                     />
                                                     <button
                                                         onClick={() => setShowToken(!showToken)}
@@ -515,12 +515,12 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
 
                                             {/* Test result */}
                                             {testResult && (
-                                                <div className={`rounded-xl p-4 border ${testResult.ok ? 'bg-[#00ff95]/10 border-[#00ff95]/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                                                <div className={`rounded-xl p-4 border ${testResult.ok ? 'bg-primary/10 border-primary/30' : 'bg-destructive/10 border-destructive/30'}`}>
                                                     <div className="flex items-center gap-2 mb-1">
                                                         {testResult.ok
-                                                            ? <CheckCircle2 className="w-4 h-4 text-[#00ff95]" />
-                                                            : <AlertCircle className="w-4 h-4 text-red-400" />}
-                                                        <span className={`text-sm font-semibold ${testResult.ok ? 'text-[#00ff95]' : 'text-red-400'}`}>
+                                                            ? <CheckCircle2 className="w-4 h-4 text-primary" />
+                                                            : <AlertCircle className="w-4 h-4 text-destructive" />}
+                                                        <span className={`text-sm font-semibold ${testResult.ok ? 'text-primary' : 'text-destructive'}`}>
                                                             {testResult.ok
                                                                 ? t('integrations.shopify.connectionOk').replace('{shopName}', testResult.shopName || '')
                                                                 : t('integrations.shopify.connectionFailed')}
@@ -545,13 +545,13 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                                     disabled={testing || !shopDomain || !accessToken}
                                                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted/50 transition-colors disabled:opacity-50"
                                                 >
-                                                    {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-[#00ff95]" />}
+                                                    {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-primary" />}
                                                     {testing ? t('integrations.shopify.testing') : t('integrations.shopify.testConnection')}
                                                 </button>
                                                 <button
                                                     onClick={handleSave}
                                                     disabled={saving || !shopDomain || (!accessToken && !config?.hasToken)}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00ff95] text-black text-sm font-bold hover:brightness-90 transition-all disabled:opacity-50"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:brightness-90 transition-all disabled:opacity-50"
                                                 >
                                                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                                                     {saving ? t('integrations.shopify.saving') : t('integrations.shopify.saveConfig')}
@@ -580,7 +580,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                     className="w-full flex items-center justify-between px-6 py-4"
                                 >
                                     <div className="flex items-center gap-2 text-sm font-semibold">
-                                        <Info className="w-4 h-4 text-[#00ff95]" />
+                                        <Info className="w-4 h-4 text-primary" />
                                         {t('integrations.shopify.oauthGuideTitle')}
                                     </div>
                                     <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${showGuide ? 'rotate-90' : ''}`} />
@@ -594,7 +594,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                             t('integrations.shopify.oauthStep4'),
                                         ].map((step, i) => (
                                             <div key={i} className="flex gap-3">
-                                                <div className="w-6 h-6 rounded-full bg-[#00ff95]/20 text-[#00ff95] text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">{i + 1}</div>
+                                                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">{i + 1}</div>
                                                 <p className="text-sm text-foreground/70">{step}</p>
                                             </div>
                                         ))}
@@ -602,7 +602,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                             href="https://partners.shopify.com/"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1.5 text-xs text-[#00ff95] hover:underline mt-2"
+                                            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2"
                                         >
                                             <ExternalLink className="w-3 h-3" />
                                             {t('integrations.shopify.openPartners')}
@@ -617,7 +617,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                             {/* Sync Preferences */}
                             <div className="bg-card border border-border rounded-2xl overflow-hidden">
                                 <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
-                                    <div className="w-7 h-7 rounded-full bg-[#00ff95]/20 text-[#00ff95] flex items-center justify-center text-sm font-bold">2</div>
+                                    <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold">2</div>
                                     <h2 className="font-bold">{t('integrations.shopify.syncPreferences')}</h2>
                                 </div>
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -660,14 +660,14 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                 <div className="bg-card border border-border rounded-2xl p-6">
                                     <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">{t('integrations.shopify.shopInfo')}</h3>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-4 bg-[#00ff95]/5 border border-[#00ff95]/20 rounded-xl">
+                                        <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
                                             <p className="text-xs text-muted-foreground">{t('integrations.shopify.productsSynced').replace('{count}', '')}</p>
-                                            <p className="text-2xl font-black text-[#00ff95] mt-1">{config.productCount.toLocaleString()}</p>
+                                            <p className="text-2xl font-black text-primary mt-1">{config.productCount.toLocaleString()}</p>
                                         </div>
                                         <div className="p-4 bg-muted/40 border border-border rounded-xl">
                                             <p className="text-xs text-muted-foreground">{t('integrations.shopify.lastSync')}</p>
                                             <p className="text-sm font-bold mt-1">{relativeTime(config.lastSyncedAt)}</p>
-                                            <div className="flex items-center gap-1 mt-1 text-[10px] text-[#00ff95]">
+                                            <div className="flex items-center gap-1 mt-1 text-[10px] text-primary">
                                                 <RefreshCw className="w-3 h-3" />
                                                 {t('integrations.shopify.manualSync')}
                                             </div>
@@ -676,7 +676,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
 
                                     <button
                                         onClick={() => setTab('catalog')}
-                                        className="mt-4 w-full py-3 rounded-xl border border-[#00ff95]/30 text-[#00ff95] text-sm font-bold hover:bg-[#00ff95]/10 transition-colors flex items-center justify-center gap-2"
+                                        className="mt-4 w-full py-3 rounded-xl border border-primary/30 text-primary text-sm font-bold hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
                                     >
                                         <ShoppingBag className="w-4 h-4" />
                                         {t('integrations.shopify.catalogTab')}
@@ -711,7 +711,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                         value={productSearch}
                                         onChange={(e) => setProductSearch(e.target.value)}
                                         placeholder={t('integrations.shopify.searchProducts')}
-                                        className="w-full bg-muted/40 border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#00ff95] transition-colors"
+                                        className="w-full bg-muted/40 border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors"
                                     />
                                 </div>
                             </div>
@@ -720,7 +720,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                     <button
                                         key={f}
                                         onClick={() => { setProductFilter(f); setProductPage(1) }}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${productFilter === f ? 'bg-[#00ff95] text-black' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${productFilter === f ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         {f === 'all' ? t('integrations.shopify.filterAll')
                                             : f === 'in_stock' ? t('integrations.shopify.filterInStock')
@@ -739,7 +739,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                     className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                                 >
                                     {selectedProductIds.size === products.length && products.length > 0
-                                        ? <SquareCheck className="w-3.5 h-3.5 text-[#00ff95]" />
+                                        ? <SquareCheck className="w-3.5 h-3.5 text-primary" />
                                         : <Square className="w-3.5 h-3.5" />}
                                     <span className="text-[11px]">{productTotal} {t('integrations.shopify.filterAll').toLowerCase()}{selectedProductIds.size > 0 ? ` · ${selectedProductIds.size} selected` : ''}</span>
                                 </button>
@@ -749,7 +749,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                     <button
                                         type="button"
                                         onClick={handleBulkCreatePost}
-                                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#00ff95] text-black text-[11px] font-bold hover:brightness-90 transition-all"
+                                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold hover:brightness-90 transition-all"
                                     >
                                         <Sparkles className="w-3 h-3" />
                                         {t('integrations.shopify.bulkAiPost').replace('{count}', String(selectedProductIds.size))}
@@ -762,7 +762,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                         {/* Products Grid */}
                         {loadingProducts ? (
                             <div className="flex items-center justify-center h-48">
-                                <Loader2 className="w-8 h-8 animate-spin text-[#00ff95]" />
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
                             </div>
                         ) : products.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
@@ -771,7 +771,7 @@ export function ShopifyClient({ userId, serverChannelId }: { userId: string; ser
                                     {productSearch ? t('integrations.shopify.noProductsSearch') : t('integrations.shopify.noProducts')}
                                 </p>
                                 {!productSearch && !isConnected && (
-                                    <button onClick={() => setTab('connect')} className="text-xs text-[#00ff95] hover:underline">
+                                    <button onClick={() => setTab('connect')} className="text-xs text-primary hover:underline">
                                         {t('integrations.shopify.connectTab')} →
                                     </button>
                                 )}
@@ -844,12 +844,12 @@ function ProductCard({
     t: (key: string) => string
 }) {
     const inStock = product.inStock
-    const badgeColor = inStock ? 'bg-[#00ff95]/90 text-black' : 'bg-red-500 text-white'
+    const badgeColor = inStock ? 'bg-primary/90 text-primary-foreground' : 'bg-destructive text-destructive-foreground'
     const badgeText = inStock ? t('integrations.shopify.inStock') : t('integrations.shopify.outOfStock')
     const hasImage = product.images.length > 0
 
     return (
-        <div className={`bg-card border rounded-2xl overflow-hidden group transition-all ${selected ? 'border-[#00ff95] shadow-[0_0_0_1px_#00ff95]' : 'border-border hover:border-[#00ff95]/40'
+        <div className={`bg-card border rounded-2xl overflow-hidden group transition-all ${selected ? 'border-primary shadow-[0_0_0_1px] shadow-primary' : 'border-border hover:border-primary/40'
             }`}>
             {/* Image */}
             <div className="aspect-square relative overflow-hidden bg-muted/60">
@@ -875,11 +875,11 @@ function ProductCard({
                 <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onToggleSelect() }}
-                    className={`absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-md transition-all ${selected ? 'bg-[#00ff95]' : 'bg-black/50 hover:bg-black/70'
+                    className={`absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-md transition-all ${selected ? 'bg-primary' : 'bg-black/50 hover:bg-black/70'
                         }`}
                 >
                     {selected
-                        ? <Check className="h-3 w-3 text-black" />
+                        ? <Check className="h-3 w-3 text-primary-foreground" />
                         : <Square className="h-3 w-3 text-muted-foreground" />}
                 </button>
             </div>
@@ -890,7 +890,7 @@ function ProductCard({
                     <h5 className="font-bold text-sm truncate" title={product.name}>{product.name}</h5>
                     <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-muted-foreground truncate">{product.category || '—'}</span>
-                        <span className="text-sm font-bold text-[#00ff95] shrink-0 ml-2">
+                        <span className="text-sm font-bold text-primary shrink-0 ml-2">
                             {product.price ? `$${product.price.toFixed(2)}` : '—'}
                         </span>
                     </div>
@@ -898,7 +898,7 @@ function ProductCard({
 
                 {/* Dot indicator */}
                 <div className="flex items-center gap-1.5">
-                    <div className={`h-1.5 w-1.5 rounded-full ${inStock ? 'bg-[#00ff95]' : 'bg-red-500'}`} />
+                    <div className={`h-1.5 w-1.5 rounded-full ${inStock ? 'bg-primary' : 'bg-destructive'}`} />
                     <span className="text-[11px] text-muted-foreground">
                         {product.images.length > 1
                             ? t('integrations.shopify.imageCountPlural').replace('{count}', String(product.images.length))
@@ -909,7 +909,7 @@ function ProductCard({
                 {/* CTA */}
                 <button
                     onClick={() => onCreatePost(product)}
-                    className="w-full py-2.5 bg-[#00ff95] text-black text-xs font-bold rounded-xl hover:brightness-90 transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:brightness-90 transition-all flex items-center justify-center gap-1.5"
                 >
                     <Sparkles className="w-3.5 h-3.5" />
                     {t('integrations.shopify.createAiPost')}
