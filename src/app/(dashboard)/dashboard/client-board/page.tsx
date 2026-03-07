@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -188,6 +188,30 @@ export default function SmartFlowPage() {
     const [selectedChannelId, setSelectedChannelId] = useState<string>('all')
     const [channelDropOpen, setChannelDropOpen] = useState(false)
     const [rejectModal, setRejectModal] = useState<{ postId: string } | null>(null)
+
+    // ─── Click-and-drag horizontal scroll ────────────────────────
+    const scrollRef = useRef<HTMLDivElement>(null)
+    const isDragging = useRef(false)
+    const startX = useRef(0)
+    const scrollLeft = useRef(0)
+
+    const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        isDragging.current = true
+        startX.current = e.pageX - (scrollRef.current?.offsetLeft ?? 0)
+        scrollLeft.current = scrollRef.current?.scrollLeft ?? 0
+        if (scrollRef.current) scrollRef.current.style.cursor = 'grabbing'
+    }
+    const onMouseLeaveOrUp = () => {
+        isDragging.current = false
+        if (scrollRef.current) scrollRef.current.style.cursor = 'grab'
+    }
+    const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isDragging.current || !scrollRef.current) return
+        e.preventDefault()
+        const x = e.pageX - scrollRef.current.offsetLeft
+        const walk = (x - startX.current) * 1.2 // scroll speed multiplier
+        scrollRef.current.scrollLeft = scrollLeft.current - walk
+    }
     const [smartFlowQuota, setSmartFlowQuota] = useState<{
         hasAccess: boolean; maxPerMonth: number; usedThisMonth: number; hasByokKey: boolean
     } | null>(null)
@@ -452,7 +476,15 @@ export default function SmartFlowPage() {
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-x-auto">
+                    <div
+                        ref={scrollRef}
+                        className="flex-1 overflow-x-auto select-none"
+                        style={{ cursor: 'grab' }}
+                        onMouseDown={onMouseDown}
+                        onMouseLeave={onMouseLeaveOrUp}
+                        onMouseUp={onMouseLeaveOrUp}
+                        onMouseMove={onMouseMove}
+                    >
                         <div className="flex gap-4 h-full min-h-[calc(100vh-220px)] pb-4" style={{ minWidth: `${(activeColumns.length + (failedJobs.length > 0 ? 1 : 0)) * 300}px` }}>
 
                             {/* Status columns */}
