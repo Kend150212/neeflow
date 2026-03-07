@@ -131,50 +131,26 @@ const STATUS_LABELS: Record<string, string> = {
 
 // NOTE: STATUS_LABELS is kept as fallback; prefer PORTAL_LABELS[locale].status
 
-// ─── Theme ───────────────────────────────────────────────
+// ─── Theme (class-based — matches app dark/light system) ──
 type Theme = 'dark' | 'light'
 
 function useTheme() {
     const [theme, setTheme] = useState<Theme>('dark')
     useEffect(() => {
         const saved = localStorage.getItem('portal-theme') as Theme
-        if (saved === 'light' || saved === 'dark') setTheme(saved)
+        const resolved = (saved === 'light' || saved === 'dark') ? saved : 'dark'
+        setTheme(resolved)
+        if (resolved === 'dark') document.documentElement.classList.add('dark')
+        else document.documentElement.classList.remove('dark')
     }, [])
     const toggle = () => {
         const next = theme === 'dark' ? 'light' : 'dark'
         setTheme(next)
         localStorage.setItem('portal-theme', next)
+        if (next === 'dark') document.documentElement.classList.add('dark')
+        else document.documentElement.classList.remove('dark')
     }
     return { theme, toggle }
-}
-
-// Theme colors helper
-function t(theme: Theme) {
-    const dark = theme === 'dark'
-    return {
-        bg: dark ? 'bg-[#0a0a0f]' : 'bg-gray-50',
-        text: dark ? 'text-white' : 'text-gray-900',
-        textMuted: dark ? 'text-white/40' : 'text-gray-500',
-        textSubtle: dark ? 'text-white/25' : 'text-gray-400',
-        textSoft: dark ? 'text-white/60' : 'text-gray-600',
-        textMicro: dark ? 'text-white/20' : 'text-gray-300',
-        sidebar: dark ? 'bg-[#0f0f16]' : 'bg-white',
-        sidebarBorder: dark ? 'border-white/[0.06]' : 'border-gray-200',
-        card: dark ? 'bg-[#12121a]' : 'bg-white',
-        cardBorder: dark ? 'border-white/[0.06]' : 'border-gray-200',
-        cardHover: dark ? 'hover:border-white/[0.1]' : 'hover:border-gray-300',
-        inputBg: dark ? 'bg-white/[0.03]' : 'bg-gray-50',
-        inputBorder: dark ? 'border-white/[0.08]' : 'border-gray-200',
-        hoverBg: dark ? 'hover:bg-white/[0.04]' : 'hover:bg-gray-100',
-        activeBg: dark ? 'bg-indigo-500/15' : 'bg-indigo-50',
-        activeText: dark ? 'text-indigo-400' : 'text-indigo-600',
-        calCell: dark ? 'border-white/[0.03]' : 'border-gray-100',
-        calCellMuted: dark ? 'opacity-30' : 'opacity-40',
-        calCardBg: dark ? 'bg-white/[0.03]' : 'bg-gray-50',
-        calCardHover: dark ? 'hover:bg-white/[0.06]' : 'hover:bg-gray-100',
-        overlay: dark ? 'bg-black/60' : 'bg-black/30',
-        pillInactive: dark ? 'text-white/30 border-white/10 hover:border-white/25' : 'text-gray-400 border-gray-200 hover:border-gray-400',
-    }
 }
 
 // ─── Calendar helpers ────────────────────────────────────
@@ -203,7 +179,6 @@ export default function PortalPage() {
     const { data: session, status } = useSession()
     const router = useRouter()
     const { theme, toggle: toggleTheme } = useTheme()
-    const c = t(theme)
     const locale = usePortalLocale()
     const L = PORTAL_LABELS[locale]
 
@@ -398,39 +373,39 @@ export default function PortalPage() {
     // ─── Loading ─────────────────────────────────────────
     if (status === 'loading' || loading) {
         return (
-            <div className={`min-h-screen flex items-center justify-center ${c.bg}`}>
+            <div className="min-h-screen flex items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">
                     <Image src={branding.logoUrl} alt={branding.appName} width={48} height={48} className="rounded-xl" unoptimized />
-                    <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
             </div>
         )
     }
 
     return (
-        <div className={`min-h-screen ${c.bg} ${c.text} flex`}>
+        <div className="min-h-screen bg-background text-foreground flex">
             {/* ─── Mobile overlay ──────────────────────── */}
             {sidebarOpen && (
-                <div className={`fixed inset-0 ${c.overlay} z-30 lg:hidden`} onClick={() => setSidebarOpen(false)} />
+                <div className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
             )}
 
             {/* ─── Sidebar ────────────────────────────── */}
             <aside className={`
-                fixed lg:sticky top-0 left-0 h-screen w-[260px] ${c.sidebar} border-r ${c.sidebarBorder}
+                fixed lg:sticky top-0 left-0 h-screen w-[260px] bg-sidebar border-r border-sidebar-border
                 flex flex-col z-40 transition-transform duration-200
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}>
                 {/* Logo */}
-                <div className={`p-4 flex items-center gap-3 border-b ${c.sidebarBorder}`}>
+                <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
                     <Image src={branding.logoUrl} alt={branding.appName} width={32} height={32} className="rounded-xl" unoptimized />
                     <div className="flex-1 min-w-0">
                         <h1 className="font-bold text-sm tracking-tight">{branding.appName}</h1>
-                        <p className={`text-[9px] ${c.textMicro} uppercase tracking-[0.15em]`}>{L.clientPortal}</p>
+                        <p className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.15em]">{L.clientPortal}</p>
                     </div>
                     {/* Theme toggle */}
                     <button
                         onClick={toggleTheme}
-                        className={`p-1.5 rounded-lg ${c.hoverBg} transition-colors`}
+                        className="p-1.5 rounded-lg hover:bg-accent transition-colors"
                         title={theme === 'dark' ? L.lightMode : L.darkMode}
                     >
                         {theme === 'dark' ? (
@@ -438,36 +413,34 @@ export default function PortalPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
                             </svg>
                         ) : (
-                            <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                            <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                             </svg>
                         )}
                     </button>
                 </div>
 
-                {/* Channel Switcher — directly under logo */}
-                <div className={`px-3 pt-3 pb-2 border-b ${c.sidebarBorder}`}>
-                    <p className={`px-2 mb-1.5 text-[9px] ${c.textMicro} uppercase tracking-[0.15em] font-semibold`}>{L.yourChannels}</p>
+                {/* Channel Switcher */}
+                <div className="px-3 pt-3 pb-2 border-b border-sidebar-border">
+                    <p className="px-2 mb-1.5 text-[9px] text-muted-foreground/50 uppercase tracking-[0.15em] font-semibold">{L.yourChannels}</p>
                     <button
                         onClick={() => setSelectedChannel('all')}
-                        className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all mb-0.5 ${selectedChannel === 'all'
-                            ? `${c.activeBg} ${c.activeText} font-medium`
-                            : `${c.textMuted} ${c.hoverBg}`
+                        className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all mb-0.5 ${selectedChannel === 'all' ? 'nav-active' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                             }`}
                     >
-                        <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-100'}`}>⊕</span>
+                        <span className="w-5 h-5 rounded flex items-center justify-center text-[10px] bg-muted">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+                        </span>
                         {L.allChannels}
                     </button>
                     {channels.map((ch) => (
                         <button
                             key={ch.id}
                             onClick={() => setSelectedChannel(ch.id)}
-                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all ${selectedChannel === ch.id
-                                ? `${c.activeBg} ${c.activeText} font-medium`
-                                : `${c.textMuted} ${c.hoverBg}`
+                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all ${selectedChannel === ch.id ? 'nav-active font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                                 }`}
                         >
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ch.isActive ? 'bg-emerald-500' : theme === 'dark' ? 'bg-white/20' : 'bg-gray-300'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ch.isActive ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
                             <span className="truncate">{ch.displayName}</span>
                         </button>
                     ))}
@@ -477,9 +450,7 @@ export default function PortalPage() {
                 <nav className="flex-1 p-3 space-y-0.5">
                     <button
                         onClick={() => { setActiveTab('review'); setSidebarOpen(false) }}
-                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all ${activeTab === 'review'
-                            ? `${c.activeBg} ${c.activeText} font-medium`
-                            : `${c.textMuted} ${c.hoverBg}`
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all ${activeTab === 'review' ? 'nav-active font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                             }`}
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
@@ -487,16 +458,14 @@ export default function PortalPage() {
                         </svg>
                         {L.pendingReview}
                         {filteredPending.length > 0 && (
-                            <span className="ml-auto bg-indigo-500/20 text-indigo-400 text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                            <span className="ml-auto bg-primary/20 text-primary text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                                 {filteredPending.length}
                             </span>
                         )}
                     </button>
                     <button
                         onClick={() => { setActiveTab('calendar'); setSidebarOpen(false) }}
-                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all ${activeTab === 'calendar'
-                            ? `${c.activeBg} ${c.activeText} font-medium`
-                            : `${c.textMuted} ${c.hoverBg}`
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all ${activeTab === 'calendar' ? 'nav-active font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                             }`}
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
@@ -506,9 +475,7 @@ export default function PortalPage() {
                     </button>
                     <button
                         onClick={() => { setActiveTab('upload'); setSidebarOpen(false) }}
-                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all ${activeTab === 'upload'
-                            ? `${c.activeBg} ${c.activeText} font-medium`
-                            : `${c.textMuted} ${c.hoverBg}`
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all ${activeTab === 'upload' ? 'nav-active font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                             }`}
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
@@ -519,19 +486,19 @@ export default function PortalPage() {
                 </nav>
 
                 {/* Profile */}
-                <div className={`p-3 border-t ${c.sidebarBorder}`}>
+                <div className="p-3 border-t border-sidebar-border">
                     <div className="flex items-center gap-2.5 px-2 py-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground font-bold text-xs shrink-0">
                             {profile?.name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || '?'}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">{profile?.name || L.customer}</p>
-                            <p className={`text-[10px] ${c.textSubtle} truncate`}>{profile?.email}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{profile?.email}</p>
                         </div>
                         <button
                             onClick={() => signOut({ callbackUrl: '/login' })}
                             title={L.signOut}
-                            className={`p-1 rounded-lg ${c.textSubtle} ${c.hoverBg} transition-colors`}
+                            className="p-1 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
@@ -544,7 +511,7 @@ export default function PortalPage() {
                                 document.cookie = 'access-mode=dashboard;path=/;max-age=86400'
                                 router.push('/dashboard')
                             }}
-                            className={`w-full flex items-center gap-2 px-3 py-1.5 mt-1 rounded-lg text-xs font-medium ${c.textSoft} ${c.hoverBg} transition-colors`}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 mt-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
                         >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
@@ -558,15 +525,15 @@ export default function PortalPage() {
             {/* ─── Main Content ───────────────────────── */}
             <main className="flex-1 min-h-screen flex flex-col">
                 {/* Top bar (mobile) */}
-                <header className={`lg:hidden sticky top-0 z-20 ${c.bg}/90 backdrop-blur border-b ${c.sidebarBorder}`}>
+                <header className="lg:hidden sticky top-0 z-20 bg-background/90 backdrop-blur border-b border-border">
                     <div className="flex items-center justify-between px-4 h-12">
-                        <button onClick={() => setSidebarOpen(true)} className={`p-1.5 -ml-1.5 ${c.textSoft}`}>
+                        <button onClick={() => setSidebarOpen(true)} className="p-1.5 -ml-1.5 text-muted-foreground">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                             </svg>
                         </button>
                         <Image src={branding.logoUrl} alt={branding.appName} width={24} height={24} className="rounded-lg" unoptimized />
-                        <button onClick={toggleTheme} className={`p-1.5 ${c.textSoft}`}>
+                        <button onClick={toggleTheme} className="p-1.5 text-muted-foreground">
                             {theme === 'dark' ? (
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
@@ -649,7 +616,24 @@ function ReviewTab({
     datePreset: 'today' | 'week' | 'month' | 'all'
     onDatePresetChange: (preset: 'today' | 'week' | 'month' | 'all') => void
 }) {
-    const c = t(theme)
+    const c = {
+        bg: 'bg-background', text: 'text-foreground',
+        textMuted: 'text-muted-foreground',
+        textSubtle: 'text-muted-foreground/70',
+        textSoft: 'text-foreground/80',
+        textMicro: 'text-muted-foreground/40',
+        sidebar: 'bg-sidebar', sidebarBorder: 'border-sidebar-border',
+        card: 'bg-card', cardBorder: 'border-border',
+        cardHover: 'hover:border-primary/30',
+        inputBg: 'bg-muted/50', inputBorder: 'border-border',
+        hoverBg: 'hover:bg-accent',
+        activeBg: 'bg-primary/10', activeText: 'text-primary',
+        calCell: 'border-border/40',
+        calCellMuted: 'opacity-40',
+        calCardBg: 'bg-muted/40', calCardHover: 'hover:bg-muted/70',
+        overlay: 'bg-black/60',
+        pillInactive: 'text-muted-foreground border-border hover:border-primary/50',
+    }
     const locale = usePortalLocale()
     const L = PORTAL_LABELS[locale]
     const [editingId, setEditingId] = useState<string | null>(null)
@@ -689,10 +673,10 @@ function ReviewTab({
                 </svg>
             ),
             posts: pendingPosts,
-            gradient: theme === 'dark' ? 'from-amber-500/20 to-amber-600/5' : 'from-amber-50 to-orange-50',
-            border: theme === 'dark' ? 'border-amber-500/30' : 'border-amber-200',
-            headerBg: theme === 'dark' ? 'bg-amber-500/10' : 'bg-amber-50',
-            badge: theme === 'dark' ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700',
+            gradient: 'from-amber-500/10 to-amber-600/5 dark:from-amber-500/20 dark:to-amber-600/5',
+            border: 'border-amber-500/20 dark:border-amber-500/30',
+            headerBg: 'bg-amber-500/[0.07] dark:bg-amber-500/10',
+            badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
             showActions: true,
         },
         {
@@ -704,10 +688,10 @@ function ReviewTab({
                 </svg>
             ),
             posts: scheduledPosts,
-            gradient: theme === 'dark' ? 'from-emerald-500/20 to-emerald-600/5' : 'from-emerald-50 to-teal-50',
-            border: theme === 'dark' ? 'border-emerald-500/30' : 'border-emerald-200',
-            headerBg: theme === 'dark' ? 'bg-emerald-500/10' : 'bg-emerald-50',
-            badge: theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700',
+            gradient: 'from-emerald-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:to-emerald-600/5',
+            border: 'border-emerald-500/20 dark:border-emerald-500/30',
+            headerBg: 'bg-emerald-500/[0.07] dark:bg-emerald-500/10',
+            badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
             showActions: false,
         },
         {
@@ -719,10 +703,10 @@ function ReviewTab({
                 </svg>
             ),
             posts: publishedPosts,
-            gradient: theme === 'dark' ? 'from-blue-500/20 to-blue-600/5' : 'from-blue-50 to-indigo-50',
-            border: theme === 'dark' ? 'border-blue-500/30' : 'border-blue-200',
-            headerBg: theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50',
-            badge: theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700',
+            gradient: 'from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-blue-600/5',
+            border: 'border-blue-500/20 dark:border-blue-500/30',
+            headerBg: 'bg-blue-500/[0.07] dark:bg-blue-500/10',
+            badge: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
             showActions: false,
         },
     ]
@@ -739,7 +723,7 @@ function ReviewTab({
                             {selectedChannel !== 'all' && <span className={c.activeText}> · filtered</span>}
                         </p>
                     </div>
-                    <div className={`flex items-center gap-1 ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'} rounded-xl p-1`}>
+                    <div className="flex items-center gap-1 bg-muted rounded-xl p-1">
                         {([
                             { key: 'today' as const, label: L.dateToday },
                             { key: 'week' as const, label: L.dateWeek },
@@ -750,12 +734,8 @@ function ReviewTab({
                                 key={p.key}
                                 onClick={() => onDatePresetChange(p.key)}
                                 className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${datePreset === p.key
-                                    ? theme === 'dark'
-                                        ? 'bg-indigo-500/20 text-indigo-400 shadow-sm'
-                                        : 'bg-white text-indigo-600 shadow-sm'
-                                    : theme === 'dark'
-                                        ? 'text-white/40 hover:text-white/60'
-                                        : 'text-gray-500 hover:text-gray-700'
+                                    ? 'bg-primary/15 text-primary shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
                                     }`}
                             >
                                 {p.label}
@@ -822,7 +802,7 @@ function ReviewTab({
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
                                                 <span className={`${c.activeText} font-medium text-[11px] truncate`}>{post.channel.displayName}</span>
                                             </div>
                                             <p className={`${c.textSubtle} text-[10px] mt-0.5`}>
@@ -847,14 +827,14 @@ function ReviewTab({
                                                     value={editText}
                                                     onChange={(e) => setEditText(e.target.value)}
                                                     rows={4}
-                                                    className={`w-full ${c.inputBg} border ${c.inputBorder} rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:border-indigo-500/40 transition-all`}
+                                                    className={`w-full ${c.inputBg} border ${c.inputBorder} rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all`}
                                                     autoFocus
                                                 />
                                                 <div className="flex gap-1.5">
                                                     <button
                                                         onClick={() => handleSaveEdit(post.id)}
                                                         disabled={saving}
-                                                        className="flex-1 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 text-[10px] font-medium hover:bg-indigo-500/30 transition-all disabled:opacity-30"
+                                                        className="flex-1 py-1.5 rounded-lg bg-primary/15 text-primary text-[10px] font-medium hover:bg-primary/25 transition-all disabled:opacity-30"
                                                     >
                                                         {saving ? 'Saving...' : 'Save'}
                                                     </button>
@@ -908,7 +888,7 @@ function ReviewTab({
                                                 onChange={(e) => setComments((cc) => ({ ...cc, [post.id]: e.target.value }))}
                                                 placeholder="Add feedback (optional)..."
                                                 rows={1}
-                                                className={`w-full ${c.inputBg} border ${c.inputBorder} rounded-lg px-3 py-2 text-[11px] resize-none focus:outline-none focus:border-indigo-500/40 transition-all ${theme === 'dark' ? 'placeholder:text-white/15' : 'placeholder:text-gray-400'}`}
+                                                className={`w-full ${c.inputBg} border ${c.inputBorder} rounded-lg px-3 py-2 text-[11px] resize-none focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-muted-foreground/40`}
                                             />
                                             <div className="flex gap-1.5">
                                                 <button
@@ -966,7 +946,24 @@ function FullCalendar({
     togglePlatform: (p: string) => void
     theme: Theme
 }) {
-    const c = t(theme)
+    const c = {
+        bg: 'bg-background', text: 'text-foreground',
+        textMuted: 'text-muted-foreground',
+        textSubtle: 'text-muted-foreground/70',
+        textSoft: 'text-foreground/80',
+        textMicro: 'text-muted-foreground/40',
+        sidebar: 'bg-sidebar', sidebarBorder: 'border-sidebar-border',
+        card: 'bg-card', cardBorder: 'border-border',
+        cardHover: 'hover:border-primary/30',
+        inputBg: 'bg-muted/50', inputBorder: 'border-border',
+        hoverBg: 'hover:bg-accent',
+        activeBg: 'bg-primary/10', activeText: 'text-primary',
+        calCell: 'border-border/40',
+        calCellMuted: 'opacity-40',
+        calCardBg: 'bg-muted/40', calCardHover: 'hover:bg-muted/70',
+        overlay: 'bg-black/60',
+        pillInactive: 'text-muted-foreground border-border hover:border-primary/50',
+    }
     const locale = usePortalLocale()
     const L = PORTAL_LABELS[locale]
 
@@ -983,7 +980,7 @@ function FullCalendar({
                     </div>
 
                     {/* Today button */}
-                    <button onClick={handleToday} className={`px-3 py-1.5 rounded-lg ${theme === 'dark' ? 'bg-white/[0.06] hover:bg-white/[0.1] text-white/60 hover:text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700'} text-xs font-medium transition-all`}>
+                    <button onClick={handleToday} className="px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/70 text-muted-foreground hover:text-foreground text-xs font-medium transition-all">
                         {L.today}
                     </button>
 
@@ -1003,18 +1000,18 @@ function FullCalendar({
                     </div>
 
                     {/* View toggle */}
-                    <div className={`flex items-center rounded-lg border ${theme === 'dark' ? 'border-white/[0.08]' : 'border-gray-200'} p-0.5 ml-auto`}>
+                    <div className="flex items-center rounded-lg border border-border p-0.5 ml-auto">
                         <button
                             onClick={() => setCalView('month')}
-                            className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${calView === 'month' ? 'bg-indigo-500 text-white' : `${c.textMuted}`}`}
+                            className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${calView === 'month' ? 'bg-primary text-primary-foreground' : c.textMuted}`}
                         >{L.month}</button>
                         <button
                             onClick={() => setCalView('week')}
-                            className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${calView === 'week' ? 'bg-indigo-500 text-white' : `${c.textMuted}`}`}
+                            className={`px-3 py-1 text-xs rounded-md font-medium transition-all ${calView === 'week' ? 'bg-primary text-primary-foreground' : c.textMuted}`}
                         >{L.week}</button>
                     </div>
 
-                    {calLoading && <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />}
+                    {calLoading && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
                 </div>
 
                 {/* Platform filter pills with SVG icons */}
@@ -1059,7 +1056,24 @@ function FullCalendar({
 function CalMonthView({ currentDate, postsByDate, onDayClick, theme }: {
     currentDate: Date; postsByDate: Record<string, Post[]>; onDayClick: (d: Date) => void; theme: Theme
 }) {
-    const c = t(theme)
+    const c = {
+        bg: 'bg-background', text: 'text-foreground',
+        textMuted: 'text-muted-foreground',
+        textSubtle: 'text-muted-foreground/70',
+        textSoft: 'text-foreground/80',
+        textMicro: 'text-muted-foreground/40',
+        sidebar: 'bg-sidebar', sidebarBorder: 'border-sidebar-border',
+        card: 'bg-card', cardBorder: 'border-border',
+        cardHover: 'hover:border-primary/30',
+        inputBg: 'bg-muted/50', inputBorder: 'border-border',
+        hoverBg: 'hover:bg-accent',
+        activeBg: 'bg-primary/10', activeText: 'text-primary',
+        calCell: 'border-border/40',
+        calCellMuted: 'opacity-40',
+        calCardBg: 'bg-muted/40', calCardHover: 'hover:bg-muted/70',
+        overlay: 'bg-black/60',
+        pillInactive: 'text-muted-foreground border-border hover:border-primary/50',
+    }
     const locale = usePortalLocale()
     const L = PORTAL_LABELS[locale]
     const today = toLocalDateStr(new Date())
@@ -1093,11 +1107,11 @@ function CalMonthView({ currentDate, postsByDate, onDayClick, theme }: {
                         <div
                             key={idx}
                             className={`border-r border-b ${c.calCell} p-1 min-h-0 overflow-hidden flex flex-col gap-0.5 ${!inMonth ? c.calCellMuted : ''
-                                } ${isToday ? 'bg-indigo-500/[0.06]' : ''}`}
+                                } ${isToday ? 'bg-primary/[0.06]' : ''}`}
                         >
                             <button
                                 onClick={() => onDayClick(date)}
-                                className={`h-5 w-5 flex items-center justify-center rounded-full text-[10px] font-medium self-end transition-colors ${isToday ? 'bg-indigo-500 text-white' : `${c.textMuted} ${c.calCardHover}`
+                                className={`h-5 w-5 flex items-center justify-center rounded-full text-[10px] font-medium self-end transition-colors ${isToday ? 'bg-primary text-primary-foreground' : `${c.textMuted} ${c.calCardHover}`
                                     }`}
                             >
                                 {date.getDate()}
@@ -1144,7 +1158,24 @@ function CalMonthView({ currentDate, postsByDate, onDayClick, theme }: {
 function CalWeekView({ currentDate, postsByDate, theme }: {
     currentDate: Date; postsByDate: Record<string, Post[]>; theme: Theme
 }) {
-    const c = t(theme)
+    const c = {
+        bg: 'bg-background', text: 'text-foreground',
+        textMuted: 'text-muted-foreground',
+        textSubtle: 'text-muted-foreground/70',
+        textSoft: 'text-foreground/80',
+        textMicro: 'text-muted-foreground/40',
+        sidebar: 'bg-sidebar', sidebarBorder: 'border-sidebar-border',
+        card: 'bg-card', cardBorder: 'border-border',
+        cardHover: 'hover:border-primary/30',
+        inputBg: 'bg-muted/50', inputBorder: 'border-border',
+        hoverBg: 'hover:bg-accent',
+        activeBg: 'bg-primary/10', activeText: 'text-primary',
+        calCell: 'border-border/40',
+        calCellMuted: 'opacity-40',
+        calCardBg: 'bg-muted/40', calCardHover: 'hover:bg-muted/70',
+        overlay: 'bg-black/60',
+        pillInactive: 'text-muted-foreground border-border hover:border-primary/50',
+    }
     const locale = usePortalLocale()
     const L = PORTAL_LABELS[locale]
     const today = toLocalDateStr(new Date())
@@ -1165,7 +1196,7 @@ function CalWeekView({ currentDate, postsByDate, theme }: {
                     return (
                         <div key={i} className={`py-2 text-center border-r ${c.calCell} last:border-r-0`}>
                             <p className={`text-[10px] ${c.textSubtle} uppercase`}>{L.days[i]}</p>
-                            <div className={`h-7 w-7 mx-auto flex items-center justify-center rounded-full text-sm font-semibold mt-0.5 ${isToday ? 'bg-indigo-500 text-white' : c.textSoft
+                            <div className={`h-7 w-7 mx-auto flex items-center justify-center rounded-full text-sm font-semibold mt-0.5 ${isToday ? 'bg-primary text-primary-foreground' : c.textSoft
                                 }`}>
                                 {date.getDate()}
                             </div>
@@ -1180,7 +1211,7 @@ function CalWeekView({ currentDate, postsByDate, theme }: {
                     const posts = postsByDate[dateStr] || []
                     const isToday = dateStr === today
                     return (
-                        <div key={i} className={`border-r ${c.calCell} last:border-r-0 p-1.5 flex flex-col gap-1.5 min-h-[300px] ${isToday ? 'bg-indigo-500/[0.04]' : ''}`}>
+                        <div key={i} className={`border-r ${c.calCell} last:border-r-0 p-1.5 flex flex-col gap-1.5 min-h-[300px] ${isToday ? 'bg-primary/[0.04]' : ''}`}>
                             {posts.length === 0 ? (
                                 <p className={`text-[10px] ${c.textMicro} text-center mt-8`}>{L.noPostsDay}</p>
                             ) : (
@@ -1237,7 +1268,24 @@ function UploadTab({
     selectedChannel: string
     theme: Theme
 }) {
-    const c = t(theme)
+    const c = {
+        bg: 'bg-background', text: 'text-foreground',
+        textMuted: 'text-muted-foreground',
+        textSubtle: 'text-muted-foreground/70',
+        textSoft: 'text-foreground/80',
+        textMicro: 'text-muted-foreground/40',
+        sidebar: 'bg-sidebar', sidebarBorder: 'border-sidebar-border',
+        card: 'bg-card', cardBorder: 'border-border',
+        cardHover: 'hover:border-primary/30',
+        inputBg: 'bg-muted/50', inputBorder: 'border-border',
+        hoverBg: 'hover:bg-accent',
+        activeBg: 'bg-primary/10', activeText: 'text-primary',
+        calCell: 'border-border/40',
+        calCellMuted: 'opacity-40',
+        calCardBg: 'bg-muted/40', calCardHover: 'hover:bg-muted/70',
+        overlay: 'bg-black/60',
+        pillInactive: 'text-muted-foreground border-border hover:border-primary/50',
+    }
     const [files, setFiles] = useState<File[]>([])
     const [uploading, setUploading] = useState(false)
     const [uploadProgress, setUploadProgress] = useState<Record<string, 'pending' | 'uploading' | 'done' | 'error'>>({})
@@ -1408,7 +1456,7 @@ function UploadTab({
                         {channels.map(ch => (
                             <button
                                 key={ch.id}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${c.activeBg} ${c.activeText} border-indigo-500/30`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${c.activeBg} ${c.activeText} border-primary/30`}
                             >
                                 {ch.displayName}
                             </button>
@@ -1422,7 +1470,7 @@ function UploadTab({
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
-                className={`${c.card} border-2 border-dashed ${dragOver ? 'border-indigo-500 bg-indigo-500/5' : c.cardBorder} rounded-2xl p-8 text-center transition-all cursor-pointer`}
+                className={`${c.card} border-2 border-dashed ${dragOver ? 'border-primary bg-primary/5' : c.cardBorder} rounded-2xl p-8 text-center transition-all cursor-pointer`}
                 onClick={() => document.getElementById('file-input')?.click()}
             >
                 <input
@@ -1433,12 +1481,12 @@ function UploadTab({
                     className="hidden"
                     onChange={handleFileSelect}
                 />
-                <div className={`w-14 h-14 mx-auto mb-4 rounded-2xl ${theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'} flex items-center justify-center`}>
-                    <svg className={`w-7 h-7 ${dragOver ? 'text-indigo-400' : c.textMicro}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-muted flex items-center justify-center">
+                    <svg className={`w-7 h-7 ${dragOver ? 'text-primary' : c.textMicro}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                     </svg>
                 </div>
-                <h3 className={`text-sm font-semibold mb-1 ${dragOver ? 'text-indigo-400' : c.textSoft}`}>
+                <h3 className={`text-sm font-semibold mb-1 ${dragOver ? 'text-primary' : c.textSoft}`}>
                     {dragOver ? 'Thả file vào đây' : 'Kéo thả ảnh/video vào đây'}
                 </h3>
                 <p className={`${c.textMuted} text-xs`}>hoặc click để chọn file</p>
@@ -1452,7 +1500,7 @@ function UploadTab({
                         <button
                             onClick={handleUpload}
                             disabled={uploading}
-                            className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-medium rounded-lg transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/20 flex items-center gap-1.5"
+                            className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-lg transition-all disabled:opacity-50 shadow-lg shadow-primary/20 flex items-center gap-1.5"
                         >
                             {uploading ? (
                                 <>
@@ -1487,7 +1535,7 @@ function UploadTab({
                                         <p className={`text-[10px] ${c.textMicro}`}>{(file.size / 1024 / 1024).toFixed(1)} MB</p>
                                     </div>
                                     {status === 'uploading' && (
-                                        <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                                     )}
                                     {status === 'done' && (
                                         <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -1518,14 +1566,14 @@ function UploadTab({
                 <h2 className={`text-sm font-semibold mb-3 ${c.textSoft}`}>Upload gần đây</h2>
                 {jobsLoading ? (
                     <div className="flex justify-center py-8">
-                        <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : jobs.length === 0 ? (
                     <div className={`text-center py-12 ${c.card} border ${c.cardBorder} rounded-2xl`}>
                         <p className={c.textMuted + ' text-sm'}>Chưa có upload nào</p>
                     </div>
                 ) : (
-                    <div className={`${c.card} border ${c.cardBorder} rounded-2xl overflow-hidden divide-y ${theme === 'dark' ? 'divide-white/[0.04]' : 'divide-gray-100'}`}>
+                    <div className={`${c.card} border ${c.cardBorder} rounded-2xl overflow-hidden divide-y divide-border/40`}>
                         {jobs.map(job => {
                             const badge = STATUS_BADGE[job.status] || STATUS_BADGE.QUEUED
                             return (
