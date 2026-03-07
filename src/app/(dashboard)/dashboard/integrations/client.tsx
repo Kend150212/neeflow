@@ -326,166 +326,156 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                     <div className="flex items-center gap-2">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Connected Apps</h2>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 
                         {/* Google Drive card */}
-                        <Card className={cn(
-                            'relative border transition-all',
+                        <div className={cn(
+                            'group relative rounded-2xl border p-5 flex flex-col gap-4 transition-all duration-200',
                             gdriveStatus?.connected
                                 ? 'border-blue-500/30 bg-blue-500/5'
                                 : 'border-border/60 bg-card/50'
                         )}>
-                            <CardContent className="p-5 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        {/* Google Drive official logo */}
-                                        <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
-                                            <svg viewBox="0 0 87.3 78" className="w-7 h-7" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a17.94 17.94 0 006.6 13.85z" fill="#0066da" />
-                                                <path d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L6.6 38.3A17.94 17.94 0 000 52.15h27.5L43.65 25z" fill="#00ac47" />
-                                                <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.85 1.2-4.35H60.1l5.85 19.1 7.6 4.55z" fill="#ea4335" />
-                                                <path d="M43.65 25L57.4 1.2C56.05.4 54.65 0 53.3 0H34C32.1 0 30.3.45 28.7 1.2L43.65 25z" fill="#00832d" />
-                                                <path d="M60.1 52.15H27.5l-13.75 23.8c1.35.8 2.85 1.2 4.35 1.2h50.8c1.5 0 2.85-.45 4.2-1.2L60.1 52.15z" fill="#2684fc" />
-                                                <path d="M73.4 26.15l-9.5-16.5c-.8-1.35-1.85-2.5-3.2-3.3L43.65 25l16.45 27.15H87.2c0-1.5-.4-3-1.2-4.35l-12.6-21.65z" fill="#ffba00" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-sm">Google Drive</h3>
-                                            <p className="text-xs text-muted-foreground">Import media to your library</p>
-                                        </div>
-                                    </div>
-                                    {gdriveStatus?.connected
-                                        ? <Badge className="text-[10px] px-1.5 gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20"><CheckCircle className="h-3 w-3" />Connected</Badge>
-                                        : <Badge variant="outline" className="text-[10px] px-1.5 text-muted-foreground">Not connected</Badge>
-                                    }
-                                </div>
+                            {/* Status badge */}
+                            <div className="absolute top-3 right-3">
+                                {gdriveStatus?.connected
+                                    ? <Badge className="text-[10px] px-1.5 py-0.5 gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20"><CheckCircle className="h-2.5 w-2.5" />Connected</Badge>
+                                    : <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">Not connected</Badge>
+                                }
+                            </div>
 
+                            {/* Logo */}
+                            <div className={cn(
+                                'w-14 h-14 rounded-xl flex items-center justify-center',
+                                gdriveStatus?.connected ? 'bg-blue-500/10' : 'bg-muted/50'
+                            )}>
+                                <svg viewBox="0 0 87.3 78" className="w-9 h-9" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a17.94 17.94 0 006.6 13.85z" fill="#0066da" />
+                                    <path d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L6.6 38.3A17.94 17.94 0 000 52.15h27.5L43.65 25z" fill="#00ac47" />
+                                    <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.85 1.2-4.35H60.1l5.85 19.1 7.6 4.55z" fill="#ea4335" />
+                                    <path d="M43.65 25L57.4 1.2C56.05.4 54.65 0 53.3 0H34C32.1 0 30.3.45 28.7 1.2L43.65 25z" fill="#00832d" />
+                                    <path d="M60.1 52.15H27.5l-13.75 23.8c1.35.8 2.85 1.2 4.35 1.2h50.8c1.5 0 2.85-.45 4.2-1.2L60.1 52.15z" fill="#2684fc" />
+                                    <path d="M73.4 26.15l-9.5-16.5c-.8-1.35-1.85-2.5-3.2-3.3L43.65 25l16.45 27.15H87.2c0-1.5-.4-3-1.2-4.35l-12.6-21.65z" fill="#ffba00" />
+                                </svg>
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 space-y-1.5">
+                                <h3 className="font-semibold text-sm">Google Drive</h3>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {gdriveStatus?.connected && gdriveStatus.email
+                                        ? gdriveStatus.email
+                                        : 'Import media directly to your library'}
+                                </p>
+                                <div className="flex flex-wrap gap-1 pt-1">
+                                    {gdriveStatus?.connected && gdriveStatus.folderName ? (
+                                        <a href={gdriveStatus.folderUrl ?? undefined} target="_blank" rel="noopener noreferrer"
+                                            className="text-[10px] bg-blue-500/10 px-1.5 py-0.5 rounded-full text-blue-600 inline-flex items-center gap-1">
+                                            <FolderOpen className="h-2.5 w-2.5" />
+                                            {gdriveStatus.folderName}
+                                        </a>
+                                    ) : (
+                                        <>
+                                            {['Photos', 'Videos', 'Docs'].map(tag => (
+                                                <span key={tag} className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">{tag}</span>
+                                            ))}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* CTA */}
+                            <div>
                                 {gdriveStatus?.connected ? (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <Mail className="h-3.5 w-3.5" />
-                                            <span className="font-medium text-foreground">{gdriveStatus.email}</span>
-                                        </div>
-                                        {gdriveStatus.folderUrl ? (
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <FolderOpen className="h-3.5 w-3.5" />
-                                                <a href={gdriveStatus.folderUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-500 hover:underline inline-flex items-center gap-1">
-                                                    {gdriveStatus.folderName} <ExternalLink className="h-3 w-3" />
-                                                </a>
-                                            </div>
-                                        ) : null}
-                                        {gdriveStatus.connectedAt && (
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <Calendar className="h-3.5 w-3.5" />
-                                                {new Date(gdriveStatus.connectedAt).toLocaleDateString()}
-                                            </div>
-                                        )}
-                                        <Button
-                                            size="sm" variant="outline"
-                                            className="w-full h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/20 mt-2"
-                                            onClick={handleGDriveDisconnect}
-                                            disabled={gdriveLoading}
-                                        >
-                                            {gdriveLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Unlink className="h-3.5 w-3.5 mr-1.5" />}
-                                            {gdriveLoading ? 'Disconnecting...' : 'Disconnect Google Drive'}
-                                        </Button>
-                                    </div>
+                                    <Button size="sm" variant="outline"
+                                        className="w-full h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/20"
+                                        onClick={handleGDriveDisconnect} disabled={gdriveLoading}>
+                                        {gdriveLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Unlink className="h-3.5 w-3.5 mr-1.5" />}
+                                        {gdriveLoading ? 'Disconnecting...' : 'Disconnect'}
+                                    </Button>
+                                ) : !gdriveStatus?.isAdminConfigured ? (
+                                    <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled>
+                                        <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
+                                        Not configured
+                                    </Button>
                                 ) : (
-                                    <>
-                                        {!gdriveStatus?.isAdminConfigured ? (
-                                            <div className="flex items-center gap-2 text-xs text-amber-500">
-                                                <AlertCircle className="h-3.5 w-3.5" />
-                                                Not configured by admin
-                                            </div>
-                                        ) : (
-                                            <Button
-                                                size="sm"
-                                                className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
-                                                onClick={handleGDriveConnect}
-                                                disabled={gdriveConnecting}
-                                            >
-                                                {gdriveConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
-                                                {gdriveConnecting ? 'Connecting...' : 'Connect Google Drive'}
-                                            </Button>
-                                        )}
-                                    </>
+                                    <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                                        onClick={handleGDriveConnect} disabled={gdriveConnecting}>
+                                        {gdriveConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
+                                        {gdriveConnecting ? 'Connecting...' : 'Connect'}
+                                    </Button>
                                 )}
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
 
                         {/* Canva card */}
-                        <Card className={cn(
-                            'relative border transition-all',
+                        <div className={cn(
+                            'group relative rounded-2xl border p-5 flex flex-col gap-4 transition-all duration-200',
                             canvaStatus?.connected
                                 ? 'border-violet-500/30 bg-violet-500/5'
                                 : 'border-border/60 bg-card/50'
                         )}>
-                            <CardContent className="p-5 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
-                                            <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="w-7 h-7 object-contain" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-sm">Canva</h3>
-                                            <p className="text-xs text-muted-foreground">Design graphics for posts</p>
-                                        </div>
-                                    </div>
-                                    {canvaStatus?.connected
-                                        ? <Badge className="text-[10px] px-1.5 gap-1 bg-violet-500/10 text-violet-600 border-violet-500/20"><CheckCircle className="h-3 w-3" />Connected</Badge>
-                                        : <Badge variant="outline" className="text-[10px] px-1.5 text-muted-foreground">Not connected</Badge>
-                                    }
-                                </div>
+                            {/* Status badge */}
+                            <div className="absolute top-3 right-3">
+                                {canvaStatus?.connected
+                                    ? <Badge className="text-[10px] px-1.5 py-0.5 gap-1 bg-violet-500/10 text-violet-600 border-violet-500/20"><CheckCircle className="h-2.5 w-2.5" />Connected</Badge>
+                                    : <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">Not connected</Badge>
+                                }
+                            </div>
 
+                            {/* Logo */}
+                            <div className={cn(
+                                'w-14 h-14 rounded-xl flex items-center justify-center',
+                                canvaStatus?.connected ? 'bg-violet-500/10' : 'bg-muted/50'
+                            )}>
+                                <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="w-9 h-9 object-contain" />
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 space-y-1.5">
+                                <h3 className="font-semibold text-sm">Canva</h3>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {canvaStatus?.connected && canvaStatus.userName
+                                        ? canvaStatus.userName
+                                        : 'Design graphics for your posts'}
+                                </p>
+                                <div className="flex flex-wrap gap-1 pt-1">
+                                    {['Graphics', 'Templates', 'Branding'].map(tag => (
+                                        <span key={tag} className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">{tag}</span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* CTA */}
+                            <div>
                                 {canvaStatus?.connected ? (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3.5 w-3.5 object-contain" />
-                                            <span className="font-medium text-foreground">{canvaStatus.userName}</span>
-                                        </div>
-                                        {canvaStatus.connectedAt && (
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <Calendar className="h-3.5 w-3.5" />
-                                                {new Date(canvaStatus.connectedAt).toLocaleDateString()}
-                                            </div>
-                                        )}
-                                        <Button
-                                            size="sm" variant="outline"
-                                            className="w-full h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/20 mt-2"
-                                            onClick={handleCanvaDisconnect}
-                                            disabled={canvaLoading}
-                                        >
-                                            {canvaLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Unlink className="h-3.5 w-3.5 mr-1.5" />}
-                                            {canvaLoading ? 'Disconnecting...' : 'Disconnect Canva'}
-                                        </Button>
-                                    </div>
+                                    <Button size="sm" variant="outline"
+                                        className="w-full h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/20"
+                                        onClick={handleCanvaDisconnect} disabled={canvaLoading}>
+                                        {canvaLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Unlink className="h-3.5 w-3.5 mr-1.5" />}
+                                        {canvaLoading ? 'Disconnecting...' : 'Disconnect'}
+                                    </Button>
+                                ) : !canvaStatus?.isAdminConfigured ? (
+                                    <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled>
+                                        <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
+                                        Not configured
+                                    </Button>
                                 ) : (
-                                    <>
-                                        {!canvaStatus?.isAdminConfigured ? (
-                                            <div className="flex items-center gap-2 text-xs text-amber-500">
-                                                <AlertCircle className="h-3.5 w-3.5" />
-                                                Not configured by admin
-                                            </div>
-                                        ) : (
-                                            <Button
-                                                size="sm"
-                                                className="w-full h-8 text-xs bg-violet-600 hover:bg-violet-700"
-                                                onClick={handleCanvaConnect}
-                                                disabled={canvaConnecting}
-                                            >
-                                                {canvaConnecting
-                                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                                                    : <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3.5 w-3.5 object-contain mr-1.5" />
-                                                }
-                                                {canvaConnecting ? 'Connecting...' : 'Connect Canva'}
-                                            </Button>
-                                        )}
-                                    </>
+                                    <Button size="sm" className="w-full h-8 text-xs bg-violet-600 hover:bg-violet-700"
+                                        onClick={handleCanvaConnect} disabled={canvaConnecting}>
+                                        {canvaConnecting
+                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                                            : <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3.5 w-3.5 object-contain mr-1.5" />
+                                        }
+                                        {canvaConnecting ? 'Connecting...' : 'Connect'}
+                                    </Button>
                                 )}
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
+
+
 
                 {/* ── Data Integrations Grid ── */}
                 <div className="space-y-4">
@@ -604,7 +594,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                 <p className="text-xs text-muted-foreground text-center pb-4">
                     More integrations launching soon. Contact support to request a specific integration.
                 </p>
-            </div>
-        </div>
+            </div >
+        </div >
     )
 }
