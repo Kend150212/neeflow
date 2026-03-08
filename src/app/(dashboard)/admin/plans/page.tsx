@@ -547,6 +547,9 @@ export default function AdminPlansPage() {
                                         {(plan as any).allowedIntegrations?.includes('wordpress') && (
                                             <Badge variant="secondary" className="text-xs px-1 bg-blue-500/10 text-blue-600 border-blue-500/20">📝 WordPress</Badge>
                                         )}
+                                        {(plan as any).allowedIntegrations?.includes('etsy') && (
+                                            <Badge variant="secondary" className="text-xs px-1 bg-orange-500/10 text-orange-600 border-orange-500/20">🧶 Etsy</Badge>
+                                        )}
                                         {plan.trialEnabled && (
                                             <Badge className="text-xs px-1 bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-400">
                                                 🎁 {plan.trialDays}d trial
@@ -846,6 +849,7 @@ export default function AdminPlansPage() {
                                     { slug: 'external_db', label: '🗄️ External Database (MySQL / Airtable)', desc: 'Connect & generate posts from external DBs' },
                                     { slug: 'shopify', label: '🛍️ Shopify', desc: 'Sync Shopify product catalog & create AI posts from products' },
                                     { slug: 'wordpress', label: '📝 WordPress', desc: 'Sync WooCommerce products & WordPress posts, create AI posts' },
+                                    { slug: 'etsy', label: '🧶 Etsy', desc: 'Sync Etsy listings via OAuth & create AI posts from handmade products' },
                                 ].map(({ slug, label, desc }) => {
                                     const enabled = (editPlan.allowedIntegrations ?? []).includes(slug)
                                     return (

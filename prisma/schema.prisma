@@ -306,6 +306,7 @@ model Channel {
   studioAvatarShares   StudioAvatarShare[]
   shopifyConfig        ShopifyConfig?
   wordpressConfig      WordPressConfig?
+  etsyConfig           EtsyConfig?
 
 
   @@map("channels")
@@ -406,7 +407,7 @@ model ProductCatalog {
   embeddedAt  DateTime? @map("embedded_at")
 
   // Sync metadata — for future Google Sheets / WordPress / Shopify integration
-  syncSource  String?  @default("manual") @map("sync_source") // manual | csv | google_sheet | wordpress | shopify
+  syncSource  String?  @default("manual") @map("sync_source") // manual | csv | google_sheet | wordpress | shopify | etsy
   externalId  String?  @map("external_id")   // ID from external system (for upsert dedup)
   sheetUrl    String?  @map("sheet_url")      // Google Sheet URL if synced from there
   syncedAt    DateTime? @map("synced_at")
@@ -1491,4 +1492,30 @@ model WordPressConfig {
 
   @@index([channelId])
   @@map("wordpress_configs")
+}
+
+model EtsyConfig {
+  id            String    @id @default(cuid())
+  channelId     String    @unique @map("channel_id")
+
+  // OAuth tokens (AES-256 encrypted)
+  accessToken   String    @map("access_token")   @db.Text
+  refreshToken  String    @map("refresh_token")  @db.Text
+  tokenExpiresAt DateTime @map("token_expires_at")
+
+  // Shop info fetched after OAuth
+  shopId        String    @map("shop_id")
+  shopName      String    @map("shop_name")
+
+  // Sync state
+  lastSyncedAt  DateTime? @map("last_synced_at")
+  productCount  Int       @default(0) @map("product_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@map("etsy_configs")
 }

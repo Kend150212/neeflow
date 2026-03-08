@@ -476,6 +476,25 @@ const platformGuides: Record<string, PlatformGuide> = {
         url: 'https://partners.shopify.com/',
         urlLabel: 'Open Shopify Partners',
     },
+    etsy: {
+        title: '🧶 Etsy OAuth App Setup Guide',
+        description: 'Allow users to connect their Etsy shops via OAuth 2.0 PKCE for listing sync and AI post creation.',
+        steps: [
+            { title: 'Create an Etsy Developer Account', detail: 'Visit etsy.com/developers → sign in → create a new app.' },
+            { title: 'Configure your App', detail: 'App Name: Neeflow (or your brand)\nApp Scopes: listings_r shops_r\nCallback URL:\n{YOUR_DOMAIN}/api/integrations/etsy/oauth/callback' },
+            { title: 'Copy App Credentials', detail: 'From the app detail page, copy the "Keystring" (Client ID) and "Shared Secret" (Client Secret) → paste them below.' },
+            { title: 'Save & Test', detail: 'Paste both values below and save. Then have a user go to Integrations → Etsy and click "Connect with Etsy".' },
+        ],
+        tips: [
+            '✅ Callback URL: {YOUR_DOMAIN}/api/integrations/etsy/oauth/callback',
+            '✅ Required scopes: listings_r, shops_r',
+            '✅ This uses OAuth 2.0 PKCE — no client secret is sent to the browser',
+            '⚠️ After saving here, users can connect from Neeflow → Integrations → Etsy',
+            '💡 One Etsy Developer app serves all users — each user authorizes their own shop',
+        ],
+        url: 'https://www.etsy.com/developers/register',
+        urlLabel: 'Open Etsy Developer Portal',
+    },
 }
 
 export default function IntegrationsPage() {

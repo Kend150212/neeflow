@@ -173,6 +173,19 @@ const integrations: IntegrationCard[] = [
         tags: ['WooCommerce', 'WordPress', 'Products', 'Posts', 'AI Post'],
     },
     {
+        slug: 'etsy',
+        name: 'Etsy',
+        description: 'Đồng bộ listings từ Etsy shop và tạo bài đăng AI từ sản phẩm handmade. OAuth 2.0 PKCE.',
+        href: '/dashboard/integrations/etsy',
+        logo: (
+            <svg width="36" height="36" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#F1641E">
+                <path d="M20 3H4C3.45 3 3 3.45 3 4v16c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zm-4.29 4.71c-.29.29-.71.29-1 0-.57-.57-1.5-.94-2.71-.94-1.76 0-2.94.88-2.94 2.06 0 1.12.71 1.76 2.59 2.35l.82.24c2.47.71 3.76 1.94 3.76 3.88C16.23 17.41 14.35 19 11.41 19c-2.06 0-3.82-.71-4.88-1.88-.24-.29-.18-.71.12-.94.29-.24.71-.18.94.12.82 1 2.12 1.59 3.82 1.59 2.12 0 3.53-.94 3.53-2.41 0-1.24-.82-1.94-2.65-2.47l-.82-.24c-2.41-.71-3.71-1.88-3.71-3.76C8.77 6.94 10.53 5.17 12 5.17c1.59 0 2.77.47 3.71 1.59.24.29.24.71 0 .95z" />
+            </svg>
+        ),
+        category: 'E-commerce',
+        tags: ['Handmade', 'Listings', 'Products', 'AI Post'],
+    },
+    {
         slug: 'hubspot',
         name: 'HubSpot',
         description: 'Pull contacts, deals and company data to power AI-driven content.',
