@@ -1477,67 +1477,83 @@ export default function ComposePage() {
                     if (firstKey) setActiveContentTab(firstKey)
                 }
 
-                // Restore selected platforms from platformStatuses
-                if (post.platformStatuses && ch) {
-                    const selectedIds = new Set<string>()
-                    const fbTypes: Record<string, 'feed' | 'story' | 'reel'> = {}
-                    let restoredFbCarousel = false
-                    let restoredFbFirstComment = ''
-                    let restoredIgPostType: 'feed' | 'reel' | 'story' = 'feed'
-                    let restoredIgShareToStory = false
-                    let restoredIgCollaborators = ''
-                    let restoredTtPostType: 'video' | 'carousel' = 'video'
-                    let restoredTtPublishMode: 'direct' | 'inbox' = 'direct'
-                    let restoredYtPostType: 'video' | 'shorts' = 'video'
-                    let restoredYtPrivacy: 'public' | 'unlisted' | 'private' = 'public'
-                    let restoredYtCategory = ''
-                    let restoredYtMadeForKids = false
-                    let restoredPinBoardId = ''
+                // Restore selected platforms.
+                // Use post.channel.platforms (embedded in API response) for matching — always correct.
+                // Also use ch.platforms as fallback for IDs (ch.platforms has the same records but from React state).
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const postChannelPlatforms: { id: string; platform: string; accountId: string }[] =
+                    (post.channel?.platforms as any[]) ||
+                    (ch?.platforms as any[]) ||
+                    []
+
+                const selectedIds = new Set<string>()
+                const fbTypes: Record<string, 'feed' | 'story' | 'reel'> = {}
+                let restoredFbCarousel = false
+                let restoredFbFirstComment = ''
+                let restoredIgPostType: 'feed' | 'reel' | 'story' = 'feed'
+                let restoredIgShareToStory = false
+                let restoredIgCollaborators = ''
+                let restoredTtPostType: 'video' | 'carousel' = 'video'
+                let restoredTtPublishMode: 'direct' | 'inbox' = 'direct'
+                let restoredYtPostType: 'video' | 'shorts' = 'video'
+                let restoredYtPrivacy: 'public' | 'unlisted' | 'private' = 'public'
+                let restoredYtCategory = ''
+                let restoredYtMadeForKids = false
+                let restoredPinBoardId = ''
+
+                // ── Restore from saved platformStatuses ───────────────────────
+                if (Array.isArray(post.platformStatuses) && post.platformStatuses.length > 0) {
                     for (const ps of post.platformStatuses) {
-                        const match = ch.platforms.find(
+                        const match = postChannelPlatforms.find(
                             (p) => p.platform === ps.platform && p.accountId === ps.accountId
                         )
-                        if (match) {
-                            selectedIds.add(match.id)
-                            const cfg = (ps.config as Record<string, unknown>) || {}
-                            if (match.platform === 'facebook') {
-                                fbTypes[match.id] = (cfg.postType as 'feed' | 'story' | 'reel') || 'feed'
-                                if (cfg.carousel === true) restoredFbCarousel = true
-                                if (cfg.firstComment) restoredFbFirstComment = cfg.firstComment as string
-                            }
-                            if (match.platform === 'instagram') {
-                                restoredIgPostType = (cfg.postType as 'feed' | 'reel' | 'story') || 'feed'
-                                restoredIgShareToStory = cfg.shareToStory === true
-                                if (cfg.collaborators) restoredIgCollaborators = cfg.collaborators as string
-                            }
-                            if (match.platform === 'tiktok') {
-                                restoredTtPostType = (cfg.postType as 'video' | 'carousel') || 'video'
-                                restoredTtPublishMode = (cfg.publishMode as 'direct' | 'inbox') || 'direct'
-                            }
-                            if (match.platform === 'youtube') {
-                                restoredYtPostType = (cfg.postType as 'video' | 'shorts') || 'video'
-                                restoredYtPrivacy = (cfg.privacy as 'public' | 'unlisted' | 'private') || 'public'
-                                if (cfg.category) restoredYtCategory = cfg.category as string
-                                if (cfg.madeForKids === true) restoredYtMadeForKids = true
-                            }
-                            if (match.platform === 'pinterest') {
-                                if (cfg.boardId) restoredPinBoardId = cfg.boardId as string
-                            }
+                        if (!match) continue
+                        selectedIds.add(match.id)
+                        const cfg = (ps.config as Record<string, unknown>) || {}
+                        if (match.platform === 'facebook') {
+                            fbTypes[match.id] = (cfg.postType as 'feed' | 'story' | 'reel') || 'feed'
+                            if (cfg.carousel === true) restoredFbCarousel = true
+                            if (cfg.firstComment) restoredFbFirstComment = cfg.firstComment as string
+                        }
+                        if (match.platform === 'instagram') {
+                            restoredIgPostType = (cfg.postType as 'feed' | 'reel' | 'story') || 'feed'
+                            restoredIgShareToStory = cfg.shareToStory === true
+                            if (cfg.collaborators) restoredIgCollaborators = cfg.collaborators as string
+                        }
+                        if (match.platform === 'tiktok') {
+                            restoredTtPostType = (cfg.postType as 'video' | 'carousel') || 'video'
+                            restoredTtPublishMode = (cfg.publishMode as 'direct' | 'inbox') || 'direct'
+                        }
+                        if (match.platform === 'youtube') {
+                            restoredYtPostType = (cfg.postType as 'video' | 'shorts') || 'video'
+                            restoredYtPrivacy = (cfg.privacy as 'public' | 'unlisted' | 'private') || 'public'
+                            if (cfg.category) restoredYtCategory = cfg.category as string
+                            if (cfg.madeForKids === true) restoredYtMadeForKids = true
+                        }
+                        if (match.platform === 'pinterest') {
+                            if (cfg.boardId) restoredPinBoardId = cfg.boardId as string
                         }
                     }
+                }
 
-                    // If no platforms from platformStatuses (freshly-created draft),
-                    // enable platform accounts whose type is in contentPerPlatform
-                    if (selectedIds.size === 0 && post.contentPerPlatform) {
-                        const cpp = post.contentPerPlatform as Record<string, string>
-                        const cpKeys = Object.keys(cpp).map(k => k.toLowerCase())
-                        ch.platforms.forEach(p => {
-                            if (cpKeys.includes(p.platform.toLowerCase())) {
-                                selectedIds.add(p.id)
+                // ── Fallback: no platformStatuses → infer from contentPerPlatform ─
+                // Covers posts created before platformStatuses were introduced.
+                if (selectedIds.size === 0 && post.contentPerPlatform) {
+                    const cpp = post.contentPerPlatform as Record<string, string>
+                    const cpKeys = Object.keys(cpp).map(k => k.toLowerCase())
+                    // Use postChannelPlatforms (from API response) to add ALL matching platform accounts
+                    postChannelPlatforms.forEach(p => {
+                        if (cpKeys.includes(p.platform.toLowerCase())) {
+                            selectedIds.add(p.id)
+                            // Set default FB post type for each facebook account
+                            if (p.platform === 'facebook') {
+                                fbTypes[p.id] = 'feed'
                             }
-                        })
-                    }
+                        }
+                    })
+                }
 
+                if (selectedIds.size > 0) {
                     setSelectedPlatformIds(selectedIds)
                     setFbPostTypes(fbTypes)
                     setFbCarousel(restoredFbCarousel)
