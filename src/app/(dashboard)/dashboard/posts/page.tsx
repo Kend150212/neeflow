@@ -411,7 +411,6 @@ function GridCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate }: {
         >
             {/* ── TOP BAR: platform icons + status + time ── */}
             <div className="flex items-center justify-between px-2.5 py-2 shrink-0 bg-card border-b border-border/50">
-                {/* Left: checkbox + platform icons */}
                 <div className="flex items-center gap-1.5">
                     {/* Checkbox */}
                     <button
@@ -427,12 +426,6 @@ function GridCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate }: {
                             {selected && <CheckSquare className="h-3 w-3" />}
                         </div>
                     </button>
-                    {/* Platform icons */}
-                    <div className="flex items-center gap-0.5">
-                        {platforms.map(p => (
-                            <PlatformIcon key={p} platform={p} size="sm" />
-                        ))}
-                    </div>
                     {/* Status badge */}
                     <span className={cn(
                         'px-1.5 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider border',
@@ -495,7 +488,6 @@ function GridCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate }: {
                 </div>
             </div>
 
-            {/* ── BOTTOM CAPTION BAR ── */}
             <div
                 className="shrink-0 px-2.5 py-2 bg-card border-t border-border/50 cursor-pointer"
                 onClick={onEdit}
@@ -506,11 +498,15 @@ function GridCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate }: {
                         : <span className="text-muted-foreground/40 italic">No caption</span>
                     }
                 </p>
-                {post.metadata?.source && (
-                    <div className="mt-1">
-                        <SourceBadge metadata={post.metadata} />
+                {/* Platform icons + source badge */}
+                <div className="flex items-center justify-between mt-1.5">
+                    <div className="flex items-center gap-0.5">
+                        {platforms.map(p => (
+                            <PlatformIcon key={p} platform={p} size="sm" />
+                        ))}
                     </div>
-                )}
+                    {post.metadata?.source && <SourceBadge metadata={post.metadata} />}
+                </div>
             </div>
 
             {/* Status accent line at top */}
