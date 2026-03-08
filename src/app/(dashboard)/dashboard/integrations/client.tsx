@@ -13,6 +13,7 @@ import {
     Mail, FolderOpen, Calendar, AlertCircle, ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 // ─── GDrive / Canva Status Types ─────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ const LogoWordPress = () => (
     </svg>
 )
 
-// Official WooCommerce logo — purple W mark
+// Official WooCommerce logo
 const LogoWooCommerce = () => (
     <svg viewBox="0 0 100 60" className="w-8 h-5" xmlns="http://www.w3.org/2000/svg">
         <rect width="100" height="60" rx="8" fill="#7F54B3" />
@@ -85,18 +86,11 @@ const LogoWooCommerce = () => (
     </svg>
 )
 
-// Dual logo: WP circle + Woo pill side by side
-const LogoWPWoo = () => (
-    <div className="flex items-center gap-1.5">
-        <svg viewBox="0 0 24 24" className="w-7 h-7 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="#21759B">
-            <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zM3.181 12c0-1.765.38-3.44 1.059-4.951L7.862 18.6A8.853 8.853 0 013.181 12zm8.819 8.819a8.855 8.855 0 01-2.503-.359L12.021 12l2.588 7.093a8.81 8.81 0 01-2.609.726zM13.3 7.043c.565-.03.931-.03.931-.03.437-.059.387-.696-.07-.665 0 0-1.425.112-2.344.112-.862 0-2.316-.112-2.316-.112-.457-.031-.507.636-.05.666 0 0 .399.029.82.059l1.218 3.337-1.711 5.131-2.846-8.468c.565-.03.931-.03.931-.03.437-.059.387-.696-.07-.665 0 0-1.425.112-2.344.112-.165 0-.359-.003-.562-.01A8.854 8.854 0 0112 3.181c2.318 0 4.418.888 5.998 2.344a3.703 3.703 0 00-.263-.009c-.862 0-1.473.75-1.473 1.554 0 .724.418 1.336.864 2.059.334.588.726 1.337.726 2.426 0 .751-.289 1.631-.665 2.847l-.868 2.905-3.019-8.979v-.278zm6.35 1.74a8.836 8.836 0 01.169 1.716c0 1.33-.254 2.8-.948 4.479l-2.622 7.592A8.857 8.857 0 0019.65 8.783z" />
-        </svg>
-        <span className="text-muted-foreground/60 text-base font-light">+</span>
-        <svg viewBox="0 0 80 48" className="h-5 w-auto shrink-0" xmlns="http://www.w3.org/2000/svg">
-            <rect width="80" height="48" rx="7" fill="#7F54B3" />
-            <path fill="white" d="M6 10h4.5l4 18 4.5-12h3.5l4.5 12 4-18H35l-7 27h-4l-4.5-12L15 37h-4L6 10zm47 0c7 0 12 4.6 12 11 0 6.7-5 11-12 11S41 27.7 41 21c0-6.4 5-11 12-11zm0 4c-4.4 0-7 3-7 7s2.6 7 7 7 7-3 7-7-2.6-7-7-7z" />
-        </svg>
-    </div>
+// Official Etsy logo — orange E mark
+const LogoEtsy = () => (
+    <svg viewBox="0 0 50 50" className="w-8 h-8" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#F1641E" d="M25 2C12.3 2 2 12.3 2 25s10.3 23 23 23 23-10.3 23-23S37.7 2 25 2zm0 4c10.5 0 19 8.5 19 19S35.5 44 25 44 6 35.5 6 25 14.5 6 25 6zm-7 7v24h14v-4h-9v-7h7v-4h-7v-5h9v-4H18z" />
+    </svg>
 )
 
 // Official HubSpot logo — orange sprocket
@@ -144,90 +138,103 @@ const LogoZapier = () => (
 
 // ─── Integration Definitions ─────────────────────────────────────────────────
 
-const integrations: IntegrationCard[] = [
+// integrations list is built inside the component so it can use t()
+type IntegrationCardDef = Omit<IntegrationCard, 'name' | 'description' | 'tags' | 'category'> & {
+    nameKey: string
+    descKey: string
+    tags: string[]
+    category: string
+}
+
+const integrationDefs: IntegrationCardDef[] = [
     {
         slug: 'external_db',
-        name: 'External Database',
-        description: 'Connect MySQL, MariaDB, PostgreSQL or SQLite. Query live data and auto-generate posts.',
+        nameKey: 'hub.extDbName',
+        descKey: 'hub.extDbDesc',
         href: '/dashboard/integrations/external-db',
         logo: <LogoExternalDB />,
-        category: 'Database',
+        category: 'hub.catDatabase',
         tags: ['MySQL', 'MariaDB', 'PostgreSQL', 'SQLite'],
     },
     {
         slug: 'shopify',
-        name: 'Shopify',
-        description: 'Sync products, orders and inventory from your Shopify store.',
+        nameKey: 'hub.shopifyName',
+        descKey: 'hub.shopifyDesc',
         href: '/dashboard/integrations/shopify',
         logo: <LogoShopify />,
-        category: 'E-commerce',
+        category: 'hub.catEcommerce',
         tags: ['Products', 'AI Post', 'Inventory'],
     },
     {
         slug: 'wordpress',
-        name: 'WordPress + WooCommerce',
-        description: 'Sync WooCommerce products và WordPress blog posts vào content pipeline. 1 kết nối, cả 2 nguồn.',
+        nameKey: 'hub.wordpressName',
+        descKey: 'hub.wordpressDesc',
         href: '/dashboard/integrations/wordpress',
-        logo: <LogoWPWoo />,
-        category: 'E-commerce',
-        tags: ['WooCommerce', 'WordPress', 'Products', 'Posts', 'AI Post'],
+        logo: <LogoWordPress />,
+        category: 'hub.catEcommerce',
+        tags: ['WordPress', 'Blog', 'Posts', 'AI Post'],
+    },
+    {
+        slug: 'woocommerce',
+        nameKey: 'hub.wooName',
+        descKey: 'hub.wooDesc',
+        href: '/dashboard/integrations/wordpress',
+        logo: <LogoWooCommerce />,
+        category: 'hub.catEcommerce',
+        tags: ['WooCommerce', 'Products', 'Orders', 'AI Post'],
     },
     {
         slug: 'etsy',
-        name: 'Etsy',
-        description: 'Đồng bộ listings từ Etsy shop và tạo bài đăng AI từ sản phẩm handmade. OAuth 2.0 PKCE.',
+        nameKey: 'hub.etsyName',
+        descKey: 'hub.etsyDesc',
         href: '/dashboard/integrations/etsy',
-        logo: (
-            <svg width="36" height="36" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#F1641E">
-                <path d="M20 3H4C3.45 3 3 3.45 3 4v16c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zm-4.29 4.71c-.29.29-.71.29-1 0-.57-.57-1.5-.94-2.71-.94-1.76 0-2.94.88-2.94 2.06 0 1.12.71 1.76 2.59 2.35l.82.24c2.47.71 3.76 1.94 3.76 3.88C16.23 17.41 14.35 19 11.41 19c-2.06 0-3.82-.71-4.88-1.88-.24-.29-.18-.71.12-.94.29-.24.71-.18.94.12.82 1 2.12 1.59 3.82 1.59 2.12 0 3.53-.94 3.53-2.41 0-1.24-.82-1.94-2.65-2.47l-.82-.24c-2.41-.71-3.71-1.88-3.71-3.76C8.77 6.94 10.53 5.17 12 5.17c1.59 0 2.77.47 3.71 1.59.24.29.24.71 0 .95z" />
-            </svg>
-        ),
-        category: 'E-commerce',
+        logo: <LogoEtsy />,
+        category: 'hub.catEcommerce',
         tags: ['Handmade', 'Listings', 'Products', 'AI Post'],
     },
     {
         slug: 'hubspot',
-        name: 'HubSpot',
-        description: 'Pull contacts, deals and company data to power AI-driven content.',
-        badge: 'Coming Soon',
+        nameKey: 'hub.hubspotName',
+        descKey: 'hub.hubspotDesc',
+        badge: 'hub.comingSoon',
         logo: <LogoHubSpot />,
-        category: 'CRM',
+        category: 'hub.catCRM',
         tags: ['Contacts', 'Deals', 'Pipeline'],
     },
     {
         slug: 'salesforce',
-        name: 'Salesforce',
-        description: 'Connect your Salesforce CRM and turn customer data into social content.',
-        badge: 'Coming Soon',
+        nameKey: 'hub.salesforceName',
+        descKey: 'hub.salesforceDesc',
+        badge: 'hub.comingSoon',
         logo: <LogoSalesforce />,
-        category: 'CRM',
+        category: 'hub.catCRM',
         tags: ['Contacts', 'Leads', 'Opportunities'],
     },
     {
         slug: 'google_sheets',
-        name: 'Google Sheets',
-        description: 'Use any Google Sheet as a data source. Perfect for product catalogs and price lists.',
-        badge: 'Coming Soon',
+        nameKey: 'hub.sheetsName',
+        descKey: 'hub.sheetsDesc',
+        badge: 'hub.comingSoon',
         logo: <LogoGoogleSheets />,
-        category: 'Spreadsheet',
+        category: 'hub.catSpreadsheet',
         tags: ['Spreadsheet', 'Products', 'CSV'],
     },
     {
         slug: 'airtable',
-        name: 'Airtable',
-        description: 'Connect Airtable bases to power chatbot answers and auto-post creation.',
-        badge: 'Coming Soon',
+        nameKey: 'hub.airtableName',
+        descKey: 'hub.airtableDesc',
+        badge: 'hub.comingSoon',
         logo: <LogoAirtable />,
-        category: 'Database',
+        category: 'hub.catDatabase',
         tags: ['Base', 'Tables', 'Views'],
     },
     {
         slug: 'zapier',
-        name: 'Zapier',
-        description: 'Trigger posts and chatbot actions from any Zapier-connected app.',
-        badge: 'Coming Soon',
+        nameKey: 'hub.zapierName',
+        descKey: 'hub.zapierDesc',
+        badge: 'hub.comingSoon',
         logo: <LogoZapier />,
-        category: 'Automation',
+        category: 'hub.catAutomation',
         tags: ['Webhook', 'Triggers', 'Automation'],
     },
 ]
@@ -235,6 +242,7 @@ const integrations: IntegrationCard[] = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props) {
+    const t = useTranslation()
     const isAllowed = (slug: string) => allowedIntegrations.includes(slug)
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -268,24 +276,34 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
         fetchCanvaStatus()
     }, [fetchGDriveStatus, fetchCanvaStatus])
 
+    // integration defs resolved with translations
+    const integrations: IntegrationCard[] = integrationDefs.map(d => ({
+        ...d,
+        name: t(d.nameKey as Parameters<typeof t>[0]) || d.nameKey,
+        description: t(d.descKey as Parameters<typeof t>[0]) || d.descKey,
+        badge: d.badge ? (t(d.badge as Parameters<typeof t>[0]) || d.badge) : undefined,
+        category: t(d.category as Parameters<typeof t>[0]) || d.category,
+        tags: d.tags,
+    }))
+
     // Handle OAuth redirect params
     useEffect(() => {
         const gdrive = searchParams.get('gdrive')
         if (gdrive === 'connected') {
-            toast.success('Google Drive connected successfully!')
+            toast.success(t('hub.gdriveConnectedOk'))
             fetchGDriveStatus()
             router.replace('/dashboard/integrations')
         } else if (gdrive === 'error') {
-            toast.error(searchParams.get('message') || 'Google Drive connection failed')
+            toast.error(searchParams.get('message') || t('hub.gdriveConnectFailed'))
             router.replace('/dashboard/integrations')
         }
         const canva = searchParams.get('canva')
         if (canva === 'connected') {
-            toast.success('🎨 Canva connected successfully!')
+            toast.success(t('hub.canvaConnectedOk'))
             fetchCanvaStatus()
             router.replace('/dashboard/integrations')
         } else if (canva === 'error') {
-            toast.error(searchParams.get('message') || 'Canva connection failed')
+            toast.error(searchParams.get('message') || t('hub.canvaConnectFailed'))
             router.replace('/dashboard/integrations')
         }
     }, [searchParams, router, fetchGDriveStatus, fetchCanvaStatus])
@@ -298,11 +316,11 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
             if (data.authUrl) {
                 window.location.href = data.authUrl
             } else {
-                toast.error(data.error || 'Failed to connect Google Drive')
+                toast.error(data.error || t('hub.gdriveConnectFailed'))
                 setGdriveConnecting(false)
             }
         } catch {
-            toast.error('Failed to connect Google Drive')
+            toast.error(t('hub.gdriveConnectFailed'))
             setGdriveConnecting(false)
         }
     }
@@ -312,12 +330,12 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
         try {
             const res = await fetch('/api/user/gdrive/disconnect', { method: 'POST' })
             if (res.ok) {
-                toast.success('Google Drive disconnected')
+                toast.success(t('hub.gdriveDisconnected'))
                 fetchGDriveStatus()
             } else {
-                toast.error('Failed to disconnect Google Drive')
+                toast.error(t('hub.gdriveConnectFailed'))
             }
-        } catch { toast.error('Failed to disconnect') }
+        } catch { toast.error(t('hub.gdriveConnectFailed')) }
         setGdriveLoading(false)
     }
 
@@ -331,12 +349,12 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
         try {
             const res = await fetch('/api/user/canva/disconnect', { method: 'POST' })
             if (res.ok) {
-                toast.success('Canva disconnected')
+                toast.success(t('hub.canvaDisconnected'))
                 fetchCanvaStatus()
             } else {
-                toast.error('Failed to disconnect Canva')
+                toast.error(t('hub.canvaConnectFailed'))
             }
-        } catch { toast.error('Failed to disconnect') }
+        } catch { toast.error(t('hub.canvaConnectFailed')) }
         setCanvaLoading(false)
     }
 
@@ -348,18 +366,18 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
                         <Zap className="h-3.5 w-3.5" />
-                        Integrations
+                        {t('hub.sectionLabel')}
                     </div>
-                    <h1 className="text-3xl font-bold tracking-tight">Connect your data</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('hub.headline')}</h1>
                     <p className="text-muted-foreground text-base">
-                        Plug in any data. <span className="text-primary font-medium">Let AI do the rest.</span>
+                        {t('hub.subheadline')} <span className="text-primary font-medium">{t('hub.subheadlineAccent')}</span>
                     </p>
                 </div>
 
                 {/* ── Connected Apps (Google Drive + Canva) ── */}
                 <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Connected Apps</h2>
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('hub.connectedApps')}</h2>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 
@@ -373,8 +391,8 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                             {/* Status badge */}
                             <div className="absolute top-3 right-3">
                                 {gdriveStatus?.connected
-                                    ? <Badge className="text-[10px] px-1.5 py-0.5 gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20"><CheckCircle className="h-2.5 w-2.5" />Connected</Badge>
-                                    : <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">Not connected</Badge>
+                                    ? <Badge className="text-[10px] px-1.5 py-0.5 gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20"><CheckCircle className="h-2.5 w-2.5" />{t('hub.connected')}</Badge>
+                                    : <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">{t('hub.notConnected')}</Badge>
                                 }
                             </div>
 
@@ -399,7 +417,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                 <p className="text-xs text-muted-foreground leading-relaxed">
                                     {gdriveStatus?.connected && gdriveStatus.email
                                         ? gdriveStatus.email
-                                        : 'Import media directly to your library'}
+                                        : t('hub.gdriveDesc')}
                                 </p>
                                 <div className="flex flex-wrap gap-1 pt-1">
                                     {gdriveStatus?.connected && gdriveStatus.folderName ? (
@@ -425,18 +443,18 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                         className="w-full h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/20"
                                         onClick={handleGDriveDisconnect} disabled={gdriveLoading}>
                                         {gdriveLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Unlink className="h-3.5 w-3.5 mr-1.5" />}
-                                        {gdriveLoading ? 'Disconnecting...' : 'Disconnect'}
+                                        {gdriveLoading ? t('hub.disconnecting') : t('hub.disconnect')}
                                     </Button>
                                 ) : !gdriveStatus?.isAdminConfigured ? (
                                     <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled>
                                         <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
-                                        Not configured
+                                        {t('hub.notConfigured')}
                                     </Button>
                                 ) : (
                                     <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
                                         onClick={handleGDriveConnect} disabled={gdriveConnecting}>
                                         {gdriveConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
-                                        {gdriveConnecting ? 'Connecting...' : 'Connect'}
+                                        {gdriveConnecting ? t('hub.connecting') : t('hub.connect')}
                                     </Button>
                                 )}
                             </div>
@@ -452,8 +470,8 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                             {/* Status badge */}
                             <div className="absolute top-3 right-3">
                                 {canvaStatus?.connected
-                                    ? <Badge className="text-[10px] px-1.5 py-0.5 gap-1 bg-violet-500/10 text-violet-600 border-violet-500/20"><CheckCircle className="h-2.5 w-2.5" />Connected</Badge>
-                                    : <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">Not connected</Badge>
+                                    ? <Badge className="text-[10px] px-1.5 py-0.5 gap-1 bg-violet-500/10 text-violet-600 border-violet-500/20"><CheckCircle className="h-2.5 w-2.5" />{t('hub.connected')}</Badge>
+                                    : <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">{t('hub.notConnected')}</Badge>
                                 }
                             </div>
 
@@ -471,7 +489,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                 <p className="text-xs text-muted-foreground leading-relaxed">
                                     {canvaStatus?.connected && canvaStatus.userName
                                         ? canvaStatus.userName
-                                        : 'Design graphics for your posts'}
+                                        : t('hub.canvaDesc')}
                                 </p>
                                 <div className="flex flex-wrap gap-1 pt-1">
                                     {['Graphics', 'Templates', 'Branding'].map(tag => (
@@ -487,12 +505,12 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                         className="w-full h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/20"
                                         onClick={handleCanvaDisconnect} disabled={canvaLoading}>
                                         {canvaLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Unlink className="h-3.5 w-3.5 mr-1.5" />}
-                                        {canvaLoading ? 'Disconnecting...' : 'Disconnect'}
+                                        {canvaLoading ? t('hub.disconnecting') : t('hub.disconnect')}
                                     </Button>
                                 ) : !canvaStatus?.isAdminConfigured ? (
                                     <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled>
                                         <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
-                                        Not configured
+                                        {t('hub.notConfigured')}
                                     </Button>
                                 ) : (
                                     <Button size="sm" className="w-full h-8 text-xs bg-violet-600 hover:bg-violet-700"
@@ -501,7 +519,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                             ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                                             : <img src="/CIRCLE LOGO - GRADIENT - RGB.svg" alt="Canva" className="h-3.5 w-3.5 object-contain mr-1.5" />
                                         }
-                                        {canvaConnecting ? 'Connecting...' : 'Connect'}
+                                        {canvaConnecting ? t('hub.connecting') : t('hub.connect')}
                                     </Button>
                                 )}
                             </div>
@@ -514,7 +532,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
 
                 {/* ── Data Integrations Grid ── */}
                 <div className="space-y-4">
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Data Sources</h2>
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('hub.dataSources')}</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {integrations.map((intg) => {
                             const allowed = isAllowed(intg.slug)
@@ -537,7 +555,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                     {isComingSoon && (
                                         <div className="absolute top-3 right-3">
                                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
-                                                Coming Soon
+                                                {t('hub.comingSoon')}
                                             </Badge>
                                         </div>
                                     )}
@@ -545,7 +563,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                         <div className="absolute top-3 right-3">
                                             <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 border-amber-500/50 text-amber-500">
                                                 <Lock className="h-2.5 w-2.5 mr-1" />
-                                                Upgrade
+                                                {t('hub.upgrade')}
                                             </Badge>
                                         </div>
                                     )}
@@ -553,14 +571,14 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                         <div className="absolute top-3 right-3">
                                             <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 border-blue-500/50 text-blue-500">
                                                 <ShoppingBag className="h-2.5 w-2.5 mr-1" />
-                                                Add-on
+                                                {t('hub.addon')}
                                             </Badge>
                                         </div>
                                     )}
                                     {isActive && (
                                         <div className="absolute top-3 right-3">
                                             <Badge className="text-[10px] px-1.5 py-0.5 bg-primary/15 text-primary border-primary/30">
-                                                Active
+                                                {t('hub.active')}
                                             </Badge>
                                         </div>
                                     )}
@@ -595,7 +613,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                         {isActive && intg.href ? (
                                             <Button asChild size="sm" className="w-full h-8 text-xs gap-1.5">
                                                 <Link href={intg.href}>
-                                                    Configure
+                                                    {t('hub.configure')}
                                                     <ArrowRight className="h-3.5 w-3.5" />
                                                 </Link>
                                             </Button>
@@ -603,19 +621,19 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                             <Button asChild size="sm" variant="outline" className="w-full h-8 text-xs border-blue-500/30 text-blue-600 hover:bg-blue-500/10 gap-1">
                                                 <Link href="/dashboard/billing">
                                                     <ShoppingBag className="h-3 w-3" />
-                                                    Get Add-on · ${availableAddon.priceMonthly}/mo
+                                                    {t('hub.getAddon')} · ${availableAddon.priceMonthly}/mo
                                                 </Link>
                                             </Button>
                                         ) : isLocked ? (
                                             <Button asChild size="sm" variant="outline" className="w-full h-8 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
                                                 <Link href="/dashboard/billing">
                                                     <Lock className="h-3 w-3 mr-1.5" />
-                                                    Upgrade Plan
+                                                    {t('hub.upgradePlan')}
                                                 </Link>
                                             </Button>
                                         ) : (
                                             <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled>
-                                                Coming Soon
+                                                {t('hub.comingSoon')}
                                             </Button>
                                         )}
                                     </div>
@@ -627,7 +645,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
 
                 {/* Footer info */}
                 <p className="text-xs text-muted-foreground text-center pb-4">
-                    More integrations launching soon. Contact support to request a specific integration.
+                    {t('hub.footerText')}
                 </p>
             </div >
         </div >
