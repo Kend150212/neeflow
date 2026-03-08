@@ -170,18 +170,14 @@ const integrationDefs: IntegrationCardDef[] = [
         nameKey: 'hub.wordpressName',
         descKey: 'hub.wordpressDesc',
         href: '/dashboard/integrations/wordpress',
-        logo: <LogoWordPress />,
+        logo: (
+            <div className="flex items-center gap-1">
+                <LogoWordPress />
+                <LogoWooCommerce />
+            </div>
+        ),
         category: 'hub.catEcommerce',
-        tags: ['WordPress', 'Blog', 'Posts', 'AI Post'],
-    },
-    {
-        slug: 'woocommerce',
-        nameKey: 'hub.wooName',
-        descKey: 'hub.wooDesc',
-        href: '/dashboard/integrations/wordpress',
-        logo: <LogoWooCommerce />,
-        category: 'hub.catEcommerce',
-        tags: ['WooCommerce', 'Products', 'Orders', 'AI Post'],
+        tags: ['WordPress', 'WooCommerce', 'Blog', 'Products', 'AI Post'],
     },
     {
         slug: 'etsy',
