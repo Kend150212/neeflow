@@ -1543,17 +1543,19 @@ export default function ComposePage() {
                     }
                 }
 
-                // ── Fallback: no platformStatuses → infer from contentPerPlatform ─
-                // Covers posts created before platformStatuses were introduced.
-                if (selectedIds.size === 0 && post.contentPerPlatform) {
+                // ── Supplement: add platforms from contentPerPlatform that are missing from platformStatuses ─
+                // Covers two cases:
+                // 1. Posts created before platformStatuses were introduced (selectedIds still 0).
+                // 2. Partial saves where some platforms (e.g. Bluesky, Threads) have a platformStatus
+                //    record but FB/IG do not — the old `selectedIds.size === 0` guard would skip them.
+                if (post.contentPerPlatform) {
                     const cpp = post.contentPerPlatform as Record<string, string>
                     const cpKeys = Object.keys(cpp).map(k => k.toLowerCase())
-                    // Use postChannelPlatforms (from API response) to add ALL matching platform accounts
                     postChannelPlatforms.forEach(p => {
-                        if (cpKeys.includes(p.platform.toLowerCase())) {
+                        if (cpKeys.includes(p.platform.toLowerCase()) && !selectedIds.has(p.id)) {
                             selectedIds.add(p.id)
-                            // Set default FB post type for each facebook account
-                            if (p.platform === 'facebook') {
+                            // Set default FB post type for each facebook account not already in fbTypes
+                            if (p.platform === 'facebook' && !fbTypes[p.id]) {
                                 fbTypes[p.id] = 'feed'
                             }
                         }
