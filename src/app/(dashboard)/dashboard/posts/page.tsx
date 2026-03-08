@@ -9,7 +9,7 @@ import {
     Calendar, CheckCircle2, XCircle, Send, FileEdit, Loader2,
     Filter, Eye, Clock, CheckSquare, Square, CalendarClock,
     ChevronDown, BarChart2, Eye as EyeIcon, Heart, MessageCircle, Share2,
-    LayoutList, LayoutGrid, Play,
+    LayoutList, LayoutGrid, Play, Rows3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -382,6 +382,134 @@ function QueueCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate, an
     )
 }
 
+// ─── Grid Card ───────────────────────────────────────
+
+function GridCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate }: {
+    post: Post
+    selected: boolean
+    onSelect: () => void
+    onEdit: () => void
+    onDelete: () => void
+    onDuplicate: () => void
+}) {
+    const sc = statusConfig[post.status] || statusConfig.DRAFT
+    const platforms = [...new Set(post.platformStatuses.map(ps => ps.platform))]
+    const timeSource = post.scheduledAt || post.publishedAt || post.createdAt
+    const isVideo = post.media[0]?.mediaItem.type?.startsWith('video/')
+    const mediaUrl = post.media[0]?.mediaItem.thumbnailUrl || post.media[0]?.mediaItem.url
+
+    return (
+        <div
+            className={cn(
+                'group relative rounded-xl overflow-hidden border transition-all duration-200 cursor-pointer',
+                'bg-card/80 hover:shadow-[0_0_24px_rgba(25,230,94,0.10)] hover:border-primary/40',
+                selected ? 'border-primary/60 shadow-[0_0_16px_rgba(25,230,94,0.12)] ring-1 ring-primary/30' : 'border-border/60',
+            )}
+            style={{ aspectRatio: '4/5' }}
+        >
+            {/* Checkbox — top-left */}
+            <button
+                onClick={e => { e.stopPropagation(); onSelect() }}
+                className="absolute top-2 left-2 z-20 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+                <div className={cn(
+                    'h-5 w-5 rounded flex items-center justify-center transition-all',
+                    selected ? 'bg-primary text-primary-foreground' : 'bg-black/50 border border-white/30'
+                )}>
+                    {selected && <CheckSquare className="h-3.5 w-3.5" />}
+                </div>
+            </button>
+
+            {/* Hover action buttons — top-right */}
+            <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={e => { e.stopPropagation(); onEdit() }}
+                    className="h-7 w-7 rounded-lg bg-black/60 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white hover:bg-primary/80 transition-colors cursor-pointer"
+                    title="Edit"
+                >
+                    <PenSquare className="h-3 w-3" />
+                </button>
+                <button
+                    onClick={e => { e.stopPropagation(); onDuplicate() }}
+                    className="h-7 w-7 rounded-lg bg-black/60 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white hover:bg-blue-500/80 transition-colors cursor-pointer"
+                    title="Duplicate"
+                >
+                    <Copy className="h-3 w-3" />
+                </button>
+                <button
+                    onClick={e => { e.stopPropagation(); onDelete() }}
+                    className="h-7 w-7 rounded-lg bg-black/60 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white hover:bg-red-500/80 transition-colors cursor-pointer"
+                    title="Delete"
+                >
+                    <Trash2 className="h-3 w-3" />
+                </button>
+            </div>
+
+            {/* Media / Fallback */}
+            <div className="absolute inset-0" onClick={onEdit}>
+                {mediaUrl ? (
+                    <>
+                        <img src={mediaUrl} alt="" className="h-full w-full object-cover" />
+                        {isVideo && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="h-10 w-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                                    <Play className="h-5 w-5 text-white fill-white" />
+                                </div>
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    // Text-only fallback
+                    <div className="h-full w-full flex flex-col p-3 bg-gradient-to-br from-card to-muted/60">
+                        <p className="text-xs leading-relaxed text-foreground/80 line-clamp-[8] flex-1">
+                            {post.content || <span className="text-muted-foreground/40 italic">No caption</span>}
+                        </p>
+                    </div>
+                )}
+
+                {/* Gradient overlay at bottom */}
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+            </div>
+
+            {/* Bottom info bar */}
+            <div className="absolute inset-x-0 bottom-0 p-2.5 z-10" onClick={onEdit}>
+                {/* Time + status */}
+                <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-white/90 tabular-nums">
+                        {timeSource ? formatTime(timeSource) : '—'}
+                    </span>
+                    <span className={cn(
+                        'px-1.5 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider border',
+                        sc.badgeBg, sc.badgeText, sc.badgeBorder
+                    )}>
+                        {sc.label}
+                    </span>
+                </div>
+                {/* Caption preview */}
+                {mediaUrl && post.content && (
+                    <p className="text-[10px] text-white/70 line-clamp-2 leading-snug mb-1.5">
+                        {post.content}
+                    </p>
+                )}
+                {/* Platform icons + source */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                        {platforms.map(p => (
+                            <div key={p} className="h-4 w-4 rounded bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                                <PlatformIcon platform={p} size="sm" />
+                            </div>
+                        ))}
+                    </div>
+                    <SourceBadge metadata={post.metadata} />
+                </div>
+            </div>
+
+            {/* Status accent line */}
+            <div className={cn('absolute top-0 inset-x-0 h-0.5', sc.color)} />
+        </div>
+    )
+}
+
 // ─── Page ────────────────────────────────────────────
 
 export default function PostsPage() {
@@ -396,7 +524,7 @@ export default function PostsPage() {
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
     const [total, setTotal] = useState(0)
-    const [viewMode, setViewMode] = useState<'list' | 'queue'>('queue')
+    const [viewMode, setViewMode] = useState<'grid' | 'list' | 'queue'>('grid')
 
     // Workspace context
     const { activeChannelId, channels } = useWorkspace()
@@ -529,9 +657,9 @@ export default function PostsPage() {
         } catch { toast.error('Failed to duplicate') }
     }
 
-    // Group posts by date for queue view
+    // Group posts by date for queue/grid view
     const groupedPosts = useMemo(() => {
-        if (viewMode !== 'queue') return null
+        if (viewMode === 'list') return null
         const groups: { dateKey: string; label: string; posts: Post[] }[] = []
         const map = new Map<string, Post[]>()
         for (const post of posts) {
@@ -610,6 +738,17 @@ export default function PostsPage() {
                     {/* View mode toggle */}
                     <div className="flex items-center rounded-lg border border-border/60 bg-card/80 p-0.5">
                         <button
+                            onClick={() => setViewMode('grid')}
+                            className={cn(
+                                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer',
+                                viewMode === 'grid'
+                                    ? 'bg-primary/15 text-primary shadow-sm border border-primary/20'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            )}
+                        >
+                            <LayoutGrid className="h-3.5 w-3.5" />Grid
+                        </button>
+                        <button
                             onClick={() => setViewMode('queue')}
                             className={cn(
                                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer',
@@ -618,7 +757,7 @@ export default function PostsPage() {
                                     : 'text-muted-foreground hover:text-foreground'
                             )}
                         >
-                            <LayoutGrid className="h-3.5 w-3.5" />Queue
+                            <Rows3 className="h-3.5 w-3.5" />Queue
                         </button>
                         <button
                             onClick={() => setViewMode('list')}
@@ -704,8 +843,8 @@ export default function PostsPage() {
                         <Plus className="h-4 w-4 mr-2" />Create Post
                     </Button>
                 </div>
-            ) : viewMode === 'queue' ? (
-                /* ── Queue View ── */
+            ) : viewMode === 'grid' || viewMode === 'queue' ? (
+                /* ── Grid View & Queue View (both grouped by date) ── */
                 <div className="space-y-8">
                     {/* Select all */}
                     <div className="flex items-center justify-between">
@@ -730,21 +869,40 @@ export default function PostsPage() {
                                 <div className="flex-1 h-px bg-emerald-500/20" />
                                 <span className="text-[10px] font-semibold text-emerald-600/70 dark:text-emerald-400/60 whitespace-nowrap">{group.posts.length} post{group.posts.length !== 1 ? 's' : ''}</span>
                             </div>
-                            <div className="space-y-3">
-                                {group.posts.map(post => (
-                                    <QueueCard
-                                        key={post.id}
-                                        post={post}
-                                        selected={selected.has(post.id)}
-                                        onSelect={() => toggleSelect(post.id)}
-                                        onEdit={() => router.push(`/dashboard/posts/${post.id}`)}
-                                        onDelete={() => setDeleteTarget(post)}
-                                        onDuplicate={() => handleDuplicate(post)}
-                                        analyticsOpen={expandedAnalytics.has(post.id)}
-                                        onToggleAnalytics={() => toggleAnalytics(post.id)}
-                                    />
-                                ))}
-                            </div>
+
+                            {viewMode === 'grid' ? (
+                                /* Grid layout — 2 cols mobile, 3 cols tablet, 4-5 cols desktop */
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                                    {group.posts.map(post => (
+                                        <GridCard
+                                            key={post.id}
+                                            post={post}
+                                            selected={selected.has(post.id)}
+                                            onSelect={() => toggleSelect(post.id)}
+                                            onEdit={() => router.push(`/dashboard/posts/${post.id}`)}
+                                            onDelete={() => setDeleteTarget(post)}
+                                            onDuplicate={() => handleDuplicate(post)}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                /* Queue layout — original horizontal cards */
+                                <div className="space-y-3">
+                                    {group.posts.map(post => (
+                                        <QueueCard
+                                            key={post.id}
+                                            post={post}
+                                            selected={selected.has(post.id)}
+                                            onSelect={() => toggleSelect(post.id)}
+                                            onEdit={() => router.push(`/dashboard/posts/${post.id}`)}
+                                            onDelete={() => setDeleteTarget(post)}
+                                            onDuplicate={() => handleDuplicate(post)}
+                                            analyticsOpen={expandedAnalytics.has(post.id)}
+                                            onToggleAnalytics={() => toggleAnalytics(post.id)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </section>
                     ))}
                 </div>
