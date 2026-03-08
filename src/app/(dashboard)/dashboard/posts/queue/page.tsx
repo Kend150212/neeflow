@@ -301,17 +301,21 @@ export default function QueuePage() {
                     )}
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {grouped.map(group => (
                         <div key={group.key}>
-                            <div className="flex items-center gap-2 mb-2">
-                                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-sm font-semibold text-muted-foreground">{group.label}</span>
-                                <div className="flex-1 h-px bg-border" />
-                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{group.posts.length}</span>
+                            {/* Date header */}
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 whitespace-nowrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                                    <h3 className="text-xs font-bold text-blue-600 dark:text-blue-400">{group.label}</h3>
+                                </div>
+                                <div className="flex-1 h-px bg-blue-500/20" />
+                                <span className="text-[10px] font-semibold text-blue-600/70 dark:text-blue-400/60 whitespace-nowrap">{group.posts.length} post{group.posts.length !== 1 ? 's' : ''}</span>
                             </div>
 
-                            <div className="space-y-2">
+                            {/* Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                                 {group.posts.map(post => {
                                     const platforms = [...new Set(post.platformStatuses.map(ps => ps.platform))]
                                     const thumb = post.media[0]?.mediaItem
@@ -319,42 +323,56 @@ export default function QueuePage() {
                                     return (
                                         <div
                                             key={post.id}
-                                            className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 hover:shadow-sm transition-shadow group cursor-pointer"
-                                            onClick={() => router.push(`/dashboard/posts/compose?edit=${post.id}`)}
+                                            className="group relative flex flex-col rounded-xl overflow-hidden border border-border/70 bg-card hover:shadow-[0_4px_28px_rgba(0,0,0,0.18)] hover:border-primary/40 transition-all duration-200"
+                                            style={{ height: '290px' }}
                                         >
-                                            {/* Time column */}
-                                            <div className="shrink-0 text-center w-14">
-                                                <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                                            {/* Blue scheduled accent line */}
+                                            <div className="absolute top-0 inset-x-0 h-[2px] bg-blue-500" />
+
+                                            {/* ── TOP BAR ── */}
+                                            <div className="flex items-center justify-between px-2.5 py-2 shrink-0 bg-card border-b border-border/50">
+                                                <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider border bg-blue-500/15 text-blue-600 border-blue-500/30">
+                                                    Scheduled
+                                                </span>
+                                                <span className="text-[11px] font-semibold tabular-nums text-blue-600 dark:text-blue-400">
                                                     {formatTime(post.scheduledAt, locale)}
-                                                </p>
-                                                <div className={cn('h-1.5 w-1.5 rounded-full mx-auto mt-1', STATUS_DOT[post.status] || 'bg-slate-400')} />
+                                                </span>
                                             </div>
 
-                                            {/* Thumbnail */}
-                                            <div className="h-12 w-12 rounded-lg overflow-hidden bg-muted shrink-0">
+                                            {/* ── IMAGE / CONTENT ── */}
+                                            <div
+                                                className="relative flex-1 overflow-hidden cursor-pointer"
+                                                onClick={() => router.push(`/dashboard/posts/compose?edit=${post.id}`)}
+                                            >
                                                 {thumb ? (
                                                     <img src={thumb.thumbnailUrl || thumb.url} alt="" className="h-full w-full object-cover" />
                                                 ) : (
-                                                    <div className="h-full w-full flex items-center justify-center">
-                                                        <DocIcon className="h-4 w-4 text-muted-foreground/30" />
+                                                    <div className="h-full w-full flex items-center justify-center p-3 bg-gradient-to-br from-muted/80 to-muted/30">
+                                                        <p className="text-xs font-medium text-foreground/80 leading-relaxed line-clamp-6 text-center">
+                                                            {post.content || <span className="text-muted-foreground/50 italic">{t('queue.noContent')}</span>}
+                                                        </p>
                                                     </div>
                                                 )}
-                                            </div>
-
-                                            {/* Content */}
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium line-clamp-1">
-                                                    {post.content || <span className="text-muted-foreground/60 italic">{t('queue.noContent')}</span>}
-                                                </p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs text-muted-foreground">{post.channel.displayName}</span>
-                                                    <div className="flex items-center gap-0.5">
-                                                        {platforms.map(p => <PlatformIcon key={p} platform={p} size="xs" />)}
-                                                    </div>
+                                                {/* Hover overlay */}
+                                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <span className="text-[11px] font-semibold text-white bg-black/60 px-2 py-1 rounded-lg">Edit post</span>
                                                 </div>
                                             </div>
 
-                                            <ChevronRightIcon className="h-4 w-4 text-muted-foreground/40 shrink-0 group-hover:text-foreground transition-colors" />
+                                            {/* ── BOTTOM BAR ── */}
+                                            <div
+                                                className="shrink-0 px-2.5 py-2 bg-card border-t border-border/50 cursor-pointer"
+                                                onClick={() => router.push(`/dashboard/posts/compose?edit=${post.id}`)}
+                                            >
+                                                <p className="text-[11px] text-foreground/70 leading-snug line-clamp-2 min-h-[28px]">
+                                                    {post.content || <span className="text-muted-foreground/40 italic">{t('queue.noContent')}</span>}
+                                                </p>
+                                                <div className="flex items-center gap-0.5 mt-1.5">
+                                                    {platforms.map(p => (
+                                                        <PlatformIcon key={p} platform={p} size="sm" />
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     )
                                 })}
