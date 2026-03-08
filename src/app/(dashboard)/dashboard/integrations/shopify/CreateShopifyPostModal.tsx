@@ -233,6 +233,18 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
     const [pinterestBoards, setPinterestBoards] = useState<{ id: string; name: string }[]>([])
     const [pinterestBoardsLoading, setPinterestBoardsLoading] = useState(false)
 
+    // TikTok creator_info (loaded from API when TikTok is selected)
+    const [ttCreatorInfo, setTtCreatorInfo] = useState<{
+        can_post: boolean
+        privacy_level_options: string[]
+        duet_disabled: boolean
+        stitch_disabled: boolean
+        max_video_post_duration_sec?: number
+    } | null>(null)
+    const [ttCreatorInfoLoading, setTtCreatorInfoLoading] = useState(false)
+    // TikTok channel platform data (for account name)
+    const [ttChannelPlatforms, setTtChannelPlatforms] = useState<{ platform: string; accountId: string; accountName?: string; id: string }[]>([])
+
     // Wizard step: 1=Platforms & Tone, 2=Media, 3=Post Settings, 4=Schedule & Approval
     const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1)
 
@@ -286,6 +298,11 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                 if (ch?.requireApproval === 'required') setRequestApproval(true)
                 // Auto-set language from channel setting
                 if (ch?.language) setLanguage(ch.language)
+                // Cache channel platform records for TikTok creator_info lookup
+                if (ch?.platforms) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    setTtChannelPlatforms((ch.platforms as any[]).filter((p: any) => p.platform === 'tiktok'))
+                }
             }).catch(() => {
                 setAvailablePlatforms(['facebook', 'instagram'])
                 setSelectedPlatforms(new Set(['facebook', 'instagram']))
@@ -408,7 +425,19 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
             }
         }
         if (selectedPlatforms.has('tiktok')) {
-            platformConfig.tiktok = { postType: platformSettings.ttPostType }
+            platformConfig.tiktok = {
+                postType: platformSettings.ttPostType,
+                publishMode: platformSettings.ttPublishMode,
+                title: platformSettings.ttTitle || undefined,
+                visibility: platformSettings.ttVisibility || undefined,
+                allowComment: platformSettings.ttAllowComment,
+                allowDuet: platformSettings.ttAllowDuet,
+                allowStitch: platformSettings.ttAllowStitch,
+                commercialDisclosure: platformSettings.ttCommercialDisclosure,
+                yourBrand: platformSettings.ttYourBrand,
+                brandedContent: platformSettings.ttBrandedContent,
+                aiGenerated: platformSettings.ttAiGenerated,
+            }
         }
         if (selectedPlatforms.has('pinterest')) {
             platformConfig.pinterest = {
@@ -540,6 +569,31 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
             .finally(() => setPinterestBoardsLoading(false))
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedPlatforms, channelId4Settings])
+
+    // Fetch TikTok creator_info when TikTok is selected (live account caps, privacy options)
+    useEffect(() => {
+        const hasTikTok = selectedPlatforms.has('tiktok')
+        if (!hasTikTok) { setTtCreatorInfo(null); return }
+        const ttPlatform = ttChannelPlatforms[0]
+        if (!ttPlatform?.id || ttCreatorInfoLoading) return
+        if (ttCreatorInfo !== null) return  // already loaded
+        setTtCreatorInfoLoading(true)
+        fetch(`/api/tiktok/creator-info?platformId=${ttPlatform.id}`)
+            .then(r => r.ok ? r.json() : Promise.reject())
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .then((data: any) => {
+                setTtCreatorInfo({
+                    can_post: data.can_post ?? true,
+                    privacy_level_options: data.privacy_level_options ?? ['PUBLIC_TO_EVERYONE'],
+                    duet_disabled: data.duet_disabled ?? false,
+                    stitch_disabled: data.stitch_disabled ?? false,
+                    max_video_post_duration_sec: data.max_video_post_duration_sec,
+                })
+            })
+            .catch(() => { /* Non-fatal — UI shows all options as fallback */ })
+            .finally(() => setTtCreatorInfoLoading(false))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedPlatforms, ttChannelPlatforms])
 
     const WIZARD_STEPS = [
         { id: 1 as const, label: t('integrations.shopify.modal.step1Label') || 'Platforms' },
@@ -907,6 +961,9 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                     isBulk={!isSingle}
                                     pinterestBoards={pinterestBoards}
                                     pinterestBoardsLoading={pinterestBoardsLoading}
+                                    tikTokCreatorInfo={ttCreatorInfo}
+                                    tikTokCreatorInfoLoading={ttCreatorInfoLoading}
+                                    tikTokAccountName={ttChannelPlatforms.find(p => p.platform === 'tiktok')?.accountName}
                                 />
                             </div>
                         </div>
