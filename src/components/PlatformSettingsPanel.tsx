@@ -8,7 +8,7 @@
  * (captions, hashtags, titles, tags, etc.).
  */
 
-import { ChevronDown, Calendar, Clock, LayoutGrid, Film, CircleDot, Camera, Video, Scissors, Globe, EyeOff, Lock, Bell, ShieldCheck, MessageSquare, Link, Layers, Plus, Check } from 'lucide-react'
+import { ChevronDown, Calendar, Clock, LayoutGrid, Film, CircleDot, Camera, Video, Scissors, Globe, EyeOff, Lock, Bell, ShieldCheck, MessageSquare, Link, Layers, Plus, Check, Sparkles } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -250,13 +250,12 @@ export function PlatformSettingsPanel({
                 <ToggleSwitch on={s.fbEnableFirstComment} color="bg-blue-500" onChange={() => onChange({ fbEnableFirstComment: !s.fbEnableFirstComment })} />
             </div>
             {s.fbEnableFirstComment && (
-                <textarea
-                    value={s.fbFirstComment}
-                    onChange={e => onChange({ fbFirstComment: e.target.value })}
-                    placeholder="Add hashtags, links... #marketing"
-                    className="w-full min-h-[52px] resize-y rounded-md border bg-transparent px-2.5 py-1.5 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
-                    rows={2}
-                />
+                <div className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-2">
+                    <Sparkles className="h-3.5 w-3.5 text-blue-400 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-blue-400/80 leading-relaxed">
+                        AI will automatically generate the first comment based on your product content and selected tone.
+                    </p>
+                </div>
             )}
             <p className="text-[9px] text-muted-foreground italic">Caption & hashtags are AI-generated.</p>
         </div>

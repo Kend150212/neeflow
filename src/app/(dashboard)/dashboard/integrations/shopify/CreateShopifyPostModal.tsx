@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import {
     Sparkles, X, Loader2, Zap, ExternalLink, Check,
     Image as ImageIcon, Package, ShoppingBag, Settings2,
-    ChevronDown, Calendar, Clock,
+    ChevronDown, Calendar, Clock, FileEdit, AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -224,6 +224,8 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
 
     // Bulk schedule (auto-distribute across date range)
     const [enableSchedule, setEnableSchedule] = useState(false)
+    // Post mode: 'publish' = post immediately, 'schedule' = auto-schedule, 'draft' = save as draft
+    const [postMode, setPostMode] = useState<'publish' | 'schedule' | 'draft'>('publish')
     const today = toDateVal(new Date())
     const [scheduleStart, setScheduleStart] = useState(today)
     const [scheduleEnd, setScheduleEnd] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 7); return toDateVal(d) })
@@ -352,8 +354,10 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
             singleScheduledAt = new Date(dt).toISOString()
         }
 
-        // Bulk: use auto-distribute across date range
-        const scheduledTimes = (enableSchedule && !isSingle)
+        const asDraft = postMode === 'draft'
+
+        // Bulk: use auto-distribute across date range (only in schedule mode)
+        const scheduledTimes = (postMode === 'schedule' && !isSingle)
             ? distributeSchedule(scheduleStart, scheduleEnd, cappedProducts.length, channelTimezone) : null
 
         const aiImagePayload = enableAiImage && imageProvider ? {
@@ -414,6 +418,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                     importImageUrls: importUrls,
                     tone, platforms: [...selectedPlatforms], language,
                     scheduledAt: singleScheduledAt,
+                    asDraft,
                     platformConfig,
                     ...(enableAiImage && imageProvider ? {
                         imageConfig: {
@@ -454,6 +459,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                             importImageUrls: importUrls,
                             tone, platforms: [...selectedPlatforms], language,
                             scheduledAt: scheduledTimes ? scheduledTimes[i] : null,
+                            asDraft,
                             requestApproval,
                             platformConfig,
                             ...(enableAiImage && imageProvider ? {
@@ -489,7 +495,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
     const selModel = availableImageModels.find(m => m.id === imageModel)
     const quotaLabel = imageQuota.limit > 0 ? t('integrations.shopify.modal.quotaUsed').replace('{used}', String(imageQuota.used)).replace('{limit}', String(imageQuota.limit)) : null
     const anyProductHasImages = products.some(p => p.images.length > 0)
-    const schedulePreview = (!enableSchedule || isSingle) ? null
+    const schedulePreview = (postMode !== 'schedule' || isSingle) ? null
         : distributeSchedule(scheduleStart, scheduleEnd, products.length, channelTimezone).slice(0, 3)
             .map(t => new Date(t).toLocaleString('vi-VN', { timeZone: channelTimezone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))
 
@@ -852,66 +858,109 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                     {step === 'config' && wizardStep === 4 && (
                         <div className="space-y-5">
 
-                            {/* Auto Schedule */}
-                            {!isSingle && (
-                                <div className="space-y-2 rounded-xl border border-border/60 bg-card/40 p-4">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-semibold flex items-center gap-1.5">
-                                                <Calendar className="h-4 w-4 text-primary" />{t('integrations.shopify.modal.autoSchedule')}
-                                            </p>
-                                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                {t('integrations.shopify.modal.scheduleHowItWorks').replace('{count}', String(cappedProducts.length))}
-                                            </p>
-                                        </div>
-                                        <button type="button" onClick={() => setEnableSchedule(!enableSchedule)}
-                                            className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer shrink-0 ml-4', enableSchedule ? 'bg-primary' : 'bg-muted')}>
-                                            <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', enableSchedule ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
-                                        </button>
-                                    </div>
-                                    {enableSchedule && (
-                                        <div className="space-y-2 pt-2 border-t border-border/40">
-                                            <p className="text-[10px] text-muted-foreground">
-                                                {t('integrations.shopify.modal.scheduleDesc').replace('{count}', String(cappedProducts.length)).replace('{tz}', channelTimezone)}
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <p className="text-[10px] text-muted-foreground mb-1">{t('integrations.shopify.modal.fromDate')}</p>
-                                                    <input type="date" value={scheduleStart} onChange={e => setScheduleStart(e.target.value)}
-                                                        className="w-full h-7 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] text-muted-foreground mb-1">{t('integrations.shopify.modal.toDate')}</p>
-                                                    <input type="date" value={scheduleEnd} onChange={e => setScheduleEnd(e.target.value)}
-                                                        className="w-full h-7 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
-                                                </div>
-                                            </div>
-                                            {schedulePreview && (
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {schedulePreview.map((t_, i) => (
-                                                        <span key={i} className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                                                            <Clock className="h-2.5 w-2.5" /> Post {i + 1}: {t_}
-                                                        </span>
-                                                    ))}
-                                                    {cappedProducts.length > 3 && <span className="text-[9px] text-muted-foreground self-center">+{cappedProducts.length - 3} more…</span>}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                            {/* ── Post Mode ───────────── */}
+                            <div className="space-y-3 rounded-xl border border-border/60 bg-card/40 p-4">
+                                <div>
+                                    <p className="text-sm font-semibold">When to publish</p>
+                                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                                        Choose how {isSingle ? 'this post' : `these ${cappedProducts.length} posts`} will be handled after generation.
+                                    </p>
                                 </div>
-                            )}
+                                <div className="grid grid-cols-3 gap-2 pt-1">
+                                    {([
+                                        { val: 'publish' as const, label: 'Publish Now', icon: <Zap className="h-4 w-4" />, desc: 'Post immediately after generation' },
+                                        { val: 'schedule' as const, label: isSingle ? 'Schedule' : 'Auto-Schedule', icon: <Calendar className="h-4 w-4" />, desc: isSingle ? 'Pick a date & time' : `Spread ${cappedProducts.length} posts over a date range` },
+                                        { val: 'draft' as const, label: 'Save as Draft', icon: <FileEdit className="h-4 w-4" />, desc: 'Review & publish manually later' },
+                                    ] as const).map(({ val, label, icon, desc }) => (
+                                        <button key={val} type="button"
+                                            onClick={() => setPostMode(val)}
+                                            className={cn(
+                                                'flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-medium transition-all cursor-pointer text-center',
+                                                postMode === val
+                                                    ? 'border-primary bg-primary/10 text-primary shadow-[0_0_0_1px] shadow-primary'
+                                                    : 'border-border/60 bg-background text-muted-foreground hover:border-border hover:text-foreground'
+                                            )}>
+                                            {icon}
+                                            <span className="font-semibold">{label}</span>
+                                            <span className="text-[10px] font-normal opacity-70 leading-tight">{desc}</span>
+                                            {postMode === val && <Check className="h-3 w-3 mt-0.5" />}
+                                        </button>
+                                    ))}
+                                </div>
 
-                            {/* Approval */}
+                                {/* Date range for bulk schedule */}
+                                {postMode === 'schedule' && !isSingle && (
+                                    <div className="space-y-2 pt-2 border-t border-border/40">
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {t('integrations.shopify.modal.scheduleDesc').replace('{count}', String(cappedProducts.length)).replace('{tz}', channelTimezone)}
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground mb-1">{t('integrations.shopify.modal.fromDate')}</p>
+                                                <input type="date" value={scheduleStart} onChange={e => setScheduleStart(e.target.value)}
+                                                    className="w-full h-7 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground mb-1">{t('integrations.shopify.modal.toDate')}</p>
+                                                <input type="date" value={scheduleEnd} onChange={e => setScheduleEnd(e.target.value)}
+                                                    className="w-full h-7 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
+                                            </div>
+                                        </div>
+                                        {schedulePreview && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {schedulePreview.map((t_, i) => (
+                                                    <span key={i} className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                                        <Clock className="h-2.5 w-2.5" /> Post {i + 1}: {t_}
+                                                    </span>
+                                                ))}
+                                                {cappedProducts.length > 3 && <span className="text-[9px] text-muted-foreground self-center">+{cappedProducts.length - 3} more…</span>}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Date/time for single post schedule */}
+                                {postMode === 'schedule' && isSingle && (
+                                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40">
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground mb-1">Date</p>
+                                            <input type="date" value={platformSettings.scheduleDate}
+                                                onChange={e => patchSettings({ scheduleDate: e.target.value })}
+                                                className="w-full h-7 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground mb-1">Time</p>
+                                            <input type="time" value={platformSettings.scheduleTime}
+                                                onChange={e => patchSettings({ scheduleTime: e.target.value })}
+                                                className="w-full h-7 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ── Approval ───────────── */}
                             <div className="space-y-2 rounded-xl border border-border/60 bg-card/40 p-4">
                                 <div>
                                     <p className="text-sm font-semibold flex items-center gap-1.5">
                                         <Check className="h-4 w-4 text-primary" />{t('integrations.shopify.modal.approval')}
                                     </p>
                                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                                        {t('integrations.shopify.modal.approvalHowItWorks')}
+                                        When enabled, generated posts are held for review before publishing. Approvers can review and approve posts in the Posts section.
                                     </p>
                                 </div>
                                 <div className="border-t border-border/40 pt-3">
+                                    {approvalMode === 'none' && (
+                                        <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
+                                            <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-medium text-amber-400">No approval workflow configured</p>
+                                                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                    Posts will be published directly. To require approval before publishing, enable it in{' '}
+                                                    <a href="/dashboard/settings/channel" target="_blank" className="underline text-primary hover:opacity-80">Channel Settings → Approval</a>.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                     {approvalMode === 'optional' && (
                                         <div className="flex items-center justify-between">
                                             <div className="space-y-0.5">
@@ -936,9 +985,6 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                 <span className="inline-block h-3.5 w-3.5 translate-x-[17px] rounded-full bg-white shadow" />
                                             </div>
                                         </div>
-                                    )}
-                                    {approvalMode === 'none' && (
-                                        <p className="text-[10px] text-muted-foreground py-1">No approval workflow is configured for this channel. You can set this up in Channel Settings.</p>
                                     )}
                                 </div>
                             </div>
