@@ -425,7 +425,20 @@ export async function POST(req: NextRequest) {
 
         const provider = keyResult.provider!
         const apiKey = keyResult.apiKey!
-        const model = keyResult.model || getDefaultModel(provider, {})
+
+        // Guard: prevent image-only models (e.g. gpt-image-1, dall-e-3) from being used for
+        // text /chat/completions — they'd return 403. Fall back to the provider's text default.
+        const IMAGE_ONLY_MODELS = [
+            'gpt-image-1', 'dall-e-3', 'dall-e-2',
+            'imagen-3.0-generate-002', 'imagen-3.0-fast-generate-002',
+            'stable-diffusion-3', 'stable-diffusion-xl',
+            'midjourney', 'ideogram-v2',
+        ]
+        const rawModel = keyResult.model || ''
+        const isImageOnly = IMAGE_ONLY_MODELS.some(m => rawModel.toLowerCase().includes(m.toLowerCase()))
+            || rawModel.startsWith('runware:')
+        const model = (!rawModel || isImageOnly) ? getDefaultModel(provider, {}) : rawModel
+
 
         // ── Post quota check (uses channel owner's plan, not caller's) ──
         const quotaUserId = keyResult.ownerId ?? userId
