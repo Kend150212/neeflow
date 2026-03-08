@@ -401,83 +401,39 @@ function GridCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate }: {
     return (
         <div
             className={cn(
-                'group relative rounded-xl overflow-hidden border transition-all duration-200 cursor-pointer',
-                'bg-card/80 hover:shadow-[0_0_24px_rgba(25,230,94,0.10)] hover:border-primary/40',
-                selected ? 'border-primary/60 shadow-[0_0_16px_rgba(25,230,94,0.12)] ring-1 ring-primary/30' : 'border-border/60',
+                'group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-200 cursor-pointer',
+                'bg-card hover:shadow-[0_4px_28px_rgba(0,0,0,0.18)] hover:border-primary/40',
+                selected
+                    ? 'border-primary/70 shadow-[0_0_0_2px_rgba(25,230,94,0.25)]'
+                    : 'border-border/70',
             )}
-            style={{ aspectRatio: '4/5' }}
+            style={{ height: '290px' }}
         >
-            {/* Checkbox — top-left */}
-            <button
-                onClick={e => { e.stopPropagation(); onSelect() }}
-                className="absolute top-2 left-2 z-20 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-                <div className={cn(
-                    'h-5 w-5 rounded flex items-center justify-center transition-all',
-                    selected ? 'bg-primary text-primary-foreground' : 'bg-black/50 border border-white/30'
-                )}>
-                    {selected && <CheckSquare className="h-3.5 w-3.5" />}
-                </div>
-            </button>
-
-            {/* Hover action buttons — top-right */}
-            <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                    onClick={e => { e.stopPropagation(); onEdit() }}
-                    className="h-7 w-7 rounded-lg bg-black/60 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white hover:bg-primary/80 transition-colors cursor-pointer"
-                    title="Edit"
-                >
-                    <PenSquare className="h-3 w-3" />
-                </button>
-                <button
-                    onClick={e => { e.stopPropagation(); onDuplicate() }}
-                    className="h-7 w-7 rounded-lg bg-black/60 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white hover:bg-blue-500/80 transition-colors cursor-pointer"
-                    title="Duplicate"
-                >
-                    <Copy className="h-3 w-3" />
-                </button>
-                <button
-                    onClick={e => { e.stopPropagation(); onDelete() }}
-                    className="h-7 w-7 rounded-lg bg-black/60 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white hover:bg-red-500/80 transition-colors cursor-pointer"
-                    title="Delete"
-                >
-                    <Trash2 className="h-3 w-3" />
-                </button>
-            </div>
-
-            {/* Media / Fallback */}
-            <div className="absolute inset-0" onClick={onEdit}>
-                {mediaUrl ? (
-                    <>
-                        <img src={mediaUrl} alt="" className="h-full w-full object-cover" />
-                        {isVideo && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="h-10 w-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                                    <Play className="h-5 w-5 text-white fill-white" />
-                                </div>
-                            </div>
-                        )}
-                    </>
-                ) : (
-                    // Text-only fallback
-                    <div className="h-full w-full flex flex-col p-3 bg-gradient-to-br from-card to-muted/60">
-                        <p className="text-xs leading-relaxed text-foreground/80 line-clamp-[8] flex-1">
-                            {post.content || <span className="text-muted-foreground/40 italic">No caption</span>}
-                        </p>
+            {/* ── TOP BAR: platform icons + status + time ── */}
+            <div className="flex items-center justify-between px-2.5 py-2 shrink-0 bg-card border-b border-border/50">
+                {/* Left: checkbox + platform icons */}
+                <div className="flex items-center gap-1.5">
+                    {/* Checkbox */}
+                    <button
+                        onClick={e => { e.stopPropagation(); onSelect() }}
+                        className="cursor-pointer"
+                    >
+                        <div className={cn(
+                            'h-4 w-4 rounded border flex items-center justify-center transition-all',
+                            selected
+                                ? 'bg-primary border-primary text-primary-foreground'
+                                : 'border-border/60 group-hover:border-border'
+                        )}>
+                            {selected && <CheckSquare className="h-3 w-3" />}
+                        </div>
+                    </button>
+                    {/* Platform icons */}
+                    <div className="flex items-center gap-0.5">
+                        {platforms.map(p => (
+                            <PlatformIcon key={p} platform={p} size="sm" />
+                        ))}
                     </div>
-                )}
-
-                {/* Gradient overlay at bottom */}
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-            </div>
-
-            {/* Bottom info bar */}
-            <div className="absolute inset-x-0 bottom-0 p-2.5 z-10" onClick={onEdit}>
-                {/* Time + status */}
-                <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-white/90 tabular-nums">
-                        {timeSource ? formatTime(timeSource) : '—'}
-                    </span>
+                    {/* Status badge */}
                     <span className={cn(
                         'px-1.5 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider border',
                         sc.badgeBg, sc.badgeText, sc.badgeBorder
@@ -485,30 +441,84 @@ function GridCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate }: {
                         {sc.label}
                     </span>
                 </div>
-                {/* Caption preview */}
-                {mediaUrl && post.content && (
-                    <p className="text-[10px] text-white/70 line-clamp-2 leading-snug mb-1.5">
-                        {post.content}
-                    </p>
-                )}
-                {/* Platform icons + source */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                        {platforms.map(p => (
-                            <div key={p} className="h-4 w-4 rounded bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                                <PlatformIcon platform={p} size="sm" />
+                {/* Right: time */}
+                <span className="text-[11px] font-semibold tabular-nums text-foreground/70">
+                    {timeSource ? formatTime(timeSource) : '—'}
+                </span>
+            </div>
+
+            {/* ── IMAGE / CONTENT ── flex-1 fills middle */}
+            <div className="relative flex-1 overflow-hidden" onClick={onEdit}>
+                {mediaUrl ? (
+                    <>
+                        <img src={mediaUrl} alt="" className="h-full w-full object-cover" />
+                        {isVideo && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="h-9 w-9 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center">
+                                    <Play className="h-4 w-4 text-white fill-white" />
+                                </div>
                             </div>
-                        ))}
+                        )}
+                    </>
+                ) : (
+                    // Text-only: brand gradient background
+                    <div className="h-full w-full flex items-center justify-center p-3 bg-gradient-to-br from-muted/80 to-muted/30">
+                        <p className="text-xs font-medium text-foreground/80 leading-relaxed line-clamp-6 text-center">
+                            {post.content || <span className="text-muted-foreground/50 italic">No caption</span>}
+                        </p>
                     </div>
-                    <SourceBadge metadata={post.metadata} />
+                )}
+
+                {/* Hover action overlay */}
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <button
+                        onClick={e => { e.stopPropagation(); onEdit() }}
+                        className="h-8 w-8 rounded-lg bg-black/70 backdrop-blur-sm flex items-center justify-center text-white hover:bg-primary transition-colors cursor-pointer"
+                        title="Edit"
+                    >
+                        <PenSquare className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onClick={e => { e.stopPropagation(); onDuplicate() }}
+                        className="h-8 w-8 rounded-lg bg-black/70 backdrop-blur-sm flex items-center justify-center text-white hover:bg-blue-500 transition-colors cursor-pointer"
+                        title="Duplicate"
+                    >
+                        <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onClick={e => { e.stopPropagation(); onDelete() }}
+                        className="h-8 w-8 rounded-lg bg-black/70 backdrop-blur-sm flex items-center justify-center text-white hover:bg-red-500 transition-colors cursor-pointer"
+                        title="Delete"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                 </div>
             </div>
 
-            {/* Status accent line */}
-            <div className={cn('absolute top-0 inset-x-0 h-0.5', sc.color)} />
+            {/* ── BOTTOM CAPTION BAR ── */}
+            <div
+                className="shrink-0 px-2.5 py-2 bg-card border-t border-border/50 cursor-pointer"
+                onClick={onEdit}
+            >
+                <p className="text-[11px] text-foreground/70 leading-snug line-clamp-2 min-h-[28px]">
+                    {post.content
+                        ? post.content
+                        : <span className="text-muted-foreground/40 italic">No caption</span>
+                    }
+                </p>
+                {post.metadata?.source && (
+                    <div className="mt-1">
+                        <SourceBadge metadata={post.metadata} />
+                    </div>
+                )}
+            </div>
+
+            {/* Status accent line at top */}
+            <div className={cn('absolute top-0 inset-x-0 h-[2px]', sc.color)} />
         </div>
     )
 }
+
 
 // ─── Page ────────────────────────────────────────────
 
