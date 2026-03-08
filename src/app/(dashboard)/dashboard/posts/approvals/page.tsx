@@ -328,78 +328,107 @@ export default function ApprovalsPage() {
                     </p>
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {grouped.map(group => (
                         <div key={group.key}>
-                            <div className="flex items-center gap-2 mb-2">
-                                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-sm font-semibold text-muted-foreground">{group.label}</span>
-                                <div className="flex-1 h-px bg-border" />
-                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{group.posts.length}</span>
+                            {/* Date header — same style as posts page */}
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 whitespace-nowrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                                    <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{group.label}</h3>
+                                </div>
+                                <div className="flex-1 h-px bg-emerald-500/20" />
+                                <span className="text-[10px] font-semibold text-emerald-600/70 dark:text-emerald-400/60 whitespace-nowrap">{group.posts.length} post{group.posts.length !== 1 ? 's' : ''}</span>
                             </div>
 
-                            <div className="space-y-3">
+                            {/* Grid — same responsive columns as posts page */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                                 {group.posts.map(post => {
                                     const platforms = [...new Set(post.platformStatuses.map(ps => ps.platform))]
                                     const thumb = post.media[0]?.mediaItem
+                                    const timeLabel = new Date(post.createdAt).toLocaleTimeString(
+                                        locale === 'vi' ? 'vi-VN' : 'en-US',
+                                        { hour: '2-digit', minute: '2-digit' }
+                                    )
                                     return (
                                         <div
                                             key={post.id}
-                                            className="rounded-xl border bg-card hover:shadow-sm transition-shadow flex gap-4 p-4 cursor-pointer"
-                                            onClick={() => router.push(`/dashboard/posts/compose?edit=${post.id}`)}
+                                            className="group relative flex flex-col rounded-xl overflow-hidden border border-border/70 bg-card hover:shadow-[0_4px_28px_rgba(0,0,0,0.18)] hover:border-primary/40 transition-all duration-200"
+                                            style={{ height: '340px' }}
                                         >
-                                            {/* Thumbnail */}
-                                            <div className="h-20 w-20 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
-                                                {thumb ? (
-                                                    <img src={thumb.thumbnailUrl || thumb.url} alt="" className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <DocIcon className="h-6 w-6 text-muted-foreground/30" />
-                                                )}
+                                            {/* Status accent line */}
+                                            <div className="absolute top-0 inset-x-0 h-[2px] bg-amber-400" />
+
+                                            {/* ── TOP BAR ── */}
+                                            <div className="flex items-center justify-between px-2.5 py-2 shrink-0 bg-card border-b border-border/50">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    {/* PENDING badge */}
+                                                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider border bg-amber-500/15 text-amber-600 border-amber-500/30 shrink-0">
+                                                        Pending
+                                                    </span>
+                                                    {/* Author */}
+                                                    <span className="text-[10px] text-muted-foreground truncate">
+                                                        {post.author.name || post.author.email.split('@')[0]}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[11px] font-semibold tabular-nums text-foreground/70 shrink-0 ml-1">
+                                                    {timeLabel}
+                                                </span>
                                             </div>
 
-                                            {/* Content */}
-                                            <div className="flex-1 min-w-0 space-y-1.5">
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <ClockIcon className="h-3.5 w-3.5" />
-                                                    {formatDate(post.createdAt)}
-                                                    <span className="text-muted-foreground/50">•</span>
-                                                    <span className="font-medium text-foreground">{post.author.name || post.author.email}</span>
-                                                    <span className="text-muted-foreground/50">•</span>
-                                                    <span>{post.channel.displayName}</span>
+                                            {/* ── IMAGE / CONTENT ── */}
+                                            <div
+                                                className="relative flex-1 overflow-hidden cursor-pointer"
+                                                onClick={() => router.push(`/dashboard/posts/compose?edit=${post.id}`)}
+                                            >
+                                                {thumb ? (
+                                                    <img
+                                                        src={thumb.thumbnailUrl || thumb.url}
+                                                        alt=""
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center p-3 bg-gradient-to-br from-muted/80 to-muted/30">
+                                                        <p className="text-xs font-medium text-foreground/80 leading-relaxed line-clamp-6 text-center">
+                                                            {post.content || <span className="text-muted-foreground/50 italic">No caption</span>}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {/* Hover: open post hint */}
+                                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <span className="text-[11px] font-semibold text-white bg-black/60 px-2 py-1 rounded-lg">View post</span>
                                                 </div>
-                                                <p className="text-sm leading-snug line-clamp-2">
-                                                    {post.content || <span className="text-muted-foreground italic">{t('common.loading')}</span>}
+                                            </div>
+
+                                            {/* ── BOTTOM BAR ── */}
+                                            <div className="shrink-0 px-2.5 py-2 bg-card border-t border-border/50 space-y-2">
+                                                {/* Caption */}
+                                                <p className="text-[11px] text-foreground/70 leading-snug line-clamp-2 min-h-[28px]">
+                                                    {post.content || <span className="text-muted-foreground/40 italic">No caption</span>}
                                                 </p>
-                                                <div className="flex items-center gap-1.5">
-                                                    {platforms.map(p => <PlatformIcon key={p} platform={p} size="sm" />)}
+                                                {/* Platform icons */}
+                                                <div className="flex items-center gap-0.5">
+                                                    {platforms.map(p => (
+                                                        <PlatformIcon key={p} platform={p} size="sm" />
+                                                    ))}
+                                                </div>
+                                                {/* Approve / Reject buttons */}
+                                                <div className="flex gap-1.5">
                                                     <button
-                                                        onClick={e => { e.stopPropagation(); router.push(`/dashboard/posts/compose?edit=${post.id}`) }}
-                                                        className="ml-auto flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer"
+                                                        onClick={e => { e.stopPropagation(); setActionPost({ post, action: 'approved' }) }}
+                                                        className="flex-1 flex items-center justify-center gap-1 h-7 text-[11px] font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer"
                                                     >
-                                                        {t('approvals.viewFullPost')} <ChevronRightIcon className="h-3 w-3" />
+                                                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                                                        {t('approvals.approve')}
+                                                    </button>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); setActionPost({ post, action: 'rejected' }) }}
+                                                        className="flex-1 flex items-center justify-center gap-1 h-7 text-[11px] font-semibold rounded-lg border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                                                    >
+                                                        <XCircleIcon className="h-3.5 w-3.5" />
+                                                        {t('approvals.reject')}
                                                     </button>
                                                 </div>
-                                            </div>
-
-                                            {/* Actions */}
-                                            <div className="flex flex-col gap-2 justify-center shrink-0">
-                                                <Button
-                                                    size="sm"
-                                                    className="cursor-pointer h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                    onClick={e => { e.stopPropagation(); setActionPost({ post, action: 'approved' }) }}
-                                                >
-                                                    <CheckCircleIcon className="h-3.5 w-3.5" />
-                                                    {t('approvals.approve')}
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="cursor-pointer h-8 gap-1.5 border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                                    onClick={e => { e.stopPropagation(); setActionPost({ post, action: 'rejected' }) }}
-                                                >
-                                                    <XCircleIcon className="h-3.5 w-3.5" />
-                                                    {t('approvals.reject')}
-                                                </Button>
                                             </div>
                                         </div>
                                     )
@@ -408,6 +437,7 @@ export default function ApprovalsPage() {
                         </div>
                     ))}
                 </div>
+
             )}
 
             {/* Confirm dialog */}
