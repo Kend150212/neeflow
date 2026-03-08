@@ -413,6 +413,10 @@ export default function EtsyClient({
                         </button>
                     </div>
                 )}
+                {/* ── Etsy Attribution (required by Etsy API ToS) ──────────── */}
+                <p className="text-[10px] text-muted-foreground/50 text-center pt-2 pb-4">
+                    The term &quot;Etsy&quot; is a trademark of Etsy, Inc. This application uses the Etsy API but is not endorsed or certified by Etsy, Inc.
+                </p>
             </div>
 
             {postModalOpen && (
