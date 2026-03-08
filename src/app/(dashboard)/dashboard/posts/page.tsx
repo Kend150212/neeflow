@@ -421,7 +421,7 @@ function GridCard({ post, selected, onSelect, onEdit, onDelete, onDuplicate }: {
                             'h-4 w-4 rounded border flex items-center justify-center transition-all',
                             selected
                                 ? 'bg-primary border-primary text-primary-foreground'
-                                : 'border-border/60 group-hover:border-border'
+                                : 'border-border'
                         )}>
                             {selected && <CheckSquare className="h-3 w-3" />}
                         </div>
