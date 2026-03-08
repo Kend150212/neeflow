@@ -145,7 +145,7 @@ const integrations: IntegrationCard[] = [
         slug: 'wordpress',
         name: 'WordPress',
         description: 'Connect WooCommerce products and WordPress posts to your content pipeline.',
-        badge: 'Coming Soon',
+        href: '/dashboard/integrations/wordpress',
         logo: <LogoWordPress />,
         category: 'E-commerce',
         tags: ['WooCommerce', 'Products', 'Posts'],

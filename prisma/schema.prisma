@@ -305,6 +305,7 @@ model Channel {
   studioAvatars        StudioAvatar[]
   studioAvatarShares   StudioAvatarShare[]
   shopifyConfig        ShopifyConfig?
+  wordpressConfig      WordPressConfig?
 
 
   @@map("channels")
@@ -1465,4 +1466,29 @@ model ShopifyConfig {
 
   @@index([channelId])
   @@map("shopify_configs")
+}
+model WordPressConfig {
+  id          String   @id @default(cuid())
+  channelId   String   @unique @map("channel_id")
+
+  // WordPress site credentials (per-channel, independent)
+  siteUrl     String   @map("site_url")               // https://mysite.com
+  username    String                                    // WP admin username
+  appPassword String   @map("app_password") @db.Text   // AES-256 encrypted Application Password
+
+  // Sync preferences
+  syncWooProducts Boolean @default(true)  @map("sync_woo_products")
+  syncWpPosts     Boolean @default(false) @map("sync_wp_posts")
+
+  // Sync state
+  lastSyncedAt DateTime? @map("last_synced_at")
+  productCount Int       @default(0) @map("product_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@map("wordpress_configs")
 }
