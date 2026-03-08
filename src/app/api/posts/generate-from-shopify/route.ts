@@ -419,7 +419,9 @@ export async function POST(req: NextRequest) {
             language = 'vi',
             scheduledAt,
             requestApproval = false,
+            asDraft = false,      // true = save as draft, skip publish queue
             imageConfig,          // { provider, model, keySource, prompt, width, height, referenceImageUrl? }
+            platformConfig = {},  // { facebook: { postType, ... }, instagram: { postType, ... }, ... }
         } = await req.json()
 
         if (!channelId || !productData) {
@@ -481,6 +483,10 @@ export async function POST(req: NextRequest) {
                 knowledgeBase: { take: 8, orderBy: { updatedAt: 'desc' } },
                 hashtagGroups: true,
                 contentTemplates: { take: 5 },
+                // fetch platforms so we can look up accountId per slug
+                platforms: {
+                    select: { id: true, platform: true, accountId: true },
+                },
             },
         })
 
@@ -626,10 +632,17 @@ ${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available lis
         // Determine final status
         const approvalMode = (channel?.requireApproval as string | undefined) ?? 'none'
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let finalStatus: any = scheduledAt ? 'SCHEDULED' : 'DRAFT'
-        if (approvalMode === 'required' && finalStatus !== 'DRAFT') {
+        let finalStatus: any
+        if (asDraft) {
+            finalStatus = 'DRAFT'
+        } else if (scheduledAt) {
+            finalStatus = 'SCHEDULED'
+        } else {
+            finalStatus = 'DRAFT'  // default to draft; publish action handles the rest
+        }
+        if (!asDraft && approvalMode === 'required' && finalStatus !== 'DRAFT') {
             finalStatus = 'PENDING_APPROVAL'
-        } else if (approvalMode === 'optional' && requestApproval && finalStatus !== 'DRAFT') {
+        } else if (!asDraft && approvalMode === 'optional' && requestApproval && finalStatus !== 'DRAFT') {
             finalStatus = 'PENDING_APPROVAL'
         }
 
@@ -651,6 +664,36 @@ ${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available lis
         })
 
         await incrementPostUsage(quotaUserId).catch(() => { /* non-fatal */ })
+
+        // ── Save platform-specific config to PostPlatformStatus ─────────────
+        // This allows Compose to auto-restore settings (postType, board, etc.) when editing.
+        const channelPlatforms = (channel?.platforms as { platform: string; accountId: string }[] | undefined) ?? []
+        const cfgMap = (platformConfig as Record<string, Record<string, unknown>>)
+        if (platformList.length > 0) {
+            const platformStatusRows = platformList
+                .map(slug => {
+                    const accountEntry = channelPlatforms.find(p => p.platform === slug)
+                    if (!accountEntry) return null
+                    const cfg = cfgMap[slug] ?? {}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const row: any = {
+                        postId: post.id,
+                        platform: slug,
+                        accountId: accountEntry.accountId,
+                    }
+                    if (Object.keys(cfg).length > 0) row.config = cfg
+                    return row
+                })
+                .filter(Boolean)
+
+            if (platformStatusRows.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                await (prisma.postPlatformStatus as any).createMany({
+                    data: platformStatusRows,
+                    skipDuplicates: true,
+                }).catch((err: unknown) => console.warn('[generate-from-shopify] Could not create platform statuses:', err))
+            }
+        }
 
         // ── Stamp lastPostedAt + increment postCount on the source product ────
         if (productId) {

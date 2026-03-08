@@ -1488,6 +1488,11 @@ export default function ComposePage() {
                     let restoredIgCollaborators = ''
                     let restoredTtPostType: 'video' | 'carousel' = 'video'
                     let restoredTtPublishMode: 'direct' | 'inbox' = 'direct'
+                    let restoredYtPostType: 'video' | 'shorts' = 'video'
+                    let restoredYtPrivacy: 'public' | 'unlisted' | 'private' = 'public'
+                    let restoredYtCategory = ''
+                    let restoredYtMadeForKids = false
+                    let restoredPinBoardId = ''
                     for (const ps of post.platformStatuses) {
                         const match = ch.platforms.find(
                             (p) => p.platform === ps.platform && p.accountId === ps.accountId
@@ -1508,6 +1513,15 @@ export default function ComposePage() {
                             if (match.platform === 'tiktok') {
                                 restoredTtPostType = (cfg.postType as 'video' | 'carousel') || 'video'
                                 restoredTtPublishMode = (cfg.publishMode as 'direct' | 'inbox') || 'direct'
+                            }
+                            if (match.platform === 'youtube') {
+                                restoredYtPostType = (cfg.postType as 'video' | 'shorts') || 'video'
+                                restoredYtPrivacy = (cfg.privacy as 'public' | 'unlisted' | 'private') || 'public'
+                                if (cfg.category) restoredYtCategory = cfg.category as string
+                                if (cfg.madeForKids === true) restoredYtMadeForKids = true
+                            }
+                            if (match.platform === 'pinterest') {
+                                if (cfg.boardId) restoredPinBoardId = cfg.boardId as string
                             }
                         }
                     }
@@ -1533,6 +1547,11 @@ export default function ComposePage() {
                     if (restoredIgCollaborators) setIgCollaborators(restoredIgCollaborators)
                     setTtPostType(restoredTtPostType)
                     setTtPublishMode(restoredTtPublishMode)
+                    setYtPostType(restoredYtPostType)
+                    setYtPrivacy(restoredYtPrivacy)
+                    if (restoredYtCategory) setYtCategory(restoredYtCategory)
+                    setYtMadeForKids(restoredYtMadeForKids)
+                    if (restoredPinBoardId) setPinBoardId(restoredPinBoardId)
                 }
 
                 savedRef.current = true // prevent auto-save of loaded data
