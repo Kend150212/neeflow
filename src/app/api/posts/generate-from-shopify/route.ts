@@ -612,20 +612,45 @@ ${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available lis
 
         let parsed: { contentPerPlatform?: Record<string, string>; visualIdea?: string } = {}
         try {
-            let cleaned = result.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+            // Strip markdown fences + extract the first JSON object
+            let cleaned = result.text
+                .replace(/```json\s*/gi, '')
+                .replace(/```\s*/g, '')
+                .trim()
             const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
             if (jsonMatch) cleaned = jsonMatch[0]
             parsed = JSON.parse(cleaned)
         } catch {
-            const fallback = result.text.trim()
-            parsed = { contentPerPlatform: Object.fromEntries(platformList.map(p => [p, fallback])) }
+            // Parse failed — but the raw text might itself be valid JSON (AI returned JSON without fences).
+            // Try one more time on the raw text before falling back to treating it as plain text.
+            try {
+                const raw = result.text.trim()
+                const inner = JSON.parse(raw)
+                if (inner && typeof inner === 'object' && inner.contentPerPlatform) {
+                    parsed = inner
+                } else {
+                    parsed = { contentPerPlatform: Object.fromEntries(platformList.map(p => [p, raw])) }
+                }
+            } catch {
+                const raw = result.text.trim()
+                parsed = { contentPerPlatform: Object.fromEntries(platformList.map(p => [p, raw])) }
+            }
         }
 
         const contentPerPlatform = parsed.contentPerPlatform || {}
+
+        // Normalize keys — AI sometimes capitalizes them ("Instagram" vs "instagram")
+        const normalizedCpp: Record<string, string> = {}
+        for (const [k, v] of Object.entries(contentPerPlatform)) {
+            normalizedCpp[k.toLowerCase()] = v
+        }
+
         for (const p of platformList) {
-            if (!contentPerPlatform[p]) {
-                const anyContent = Object.values(contentPerPlatform)[0] || result.text.trim()
-                contentPerPlatform[p] = anyContent
+            if (!normalizedCpp[p]) {
+                const anyContent = Object.values(normalizedCpp)[0] ||
+                    Object.values(contentPerPlatform)[0] ||
+                    result.text.trim()
+                normalizedCpp[p] = anyContent
             }
         }
 
@@ -646,11 +671,11 @@ ${allHashtags.length > 0 ? `Include 2-5 relevant hashtags from the available lis
             finalStatus = 'PENDING_APPROVAL'
         }
 
-        const firstContent = contentPerPlatform[platformList[0]] || ''
+        const firstContent = normalizedCpp[platformList[0]] || Object.values(normalizedCpp)[0] || ''
         const post = await prisma.post.create({
             data: {
                 content: firstContent,
-                contentPerPlatform: Object.keys(contentPerPlatform).length > 0 ? contentPerPlatform : undefined,
+                contentPerPlatform: Object.keys(normalizedCpp).length > 0 ? normalizedCpp : undefined,
                 status: finalStatus,
                 scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
                 authorId: userId,

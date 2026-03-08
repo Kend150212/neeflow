@@ -28,7 +28,6 @@ export async function GET(
                     defaultAiProvider: true,
                     defaultAiModel: true,
                     platforms: {
-                        where: { isActive: true },
                         select: { id: true, platform: true, accountId: true, accountName: true },
                     },
                 },

@@ -1504,16 +1504,23 @@ export default function ComposePage() {
                 // ── Restore from saved platformStatuses ───────────────────────
                 if (Array.isArray(post.platformStatuses) && post.platformStatuses.length > 0) {
                     for (const ps of post.platformStatuses) {
-                        const match = postChannelPlatforms.find(
+                        // First try exact match (platform + accountId)
+                        let match = postChannelPlatforms.find(
                             (p) => p.platform === ps.platform && p.accountId === ps.accountId
                         )
+                        // Fallback: platform-only match (handles isActive filter edge case)
+                        if (!match) {
+                            match = postChannelPlatforms.find((p) => p.platform === ps.platform)
+                        }
                         if (!match) continue
                         selectedIds.add(match.id)
                         const cfg = (ps.config as Record<string, unknown>) || {}
                         if (match.platform === 'facebook') {
                             fbTypes[match.id] = (cfg.postType as 'feed' | 'story' | 'reel') || 'feed'
                             if (cfg.carousel === true) restoredFbCarousel = true
+                            // Restore firstComment — stored as `firstComment` in config
                             if (cfg.firstComment) restoredFbFirstComment = cfg.firstComment as string
+                            else if (cfg.enableFirstComment && cfg.firstComment) restoredFbFirstComment = cfg.firstComment as string
                         }
                         if (match.platform === 'instagram') {
                             restoredIgPostType = (cfg.postType as 'feed' | 'reel' | 'story') || 'feed'
