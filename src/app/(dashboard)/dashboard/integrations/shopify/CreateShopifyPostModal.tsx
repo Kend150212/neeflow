@@ -51,6 +51,20 @@ const MODEL_DISPLAY: Record<string, string> = {
     'runware:100@1': 'FLUX.1 Dev',
     'runware:5@1': 'FLUX.1 Schnell',
 }
+
+// ── img2img support — only these models accept a reference image ──────────────
+// • Runware: ImageToImage task (any runware: model)
+// • gpt-image-1: /images/edits endpoint (base64 mask edit)
+// DALL·E 3, Gemini, Imagen → text-to-image ONLY, no reference input
+const IMG2IMG_PROVIDER_PREFIXES = ['runware']
+const IMG2IMG_EXACT_MODELS = new Set(['gpt-image-1'])
+
+function isImg2ImgSupported(provider: string, model: string): boolean {
+    const prov = provider.split(':').slice(1).join(':') // strip 'byok:' / 'plan:'
+    if (IMG2IMG_PROVIDER_PREFIXES.some(p => prov.startsWith(p))) return true
+    if (IMG2IMG_EXACT_MODELS.has(model)) return true
+    return false
+}
 const ASPECT_RATIOS = [
     { label: '1:1', w: 1024, h: 1024 }, { label: '16:9', w: 1792, h: 1024 },
     { label: '9:16', w: 1024, h: 1792 }, { label: '4:3', w: 1024, h: 768 },
@@ -495,6 +509,14 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
     const selModel = availableImageModels.find(m => m.id === imageModel)
     const quotaLabel = imageQuota.limit > 0 ? t('integrations.shopify.modal.quotaUsed').replace('{used}', String(imageQuota.used)).replace('{limit}', String(imageQuota.limit)) : null
     const anyProductHasImages = products.some(p => p.images.length > 0)
+
+    // img2img compatibility check
+    const img2imgCompatible = enableAiImage && imageProvider
+        ? isImg2ImgSupported(imageProvider, imageModel)
+        : false
+    // Block Next on step 2 if user has img2img ref enabled but model can't do it
+    const img2imgConflict = enableAiImage && useProductImageAsRef && !img2imgCompatible
+
     const schedulePreview = (postMode !== 'schedule' || isSingle) ? null
         : distributeSchedule(scheduleStart, scheduleEnd, products.length, channelTimezone).slice(0, 3)
             .map(t => new Date(t).toLocaleString('vi-VN', { timeZone: channelTimezone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))
@@ -802,26 +824,62 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                             </div>
                                         </div>
 
-                                        {/* Use product image as reference */}
+                                        {/* Use product image as reference — img2img */}
                                         {anyProductHasImages && (
                                             <div className="space-y-2 border-t pt-3">
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-xs font-medium">{t('integrations.shopify.modal.useProductRef')}</p>
-                                                    <button type="button" onClick={() => setUseProductImageAsRef(!useProductImageAsRef)}
-                                                        className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer', useProductImageAsRef ? 'bg-primary' : 'bg-muted')}>
-                                                        <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', useProductImageAsRef ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
-                                                    </button>
-                                                </div>
-                                                {useProductImageAsRef && isSingle && cappedProducts[0]?.images.length > 1 && (
-                                                    <div className="flex gap-1.5 flex-wrap">
-                                                        {cappedProducts[0].images.slice(0, 8).map((url, i) => (
-                                                            <button key={i} type="button" onClick={() => setRefImageUrl(url)}
-                                                                className={cn('relative w-12 h-12 rounded-md overflow-hidden border-2 transition-all cursor-pointer',
-                                                                    refImageUrl === url ? 'border-primary' : 'border-border/40 hover:border-border')}>
-                                                                <NextImage src={url} alt="" fill className="object-cover" unoptimized />
-                                                                {refImageUrl === url && <span className="absolute inset-0 bg-primary/20 flex items-center justify-center"><Check className="h-3 w-3 text-primary" /></span>}
+                                                {img2imgCompatible ? (
+                                                    /* ── Supported: show toggle ── */
+                                                    <>
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="space-y-0.5">
+                                                                <p className="text-xs font-medium">{t('integrations.shopify.modal.useProductRef')}</p>
+                                                                <p className="text-[10px] text-muted-foreground leading-tight">
+                                                                    Use product photo as img2img reference for style guidance
+                                                                </p>
+                                                            </div>
+                                                            <button type="button" onClick={() => setUseProductImageAsRef(!useProductImageAsRef)}
+                                                                className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer shrink-0 ml-3', useProductImageAsRef ? 'bg-primary' : 'bg-muted')}>
+                                                                <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', useProductImageAsRef ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
                                                             </button>
-                                                        ))}
+                                                        </div>
+                                                        {useProductImageAsRef && isSingle && cappedProducts[0]?.images.length > 1 && (
+                                                            <div className="flex gap-1.5 flex-wrap">
+                                                                {cappedProducts[0].images.slice(0, 8).map((url, i) => (
+                                                                    <button key={i} type="button" onClick={() => setRefImageUrl(url)}
+                                                                        className={cn('relative w-12 h-12 rounded-md overflow-hidden border-2 transition-all cursor-pointer',
+                                                                            refImageUrl === url ? 'border-primary' : 'border-border/40 hover:border-border')}>
+                                                                        <NextImage src={url} alt="" fill className="object-cover" unoptimized />
+                                                                        {refImageUrl === url && <span className="absolute inset-0 bg-primary/20 flex items-center justify-center"><Check className="h-3 w-3 text-primary" /></span>}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    /* ── Not supported: show notice only ── */
+                                                    <div className="flex items-start gap-2 rounded-lg border border-border/50 bg-muted/40 px-3 py-2.5">
+                                                        <svg className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                                                        </svg>
+                                                        <div className="space-y-0.5">
+                                                            <p className="text-[11px] font-semibold text-muted-foreground">Product image as reference not supported</p>
+                                                            <p className="text-[10px] text-muted-foreground/80 leading-snug">
+                                                                The selected model only supports text-to-image. Switch to <span className="font-semibold text-foreground">Runware (FLUX)</span> or <span className="font-semibold text-foreground">GPT Image 1</span> to use a product photo as style reference.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* ── Conflict warning when user had ref enabled + switched model ── */}
+                                                {img2imgConflict && (
+                                                    <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5">
+                                                        <AlertTriangle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                                                        <div className="space-y-1 flex-1">
+                                                            <p className="text-[11px] font-semibold text-destructive">img2img not available with this model</p>
+                                                            <p className="text-[10px] text-muted-foreground leading-snug">
+                                                                Your current model doesn't support reference images. Please switch to <span className="font-semibold">Runware</span> or <span className="font-semibold">GPT Image 1</span>, or disable the reference option above.
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -1047,8 +1105,16 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                             </Button>
                         )}
                         {wizardStep < 4 ? (
-                            <Button size="sm" className="flex-1" onClick={() => setWizardStep((wizardStep + 1) as 1 | 2 | 3 | 4)} disabled={selectedPlatforms.size === 0}>
-                                Next →
+                            <Button
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => setWizardStep((wizardStep + 1) as 1 | 2 | 3 | 4)}
+                                disabled={selectedPlatforms.size === 0 || (wizardStep === 2 && img2imgConflict)}
+                                title={wizardStep === 2 && img2imgConflict ? 'Fix the img2img conflict above before continuing' : undefined}
+                            >
+                                {wizardStep === 2 && img2imgConflict
+                                    ? <><AlertTriangle className="h-3.5 w-3.5 mr-1 text-destructive" /> Fix model conflict</>
+                                    : <>Next →</>}
                             </Button>
                         ) : (
                             <Button size="sm" className="flex-1 font-semibold" onClick={handleCreate} disabled={selectedPlatforms.size === 0}>
