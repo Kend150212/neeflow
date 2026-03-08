@@ -177,6 +177,27 @@ const LABELS = {
         movedTo: 'Đã chuyển đến',
         undo: 'Hoàn tác',
     },
+    es: {
+        title: 'Calendario de Contenido',
+        today: 'Hoy',
+        month: 'Mes',
+        week: 'Semana',
+        allChannels: 'Todos los canales',
+        allPlatforms: 'Todas las plataformas',
+        createPost: 'Crear publicación',
+        noPostsDay: 'Sin publicaciones',
+        bestTimes: 'Mejores horas',
+        days: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+        months: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+        status: {
+            PUBLISHED: 'Publicado', SCHEDULED: 'Programado', DRAFT: 'Borrador',
+            FAILED: 'Fallido', PUBLISHING: 'Publicando', PENDING_APPROVAL: 'Pendiente',
+        },
+        legend: { best: 'Mejor', good: 'Bueno', fair: 'Regular' },
+        movedTo: 'Movido a',
+        undo: 'Deshacer',
+    },
 }
 
 // ─── Helpers ────────────────────────────────────────────────
