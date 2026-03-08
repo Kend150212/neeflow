@@ -455,7 +455,21 @@ export async function POST(req: NextRequest) {
 
         const provider = keyResult.provider!
         const apiKey = keyResult.apiKey!
-        const model = keyResult.model || getDefaultModel(provider, {})
+
+        // Guard: some users set an image-only model (e.g. gpt-image-1, dall-e-3) as their
+        // default — these models do NOT support /chat/completions → 403. Fall back to the
+        // provider's default text model in that case.
+        const IMAGE_ONLY_MODELS = [
+            'gpt-image-1', 'dall-e-3', 'dall-e-2',
+            'imagen-3.0-generate-002', 'imagen-3.0-fast-generate-002',
+            'stable-diffusion-3', 'stable-diffusion-xl',
+            'midjourney', 'ideogram-v2',
+        ]
+        const rawModel = keyResult.model || ''
+        const isImageOnly = IMAGE_ONLY_MODELS.some(m => rawModel.toLowerCase().includes(m.toLowerCase()))
+            || rawModel.startsWith('runware:')
+        const model = (!rawModel || isImageOnly) ? getDefaultModel(provider, {}) : rawModel
+
 
         // Post quota check
         const quotaUserId = keyResult.ownerId ?? userId
