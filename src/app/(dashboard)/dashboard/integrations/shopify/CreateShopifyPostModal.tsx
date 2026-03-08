@@ -485,7 +485,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
 
     return (
         <Dialog open={open} onOpenChange={v => !v && step === 'config' && onClose()}>
-            <DialogContent className="max-w-2xl bg-background/95 backdrop-blur border border-border/60 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+            <DialogContent className="bg-background/98 backdrop-blur border border-border/60 shadow-2xl overflow-hidden p-0 flex flex-col" style={{ width: 'min(98vw, 1400px)', maxWidth: '98vw', height: '95vh', maxHeight: '95vh' }}>
 
                 {/* ── Header ─────────────────────────────── */}
                 <div className="flex items-start justify-between px-5 pt-5 pb-3 border-b shrink-0">
@@ -605,50 +605,76 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                         </div>
                     )}
 
-                    {/* STEP 2: Images + AI Image */}
+                    {/* STEP 2: Images + AI Image — 2 column layout */}
                     {step === 'config' && wizardStep === 2 && (
-                        <div className="space-y-5">
-                            {anyProductHasImages && (
-                                <div className="space-y-2.5">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                            <ImageIcon className="h-3.5 w-3.5" />{t('integrations.shopify.modal.importImages')}
-                                        </p>
-                                        <button type="button" onClick={() => setEnableImport(!enableImport)}
-                                            className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer', enableImport ? 'bg-primary' : 'bg-muted')}>
-                                            <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', enableImport ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
-                                        </button>
-                                    </div>
-                                    {enableImport && cappedProducts.map(prod => (
-                                        <div key={prod.id}>
-                                            <div className="flex gap-1 mb-1 text-[10px] text-muted-foreground">
-                                                <button type="button" className="hover:text-primary cursor-pointer" onClick={() => selectAllImages(prod.id, prod.images)}>Select all</button>
-                                                <span>·</span>
-                                                <button type="button" className="hover:text-destructive cursor-pointer" onClick={() => clearAllImages(prod.id)}>Clear</button>
-                                            </div>
-                                            <ProductImagePicker product={prod} selectedImages={selectedImagesMap[prod.id] || []} onToggle={url => toggleProductImage(prod.id, url)} />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                        <div className="grid grid-cols-2 gap-6 h-full">
 
-                            {/* AI IMAGE */}
-                            <div className="space-y-2 rounded-xl border border-border/60 bg-card/40 p-3">
+                            {/* ── LEFT: Product Image Import ─────────────────── */}
+                            <div className="space-y-3 flex flex-col">
                                 <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                        <Sparkles className="h-3.5 w-3.5" />{t('integrations.shopify.modal.aiImage')}
-                                        {quotaLabel && <span className="text-[9px] font-normal ml-1 text-muted-foreground/60">{quotaLabel}</span>}
+                                    <p className="text-sm font-semibold flex items-center gap-2">
+                                        <ImageIcon className="h-4 w-4 text-primary" />
+                                        {t('integrations.shopify.modal.importImages')}
+                                    </p>
+                                    <button type="button" onClick={() => setEnableImport(!enableImport)}
+                                        className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer', enableImport ? 'bg-primary' : 'bg-muted')}>
+                                        <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', enableImport ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
+                                    </button>
+                                </div>
+                                {!anyProductHasImages ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-12 text-center">
+                                        <ImageIcon className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                                        <p className="text-xs text-muted-foreground">No product images available</p>
+                                    </div>
+                                ) : !enableImport ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-12 text-center">
+                                        <ImageIcon className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                                        <p className="text-xs text-muted-foreground">Toggle on to import product images</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3 overflow-y-auto flex-1">
+                                        {cappedProducts.map(prod => (
+                                            <div key={prod.id} className="rounded-xl border border-border/60 bg-card/40 p-3">
+                                                <div className="flex gap-2 mb-2 text-[10px] text-muted-foreground items-center">
+                                                    <span className="text-xs font-medium text-foreground truncate flex-1">{prod.name}</span>
+                                                    <button type="button" className="hover:text-primary cursor-pointer" onClick={() => selectAllImages(prod.id, prod.images)}>All</button>
+                                                    <span>·</span>
+                                                    <button type="button" className="hover:text-destructive cursor-pointer" onClick={() => clearAllImages(prod.id)}>Clear</button>
+                                                </div>
+                                                <ProductImagePicker product={prod} selectedImages={selectedImagesMap[prod.id] || []} onToggle={url => toggleProductImage(prod.id, url)} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ── RIGHT: AI Image Generation ─────────────────── */}
+                            <div className="space-y-3 flex flex-col">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm font-semibold flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-primary" />
+                                        {t('integrations.shopify.modal.aiImage')}
+                                        {quotaLabel && <span className="text-[10px] font-normal text-muted-foreground/60 ml-1">{quotaLabel}</span>}
                                     </p>
                                     <button type="button" onClick={() => setEnableAiImage(!enableAiImage)}
                                         className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer', enableAiImage ? 'bg-primary' : 'bg-muted')}>
                                         <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', enableAiImage ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
                                     </button>
                                 </div>
-                                {enableAiImage && (
-                                    <div className="space-y-2.5 pt-1">
+
+                                {!enableAiImage ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-12 text-center">
+                                        <Sparkles className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                                        <p className="text-xs text-muted-foreground">Toggle on to generate AI images</p>
+                                        <p className="text-[10px] text-muted-foreground/60 mt-1">AI will create unique visuals for your posts</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3 rounded-xl border border-border/60 bg-card/40 p-4 flex-1">
+                                        {/* Provider */}
                                         <div className="relative">
+                                            <label className="text-[10px] text-muted-foreground mb-1 block">Provider</label>
                                             <button type="button" onClick={() => setProviderDropOpen(!providerDropOpen)}
-                                                className="w-full flex items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-1.5 text-xs cursor-pointer hover:border-border">
+                                                className="w-full flex items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-2 text-xs cursor-pointer hover:border-border">
                                                 <span>{selProvider ? selProvider.name : t('integrations.shopify.modal.selectProvider')}</span>
                                                 <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', providerDropOpen && 'rotate-180')} />
                                             </button>
@@ -667,10 +693,13 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Model */}
                                         {imageProvider && (
                                             <div className="relative">
+                                                <label className="text-[10px] text-muted-foreground mb-1 block">Model</label>
                                                 <button type="button" onClick={() => setModelDropOpen(!modelDropOpen)}
-                                                    className="w-full flex items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-1.5 text-xs cursor-pointer hover:border-border">
+                                                    className="w-full flex items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-2 text-xs cursor-pointer hover:border-border">
                                                     <span>{loadingModels ? t('integrations.shopify.modal.loadingModels') : (selModel?.name || imageModel || t('integrations.shopify.modal.selectModel'))}</span>
                                                     {loadingModels ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', modelDropOpen && 'rotate-180')} />}
                                                 </button>
@@ -688,23 +717,35 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                 )}
                                             </div>
                                         )}
-                                        <textarea value={imagePrompt} onChange={e => setImagePrompt(e.target.value)}
-                                            placeholder={t('integrations.shopify.modal.imagePlaceholder')}
-                                            className="w-full min-h-[52px] resize-y rounded-lg border bg-transparent px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring" rows={2} />
-                                        <div className="flex flex-wrap gap-1.5 items-center">
-                                            {ASPECT_RATIOS.map(r => (
-                                                <button key={r.label} type="button" onClick={() => setSelectedAspect(r.label)}
-                                                    className={cn('flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] transition-all cursor-pointer',
-                                                        selectedAspect === r.label ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:border-border')}>
-                                                    <RatioShape label={r.label} active={selectedAspect === r.label} />
-                                                    {r.label}
-                                                </button>
-                                            ))}
+
+                                        {/* Prompt */}
+                                        <div>
+                                            <label className="text-[10px] text-muted-foreground mb-1 block">Image Prompt</label>
+                                            <textarea value={imagePrompt} onChange={e => setImagePrompt(e.target.value)}
+                                                placeholder={t('integrations.shopify.modal.imagePlaceholder')}
+                                                className="w-full min-h-[80px] resize-y rounded-lg border bg-transparent px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring" rows={3} />
                                         </div>
+
+                                        {/* Aspect Ratio */}
+                                        <div>
+                                            <label className="text-[10px] text-muted-foreground mb-1.5 block">Aspect Ratio</label>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {ASPECT_RATIOS.map(r => (
+                                                    <button key={r.label} type="button" onClick={() => setSelectedAspect(r.label)}
+                                                        className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] transition-all cursor-pointer',
+                                                            selectedAspect === r.label ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:border-border')}>
+                                                        <RatioShape label={r.label} active={selectedAspect === r.label} />
+                                                        {r.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Use product image as reference */}
                                         {anyProductHasImages && (
-                                            <div className="space-y-1.5">
+                                            <div className="space-y-2 border-t pt-3">
                                                 <div className="flex items-center justify-between">
-                                                    <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.useProductRef')}</p>
+                                                    <p className="text-xs font-medium">{t('integrations.shopify.modal.useProductRef')}</p>
                                                     <button type="button" onClick={() => setUseProductImageAsRef(!useProductImageAsRef)}
                                                         className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer', useProductImageAsRef ? 'bg-primary' : 'bg-muted')}>
                                                         <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', useProductImageAsRef ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
@@ -712,9 +753,9 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                 </div>
                                                 {useProductImageAsRef && isSingle && cappedProducts[0]?.images.length > 1 && (
                                                     <div className="flex gap-1.5 flex-wrap">
-                                                        {cappedProducts[0].images.slice(0, 6).map((url, i) => (
+                                                        {cappedProducts[0].images.slice(0, 8).map((url, i) => (
                                                             <button key={i} type="button" onClick={() => setRefImageUrl(url)}
-                                                                className={cn('relative w-10 h-10 rounded-md overflow-hidden border-2 transition-all cursor-pointer',
+                                                                className={cn('relative w-12 h-12 rounded-md overflow-hidden border-2 transition-all cursor-pointer',
                                                                     refImageUrl === url ? 'border-primary' : 'border-border/40 hover:border-border')}>
                                                                 <NextImage src={url} alt="" fill className="object-cover" unoptimized />
                                                                 {refImageUrl === url && <span className="absolute inset-0 bg-primary/20 flex items-center justify-center"><Check className="h-3 w-3 text-primary" /></span>}
