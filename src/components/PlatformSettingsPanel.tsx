@@ -3,15 +3,12 @@
 /**
  * PlatformSettingsPanel
  *
- * Registry-driven per-platform settings panel used in AI Post Creator modals
- * (Shopify, External, etc.). To support a new platform, add one entry to
- * PLATFORM_SETTINGS_REGISTRY below — no other files need to change.
- *
- * In single-post mode:  shows Schedule picker at the top + all platform sections.
- * In bulk mode:         hides schedule (bulk uses its own auto-schedule UI).
+ * Registry-driven per-platform settings panel used in AI Post Creator modals.
+ * Only shows options humans must choose — AI auto-generates everything else
+ * (captions, hashtags, titles, tags, etc.).
  */
 
-import { ChevronDown, Calendar, Clock, LayoutGrid, Film, CircleDot, Camera, Users, Video, Scissors, Globe, EyeOff, Lock, Tag, Bell, ShieldCheck, MessageSquare } from 'lucide-react'
+import { ChevronDown, Calendar, Clock, LayoutGrid, Film, CircleDot, Camera, Video, Scissors, Globe, EyeOff, Lock, Bell, ShieldCheck, MessageSquare, Link, Layers } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -25,49 +22,43 @@ export interface PlatformSettings {
     scheduleDate: string
     scheduleTime: string
 
-    // Facebook
-    fbPostType: 'feed' | 'reel' | 'story'
+    // Facebook — AI writes caption/hashtags; user only controls first comment
+    fbEnableFirstComment: boolean
     fbFirstComment: string
 
     // Instagram
     igPostType: 'feed' | 'reel' | 'story'
     igShareToStory: boolean
-    igCollaborators: string
 
-    // YouTube
+    // YouTube — AI writes title/description/tags; user controls publish settings
     ytPostType: 'video' | 'shorts'
-    ytVideoTitle: string
     ytCategory: string
     ytPrivacy: 'public' | 'unlisted' | 'private'
-    ytTags: string
     ytNotifySubscribers: boolean
     ytMadeForKids: boolean
 
     // TikTok
     ttPostType: 'video' | 'carousel'
 
-    // Pinterest
-    pinTitle: string
+    // Pinterest — AI writes title/description; user provides board + link
+    pinBoard: string
     pinLink: string
 }
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
     scheduleDate: '',
     scheduleTime: '',
-    fbPostType: 'feed',
+    fbEnableFirstComment: false,
     fbFirstComment: '',
     igPostType: 'feed',
     igShareToStory: false,
-    igCollaborators: '',
     ytPostType: 'video',
-    ytVideoTitle: '',
     ytCategory: '',
     ytPrivacy: 'public',
-    ytTags: '',
     ytNotifySubscribers: true,
     ytMadeForKids: false,
     ttPostType: 'video',
-    pinTitle: '',
+    pinBoard: '',
     pinLink: '',
 }
 
@@ -137,28 +128,25 @@ interface RegistryEntry {
 }
 
 const PLATFORM_SETTINGS_REGISTRY: Record<string, RegistryEntry> = {
+
+    // ── Facebook ──────────────────────────────────────────────────────────────
+    // AI generates: caption, hashtags, post format
+    // Human controls: whether to add a first comment (e.g. hashtag block)
     facebook: {
         label: 'Facebook Settings',
         render: (s, onChange) => (
-            <>
-                {/* Post Type */}
-                <div className="space-y-1 pt-3">
-                    <Label className="text-[10px] text-muted-foreground">Post Type</Label>
-                    <div className="grid grid-cols-3 gap-1">
-                        {([['feed', 'Feed', LayoutGrid], ['reel', 'Reel', Film], ['story', 'Story', CircleDot]] as const).map(([val, lbl, Icon]) => (
-                            <PostTypeButton key={val} label={lbl} icon={Icon} active={s.fbPostType === val}
-                                color="border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                                onClick={() => onChange({ fbPostType: val })} />
-                        ))}
-                    </div>
-                </div>
-                {/* First Comment */}
-                <div className="space-y-1 border-t pt-3">
-                    <div className="flex items-center gap-1.5 mb-1">
+            <div className="pt-3 space-y-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
                         <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
-                        <span className="text-xs font-medium">First Comment</span>
-                        <span className="text-[9px] text-muted-foreground ml-auto">auto-comment after posting</span>
+                        <div>
+                            <p className="text-xs font-medium">First Comment</p>
+                            <p className="text-[9px] text-muted-foreground">Auto-posted right after publishing</p>
+                        </div>
                     </div>
+                    <ToggleSwitch on={s.fbEnableFirstComment} color="bg-blue-500" onChange={() => onChange({ fbEnableFirstComment: !s.fbEnableFirstComment })} />
+                </div>
+                {s.fbEnableFirstComment && (
                     <textarea
                         value={s.fbFirstComment}
                         onChange={e => onChange({ fbFirstComment: e.target.value })}
@@ -166,16 +154,19 @@ const PLATFORM_SETTINGS_REGISTRY: Record<string, RegistryEntry> = {
                         className="w-full min-h-[52px] resize-y rounded-md border bg-transparent px-2.5 py-1.5 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
                         rows={2}
                     />
-                </div>
-            </>
+                )}
+                <p className="text-[9px] text-muted-foreground italic">Caption & hashtags are AI-generated.</p>
+            </div>
         ),
     },
 
+    // ── Instagram ─────────────────────────────────────────────────────────────
+    // AI generates: caption, hashtags
+    // Human controls: post type, share-to-story option
     instagram: {
         label: 'Instagram Settings',
         render: (s, onChange) => (
             <>
-                {/* Post Type */}
                 <div className="space-y-1 pt-3">
                     <Label className="text-[10px] text-muted-foreground">Post Type</Label>
                     <div className="grid grid-cols-3 gap-1">
@@ -186,33 +177,26 @@ const PLATFORM_SETTINGS_REGISTRY: Record<string, RegistryEntry> = {
                         ))}
                     </div>
                 </div>
-                {/* Share to Story */}
                 {s.igPostType === 'feed' && (
                     <div className="flex items-center justify-between border-t pt-2">
                         <div className="flex items-center gap-1.5">
                             <Camera className="h-3.5 w-3.5 text-pink-500" />
                             <div>
                                 <p className="text-xs font-medium">Also Share to Story</p>
-                                <p className="text-[9px] text-muted-foreground">Automatically share feed post to Stories</p>
+                                <p className="text-[9px] text-muted-foreground">Repost feed to Stories automatically</p>
                             </div>
                         </div>
                         <ToggleSwitch on={s.igShareToStory} color="bg-pink-500" onChange={() => onChange({ igShareToStory: !s.igShareToStory })} />
                     </div>
                 )}
-                {/* Collaborators */}
-                <div className="space-y-1 border-t pt-2">
-                    <div className="flex items-center gap-1.5 mb-1">
-                        <Users className="h-3.5 w-3.5 text-pink-500" />
-                        <span className="text-xs font-medium">Collaborators</span>
-                        <span className="text-[9px] text-muted-foreground ml-auto">up to 3 public profiles</span>
-                    </div>
-                    <Input value={s.igCollaborators} onChange={e => onChange({ igCollaborators: e.target.value })}
-                        placeholder="@username1, @username2, @username3" className="h-7 text-xs" />
-                </div>
+                <p className="text-[9px] text-muted-foreground italic border-t pt-2">Caption & hashtags are AI-generated.</p>
             </>
         ),
     },
 
+    // ── YouTube ───────────────────────────────────────────────────────────────
+    // AI generates: title, description, tags
+    // Human controls: post type, privacy, category, notify subscribers, made for kids
     youtube: {
         label: 'YouTube Settings',
         render: (s, onChange) => (
@@ -228,25 +212,8 @@ const PLATFORM_SETTINGS_REGISTRY: Record<string, RegistryEntry> = {
                         ))}
                     </div>
                 </div>
-                {/* Video Title */}
-                <div className="space-y-1 border-t pt-2">
-                    <Label className="text-[10px] text-muted-foreground">Video Title</Label>
-                    <Input value={s.ytVideoTitle} onChange={e => onChange({ ytVideoTitle: e.target.value })}
-                        placeholder="Enter video title..." className="h-7 text-xs" />
-                </div>
-                {/* Category + Privacy */}
+                {/* Privacy + Category */}
                 <div className="grid grid-cols-2 gap-2 border-t pt-2">
-                    <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Category</Label>
-                        <Select value={s.ytCategory} onValueChange={v => onChange({ ytCategory: v })}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                                {['Entertainment', 'Education', 'Howto & Style', 'People & Blogs', 'Science & Technology', 'Sports', 'Music', 'Gaming', 'News & Politics', 'Film & Animation'].map(c => (
-                                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
                     <div className="space-y-1">
                         <Label className="text-[10px] text-muted-foreground">Privacy</Label>
                         <Select value={s.ytPrivacy} onValueChange={v => onChange({ ytPrivacy: v as 'public' | 'unlisted' | 'private' })}>
@@ -258,72 +225,125 @@ const PLATFORM_SETTINGS_REGISTRY: Record<string, RegistryEntry> = {
                             </SelectContent>
                         </Select>
                     </div>
-                </div>
-                {/* Tags */}
-                <div className="space-y-1 border-t pt-2">
-                    <div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-red-500" /><Label className="text-[10px] text-muted-foreground">Video Tags</Label></div>
-                    <Input value={s.ytTags} onChange={e => onChange({ ytTags: e.target.value })}
-                        placeholder="tag1, tag2, tag3..." className="h-7 text-xs" />
+                    <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Category</Label>
+                        <Select value={s.ytCategory} onValueChange={v => onChange({ ytCategory: v })}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                                {['Entertainment', 'Education', 'Howto & Style', 'People & Blogs', 'Science & Technology', 'Sports', 'Music', 'Gaming', 'News & Politics', 'Film & Animation'].map(c => (
+                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 {/* Toggles */}
                 <div className="border-t pt-2 space-y-2">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5"><Bell className="h-3.5 w-3.5 text-red-500" /><span className="text-xs font-medium">Notify Subscribers</span></div>
+                        <div className="flex items-center gap-1.5">
+                            <Bell className="h-3.5 w-3.5 text-red-500" />
+                            <span className="text-xs font-medium">Notify Subscribers</span>
+                        </div>
                         <ToggleSwitch on={s.ytNotifySubscribers} color="bg-red-500" onChange={() => onChange({ ytNotifySubscribers: !s.ytNotifySubscribers })} />
                     </div>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                             <ShieldCheck className="h-3.5 w-3.5 text-red-500" />
-                            <div><span className="text-xs font-medium">Made for Kids</span><p className="text-[9px] text-muted-foreground">Required by COPPA</p></div>
+                            <div>
+                                <span className="text-xs font-medium">Made for Kids</span>
+                                <p className="text-[9px] text-muted-foreground">Required by COPPA</p>
+                            </div>
                         </div>
                         <ToggleSwitch on={s.ytMadeForKids} color="bg-red-500" onChange={() => onChange({ ytMadeForKids: !s.ytMadeForKids })} />
                     </div>
                 </div>
+                <p className="text-[9px] text-muted-foreground italic border-t pt-2">Title, description & tags are AI-generated.</p>
             </>
         ),
     },
 
+    // ── TikTok ────────────────────────────────────────────────────────────────
+    // AI generates: caption, hashtags
+    // Human controls: post type (video vs carousel)
     tiktok: {
         label: 'TikTok Settings',
         borderColor: 'border-[#00F2EA]/30',
         render: (s, onChange) => (
-            <div className="space-y-1 pt-3">
-                <Label className="text-[10px] text-muted-foreground">Post Type</Label>
-                <div className="grid grid-cols-2 gap-1">
-                    {([['video', 'Video', Video], ['carousel', 'Carousel', LayoutGrid]] as const).map(([val, lbl, Icon]) => (
-                        <PostTypeButton key={val} label={lbl} icon={Icon} active={s.ttPostType === val}
-                            color="border-[#00F2EA] bg-[#00F2EA]/10 text-[#00F2EA]"
-                            onClick={() => onChange({ ttPostType: val })} />
-                    ))}
+            <div className="space-y-3 pt-3">
+                <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Post Type</Label>
+                    <div className="grid grid-cols-2 gap-1">
+                        {([['video', 'Video', Video], ['carousel', 'Carousel', LayoutGrid]] as const).map(([val, lbl, Icon]) => (
+                            <PostTypeButton key={val} label={lbl} icon={Icon} active={s.ttPostType === val}
+                                color="border-[#00F2EA] bg-[#00F2EA]/10 text-[#00F2EA]"
+                                onClick={() => onChange({ ttPostType: val })} />
+                        ))}
+                    </div>
                 </div>
+                <p className="text-[9px] text-muted-foreground italic">Caption & hashtags are AI-generated.</p>
             </div>
         ),
     },
 
+    // ── Pinterest ─────────────────────────────────────────────────────────────
+    // AI generates: pin title, description
+    // Human controls: board name + destination link
     pinterest: {
         label: 'Pinterest Settings',
         render: (s, onChange) => (
-            <>
-                <div className="space-y-1 pt-3">
-                    <Label className="text-[10px] text-muted-foreground">Pin Title</Label>
-                    <Input value={s.pinTitle} onChange={e => onChange({ pinTitle: e.target.value })}
-                        placeholder="Enter pin title (max 100 chars)" maxLength={100} className="h-7 text-xs" />
+            <div className="space-y-3 pt-3">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <Layers className="h-3.5 w-3.5 text-[#E60023]" />
+                        <Label className="text-[10px] text-muted-foreground">Board Name</Label>
+                    </div>
+                    <Input value={s.pinBoard} onChange={e => onChange({ pinBoard: e.target.value })}
+                        placeholder="e.g. My Products, Inspiration" className="h-7 text-xs" />
                 </div>
                 <div className="space-y-1 border-t pt-2">
-                    <Label className="text-[10px] text-muted-foreground">Destination Link</Label>
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <Link className="h-3.5 w-3.5 text-[#E60023]" />
+                        <Label className="text-[10px] text-muted-foreground">Destination Link</Label>
+                    </div>
                     <Input value={s.pinLink} onChange={e => onChange({ pinLink: e.target.value })}
-                        placeholder="https://example.com" className="h-7 text-xs" />
+                        placeholder="https://yourstore.com/product" className="h-7 text-xs" />
                 </div>
-            </>
+                <p className="text-[9px] text-muted-foreground italic">Pin title & description are AI-generated.</p>
+            </div>
         ),
     },
 
-    // Platforms with no extra settings — shown as a minimal card
-    linkedin: { label: 'LinkedIn Settings', render: () => <p className="text-[10px] text-muted-foreground pt-3 pb-1">No extra settings required.</p> },
-    twitter: { label: 'X (Twitter) Settings', render: () => <p className="text-[10px] text-muted-foreground pt-3 pb-1">No extra settings required.</p> },
-    threads: { label: 'Threads Settings', render: () => <p className="text-[10px] text-muted-foreground pt-3 pb-1">No extra settings required.</p> },
-    bluesky: { label: 'Bluesky Settings', render: () => <p className="text-[10px] text-muted-foreground pt-3 pb-1">No extra settings required.</p> },
-    gbp: { label: 'Google Business Settings', render: () => <p className="text-[10px] text-muted-foreground pt-3 pb-1">No extra settings required.</p> },
+    // ── Platforms where AI handles everything ─────────────────────────────────
+    linkedin: {
+        label: 'LinkedIn Settings',
+        render: () => (
+            <p className="text-[10px] text-muted-foreground pt-3 pb-1 italic">AI generates the full post. No extra settings needed.</p>
+        ),
+    },
+    twitter: {
+        label: 'X (Twitter) Settings',
+        render: () => (
+            <p className="text-[10px] text-muted-foreground pt-3 pb-1 italic">AI generates the full post. No extra settings needed.</p>
+        ),
+    },
+    threads: {
+        label: 'Threads Settings',
+        render: () => (
+            <p className="text-[10px] text-muted-foreground pt-3 pb-1 italic">AI generates the full post. No extra settings needed.</p>
+        ),
+    },
+    bluesky: {
+        label: 'Bluesky Settings',
+        render: () => (
+            <p className="text-[10px] text-muted-foreground pt-3 pb-1 italic">AI generates the full post. No extra settings needed.</p>
+        ),
+    },
+    gbp: {
+        label: 'Google Business Settings',
+        render: () => (
+            <p className="text-[10px] text-muted-foreground pt-3 pb-1 italic">AI generates the full post. No extra settings needed.</p>
+        ),
+    },
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
