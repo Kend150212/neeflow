@@ -36,6 +36,22 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        // ─── Deduplication: reuse existing MediaItem with same sourceUrl ──
+        // Query uses Prisma's JSON filter on aiMetadata->>'sourceUrl'
+        const existing = await prisma.mediaItem.findFirst({
+            where: {
+                channelId,
+                aiMetadata: {
+                    path: ['sourceUrl'],
+                    equals: url,
+                },
+            },
+        })
+        if (existing) {
+            // Return cached item — no upload, no storage cost, no duplicate
+            return NextResponse.json(existing, { status: 200 })
+        }
+
         // ─── Download the image ────────────────────────────────────
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 15000)
