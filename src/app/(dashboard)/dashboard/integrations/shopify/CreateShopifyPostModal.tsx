@@ -215,6 +215,9 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
         setPlatformSettings(prev => ({ ...prev, ...patch }))
     }
 
+    // Wizard step (config only)
+    const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1)
+
     // Bulk schedule (auto-distribute across date range)
     const [enableSchedule, setEnableSchedule] = useState(false)
     const today = toDateVal(new Date())
@@ -464,46 +467,82 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
         : distributeSchedule(scheduleStart, scheduleEnd, products.length, channelTimezone).slice(0, 3)
             .map(t => new Date(t).toLocaleString('vi-VN', { timeZone: channelTimezone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))
 
-    return (
-        <Dialog open={open} onOpenChange={v => !v && step === 'config' && onClose()}>
-            <DialogContent className="max-w-5xl bg-background/95 backdrop-blur border border-border/60 shadow-2xl max-h-[92vh] overflow-hidden p-0 flex flex-col" style={{ width: 'min(96vw, 1000px)' }}>
 
-                {/* ── Header ─────────────────────────────────────────────── */}
-                <div className="flex items-start justify-between px-5 py-4 border-b shrink-0">
-                    <div className="space-y-0.5">
-                        <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-                            <ShoppingBag className="h-4 w-4 text-[#96bf47]" />
-                            {t('integrations.shopify.modal.title')}
-                        </DialogTitle>
-                        <DialogDescription className="text-xs text-muted-foreground">
-                            {cappedProducts.length > 1
-                                ? t('integrations.shopify.modal.generateFromPlural').replace('{count}', String(cappedProducts.length))
-                                : t('integrations.shopify.modal.generateFrom').replace('{count}', String(cappedProducts.length))}
-                            {isSingle && ` — ${cappedProducts[0].name}`}
-                            {isSingle && ` ${t('integrations.shopify.modal.toCompose')}`}
-                        </DialogDescription>
-                        <div className="flex items-center gap-1.5 mt-1">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                                <Sparkles className="h-2.5 w-2.5" /> {t('integrations.shopify.modal.kbBadge')}
-                            </span>
-                            {isCapped && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                                    ⚠ Limited to {BULK_LIMIT} posts
+        const WIZARD_STEPS = [
+            { id: 1, label: 'Platforms' },
+            { id: 2, label: 'Media' },
+            { id: 3, label: 'Settings' },
+        ] as const
+
+        return (
+            <Dialog open={open} onOpenChange={v => !v && step === 'config' && onClose()}>
+                <DialogContent className="max-w-2xl bg-background/95 backdrop-blur border border-border/60 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+
+                    {/* ── Header ─────────────────────────────── */}
+                    <div className="flex items-start justify-between px-5 pt-5 pb-3 border-b shrink-0">
+                        <div className="space-y-0.5">
+                            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+                                <ShoppingBag className="h-4 w-4 text-[#96bf47]" />
+                                {t('integrations.shopify.modal.title')}
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground">
+                                {cappedProducts.length > 1
+                                    ? t('integrations.shopify.modal.generateFromPlural').replace('{count}', String(cappedProducts.length))
+                                    : t('integrations.shopify.modal.generateFrom').replace('{count}', String(cappedProducts.length))}
+                                {isSingle && ` — ${cappedProducts[0].name}`}
+                            </DialogDescription>
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                    <Sparkles className="h-2.5 w-2.5" /> {t('integrations.shopify.modal.kbBadge')}
                                 </span>
-                            )}
+                                {isCapped && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                        ⚠ Limited to {BULK_LIMIT} posts
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* ── Body (flex row) ─────────────────────────────────────── */}
-                <div className="flex flex-1 overflow-hidden min-h-0">
+                    {/* ── Wizard stepper ─────────────────────── */}
+                    {step === 'config' && (
+                        <div className="flex items-center px-5 py-3 gap-0 shrink-0 border-b">
+                            {WIZARD_STEPS.map((ws, idx) => (
+                                <React.Fragment key={ws.id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setWizardStep(ws.id)}
+                                        className="flex items-center gap-2 cursor-pointer"
+                                    >
+                                        <span className={cn(
+                                            'flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all',
+                                            wizardStep === ws.id
+                                                ? 'bg-primary text-primary-foreground'
+                                                : wizardStep > ws.id
+                                                    ? 'bg-primary/20 text-primary'
+                                                    : 'bg-muted text-muted-foreground'
+                                        )}>
+                                            {wizardStep > ws.id ? <Check className="h-3 w-3" /> : ws.id}
+                                        </span>
+                                        <span className={cn(
+                                            'text-xs font-medium transition-colors',
+                                            wizardStep === ws.id ? 'text-foreground' : 'text-muted-foreground'
+                                        )}>{ws.label}</span>
+                                    </button>
+                                    {idx < WIZARD_STEPS.length - 1 && (
+                                        <div className={cn('flex-1 h-px mx-3 transition-colors', wizardStep > ws.id ? 'bg-primary/40' : 'bg-border/60')} />
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    )}
 
-                    {/* LEFT: existing config */}
-                    <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 min-w-0">
+                    {/* ── Body ───────────────────────────────── */}
+                    <div className="flex-1 overflow-y-auto px-5 py-4">
 
-                        {/* CONFIG */}
-                        {step === 'config' && (
-                            <>
+                        {/* STEP 1: Platforms + Tone */}
+                        {step === 'config' && wizardStep === 1 && (
+                            <div className="space-y-5">
                                 {isSingle && (
                                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
                                         <ExternalLink className="h-3.5 w-3.5 shrink-0" />
@@ -519,7 +558,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                             <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('integrations.shopify.modal.loadingPlatforms')}
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-3 gap-2">
+                                        <div className="grid grid-cols-4 gap-2">
                                             {availablePlatforms.map(p => (
                                                 <button key={p} type="button" onClick={() => togglePlatform(p)}
                                                     className={cn('relative flex flex-col items-center gap-2 px-3 py-3 rounded-xl border transition-all text-xs font-medium',
@@ -554,10 +593,14 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                         ))}
                                     </div>
                                 </div>
+                            </div>
+                        )}
 
-                                {/* IMAGE IMPORT */}
+                        {/* STEP 2: Images + AI Image */}
+                        {step === 'config' && wizardStep === 2 && (
+                            <div className="space-y-5">
                                 {anyProductHasImages && (
-                                    <div className="space-y-2">
+                                    <div className="space-y-2.5">
                                         <div className="flex items-center justify-between">
                                             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                                                 <ImageIcon className="h-3.5 w-3.5" />{t('integrations.shopify.modal.importImages')}
@@ -594,7 +637,6 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                     </div>
                                     {enableAiImage && (
                                         <div className="space-y-2.5 pt-1">
-                                            {/* Provider picker */}
                                             <div className="relative">
                                                 <button type="button" onClick={() => setProviderDropOpen(!providerDropOpen)}
                                                     className="w-full flex items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-1.5 text-xs cursor-pointer hover:border-border">
@@ -616,7 +658,6 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                     </div>
                                                 )}
                                             </div>
-                                            {/* Model picker */}
                                             {imageProvider && (
                                                 <div className="relative">
                                                     <button type="button" onClick={() => setModelDropOpen(!modelDropOpen)}
@@ -638,11 +679,9 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                     )}
                                                 </div>
                                             )}
-                                            {/* Custom prompt */}
                                             <textarea value={imagePrompt} onChange={e => setImagePrompt(e.target.value)}
                                                 placeholder={t('integrations.shopify.modal.imagePlaceholder')}
                                                 className="w-full min-h-[52px] resize-y rounded-lg border bg-transparent px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring" rows={2} />
-                                            {/* Aspect ratio */}
                                             <div className="flex flex-wrap gap-1.5 items-center">
                                                 {ASPECT_RATIOS.map(r => (
                                                     <button key={r.label} type="button" onClick={() => setSelectedAspect(r.label)}
@@ -653,7 +692,6 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                     </button>
                                                 ))}
                                             </div>
-                                            {/* Use product image as reference */}
                                             {anyProductHasImages && (
                                                 <div className="space-y-1.5">
                                                     <div className="flex items-center justify-between">
@@ -663,7 +701,6 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                                             <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', useProductImageAsRef ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
                                                         </button>
                                                     </div>
-                                                    {/* Ref image picker — single post only */}
                                                     {useProductImageAsRef && isSingle && cappedProducts[0]?.images.length > 1 && (
                                                         <div className="flex gap-1.5 flex-wrap">
                                                             {cappedProducts[0].images.slice(0, 6).map((url, i) => (
@@ -681,8 +718,27 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        )}
 
-                                {/* SCHEDULE — bulk only (single uses panel) */}
+                        {/* STEP 3: Platform Settings + Schedule + Approval */}
+                        {step === 'config' && wizardStep === 3 && (
+                            <div className="space-y-5">
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <Settings2 className="h-3.5 w-3.5 text-primary" />
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                            {isSingle ? 'Post Settings' : 'Post Settings (all posts)'}
+                                        </p>
+                                    </div>
+                                    <PlatformSettingsPanel
+                                        selectedPlatforms={[...selectedPlatforms]}
+                                        settings={platformSettings}
+                                        onChange={patchSettings}
+                                        isBulk={!isSingle}
+                                    />
+                                </div>
+
                                 {!isSingle && (
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between">
@@ -726,7 +782,6 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                     </div>
                                 )}
 
-                                {/* APPROVAL */}
                                 <div className="space-y-2">
                                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.approval')}</p>
                                     {approvalMode === 'optional' && (
@@ -754,19 +809,11 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                             </div>
                                         </div>
                                     )}
+                                    {approvalMode === 'none' && (
+                                        <p className="text-[10px] text-muted-foreground py-1">No approval required for this channel.</p>
+                                    )}
                                 </div>
-
-                                {/* ACTIONS */}
-                                <div className="flex gap-2 pt-1">
-                                    <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>
-                                        <X className="h-3.5 w-3.5 mr-1" /> {t('integrations.shopify.modal.cancel')}
-                                    </Button>
-                                    <Button size="sm" className="flex-1 font-semibold" onClick={handleCreate} disabled={selectedPlatforms.size === 0}>
-                                        <Zap className="h-3.5 w-3.5 mr-1" />
-                                        {isSingle ? t('integrations.shopify.modal.generateAndEdit') : t('integrations.shopify.modal.createDrafts').replace('{count}', String(cappedProducts.length))}
-                                    </Button>
-                                </div>
-                            </>
+                            </div>
                         )}
 
                         {/* GENERATING — single */}
@@ -812,26 +859,31 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                         )}
                     </div>
 
-                    {/* RIGHT: Platform Settings Panel — only shown in config step */}
+                    {/* ── Footer nav ─────────────────────────── */}
                     {step === 'config' && (
-                        <div className="w-72 shrink-0 border-l bg-muted/30 overflow-y-auto px-4 py-4 space-y-2">
-                            <div className="flex items-center gap-1.5 mb-3">
-                                <Settings2 className="h-3.5 w-3.5 text-primary" />
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    {isSingle ? 'Post Settings' : 'Post Settings (all)'}
-                                </span>
-                            </div>
-                            <PlatformSettingsPanel
-                                selectedPlatforms={[...selectedPlatforms]}
-                                settings={platformSettings}
-                                onChange={patchSettings}
-                                isBulk={!isSingle}
-                            />
+                        <div className="flex items-center gap-2 px-5 py-3 border-t shrink-0">
+                            {wizardStep > 1 ? (
+                                <Button variant="outline" size="sm" className="flex-1" onClick={() => setWizardStep((wizardStep - 1) as 1 | 2 | 3)}>
+                                    ← Back
+                                </Button>
+                            ) : (
+                                <Button variant="outline" size="sm" className="flex-1" onClick={onClose}>
+                                    <X className="h-3.5 w-3.5 mr-1" /> {t('integrations.shopify.modal.cancel')}
+                                </Button>
+                            )}
+                            {wizardStep < 3 ? (
+                                <Button size="sm" className="flex-1" onClick={() => setWizardStep((wizardStep + 1) as 1 | 2 | 3)} disabled={selectedPlatforms.size === 0}>
+                                    Next →
+                                </Button>
+                            ) : (
+                                <Button size="sm" className="flex-1 font-semibold" onClick={handleCreate} disabled={selectedPlatforms.size === 0}>
+                                    <Zap className="h-3.5 w-3.5 mr-1" />
+                                    {isSingle ? t('integrations.shopify.modal.generateAndEdit') : t('integrations.shopify.modal.createDrafts').replace('{count}', String(cappedProducts.length))}
+                                </Button>
+                            )}
                         </div>
                     )}
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
+                </DialogContent>
+            </Dialog>
+        )
 }
-
