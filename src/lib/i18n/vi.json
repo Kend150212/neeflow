@@ -790,7 +790,8 @@
   "language": {
     "label": "Ngôn ngữ",
     "en": "English",
-    "vi": "Tiếng Việt"
+    "vi": "Tiếng Việt",
+    "es": "Español"
   },
   "users": {
     "title": "Quản lý người dùng",

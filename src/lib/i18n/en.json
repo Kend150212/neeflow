@@ -790,7 +790,8 @@
   "language": {
     "label": "Language",
     "en": "English",
-    "vi": "Tiếng Việt"
+    "vi": "Tiếng Việt",
+    "es": "Español"
   },
   "users": {
     "title": "User Management",

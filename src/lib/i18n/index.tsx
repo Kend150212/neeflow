@@ -3,10 +3,11 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
 import en from './en.json'
 import vi from './vi.json'
+import es from './es.json'
 
-export type Locale = 'en' | 'vi'
+export type Locale = 'en' | 'vi' | 'es'
 
-const translations: Record<Locale, typeof en> = { en, vi }
+const translations: Record<Locale, typeof en> = { en, vi, es: es as unknown as typeof en }
 
 interface I18nContextType {
     locale: Locale
