@@ -13,6 +13,7 @@ import { Languages } from 'lucide-react'
 const languages: { code: Locale; label: string; flag: string }[] = [
     { code: 'en', label: 'English', flag: '🇺🇸' },
     { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
+    { code: 'es', label: 'Español', flag: '🇪🇸' },
 ]
 
 export function LanguageSwitcher() {
