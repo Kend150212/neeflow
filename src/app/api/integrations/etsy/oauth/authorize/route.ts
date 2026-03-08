@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
 
 // GET /api/integrations/etsy/oauth/authorize?channelId=xxx
-// Generates PKCE challenge and redirects user to Etsy OAuth consent page
+// Reads Etsy ClientId from Admin API Hub (DB), generates PKCE challenge, redirects to Etsy consent page
 export async function GET(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -11,11 +12,26 @@ export async function GET(req: NextRequest) {
     const channelId = req.nextUrl.searchParams.get('channelId')
     if (!channelId) return NextResponse.json({ error: 'channelId required' }, { status: 400 })
 
-    const clientId = process.env.ETSY_CLIENT_ID
+    // 1. Try to read Etsy clientId from Admin API Hub (DB)
+    let clientId: string | undefined
+    try {
+        const etsyIntegration = await prisma.apiIntegration.findFirst({
+            where: { provider: 'etsy' },
+            select: { config: true, isActive: true },
+        })
+        const cfg = etsyIntegration?.config as Record<string, string> | null
+        clientId = cfg?.etsyClientId ?? undefined
+    } catch {
+        // DB lookup failed, fall through to env var
+    }
+
+    // 2. Fallback to env var (legacy support)
+    if (!clientId) clientId = process.env.ETSY_CLIENT_ID
+
     if (!clientId) {
         return NextResponse.json({
-            error: 'Etsy is not configured. Admin must set ETSY_CLIENT_ID in Admin → Integrations.',
-            errorVi: 'Etsy chưa được cấu hình. Admin cần nhập ETSY_CLIENT_ID trong Admin → Integrations.',
+            error: 'Etsy is not configured. Admin must set Etsy Keystring in Admin → Integrations → Etsy.',
+            errorVi: 'Etsy chưa được cấu hình. Admin cần nhập Etsy Keystring trong Admin → Integrations → Etsy.',
         }, { status: 503 })
     }
 

@@ -75,6 +75,16 @@ export async function POST() {
             status: 'INACTIVE' as const,
             baseUrl: 'https://shopify.com',
         },
+        {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            category: 'SOCIAL' as any,
+            provider: 'etsy',
+            name: 'Etsy',
+            isActive: false,
+            isDefault: false,
+            status: 'INACTIVE' as const,
+            baseUrl: 'https://openapi.etsy.com/v3',
+        },
     ]
 
     const results = []

@@ -885,6 +885,15 @@ export default function IntegrationsPage() {
                 }
             }
 
+            // Etsy OAuth app config
+            if (integration.provider === 'etsy') {
+                const oauth = oauthConfigs[integration.id]
+                if (oauth) {
+                    body.config = { etsyClientId: oauth.clientId }
+                    if (oauth.clientSecret) body.apiKey = oauth.clientSecret
+                }
+            }
+
             // Stripe config
             if (integration.provider === 'stripe') {
                 const sc = stripeConfigs[integration.id]
@@ -1327,7 +1336,7 @@ function IntegrationCard({
     const isGDrive = integration.provider === 'gdrive'
     const isR2 = integration.provider === 'r2'
     const isStripe = integration.provider === 'stripe'
-    const isOAuth = ['youtube', 'tiktok', 'facebook', 'instagram', 'linkedin', 'x', 'pinterest', 'canva', 'google_oauth', 'threads', 'gbp', 'zalo', 'shopify'].includes(integration.provider)
+    const isOAuth = ['youtube', 'tiktok', 'facebook', 'instagram', 'linkedin', 'x', 'pinterest', 'canva', 'google_oauth', 'threads', 'gbp', 'zalo', 'shopify', 'etsy'].includes(integration.provider)
     const textModels = providerModels.filter((m) => m.type === 'text')
     const imageModels = providerModels.filter((m) => m.type === 'image')
     const videoModels = providerModels.filter((m) => m.type === 'video')
@@ -1813,6 +1822,8 @@ function IntegrationCard({
                                     threads: 'Threads App ID',
                                     gbp: 'Google Client ID',
                                     zalo: 'Zalo App ID',
+                                    shopify: 'Shopify Client ID (Keystring)',
+                                    etsy: 'Etsy Keystring (Client ID)',
                                 }[integration.provider] || 'Client ID'}
                             </Label>
                             <Input
@@ -1833,6 +1844,8 @@ function IntegrationCard({
                                     threads: 'Threads App Secret',
                                     gbp: 'Google Client Secret',
                                     zalo: 'Zalo Secret Key',
+                                    shopify: 'Shopify Client Secret',
+                                    etsy: 'Etsy Shared Secret (Client Secret)',
                                 }[integration.provider] || 'Client Secret'}
                             </Label>
                             <div className="relative">
@@ -1866,6 +1879,8 @@ function IntegrationCard({
                                     threads: 'Go to developers.facebook.com → Create App (Business type) → Add "Threads API" product → In Threads API Settings add Redirect URI: {YOUR_DOMAIN}/api/oauth/threads/callback. Copy App ID and App Secret from App Settings → Basic.',
                                     canva: 'Configure OAuth credentials for this platform.',
                                     zalo: 'Vào developers.zalo.me → tạo ứng dụng → copy App ID và Secret Key. Thêm callback URL: {YOUR_DOMAIN}/api/oauth/zalo/callback. Sau đó vào Channel Settings để kết nối OA.',
+                                    shopify: 'Go to partners.shopify.com → Apps → Create app. Set Callback URL to {YOUR_DOMAIN}/api/integrations/shopify/oauth/callback. Required scopes: read_products, read_inventory. Copy Client ID (Keystring) and Client Secret.',
+                                    etsy: 'Go to etsy.com/developers → Create App. Set Callback URL to {YOUR_DOMAIN}/api/integrations/etsy/oauth/callback. Required scopes: listings_r, shops_r. Copy the Keystring as Client ID and Shared Secret as Client Secret.',
                                 }[integration.provider] || 'Configure OAuth credentials for this platform.'}
                             </p>
                         </div>

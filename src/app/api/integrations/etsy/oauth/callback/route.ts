@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { encrypt } from '@/lib/encryption'
+import { encrypt, decrypt } from '@/lib/encryption'
 
 // GET /api/integrations/etsy/oauth/callback?code=...&state=...
 // Exchanges authorization code for tokens, saves EtsyConfig and redirects to dashboard
@@ -47,8 +47,24 @@ export async function GET(req: NextRequest) {
     }
 
     const { codeVerifier, channelId } = parsed
-    const clientId = process.env.ETSY_CLIENT_ID
-    const clientSecret = process.env.ETSY_CLIENT_SECRET
+
+    // Read Etsy credentials from Admin API Hub (DB), fallback to env vars
+    let clientId: string | undefined
+    let clientSecret: string | undefined
+    try {
+        const etsyIntegration = await prisma.apiIntegration.findFirst({
+            where: { provider: 'etsy' },
+            select: { config: true, apiKeyEncrypted: true },
+        })
+        const cfg = etsyIntegration?.config as Record<string, string> | null
+        clientId = cfg?.etsyClientId ?? undefined
+        if (etsyIntegration?.apiKeyEncrypted) {
+            clientSecret = decrypt(etsyIntegration.apiKeyEncrypted)
+        }
+    } catch { /* ignore, fall through to env */ }
+    if (!clientId) clientId = process.env.ETSY_CLIENT_ID
+    if (!clientSecret) clientSecret = process.env.ETSY_CLIENT_SECRET
+
     if (!clientId || !clientSecret) {
         return NextResponse.redirect(
             `${process.env.NEXTAUTH_URL}/dashboard/integrations/etsy?error=not_configured`
