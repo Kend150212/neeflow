@@ -215,8 +215,12 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
         setPlatformSettings(prev => ({ ...prev, ...patch }))
     }
 
-    // Wizard step (config only)
-    const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1)
+    // Pinterest boards (loaded from API when Pinterest is selected)
+    const [pinterestBoards, setPinterestBoards] = useState<{ id: string; name: string }[]>([])
+    const [pinterestBoardsLoading, setPinterestBoardsLoading] = useState(false)
+
+    // Wizard step: 1=Platforms & Tone, 2=Media, 3=Post Settings, 4=Schedule & Approval
+    const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1)
 
     // Bulk schedule (auto-distribute across date range)
     const [enableSchedule, setEnableSchedule] = useState(false)
@@ -230,10 +234,18 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
     const isCapped = products.length > BULK_LIMIT
 
     // Init selected images to ALL when products change
+    // For bulk AI ref, auto-select first available product image
     useEffect(() => {
         const map: Record<string, string[]> = {}
         products.forEach(p => { map[p.id] = [...p.images] })
         setSelectedImagesMap(map)
+        // Auto-select first product image as AI ref for bulk
+        if (!isSingle) {
+            const firstImg = products.find(p => p.images.length > 0)?.images[0] ?? null
+            setRefImageUrl(firstImg)
+            if (firstImg) setUseProductImageAsRef(true)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [products])
 
     // Fetch channel info
@@ -360,6 +372,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
         const platformConfig: Record<string, Record<string, unknown>> = {}
         if (selectedPlatforms.has('facebook')) {
             platformConfig.facebook = {
+                postType: platformSettings.fbPostType,
                 enableFirstComment: platformSettings.fbEnableFirstComment,
                 firstComment: platformSettings.fbEnableFirstComment ? (platformSettings.fbFirstComment || undefined) : undefined,
             }
@@ -380,7 +393,11 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
             platformConfig.tiktok = { postType: platformSettings.ttPostType }
         }
         if (selectedPlatforms.has('pinterest')) {
-            platformConfig.pinterest = { board: platformSettings.pinBoard || undefined, pinLink: platformSettings.pinLink || undefined }
+            platformConfig.pinterest = {
+                boardId: platformSettings.pinBoardId || undefined,
+                board: platformSettings.pinBoard || undefined,
+                pinLink: platformSettings.pinLink || undefined,
+            }
         }
 
         try {
@@ -477,11 +494,31 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
             .map(t => new Date(t).toLocaleString('vi-VN', { timeZone: channelTimezone, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))
 
 
+    // Load Pinterest boards whenever Pinterest is selected
+    useEffect(() => {
+        const hasPinterest = selectedPlatforms.has('pinterest')
+        if (!hasPinterest || !channelId4Settings || pinterestBoardsLoading) return
+        if (pinterestBoards.length > 0) return
+        const pinPlatform = availablePlatforms.includes('pinterest')
+        if (!pinPlatform) return
+        // Find the Pinterest account ID from channel platforms
+        setPinterestBoardsLoading(true)
+        fetch(`/api/admin/channels/${channelId4Settings}/pinterest-boards`)
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then((data) => {
+                if (Array.isArray(data.boards)) setPinterestBoards(data.boards)
+            })
+            .catch(() => { })
+            .finally(() => setPinterestBoardsLoading(false))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedPlatforms, channelId4Settings])
+
     const WIZARD_STEPS = [
-        { id: 1, label: 'Platforms' },
-        { id: 2, label: 'Media' },
-        { id: 3, label: 'Settings' },
-    ] as const
+        { id: 1 as const, label: t('integrations.shopify.modal.step1Label') || 'Platforms' },
+        { id: 2 as const, label: t('integrations.shopify.modal.step2Label') || 'Media' },
+        { id: 3 as const, label: t('integrations.shopify.modal.step3Label') || 'Settings' },
+        { id: 4 as const, label: t('integrations.shopify.modal.step4Label') || 'Schedule' },
+    ]
 
     return (
         <Dialog open={open} onOpenChange={v => !v && step === 'config' && onClose()}>
@@ -548,6 +585,24 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
 
                 {/* ── Body ───────────────────────────────── */}
                 <div className="flex-1 overflow-y-auto px-5 py-4">
+
+                    {/* Per-step description banner */}
+                    {step === 'config' && (
+                        <div className="mb-4">
+                            {wizardStep === 1 && (
+                                <p className="text-xs text-muted-foreground">{t('integrations.shopify.modal.step1Desc')}</p>
+                            )}
+                            {wizardStep === 2 && (
+                                <p className="text-xs text-muted-foreground">{t('integrations.shopify.modal.step2Desc')}</p>
+                            )}
+                            {wizardStep === 3 && (
+                                <p className="text-xs text-muted-foreground">{t('integrations.shopify.modal.step3Desc')}</p>
+                            )}
+                            {wizardStep === 4 && (
+                                <p className="text-xs text-muted-foreground">{t('integrations.shopify.modal.step4Desc')}</p>
+                            )}
+                        </div>
+                    )}
 
                     {/* STEP 1: Platforms + Tone */}
                     {step === 'config' && wizardStep === 1 && (
@@ -771,7 +826,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                         </div>
                     )}
 
-                    {/* STEP 3: Platform Settings + Schedule + Approval */}
+                    {/* STEP 3: Platform Settings */}
                     {step === 'config' && wizardStep === 3 && (
                         <div className="space-y-5">
                             <div className="space-y-2">
@@ -786,22 +841,36 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                     settings={platformSettings}
                                     onChange={patchSettings}
                                     isBulk={!isSingle}
+                                    pinterestBoards={pinterestBoards}
+                                    pinterestBoardsLoading={pinterestBoardsLoading}
                                 />
                             </div>
+                        </div>
+                    )}
 
+                    {/* STEP 4: Schedule & Approval */}
+                    {step === 'config' && wizardStep === 4 && (
+                        <div className="space-y-5">
+
+                            {/* Auto Schedule */}
                             {!isSingle && (
-                                <div className="space-y-2">
+                                <div className="space-y-2 rounded-xl border border-border/60 bg-card/40 p-4">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                            <Calendar className="h-3.5 w-3.5" />{t('integrations.shopify.modal.autoSchedule')}
-                                        </p>
+                                        <div>
+                                            <p className="text-sm font-semibold flex items-center gap-1.5">
+                                                <Calendar className="h-4 w-4 text-primary" />{t('integrations.shopify.modal.autoSchedule')}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                {t('integrations.shopify.modal.scheduleHowItWorks').replace('{count}', String(cappedProducts.length))}
+                                            </p>
+                                        </div>
                                         <button type="button" onClick={() => setEnableSchedule(!enableSchedule)}
-                                            className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer', enableSchedule ? 'bg-primary' : 'bg-muted')}>
+                                            className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer shrink-0 ml-4', enableSchedule ? 'bg-primary' : 'bg-muted')}>
                                             <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform', enableSchedule ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
                                         </button>
                                     </div>
                                     {enableSchedule && (
-                                        <div className="space-y-2 rounded-xl border border-border/60 bg-card/40 p-3">
+                                        <div className="space-y-2 pt-2 border-t border-border/40">
                                             <p className="text-[10px] text-muted-foreground">
                                                 {t('integrations.shopify.modal.scheduleDesc').replace('{count}', String(cappedProducts.length)).replace('{tz}', channelTimezone)}
                                             </p>
@@ -832,36 +901,46 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                 </div>
                             )}
 
-                            <div className="space-y-2">
-                                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('integrations.shopify.modal.approval')}</p>
-                                {approvalMode === 'optional' && (
-                                    <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card/40 px-3 py-2.5">
-                                        <div className="space-y-0.5">
-                                            <p className="text-xs font-medium">{t('integrations.shopify.modal.requestApproval')}</p>
-                                            <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.requestApprovalDesc')}</p>
+                            {/* Approval */}
+                            <div className="space-y-2 rounded-xl border border-border/60 bg-card/40 p-4">
+                                <div>
+                                    <p className="text-sm font-semibold flex items-center gap-1.5">
+                                        <Check className="h-4 w-4 text-primary" />{t('integrations.shopify.modal.approval')}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                                        {t('integrations.shopify.modal.approvalHowItWorks')}
+                                    </p>
+                                </div>
+                                <div className="border-t border-border/40 pt-3">
+                                    {approvalMode === 'optional' && (
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <p className="text-xs font-medium">{t('integrations.shopify.modal.requestApproval')}</p>
+                                                <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.requestApprovalDesc')}</p>
+                                            </div>
+                                            <button type="button"
+                                                className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer shrink-0', requestApproval ? 'bg-primary' : 'bg-muted')}
+                                                onClick={() => setRequestApproval(!requestApproval)}>
+                                                <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform',
+                                                    requestApproval ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
+                                            </button>
                                         </div>
-                                        <button type="button"
-                                            className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer shrink-0', requestApproval ? 'bg-primary' : 'bg-muted')}
-                                            onClick={() => setRequestApproval(!requestApproval)}>
-                                            <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform',
-                                                requestApproval ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
-                                        </button>
-                                    </div>
-                                )}
-                                {approvalMode === 'required' && (
-                                    <div className="flex items-center justify-between rounded-xl border border-orange-500/30 bg-orange-500/5 px-3 py-2.5">
-                                        <div className="space-y-0.5">
-                                            <p className="text-xs font-medium text-orange-400">{t('integrations.shopify.modal.approvalRequired')}</p>
-                                            <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.approvalRequiredDesc')}</p>
+                                    )}
+                                    {approvalMode === 'required' && (
+                                        <div className="flex items-center justify-between rounded-lg border border-orange-500/30 bg-orange-500/5 px-3 py-2.5">
+                                            <div className="space-y-0.5">
+                                                <p className="text-xs font-medium text-orange-400">{t('integrations.shopify.modal.approvalRequired')}</p>
+                                                <p className="text-[10px] text-muted-foreground">{t('integrations.shopify.modal.approvalRequiredDesc')}</p>
+                                            </div>
+                                            <div className="relative inline-flex h-5 w-9 items-center rounded-full bg-primary border-primary border opacity-70 cursor-not-allowed shrink-0">
+                                                <span className="inline-block h-3.5 w-3.5 translate-x-[17px] rounded-full bg-white shadow" />
+                                            </div>
                                         </div>
-                                        <div className="relative inline-flex h-5 w-9 items-center rounded-full bg-primary border-primary border opacity-70 cursor-not-allowed shrink-0">
-                                            <span className="inline-block h-3.5 w-3.5 translate-x-[17px] rounded-full bg-white shadow" />
-                                        </div>
-                                    </div>
-                                )}
-                                {approvalMode === 'none' && (
-                                    <p className="text-[10px] text-muted-foreground py-1">No approval required for this channel.</p>
-                                )}
+                                    )}
+                                    {approvalMode === 'none' && (
+                                        <p className="text-[10px] text-muted-foreground py-1">No approval workflow is configured for this channel. You can set this up in Channel Settings.</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -913,7 +992,7 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                 {step === 'config' && (
                     <div className="flex items-center gap-2 px-5 py-3 border-t shrink-0">
                         {wizardStep > 1 ? (
-                            <Button variant="outline" size="sm" className="flex-1" onClick={() => setWizardStep((wizardStep - 1) as 1 | 2 | 3)}>
+                            <Button variant="outline" size="sm" className="flex-1" onClick={() => setWizardStep((wizardStep - 1) as 1 | 2 | 3 | 4)}>
                                 ← Back
                             </Button>
                         ) : (
@@ -921,8 +1000,8 @@ export default function CreateShopifyPostModal({ open, onClose, products }: Prop
                                 <X className="h-3.5 w-3.5 mr-1" /> {t('integrations.shopify.modal.cancel')}
                             </Button>
                         )}
-                        {wizardStep < 3 ? (
-                            <Button size="sm" className="flex-1" onClick={() => setWizardStep((wizardStep + 1) as 1 | 2 | 3)} disabled={selectedPlatforms.size === 0}>
+                        {wizardStep < 4 ? (
+                            <Button size="sm" className="flex-1" onClick={() => setWizardStep((wizardStep + 1) as 1 | 2 | 3 | 4)} disabled={selectedPlatforms.size === 0}>
                                 Next →
                             </Button>
                         ) : (
