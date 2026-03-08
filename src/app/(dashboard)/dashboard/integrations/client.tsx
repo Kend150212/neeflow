@@ -70,11 +70,33 @@ const LogoShopify = () => (
     </svg>
 )
 
-// Official WordPress logo — W on blue circle
+// Official WordPress logo
 const LogoWordPress = () => (
     <svg viewBox="0 0 24 24" className="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="#21759B">
         <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zM3.181 12c0-1.765.38-3.44 1.059-4.951L7.862 18.6A8.853 8.853 0 013.181 12zm8.819 8.819a8.855 8.855 0 01-2.503-.359L12.021 12l2.588 7.093a8.81 8.81 0 01-2.609.726zM13.3 7.043c.565-.03.931-.03.931-.03.437-.059.387-.696-.07-.665 0 0-1.425.112-2.344.112-.862 0-2.316-.112-2.316-.112-.457-.031-.507.636-.05.666 0 0 .399.029.82.059l1.218 3.337-1.711 5.131-2.846-8.468c.565-.03.931-.03.931-.03.437-.059.387-.696-.07-.665 0 0-1.425.112-2.344.112-.165 0-.359-.003-.562-.01A8.854 8.854 0 0112 3.181c2.318 0 4.418.888 5.998 2.344a3.703 3.703 0 00-.263-.009c-.862 0-1.473.75-1.473 1.554 0 .724.418 1.336.864 2.059.334.588.726 1.337.726 2.426 0 .751-.289 1.631-.665 2.847l-.868 2.905-3.019-8.979v-.278zm6.35 1.74a8.836 8.836 0 01.169 1.716c0 1.33-.254 2.8-.948 4.479l-2.622 7.592A8.857 8.857 0 0019.65 8.783z" />
     </svg>
+)
+
+// Official WooCommerce logo — purple W mark
+const LogoWooCommerce = () => (
+    <svg viewBox="0 0 100 60" className="w-8 h-5" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="60" rx="8" fill="#7F54B3" />
+        <path fill="white" d="M9 13h5.5l5 22 5.5-15h4.5l5.5 15 5-22H51L42 47h-5l-5.5-15L26 47h-5L9 13zm58 0c8.8 0 15 5.8 15 14 0 8.4-6.2 14-15 14s-15-5.6-15-14c0-8.2 6.2-14 15-14zm0 5c-5.5 0-9 3.8-9 9s3.5 9 9 9 9-3.8 9-9-3.5-9-9-9z" />
+    </svg>
+)
+
+// Dual logo: WP circle + Woo pill side by side
+const LogoWPWoo = () => (
+    <div className="flex items-center gap-1.5">
+        <svg viewBox="0 0 24 24" className="w-7 h-7 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="#21759B">
+            <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zM3.181 12c0-1.765.38-3.44 1.059-4.951L7.862 18.6A8.853 8.853 0 013.181 12zm8.819 8.819a8.855 8.855 0 01-2.503-.359L12.021 12l2.588 7.093a8.81 8.81 0 01-2.609.726zM13.3 7.043c.565-.03.931-.03.931-.03.437-.059.387-.696-.07-.665 0 0-1.425.112-2.344.112-.862 0-2.316-.112-2.316-.112-.457-.031-.507.636-.05.666 0 0 .399.029.82.059l1.218 3.337-1.711 5.131-2.846-8.468c.565-.03.931-.03.931-.03.437-.059.387-.696-.07-.665 0 0-1.425.112-2.344.112-.165 0-.359-.003-.562-.01A8.854 8.854 0 0112 3.181c2.318 0 4.418.888 5.998 2.344a3.703 3.703 0 00-.263-.009c-.862 0-1.473.75-1.473 1.554 0 .724.418 1.336.864 2.059.334.588.726 1.337.726 2.426 0 .751-.289 1.631-.665 2.847l-.868 2.905-3.019-8.979v-.278zm6.35 1.74a8.836 8.836 0 01.169 1.716c0 1.33-.254 2.8-.948 4.479l-2.622 7.592A8.857 8.857 0 0019.65 8.783z" />
+        </svg>
+        <span className="text-muted-foreground/60 text-base font-light">+</span>
+        <svg viewBox="0 0 80 48" className="h-5 w-auto shrink-0" xmlns="http://www.w3.org/2000/svg">
+            <rect width="80" height="48" rx="7" fill="#7F54B3" />
+            <path fill="white" d="M6 10h4.5l4 18 4.5-12h3.5l4.5 12 4-18H35l-7 27h-4l-4.5-12L15 37h-4L6 10zm47 0c7 0 12 4.6 12 11 0 6.7-5 11-12 11S41 27.7 41 21c0-6.4 5-11 12-11zm0 4c-4.4 0-7 3-7 7s2.6 7 7 7 7-3 7-7-2.6-7-7-7z" />
+        </svg>
+    </div>
 )
 
 // Official HubSpot logo — orange sprocket
@@ -143,12 +165,12 @@ const integrations: IntegrationCard[] = [
     },
     {
         slug: 'wordpress',
-        name: 'WordPress',
-        description: 'Connect WooCommerce products and WordPress posts to your content pipeline.',
+        name: 'WordPress + WooCommerce',
+        description: 'Sync WooCommerce products và WordPress blog posts vào content pipeline. 1 kết nối, cả 2 nguồn.',
         href: '/dashboard/integrations/wordpress',
-        logo: <LogoWordPress />,
+        logo: <LogoWPWoo />,
         category: 'E-commerce',
-        tags: ['WooCommerce', 'Products', 'Posts'],
+        tags: ['WooCommerce', 'WordPress', 'Products', 'Posts', 'AI Post'],
     },
     {
         slug: 'hubspot',
