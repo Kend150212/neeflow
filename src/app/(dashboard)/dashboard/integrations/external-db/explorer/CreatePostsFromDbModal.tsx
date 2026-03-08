@@ -153,12 +153,12 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     const [approvalMode, setApprovalMode] = useState<'none' | 'optional' | 'required'>('none')
     const [requestApproval, setRequestApproval] = useState(false)
     const [tone, setTone] = useState('viral')
-    const [language, setLanguage] = useState('vi')
+    const [language, setLanguage] = useState('vi') // auto-set from channel on load
     const [step, setStep] = useState<'config' | 'starting' | 'generating' | 'done'>('config')
     const [localDone, setLocalDone] = useState(0)
 
-    // Date range scheduling
-    const [enableSchedule, setEnableSchedule] = useState(false)
+    // 3-mode publish selector
+    const [postMode, setPostMode] = useState<'publish' | 'schedule' | 'draft'>('draft')
     const today = toDateInputValue(new Date())
     const [scheduleStart, setScheduleStart] = useState(today)
     const [scheduleEnd, setScheduleEnd] = useState(() => {
@@ -290,10 +290,20 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                 if (channel?.requireApproval) setApprovalMode(channel.requireApproval as 'none' | 'optional' | 'required')
                 if (channel?.id) setChannelId4Settings(channel.id)
                 if (channel?.requireApproval === 'required') setRequestApproval(true)
+                // Auto-detect language from channel locale or browser
+                const chanLang = channel?.locale || channel?.language
+                if (chanLang) {
+                    setLanguage(chanLang.startsWith('vi') ? 'vi' : 'en')
+                } else if (typeof navigator !== 'undefined') {
+                    setLanguage(navigator.language?.startsWith('vi') ? 'vi' : 'en')
+                }
             })
             .catch(() => {
                 setAvailablePlatforms(['facebook', 'instagram', 'tiktok'])
                 setSelectedPlatforms(new Set(['facebook', 'instagram']))
+                if (typeof navigator !== 'undefined') {
+                    setLanguage(navigator.language?.startsWith('vi') ? 'vi' : 'en')
+                }
             })
     }, [open, activeChannelId])
 
@@ -317,9 +327,10 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
         setLocalDone(0)
 
         const isSingleRow = rows.length === 1
-        const scheduledTimes = (enableSchedule && !isSingleRow)
+        const asDraft = postMode === 'draft'
+        const scheduledTimes = (postMode === 'schedule' && !isSingleRow)
             ? distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone) : null
-        const singleScheduledAt = (enableSchedule && isSingleRow)
+        const singleScheduledAt = (postMode === 'schedule' && isSingleRow)
             ? distributeScheduleTimes(scheduleStart, scheduleEnd, 1, channelTimezone)[0] : null
 
         // Build imageConfig payload — server generates image per-row; prompt is optional (falls back to post content)
@@ -345,6 +356,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                         channelId: activeChannelId, dataText: rowToText(rows[0]), tableName,
                         tone, platforms: [...selectedPlatforms], language, rowData: rows[0], columns,
                         scheduledAt: singleScheduledAt,
+                        asDraft,
                         ...aiImagePayload,
                     }),
                 })
@@ -371,6 +383,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             channelId: activeChannelId, dataText: rowToText(rows[i]), tableName,
                             tone, platforms: [...selectedPlatforms], language, rowData: rows[i], columns,
                             scheduledAt: scheduledTimes ? scheduledTimes[i] : null,
+                            asDraft,
                             requestApproval,
                             ...aiImagePayload,
                         }),
@@ -398,7 +411,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
     const pct = rows.length > 0 ? Math.round((localDone / rows.length) * 100) : 0
 
     const schedulePreview = (() => {
-        if (!enableSchedule || isSingleRow || !scheduleStart || !scheduleEnd || scheduleStart > scheduleEnd) return null
+        if (postMode !== 'schedule' || isSingleRow || !scheduleStart || !scheduleEnd || scheduleStart > scheduleEnd) return null
         return distributeScheduleTimes(scheduleStart, scheduleEnd, rows.length, channelTimezone).slice(0, 3).map(t =>
             new Date(t).toLocaleString('vi-VN', {
                 timeZone: channelTimezone, day: '2-digit', month: '2-digit',
@@ -500,20 +513,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             </div>
                         </div>
 
-                        {/* LANGUAGE */}
-                        <div className="grid grid-cols-2 gap-2">
-                            {[{ value: 'vi', label: '🇻🇳 Tiếng Việt' }, { value: 'en', label: '🇺🇸 English' }].map(l => (
-                                <button key={l.value} type="button" onClick={() => setLanguage(l.value)}
-                                    className={cn(
-                                        'py-2 rounded-xl text-xs border transition-all font-medium',
-                                        language === l.value
-                                            ? 'border-primary bg-primary/10 text-primary'
-                                            : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:text-foreground'
-                                    )}>
-                                    {l.label}
-                                </button>
-                            ))}
-                        </div>
+                        {/* Language is auto-detected from channel — no UI needed */}
 
                         {/* ── AI IMAGE GENERATION ─────────────────────────────── */}
                         <div className="space-y-3">
@@ -702,59 +702,73 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             )}
                         </div>
 
-                        {/* AUTO SCHEDULE */}
-                        {!isSingleRow && (
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Auto Schedule</p>
-                                    </div>
-                                    <button type="button" onClick={() => setEnableSchedule(v => !v)}
-                                        className={cn('relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
-                                            enableSchedule ? 'bg-primary border-primary' : 'bg-muted border-border/60')}>
-                                        <span className={cn('inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform',
-                                            enableSchedule ? 'translate-x-[17px]' : 'translate-x-[2px]')} />
+                        {/* ── PUBLISH MODE ─────────────── */}
+                        <div className="space-y-3 rounded-xl border border-border/60 bg-card/40 p-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">When to publish</p>
+                            <div className="grid grid-cols-3 gap-2">
+                                {([
+                                    { val: 'publish' as const, label: 'Publish Now', icon: <Zap className="h-4 w-4" />, desc: 'Post immediately' },
+                                    { val: 'schedule' as const, label: isSingleRow ? 'Schedule' : 'Auto-Schedule', icon: <Calendar className="h-4 w-4" />, desc: isSingleRow ? 'Pick a date' : `Spread over date range` },
+                                    { val: 'draft' as const, label: 'Save Draft', icon: <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>, desc: 'Review manually later' },
+                                ] as const).map(({ val, label, icon, desc }) => (
+                                    <button key={val} type="button"
+                                        onClick={() => setPostMode(val)}
+                                        className={cn(
+                                            'flex flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 text-xs font-medium transition-all cursor-pointer text-center',
+                                            postMode === val
+                                                ? 'border-primary bg-primary/10 text-primary shadow-[0_0_0_1px] shadow-primary'
+                                                : 'border-border/60 bg-background text-muted-foreground hover:border-border hover:text-foreground'
+                                        )}>
+                                        {icon}
+                                        <span className="font-semibold text-[11px]">{label}</span>
+                                        <span className="text-[9px] font-normal opacity-70 leading-tight">{desc}</span>
+                                        {postMode === val && <Check className="h-3 w-3 mt-0.5" />}
                                     </button>
-                                </div>
-                                {enableSchedule && (
-                                    <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-                                        <p className="text-[10px] text-muted-foreground">
-                                            AI phân bổ {rows.length} bài đều trong khoảng thời gian này
-                                            {channelTimezone !== 'UTC' && <span className="ml-1 text-primary/70">· {channelTimezone}</span>}
-                                        </p>
-                                        <div className="grid grid-cols-2 gap-2">
+                                ))}
+                            </div>
+
+                            {/* Date range for schedule mode */}
+                            {postMode === 'schedule' && (
+                                <div className="space-y-2 pt-1 border-t border-border/40">
+                                    <p className="text-[10px] text-muted-foreground">
+                                        {isSingleRow
+                                            ? 'Pick a date to schedule this post'
+                                            : `Distribute ${rows.length} posts over this date range`}
+                                        {channelTimezone !== 'UTC' && <span className="ml-1 text-primary/70">· {channelTimezone}</span>}
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">From</label>
+                                            <input type="date" value={scheduleStart} min={today}
+                                                onChange={e => setScheduleStart(e.target.value)}
+                                                className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
+                                        </div>
+                                        {!isSingleRow && (
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Từ ngày</label>
-                                                <input type="date" value={scheduleStart} min={today}
-                                                    onChange={e => setScheduleStart(e.target.value)}
-                                                    className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Đến ngày</label>
+                                                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">To</label>
                                                 <input type="date" value={scheduleEnd} min={scheduleStart || today}
                                                     onChange={e => setScheduleEnd(e.target.value)}
                                                     className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs focus:outline-none focus:border-primary" />
                                             </div>
-                                        </div>
-                                        {schedulePreview && (
-                                            <div className="flex flex-wrap gap-1">
-                                                {schedulePreview.map((t, i) => (
-                                                    <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
-                                                        <Clock className="h-2.5 w-2.5" /> Bài {i + 1}: {t}
-                                                    </span>
-                                                ))}
-                                                {rows.length > 3 && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
-                                                        +{rows.length - 3} bài nữa...
-                                                    </span>
-                                                )}
-                                            </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
-                        )}
+                                    {schedulePreview && (
+                                        <div className="flex flex-wrap gap-1">
+                                            {schedulePreview.map((t, i) => (
+                                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
+                                                    <Clock className="h-2.5 w-2.5" /> Post {i + 1}: {t}
+                                                </span>
+                                            ))}
+                                            {rows.length > 3 && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-background border border-border/60 text-[10px] text-muted-foreground">
+                                                    +{rows.length - 3} more…
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {/* APPROVAL */}
                         <div className="space-y-2">
@@ -822,7 +836,7 @@ export default function CreatePostsFromDbModal({ open, onClose, rows, columns, t
                             </Button>
                             <Button size="sm" className="flex-1 font-semibold" onClick={handleCreate} disabled={selectedPlatforms.size === 0}>
                                 <Zap className="h-3.5 w-3.5 mr-1" />
-                                {isSingleRow ? 'Generate & Edit' : `Create ${rows.length} Drafts`}
+                                {isSingleRow ? 'Generate & Edit' : postMode === 'draft' ? `Save ${rows.length} Drafts` : postMode === 'schedule' ? `Schedule ${rows.length} Posts` : `Create ${rows.length} Posts`}
                             </Button>
                         </div>
                     </div>
