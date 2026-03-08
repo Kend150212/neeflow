@@ -662,6 +662,12 @@ export default function IntegrationsPage() {
                         clientSecret: '',
                     }
                 }
+                if (i.provider === 'etsy') {
+                    oauthConfigMap[i.id] = {
+                        clientId: config.etsyClientId || '',
+                        clientSecret: '',
+                    }
+                }
                 if (i.provider === 'stripe') {
                     stripeConfigMap[i.id] = {
                         publishableKey: config.publishableKey || '',
