@@ -39,7 +39,7 @@ export async function syncShopifyProducts(channelId: string): Promise<{ synced: 
 
     try {
         do {
-            const url = pageInfo
+            const url: string = pageInfo
                 ? `https://${domain}/admin/api/2024-10/products.json?limit=250&page_info=${pageInfo}&fields=id,title,body_html,vendor,product_type,handle,tags,status,variants,images`
                 : `https://${domain}/admin/api/2024-10/products.json?limit=250&fields=id,title,body_html,vendor,product_type,handle,tags,status,variants,images`
 
