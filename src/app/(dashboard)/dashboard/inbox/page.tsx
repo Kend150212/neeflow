@@ -2119,13 +2119,13 @@ export default function InboxPage() {
                                                                     {(!msg.mediaUrl || msg.content !== '[Attachment]') && (
                                                                         <div className={cn(
                                                                             'whitespace-pre-wrap',
-                                                                            msg.direction === 'outbound' && msg.senderType === 'agent' && 'text-green-400'
+                                                                            msg.direction === 'outbound' && msg.senderType === 'agent' && 'text-foreground dark:text-green-400'
                                                                         )}>{msg.content}</div>
                                                                     )}
                                                                     <div className={cn(
                                                                         'text-[9px] mt-1.5',
                                                                         msg.direction === 'outbound' && msg.senderType !== 'bot'
-                                                                            ? 'text-green-500'
+                                                                            ? 'text-muted-foreground dark:text-green-500'
                                                                             : 'text-muted-foreground'
                                                                     )}>
                                                                         {new Date(msg.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
