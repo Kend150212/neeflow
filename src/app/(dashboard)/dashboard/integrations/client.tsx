@@ -755,8 +755,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                             <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 flex items-center gap-2">
                                 <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
                                 <p className="text-[11px] text-primary/80">
-                                    <strong>Runs automatically inside the app</strong> — no server crontab needed.
-                                    Changes take effect immediately after saving.
+                                    Sản phẩm được cập nhật tự động hàng ngày — Chatbot luôn có thông tin mới nhất về giá, tồn kho và sản phẩm mới để tư vấn khách hàng chính xác hơn.
                                 </p>
                             </div>
                         </div>
