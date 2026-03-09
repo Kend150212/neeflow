@@ -97,32 +97,27 @@ export default function StudioChannelPage() {
                     <span className="font-extrabold text-base tracking-tight">Studio</span>
                 </div>
                 <nav className="flex-1 px-3 space-y-1">
-                    {[
-                        { key: 'projects', label: 'Projects', icon: FolderOpen },
-                        { key: 'avatars', label: 'Avatars', icon: User },
-                    ].map(item => (
-                        <button
-                            key={item.key}
-                            onClick={() => setActiveNav(item.key as 'projects' | 'avatars')}
-                            className={cn(
-                                'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                                activeNav === item.key
-                                    ? 'bg-emerald-400/10 text-emerald-400'
-                                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                            )}
-                        >
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                        </button>
-                    ))}
-                </nav>
-                <div className="p-3 border-t border-white/5">
-                    <Link href={`/dashboard/studio/${channelId}/avatars`}>
-                        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-slate-500 hover:text-white text-xs">
-                            <User className="h-3.5 w-3.5" /> Manage Avatars
-                        </Button>
+                    <button
+                        onClick={() => setActiveNav('projects')}
+                        className={cn(
+                            'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                            activeNav === 'projects'
+                                ? 'bg-emerald-400/10 text-emerald-400'
+                                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                        )}
+                    >
+                        <FolderOpen className="h-4 w-4" /> Projects
+                    </button>
+                    <Link
+                        href={`/dashboard/studio/${channelId}/avatars`}
+                        className={cn(
+                            'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                            'text-slate-400 hover:bg-white/5 hover:text-white'
+                        )}
+                    >
+                        <User className="h-4 w-4" /> Avatars
                     </Link>
-                </div>
+                </nav>
             </aside>
 
             {/* Main content */}
@@ -259,15 +254,7 @@ export default function StudioChannelPage() {
                         </>
                     )}
 
-                    {activeNav === 'avatars' && (
-                        <div className="flex flex-col items-center justify-center py-12 gap-4">
-                            <Link href={`/dashboard/studio/${channelId}/avatars`}>
-                                <Button className="gap-2 bg-emerald-400 text-[#080d0b] font-bold">
-                                    <User className="h-4 w-4" /> Go to Avatars Manager
-                                </Button>
-                            </Link>
-                        </div>
-                    )}
+
                 </div>
             </div>
 

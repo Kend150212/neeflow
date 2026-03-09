@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, FolderOpen, Upload, Search, ChevronRight, MoreHorizontal, Shirt, Glasses, Package } from 'lucide-react'
+import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, FolderOpen, Upload, Search, ChevronRight, MoreHorizontal, Shirt, Glasses, Package, Pencil, Check } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -147,6 +147,12 @@ export default function ChannelAvatarsPage() {
     const refCoverRef = useRef<HTMLInputElement>(null)
     const [uploadingRef, setUploadingRef] = useState(false)
 
+    // Rename state for inline sidebar rename
+    const [renamingId, setRenamingId] = useState<string | null>(null)
+    const [renameValue, setRenameValue] = useState('')
+    const [renameSaving, setRenameSaving] = useState(false)
+    const [confirmDelete, setConfirmDelete] = useState<string | null>(null) // avatarId to confirm delete
+
     // Edit fields (right panel when shared is false)
     const [editName, setEditName] = useState(''); const [editPrompt, setEditPrompt] = useState('')
     const [editStyle, setEditStyle] = useState('realistic'); const [saving, setSaving] = useState(false)
@@ -170,8 +176,17 @@ export default function ChannelAvatarsPage() {
             if (res.ok) {
                 const data = await res.json()
                 const all: StudioAvatar[] = data.avatars || []
-                setAvatars(all); setSharedAvatars(data.sharedAvatars || [])
-                setSelected(prev => prev ? (all.find(a => a.id === prev.id) ?? prev) : null)
+                const shared: StudioAvatar[] = data.sharedAvatars || []
+                setAvatars(all); setSharedAvatars(shared)
+                setSelected(prev => {
+                    if (prev) return all.find(a => a.id === prev.id) ?? prev
+                    // Auto-select first avatar on initial load
+                    if (all.length > 0) {
+                        fetchAvatarDetail(all[0].id)
+                        return all[0]
+                    }
+                    return null
+                })
             }
         } finally { setLoading(false) }
     }
@@ -228,7 +243,39 @@ export default function ChannelAvatarsPage() {
 
     async function deleteAvatar(id: string) {
         const res = await fetch(`/api/studio/channels/${channelId}/avatars/${id}`, { method: 'DELETE' })
-        if (res.ok) { setAvatars(prev => prev.filter(a => a.id !== id)); if (selected?.id === id) setSelected(null); toast.success('Deleted') }
+        if (res.ok) {
+            setAvatars(prev => {
+                const remaining = prev.filter(a => a.id !== id)
+                if (selected?.id === id) {
+                    const nextAvatar = remaining[0] || null
+                    if (nextAvatar) fetchAvatarDetail(nextAvatar.id)
+                    setSelected(nextAvatar)
+                }
+                return remaining
+            })
+            setConfirmDelete(null)
+            toast.success('Deleted')
+        }
+    }
+
+    async function saveRename(id: string) {
+        if (!renameValue.trim()) return
+        setRenameSaving(true)
+        try {
+            const res = await fetch(`/api/studio/channels/${channelId}/avatars/${id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: renameValue.trim() }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setAvatars(prev => prev.map(a => a.id === id ? { ...a, name: data.avatar.name } : a))
+                setSelected(prev => prev?.id === id ? { ...prev, name: data.avatar.name } : prev)
+                toast.success('Renamed!')
+            }
+        } finally {
+            setRenameSaving(false)
+            setRenamingId(null)
+        }
     }
 
     async function generateAvatar(avatar: StudioAvatar) {
@@ -448,24 +495,78 @@ export default function ChannelAvatarsPage() {
                             <button onClick={() => setShowCreate(true)} className="text-xs text-emerald-400 hover:underline">+ Create first avatar</button>
                         </div>
                     ) : filteredAvatars.map(av => (
-                        <button key={av.id} onClick={() => selectAvatar(av)}
-                            className={cn('w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all group',
-                                selected?.id === av.id ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'
-                            )}>
-                            <div className={cn('w-10 h-10 rounded-lg bg-slate-800 border overflow-hidden flex-shrink-0 transition-all',
-                                selected?.id === av.id ? 'border-emerald-500/40' : 'border-white/10 grayscale group-hover:grayscale-0'
-                            )}>
-                                {av.coverImage ? <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" /> :
-                                    <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">{av.name[0]}</div>}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className={cn('text-xs font-bold truncate', selected?.id === av.id ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors')}>{av.name}</p>
-                                <p className={cn('text-[10px] uppercase tracking-widest font-bold mt-0.5',
-                                    av.status === 'generating' ? 'text-amber-400' : selected?.id === av.id ? 'text-emerald-400' : 'text-slate-600'
-                                )}>{av._shared ? 'Shared' : av.status}</p>
-                            </div>
-                            {av.status === 'generating' && <Loader2 size={12} className="animate-spin text-amber-400 flex-shrink-0" />}
-                        </button>
+                        <div key={av.id} className="relative group/item">
+                            {/* Confirm delete overlay */}
+                            {confirmDelete === av.id && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-[#0a0f0d]/95 rounded-xl border border-red-500/30">
+                                    <span className="text-[10px] text-red-400 font-bold">Xóa?</span>
+                                    <button onClick={() => deleteAvatar(av.id)} className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded">
+                                        {renameSaving ? <Loader2 size={10} className="animate-spin" /> : 'OK'}
+                                    </button>
+                                    <button onClick={() => setConfirmDelete(null)} className="px-2 py-0.5 bg-white/10 text-slate-300 text-[10px] rounded">Hủy</button>
+                                </div>
+                            )}
+
+                            {renamingId === av.id ? (
+                                /* Inline rename mode */
+                                <div className="flex items-center gap-1.5 p-2">
+                                    <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0">
+                                        {av.coverImage ? <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" /> :
+                                            <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">{av.name[0]}</div>}
+                                    </div>
+                                    <input
+                                        autoFocus
+                                        value={renameValue}
+                                        onChange={e => setRenameValue(e.target.value)}
+                                        onKeyDown={e => { if (e.key === 'Enter') saveRename(av.id); if (e.key === 'Escape') setRenamingId(null) }}
+                                        className="flex-1 bg-white/10 border border-emerald-500/40 rounded px-2 py-1 text-xs text-white outline-none"
+                                    />
+                                    <button onClick={() => saveRename(av.id)} disabled={renameSaving} className="text-emerald-400 hover:text-emerald-300">
+                                        {renameSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                                    </button>
+                                    <button onClick={() => setRenamingId(null)} className="text-slate-500 hover:text-white"><X size={12} /></button>
+                                </div>
+                            ) : (
+                                /* Normal row */
+                                <button onClick={() => selectAvatar(av)}
+                                    className={cn('w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all group',
+                                        selected?.id === av.id ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'
+                                    )}>
+                                    <div className={cn('w-10 h-10 rounded-lg bg-slate-800 border overflow-hidden flex-shrink-0 transition-all',
+                                        selected?.id === av.id ? 'border-emerald-500/40' : 'border-white/10 grayscale group-hover:grayscale-0'
+                                    )}>
+                                        {av.coverImage ? <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" /> :
+                                            <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">{av.name[0]}</div>}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={cn('text-xs font-bold truncate', selected?.id === av.id ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors')}>{av.name}</p>
+                                        <p className={cn('text-[10px] uppercase tracking-widest font-bold mt-0.5',
+                                            av.status === 'generating' ? 'text-amber-400' : selected?.id === av.id ? 'text-emerald-400' : 'text-slate-600'
+                                        )}>{av._shared ? 'Shared' : av.status}</p>
+                                    </div>
+                                    {av.status === 'generating' && <Loader2 size={12} className="animate-spin text-amber-400 flex-shrink-0" />}
+                                    {/* Action buttons on hover */}
+                                    {!av._shared && (
+                                        <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0">
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setRenamingId(av.id); setRenameValue(av.name) }}
+                                                className="w-6 h-6 flex items-center justify-center rounded bg-white/5 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-400 transition-all"
+                                                title="Đổi tên"
+                                            >
+                                                <Pencil size={10} />
+                                            </button>
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setConfirmDelete(av.id) }}
+                                                className="w-6 h-6 flex items-center justify-center rounded bg-white/5 hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all"
+                                                title="Xóa"
+                                            >
+                                                <Trash2 size={10} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </button>
+                            )}
+                        </div>
                     ))}
                 </div>
 
@@ -484,9 +585,10 @@ export default function ChannelAvatarsPage() {
                             <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
                                 <Sparkles size={24} className="text-emerald-400" />
                             </div>
-                            <p className="text-slate-400 text-sm">Select a character to view details</p>
-                            <button onClick={() => setShowCreate(true)} className="mt-4 px-4 py-2 bg-emerald-500 text-black text-xs font-bold rounded-xl hover:bg-emerald-400 transition-all">
-                                + Create First Avatar
+                            <p className="text-slate-400 text-sm mb-1">No avatars yet</p>
+                            <p className="text-slate-600 text-xs mb-4">Tạo avatar đầu tiên để bắt đầu</p>
+                            <button onClick={() => setShowCreate(true)} className="mt-2 px-4 py-2 bg-emerald-500 text-black text-xs font-bold rounded-xl hover:bg-emerald-400 transition-all">
+                                + Tạo Avatar
                             </button>
                         </div>
                     </div>
