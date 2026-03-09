@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { encrypt, decrypt } from '@/lib/encryption'
+import { syncEtsyProducts } from '@/lib/integration-sync'
 
 // GET /api/integrations/etsy/oauth/callback?code=...&state=...
 // Exchanges authorization code for tokens, saves EtsyConfig and redirects to dashboard
@@ -157,6 +158,17 @@ export async function GET(req: NextRequest) {
                 shopId: String(shop.shop_id),
                 shopName: shop.shop_name,
             },
+        })
+
+        // ── Auto-sync listings after connect (fire-and-forget) ─────────────
+        const _channelId = channelId
+        setImmediate(async () => {
+            try {
+                const r = await syncEtsyProducts(_channelId)
+                console.log(`[AutoSync] Etsy connect channel=${_channelId}: synced=${r.synced} failed=${r.failed}`)
+            } catch (err) {
+                console.error(`[AutoSync] Etsy connect channel=${_channelId} error:`, err)
+            }
         })
 
         // Clear the state cookie

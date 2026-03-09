@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { encrypt, decrypt } from '@/lib/encryption'
+import { encrypt } from '@/lib/encryption'
+import { syncWordPressProducts } from '@/lib/integration-sync'
 
 // GET /api/integrations/wordpress?channelId=xxx — load config for channel
 export async function GET(req: NextRequest) {
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'channelId, siteUrl and username required' }, { status: 400 })
     }
 
-    const url = siteUrl.replace(/\/$/, '') // remove trailing slash
+    const url = siteUrl.replace(/\/$/, '')
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, unknown> = {
@@ -51,8 +52,8 @@ export async function POST(req: NextRequest) {
         syncWpPosts: syncWpPosts ?? false,
     }
 
-    // Only update password if new one provided (not placeholder)
-    if (appPassword && appPassword !== '••••••••••••') {
+    const hasNewPassword = appPassword && appPassword !== '••••••••••••'
+    if (hasNewPassword) {
         data.appPassword = encrypt(appPassword)
     }
 
@@ -70,7 +71,20 @@ export async function POST(req: NextRequest) {
         update: data,
     })
 
-    return NextResponse.json({ success: true, id: cfg.id })
+    // ── Auto-sync on connect / password update (fire-and-forget) ───────────
+    if (hasNewPassword) {
+        const _channelId = channelId
+        setImmediate(async () => {
+            try {
+                const r = await syncWordPressProducts(_channelId)
+                console.log(`[AutoSync] WordPress connect channel=${_channelId}: synced=${r.synced} failed=${r.failed}`)
+            } catch (err) {
+                console.error(`[AutoSync] WordPress connect channel=${_channelId} error:`, err)
+            }
+        })
+    }
+
+    return NextResponse.json({ success: true, id: cfg.id, autoSyncStarted: hasNewPassword })
 }
 
 // DELETE /api/integrations/wordpress?channelId=xxx — remove config
@@ -85,5 +99,3 @@ export async function DELETE(req: NextRequest) {
     await (prisma as any).wordPressConfig.deleteMany({ where: { channelId } })
     return NextResponse.json({ success: true })
 }
-
-export { decrypt } // re-export so route.ts modules can use it for decrypt in sync

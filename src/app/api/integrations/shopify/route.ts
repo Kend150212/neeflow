@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { encrypt, decrypt } from '@/lib/encryption'
+import { encrypt } from '@/lib/encryption'
+import { syncShopifyProducts } from '@/lib/integration-sync'
 
 // GET /api/integrations/shopify?channelId=xxx — load config for channel
 export async function GET(req: NextRequest) {
@@ -18,7 +19,6 @@ export async function GET(req: NextRequest) {
         config: {
             id: config.id,
             shopDomain: config.shopDomain,
-            // Never expose raw token — just show masked
             hasToken: !!config.accessToken,
             syncInventory: config.syncInventory,
             syncCollections: config.syncCollections,
@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
         syncImages: syncImages ?? true,
     }
 
-    // Only update token if new one provided (not placeholder)
-    if (accessToken && accessToken !== '••••••••••••') {
+    const hasNewToken = accessToken && accessToken !== '••••••••••••'
+    if (hasNewToken) {
         data.accessToken = encrypt(accessToken)
     }
 
@@ -59,7 +59,20 @@ export async function POST(req: NextRequest) {
         update: data,
     })
 
-    return NextResponse.json({ success: true, id: config.id })
+    // ── Auto-sync on connect / token update (fire-and-forget) ──────────────
+    if (hasNewToken) {
+        const _channelId = channelId
+        setImmediate(async () => {
+            try {
+                const r = await syncShopifyProducts(_channelId)
+                console.log(`[AutoSync] Shopify connect channel=${_channelId}: synced=${r.synced} failed=${r.failed}`)
+            } catch (err) {
+                console.error(`[AutoSync] Shopify connect channel=${_channelId} error:`, err)
+            }
+        })
+    }
+
+    return NextResponse.json({ success: true, id: config.id, autoSyncStarted: hasNewToken })
 }
 
 // DELETE /api/integrations/shopify?channelId=xxx — remove config
