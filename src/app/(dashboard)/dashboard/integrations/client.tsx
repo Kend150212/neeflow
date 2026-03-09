@@ -269,15 +269,28 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
 
     // ── Sync state ──
     const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
-    const [syncingSlug, setSyncingSlug] = useState<string | null>(null)  // which card is syncing
+    const [syncingSlug, setSyncingSlug] = useState<string | null>(null)
     const [syncingAll, setSyncingAll] = useState(false)
-    const [cronHour, setCronHour] = useState(2)   // default 2am
-    const [cronCopied, setCronCopied] = useState(false)
+    const [cronHour, setCronHour] = useState(2)
+    const [scheduleEnabled, setScheduleEnabled] = useState(true)
+    const [scheduleSaving, setScheduleSaving] = useState(false)
+    const [scheduleSaved, setScheduleSaved] = useState(false)
 
     const fetchSyncStatus = useCallback(async () => {
         try {
             const res = await fetch('/api/integrations/sync-status')
             if (res.ok) setSyncStatus(await res.json())
+        } catch { /* */ }
+    }, [])
+
+    const fetchSchedule = useCallback(async () => {
+        try {
+            const res = await fetch('/api/user/sync-schedule')
+            if (res.ok) {
+                const d = await res.json()
+                setCronHour(d.hour ?? 2)
+                setScheduleEnabled(d.enabled !== false)
+            }
         } catch { /* */ }
     }, [])
 
@@ -299,7 +312,8 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
         fetchGDriveStatus()
         fetchCanvaStatus()
         fetchSyncStatus()
-    }, [fetchGDriveStatus, fetchCanvaStatus, fetchSyncStatus])
+        fetchSchedule()
+    }, [fetchGDriveStatus, fetchCanvaStatus, fetchSyncStatus, fetchSchedule])
 
     // integration defs resolved with translations
     const integrations: IntegrationCard[] = integrationDefs.map(d => ({
@@ -425,12 +439,23 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
         setSyncingAll(false)
     }
 
-    const handleCopyCron = () => {
-        const cmd = `0 ${cronHour} * * * curl -s -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/sync-products >> /var/log/sync-products.log 2>&1`
-        navigator.clipboard.writeText(cmd).then(() => {
-            setCronCopied(true)
-            setTimeout(() => setCronCopied(false), 2000)
-        })
+    const handleSaveSchedule = async () => {
+        setScheduleSaving(true)
+        try {
+            const res = await fetch('/api/user/sync-schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hour: cronHour, enabled: scheduleEnabled }),
+            })
+            if (res.ok) {
+                setScheduleSaved(true)
+                setTimeout(() => setScheduleSaved(false), 2500)
+                toast.success(`✅ Schedule saved — daily sync at ${String(cronHour).padStart(2, '0')}:00 UTC`)
+            } else {
+                toast.error('Failed to save schedule')
+            }
+        } catch { toast.error('Failed to save schedule') }
+        setScheduleSaving(false)
     }
 
     const formatSyncTime = (iso: string | null | undefined) => {
@@ -654,9 +679,21 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                             </option>
                                         ))}
                                     </select>
-                                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleCopyCron}>
-                                        {cronCopied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
-                                        {cronCopied ? 'Copied!' : 'Copy Cron'}
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={scheduleEnabled}
+                                            onChange={e => setScheduleEnabled(e.target.checked)}
+                                            className="w-3.5 h-3.5 accent-primary"
+                                        />
+                                        <span className="text-xs text-muted-foreground">Enabled</span>
+                                    </label>
+                                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5"
+                                        onClick={handleSaveSchedule} disabled={scheduleSaving}>
+                                        {scheduleSaving
+                                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                                            : <Check className={`h-3 w-3 ${scheduleSaved ? 'text-primary' : ''}`} />}
+                                        {scheduleSaved ? 'Saved!' : scheduleSaving ? 'Saving…' : 'Save'}
                                     </Button>
                                 </div>
                             </div>
@@ -700,12 +737,13 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                 })}
                             </div>
 
-                            {/* Cron command display */}
-                            <div className="rounded-lg bg-muted/60 border border-border/50 px-3 py-2">
-                                <p className="text-[10px] text-muted-foreground mb-1">Server cron command:</p>
-                                <code className="text-[10px] font-mono text-foreground/80 break-all">
-                                    {`0 ${cronHour} * * * curl -s -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/sync-products`}
-                                </code>
+                            {/* Auto-runs info */}
+                            <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 flex items-center gap-2">
+                                <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <p className="text-[11px] text-primary/80">
+                                    <strong>Runs automatically inside the app</strong> — no server crontab needed.
+                                    Changes take effect immediately after saving.
+                                </p>
                             </div>
                         </div>
                     )}

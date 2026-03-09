@@ -3,6 +3,8 @@
  * Loads dynamic credentials from the database into process.env so that
  * next-auth providers (Google OAuth) pick them up on the next request.
  *
+ * Also starts the in-process product sync scheduler (node-cron).
+ *
  * Docs: https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation
  */
 export async function register() {
@@ -57,5 +59,15 @@ export async function register() {
         await pool.end()
     } catch (err) {
         console.error('[instrumentation] Failed to load credentials:', err)
+    }
+
+    // ── Start in-process product sync scheduler ──────────────────────────────
+    // Reads hour from .sync-schedule.json (created when user sets schedule in UI)
+    // Defaults to 2:00 AM UTC daily if no config file exists.
+    try {
+        const { startSyncScheduler } = await import('@/lib/sync-scheduler')
+        startSyncScheduler()
+    } catch (err) {
+        console.error('[instrumentation] Failed to start sync scheduler:', err)
     }
 }
