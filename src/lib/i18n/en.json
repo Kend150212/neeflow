@@ -191,7 +191,20 @@
     "airtableName": "Airtable",
     "airtableDesc": "Connect Airtable bases to power chatbot answers and auto-post creation.",
     "zapierName": "Zapier",
-    "zapierDesc": "Trigger posts and chatbot actions from any Zapier-connected app."
+    "zapierDesc": "Trigger posts and chatbot actions from any Zapier-connected app.",
+    "syncScheduleTitle": "Auto-Sync Schedule",
+    "syncScheduleDesc": "Set daily sync time for all data sources",
+    "syncScheduleInfo": "Products sync automatically every day — your Chatbot always has the latest prices, stock availability, and new arrivals to give customers accurate answers.",
+    "syncAll": "Sync All",
+    "syncNow": "Sync now",
+    "syncing": "Syncing…",
+    "lastSync": "Last sync",
+    "itemsCount": "{count} items",
+    "dailyAt": "Daily at",
+    "enabled": "Enabled",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved!"
   },
   "integrations": {
     "title": "API Hub",

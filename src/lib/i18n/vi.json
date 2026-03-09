@@ -191,7 +191,20 @@
     "airtableName": "Airtable",
     "airtableDesc": "Kết nối Airtable để hỗ trợ chatbot và tự động tạo bài đăng.",
     "zapierName": "Zapier",
-    "zapierDesc": "Kích hoạt bài đăng và hành động chatbot từ bất kỳ ứng dụng nào được kết nối qua Zapier."
+    "zapierDesc": "Kích hoạt bài đăng và hành động chatbot từ bất kỳ ứng dụng nào được kết nối qua Zapier.",
+    "syncScheduleTitle": "Lịch Tự Động Sync",
+    "syncScheduleDesc": "Đặt giờ sync hàng ngày cho tất cả nguồn dữ liệu",
+    "syncScheduleInfo": "Sản phẩm được cập nhật tự động hàng ngày — Chatbot luôn có thông tin mới nhất về giá, tồn kho và sản phẩm mới để tư vấn khách hàng chính xác hơn.",
+    "syncAll": "Sync Tất Cả",
+    "syncNow": "Sync ngay",
+    "syncing": "Đang sync…",
+    "lastSync": "Sync lần cuối",
+    "itemsCount": "{count} sản phẩm",
+    "dailyAt": "Hàng ngày lúc",
+    "enabled": "Bật",
+    "save": "Lưu",
+    "saving": "Đang lưu…",
+    "saved": "Đã lưu!"
   },
   "integrations": {
     "title": "API Hub",

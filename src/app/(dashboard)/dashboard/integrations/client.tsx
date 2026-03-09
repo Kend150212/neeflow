@@ -454,7 +454,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
             if (res.ok) {
                 setScheduleSaved(true)
                 setTimeout(() => setScheduleSaved(false), 2500)
-                toast.success(`✅ Schedule saved — daily sync at ${String(cronHour).padStart(2, '0')}:00 ${channelTimezone}`)
+                toast.success(`✅ ${t('hub.saved')} — ${t('hub.dailyAt')} ${String(cronHour).padStart(2, '0')}:00 ${channelTimezone}`)
             } else {
                 toast.error('Failed to save schedule')
             }
@@ -659,7 +659,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                 {syncingAll
                                     ? <Loader2 className="h-3 w-3 animate-spin" />
                                     : <RefreshCw className="h-3 w-3" />}
-                                {syncingAll ? 'Syncing…' : 'Sync All'}
+                                {syncingAll ? t('hub.syncing') : t('hub.syncAll')}
                             </Button>
                         )}
                     </div>
@@ -673,15 +673,13 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                         <Clock className="h-4 w-4 text-primary" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-semibold">Auto-Sync Schedule</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Set daily sync time · <span className="font-medium text-primary/80">{channelTimezone}</span>
-                                        </p>
+                                        <p className="text-sm font-semibold">{t('hub.syncScheduleTitle')}</p>
+                                        <p className="text-xs text-muted-foreground">{t('hub.syncScheduleDesc')} · <span className="font-medium text-primary/80">{channelTimezone}</span></p>
                                     </div>
                                 </div>
                                 {/* Hour picker */}
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-muted-foreground">Daily at</span>
+                                    <span className="text-xs text-muted-foreground">{t('hub.dailyAt')}</span>
                                     <select
                                         value={cronHour}
                                         onChange={e => setCronHour(Number(e.target.value))}
@@ -700,14 +698,14 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                             onChange={e => setScheduleEnabled(e.target.checked)}
                                             className="w-3.5 h-3.5 accent-primary"
                                         />
-                                        <span className="text-xs text-muted-foreground">Enabled</span>
+                                        <span className="text-xs text-muted-foreground">{t('hub.enabled')}</span>
                                     </label>
                                     <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5"
                                         onClick={handleSaveSchedule} disabled={scheduleSaving}>
                                         {scheduleSaving
                                             ? <Loader2 className="h-3 w-3 animate-spin" />
                                             : <Check className={`h-3 w-3 ${scheduleSaved ? 'text-primary' : ''}`} />}
-                                        {scheduleSaved ? 'Saved!' : scheduleSaving ? 'Saving…' : 'Save'}
+                                        {scheduleSaved ? t('hub.saved') : scheduleSaving ? t('hub.saving') : t('hub.save')}
                                     </Button>
                                 </div>
                             </div>
@@ -727,13 +725,13 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                                 <p className={`text-xs font-medium ${color} truncate`}>{label}</p>
                                                 {s?.connected ? (
                                                     <>
-                                                        <p className="text-[10px] text-muted-foreground">Last sync: {formatSyncTime(s.lastSyncedAt)}</p>
+                                                        <p className="text-[10px] text-muted-foreground">{t('hub.lastSync')}: {formatSyncTime(s.lastSyncedAt)}</p>
                                                         {s.productCount != null && (
                                                             <p className="text-[10px] text-muted-foreground">{s.productCount} items</p>
                                                         )}
                                                     </>
                                                 ) : (
-                                                    <p className="text-[10px] text-muted-foreground">Not connected</p>
+                                                    <p className="text-[10px] text-muted-foreground">{t('hub.notConnected')}</p>
                                                 )}
                                             </div>
                                             {s?.connected && (
@@ -755,7 +753,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                             <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 flex items-center gap-2">
                                 <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
                                 <p className="text-[11px] text-primary/80">
-                                    Sản phẩm được cập nhật tự động hàng ngày — Chatbot luôn có thông tin mới nhất về giá, tồn kho và sản phẩm mới để tư vấn khách hàng chính xác hơn.
+                                    {t('hub.syncScheduleInfo')}
                                 </p>
                             </div>
                         </div>

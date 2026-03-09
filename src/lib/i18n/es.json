@@ -191,7 +191,20 @@
     "airtableName": "Airtable",
     "airtableDesc": "Conecta bases de Airtable para potenciar respuestas del chatbot y creación automática de publicaciones.",
     "zapierName": "Zapier",
-    "zapierDesc": "Activa publicaciones y acciones del chatbot desde cualquier app conectada por Zapier."
+    "zapierDesc": "Activa publicaciones y acciones del chatbot desde cualquier app conectada por Zapier.",
+    "syncScheduleTitle": "Programa de Auto-Sincronización",
+    "syncScheduleDesc": "Configura la hora diaria de sincronización para todas las fuentes",
+    "syncScheduleInfo": "Los productos se sincronizan automáticamente cada día — el Chatbot siempre tiene los precios, disponibilidad y novedades más recientes para dar respuestas precisas a los clientes.",
+    "syncAll": "Sincronizar Todo",
+    "syncNow": "Sincronizar ahora",
+    "syncing": "Sincronizando…",
+    "lastSync": "Última sincronización",
+    "itemsCount": "{count} productos",
+    "dailyAt": "Diariamente a las",
+    "enabled": "Habilitado",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "saved": "¡Guardado!"
   },
   "language": {
     "label": "Idioma",
