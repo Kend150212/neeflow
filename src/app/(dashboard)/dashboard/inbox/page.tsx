@@ -234,7 +234,20 @@ const platformConfig: Record<string, { color: string; label: string }> = {
     zalo: { color: 'bg-blue-400/10 text-blue-500', label: 'Zalo' },
     youtube: { color: 'bg-red-500/10 text-red-600', label: 'YouTube' },
     pinterest: { color: 'bg-red-400/10 text-red-500', label: 'Pinterest' },
+    whatsapp: { color: 'bg-green-500/10 text-green-600', label: 'WhatsApp' },
+    telegram: { color: 'bg-sky-500/10 text-sky-600', label: 'Telegram' },
+    google_business: { color: 'bg-amber-500/10 text-amber-600', label: 'Google Business' },
 }
+
+// ─── Platforms that support direct messaging / inbox ─
+const MESSAGING_PLATFORMS = new Set([
+    'facebook',
+    'instagram',
+    'whatsapp',
+    'telegram',
+    'zalo',
+    'google_business',
+])
 
 // ─── Status filters config ───────────
 const statusFilterItems = [
@@ -941,8 +954,9 @@ export default function InboxPage() {
         )
     }
 
-    // ─── Platform tree (group by platform type) ─
-    const platformTree = platformAccounts.reduce((acc, p) => {
+    // ─── Platform tree (group by platform type, messaging-only) ─
+    const messagingAccounts = platformAccounts.filter(p => MESSAGING_PLATFORMS.has(p.platform))
+    const platformTree = messagingAccounts.reduce((acc, p) => {
         if (!acc[p.platform]) acc[p.platform] = []
         acc[p.platform].push(p)
         return acc
