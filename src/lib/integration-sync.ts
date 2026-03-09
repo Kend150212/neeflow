@@ -47,7 +47,7 @@ export async function syncShopifyProducts(channelId: string): Promise<{ synced: 
                 headers: { 'X-Shopify-Access-Token': token },
                 signal: AbortSignal.timeout(30000),
             })
-            if (!res.ok) break
+            if (!res.ok) { console.error(`[AutoSync] Shopify API error: ${res.status} ${res.statusText} — domain=${domain}`); break }
 
             const linkHeader = res.headers.get('link') || ''
             const nextMatch = linkHeader.match(/<[^>]*page_info=([^>&"]+)[^>]*>;\s*rel="next"/)

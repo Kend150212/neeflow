@@ -3,6 +3,9 @@
  * Returns the sync status (last synced, product count) for
  * Shopify, Etsy, and WordPress on the user's default channel.
  * Used by the Integrations page to show sync status + Sync button.
+ *
+ * productCount is read from actual ProductCatalog rows (not cached ShopifyConfig.productCount)
+ * so it's always accurate even if a previous sync failed to update the cache.
  */
 
 import { NextResponse } from 'next/server'
@@ -26,19 +29,23 @@ export async function GET() {
     const channelId = channel.id
     const timezone = (channel as any).timezone || 'UTC'
 
-    const [shopify, etsy, wordpress] = await Promise.all([
+    const [shopify, etsy, wordpress, shopifyCount, etsyCount, wpCount] = await Promise.all([
         db.shopifyConfig.findUnique({
             where: { channelId },
-            select: { shopDomain: true, lastSyncedAt: true, productCount: true },
+            select: { shopDomain: true, lastSyncedAt: true },
         }),
         db.etsyConfig.findUnique({
             where: { channelId },
-            select: { shopId: true, lastSyncedAt: true, productCount: true },
+            select: { shopId: true, lastSyncedAt: true },
         }),
         db.wordPressConfig.findUnique({
             where: { channelId },
-            select: { siteUrl: true, lastSyncedAt: true, productCount: true },
+            select: { siteUrl: true, lastSyncedAt: true },
         }),
+        // Read actual counts from ProductCatalog — always accurate
+        prisma.productCatalog.count({ where: { channelId, syncSource: 'shopify' } }),
+        prisma.productCatalog.count({ where: { channelId, syncSource: 'etsy' } }),
+        prisma.productCatalog.count({ where: { channelId, syncSource: 'wordpress' } }),
     ])
 
     return NextResponse.json({
@@ -48,19 +55,19 @@ export async function GET() {
             connected: true,
             shopDomain: shopify.shopDomain,
             lastSyncedAt: shopify.lastSyncedAt,
-            productCount: shopify.productCount,
+            productCount: shopifyCount,
         } : null,
         etsy: etsy ? {
             connected: true,
             shopId: etsy.shopId,
             lastSyncedAt: etsy.lastSyncedAt,
-            productCount: etsy.productCount,
+            productCount: etsyCount,
         } : null,
         wordpress: wordpress ? {
             connected: true,
             siteUrl: wordpress.siteUrl,
             lastSyncedAt: wordpress.lastSyncedAt,
-            productCount: wordpress.productCount,
+            productCount: wpCount,
         } : null,
     })
 }
