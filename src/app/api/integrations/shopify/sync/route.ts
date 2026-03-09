@@ -9,6 +9,7 @@ interface ShopifyProduct {
     body_html: string
     vendor: string
     product_type: string
+    handle: string   // used to build storefront URL
     tags: string
     status: string
     variants: { price: string; compare_at_price?: string | null; inventory_quantity: number }[]
@@ -39,8 +40,8 @@ export async function POST(req: NextRequest) {
         // Cursor-based pagination (Shopify 2024-10)
         do {
             const url: string = pageInfo
-                ? `https://${domain}/admin/api/2024-10/products.json?limit=250&page_info=${pageInfo}&fields=id,title,body_html,vendor,product_type,tags,status,variants,images`
-                : `https://${domain}/admin/api/2024-10/products.json?limit=250&fields=id,title,body_html,vendor,product_type,tags,status,variants,images`
+                ? `https://${domain}/admin/api/2024-10/products.json?limit=250&page_info=${pageInfo}&fields=id,title,body_html,vendor,product_type,handle,tags,status,variants,images`
+                : `https://${domain}/admin/api/2024-10/products.json?limit=250&fields=id,title,body_html,vendor,product_type,handle,tags,status,variants,images`
 
             const res = await fetch(url, {
                 headers: { 'X-Shopify-Access-Token': token },
@@ -71,15 +72,10 @@ export async function POST(req: NextRequest) {
                     const category = [p.vendor, p.product_type].filter(Boolean).join(' · ') || 'General'
                     const tags = p.tags ? p.tags.split(',').map((t) => t.trim()).filter(Boolean) : []
                     const description = p.body_html?.replace(/<[^>]+>/g, '').trim() || ''
+                    const productUrl = p.handle ? `https://${domain}/products/${p.handle}` : null
 
-                    await prisma.productCatalog.upsert({
-                        where: {
-                            // Use channelId + externalId via a findFirst then upsert by id
-                            id: (await prisma.productCatalog.findFirst({
-                                where: { channelId, syncSource: 'shopify', externalId: String(p.id) },
-                                select: { id: true },
-                            }))?.id ?? 'new_' + p.id,
-                        },
+                    await (prisma.productCatalog as any).upsert({
+                        where: { product_catalog_dedup: { channelId, syncSource: 'shopify', externalId: String(p.id) } },
                         create: {
                             channelId,
                             syncSource: 'shopify',
@@ -91,6 +87,7 @@ export async function POST(req: NextRequest) {
                             category,
                             tags,
                             images,
+                            productUrl,
                             inStock: totalInventory > 0 || p.status === 'active',
                             syncedAt: new Date(),
                         },
@@ -102,13 +99,15 @@ export async function POST(req: NextRequest) {
                             category,
                             tags,
                             images,
+                            productUrl,
                             inStock: totalInventory > 0 || p.status === 'active',
                             syncedAt: new Date(),
                         },
                     })
                     synced++
-                } catch {
+                } catch (err) {
                     failed++
+                    console.error(`[ShopifySync] product ${p.id} upsert failed:`, err)
                 }
             }
         } while (pageInfo)
