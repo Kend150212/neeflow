@@ -60,6 +60,7 @@
     "inbox": "Bandeja de entrada",
     "email": "Email",
     "reports": "Reportes",
+    "insights": "Insights",
     "integrations": "Integraciones",
     "administration": "Administración",
     "users": "Usuarios",
@@ -1098,8 +1099,8 @@
     "canvaNotConfigured": "Canva aún no está configurado por el administrador"
   },
   "reports": {
-    "title": "Reportes y análisis",
-    "description": "Estadísticas de rendimiento de publicaciones por canal y plataforma",
+    "title": "Insights",
+    "description": "Análisis de rendimiento por cuenta y plataforma conectada",
     "selectChannel": "Seleccionar canal...",
     "allChannels": "Todos los canales",
     "range7": "7 días",

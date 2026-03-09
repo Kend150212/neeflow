@@ -18,7 +18,7 @@ import {
     CheckCircle2,
     Image,
     Mail,
-    BarChart3,
+    Sparkles,
     Plug,
     Clapperboard,
     MoreHorizontal,
@@ -53,7 +53,7 @@ const topNav: NavItem[] = [
 
 const bottomNav: NavItem[] = [
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
-    { titleKey: 'nav.reports', href: '/dashboard/reports', icon: BarChart3 },
+    { titleKey: 'nav.insights', href: '/dashboard/reports', icon: Sparkles },
     { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },
 ]
 

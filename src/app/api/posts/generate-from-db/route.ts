@@ -35,6 +35,17 @@ function detectImageUrls(row: Record<string, unknown>, columns: string[]): strin
  */
 async function importImageToMedia(imageUrl: string, channelId: string): Promise<string | null> {
     try {
+        // ─── Deduplication: reuse existing MediaItem imported from same URL ───────
+        const existing = await prisma.mediaItem.findFirst({
+            where: {
+                channelId,
+                aiMetadata: { path: ['importedFrom'], equals: imageUrl },
+            },
+            select: { id: true },
+        })
+        if (existing) return existing.id
+        // ────────────────────────────────────────────────────────────────────
+
         const res = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) })
         if (!res.ok) return null
         const contentType = res.headers.get('content-type') || 'image/jpeg'

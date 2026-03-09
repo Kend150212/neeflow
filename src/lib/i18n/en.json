@@ -60,6 +60,7 @@
     "inbox": "Inbox",
     "email": "Email",
     "reports": "Reports",
+    "insights": "Insights",
     "integrations": "Integrations",
     "administration": "Administration",
     "users": "Users",
@@ -1481,8 +1482,8 @@
     "canvaNotConfigured": "Canva is not configured by admin yet"
   },
   "reports": {
-    "title": "Reports & Analytics",
-    "description": "Post performance statistics by channel and platform",
+    "title": "Insights",
+    "description": "Per-account performance analytics across all connected platforms",
     "selectChannel": "Select channel...",
     "allChannels": "All Channels",
     "range7": "7 days",

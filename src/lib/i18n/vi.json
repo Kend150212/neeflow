@@ -60,6 +60,7 @@
     "inbox": "Hộp thư",
     "email": "Email",
     "reports": "Báo cáo",
+    "insights": "Insights",
     "integrations": "Tích hợp",
     "administration": "Quản trị",
     "users": "Người dùng",
@@ -1481,8 +1482,8 @@
     "canvaNotConfigured": "Canva chưa được Admin cấu hình"
   },
   "reports": {
-    "title": "Báo cáo & Phân tích",
-    "description": "Thống kê hiệu suất đăng bài theo kênh và nền tảng",
+    "title": "Insights",
+    "description": "Phân tích hiệu suất từng tài khoản và nền tảng",
     "selectChannel": "Chọn kênh...",
     "allChannels": "Tất cả kênh",
     "range7": "7 ngày",
