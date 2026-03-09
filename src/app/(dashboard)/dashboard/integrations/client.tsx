@@ -11,6 +11,7 @@ import {
     Lock, ArrowRight, Zap, ShoppingBag,
     HardDrive, CheckCircle, Loader2, Link2, Unlink,
     Mail, FolderOpen, Calendar, AlertCircle, ExternalLink,
+    RefreshCw, Clock, Copy, Check, Database,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/lib/i18n'
@@ -32,6 +33,19 @@ interface CanvaStatus {
     isAdminConfigured: boolean
     userName: string | null
     connectedAt: string | null
+}
+
+interface SyncSourceStatus {
+    connected: boolean
+    lastSyncedAt: string | null
+    productCount: number | null
+}
+
+interface SyncStatus {
+    channelId: string | null
+    shopify: SyncSourceStatus | null
+    etsy: SyncSourceStatus | null
+    wordpress: SyncSourceStatus | null
 }
 
 interface Props {
@@ -253,6 +267,20 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
     const [canvaLoading, setCanvaLoading] = useState(false)
     const [canvaConnecting, setCanvaConnecting] = useState(false)
 
+    // ── Sync state ──
+    const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
+    const [syncingSlug, setSyncingSlug] = useState<string | null>(null)  // which card is syncing
+    const [syncingAll, setSyncingAll] = useState(false)
+    const [cronHour, setCronHour] = useState(2)   // default 2am
+    const [cronCopied, setCronCopied] = useState(false)
+
+    const fetchSyncStatus = useCallback(async () => {
+        try {
+            const res = await fetch('/api/integrations/sync-status')
+            if (res.ok) setSyncStatus(await res.json())
+        } catch { /* */ }
+    }, [])
+
     const fetchGDriveStatus = useCallback(async () => {
         try {
             const res = await fetch('/api/user/gdrive/status')
@@ -270,7 +298,8 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
     useEffect(() => {
         fetchGDriveStatus()
         fetchCanvaStatus()
-    }, [fetchGDriveStatus, fetchCanvaStatus])
+        fetchSyncStatus()
+    }, [fetchGDriveStatus, fetchCanvaStatus, fetchSyncStatus])
 
     // integration defs resolved with translations
     const integrations: IntegrationCard[] = integrationDefs.map(d => ({
@@ -352,6 +381,62 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
             }
         } catch { toast.error(t('hub.canvaConnectFailed')) }
         setCanvaLoading(false)
+    }
+
+    // ── Sync handlers ──
+    const handleSyncNow = async (slug: string) => {
+        if (!syncStatus?.channelId) return
+        setSyncingSlug(slug)
+        try {
+            const res = await fetch('/api/integrations/sync-now', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slug, channelId: syncStatus.channelId }),
+            })
+            const data = await res.json()
+            if (res.ok) {
+                toast.success(`✅ Synced ${data.synced} products${data.failed ? ` (${data.failed} failed)` : ''}`)
+                fetchSyncStatus()
+            } else {
+                toast.error(data.error || 'Sync failed')
+            }
+        } catch { toast.error('Sync failed') }
+        setSyncingSlug(null)
+    }
+
+    const handleSyncAll = async () => {
+        if (!syncStatus?.channelId) return
+        setSyncingAll(true)
+        const slugs = (['shopify', 'etsy', 'wordpress'] as const)
+            .filter(s => syncStatus[s]?.connected)
+        let totalSynced = 0
+        for (const slug of slugs) {
+            try {
+                const res = await fetch('/api/integrations/sync-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ slug, channelId: syncStatus.channelId }),
+                })
+                if (res.ok) { const d = await res.json(); totalSynced += d.synced ?? 0 }
+            } catch { /* */ }
+        }
+        toast.success(`✅ Sync all complete — ${totalSynced} products updated`)
+        fetchSyncStatus()
+        setSyncingAll(false)
+    }
+
+    const handleCopyCron = () => {
+        const cmd = `0 ${cronHour} * * * curl -s -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/sync-products >> /var/log/sync-products.log 2>&1`
+        navigator.clipboard.writeText(cmd).then(() => {
+            setCronCopied(true)
+            setTimeout(() => setCronCopied(false), 2000)
+        })
+    }
+
+    const formatSyncTime = (iso: string | null | undefined) => {
+        if (!iso) return 'Never'
+        const d = new Date(iso)
+        return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     }
 
     return (
@@ -528,7 +613,103 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
 
                 {/* ── Data Integrations Grid ── */}
                 <div className="space-y-4">
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('hub.dataSources')}</h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('hub.dataSources')}</h2>
+                        {syncStatus?.channelId && (
+                            <Button size="sm" variant="outline"
+                                className="h-7 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                                onClick={handleSyncAll} disabled={syncingAll}>
+                                {syncingAll
+                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                    : <RefreshCw className="h-3 w-3" />}
+                                {syncingAll ? 'Syncing…' : 'Sync All'}
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* Auto-Sync Schedule Panel */}
+                    {syncStatus && (
+                        <div className="rounded-2xl border border-border/60 bg-card/50 p-5 space-y-4">
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <Clock className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold">Auto-Sync Schedule</p>
+                                        <p className="text-xs text-muted-foreground">Set daily sync time for all data sources</p>
+                                    </div>
+                                </div>
+                                {/* Hour picker */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Daily at</span>
+                                    <select
+                                        value={cronHour}
+                                        onChange={e => setCronHour(Number(e.target.value))}
+                                        className="text-xs bg-muted border border-border rounded-lg px-2 py-1 h-8 focus:outline-none focus:ring-1 focus:ring-primary"
+                                    >
+                                        {Array.from({ length: 24 }, (_, i) => (
+                                            <option key={i} value={i}>
+                                                {String(i).padStart(2, '0')}:00 {i < 12 ? 'AM' : 'PM'}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleCopyCron}>
+                                        {cronCopied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
+                                        {cronCopied ? 'Copied!' : 'Copy Cron'}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Source status rows */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {[
+                                    { key: 'shopify' as const, label: 'Shopify', color: 'text-[#96BF48]', bg: 'bg-[#96BF48]/10' },
+                                    { key: 'etsy' as const, label: 'Etsy', color: 'text-[#F1641E]', bg: 'bg-[#F1641E]/10' },
+                                    { key: 'wordpress' as const, label: 'WordPress / WooCommerce', color: 'text-[#21759B]', bg: 'bg-[#21759B]/10' },
+                                ].map(({ key, label, color, bg }) => {
+                                    const s = syncStatus[key]
+                                    return (
+                                        <div key={key} className={`rounded-xl p-3 flex items-center gap-3 ${bg}`}>
+                                            <Database className={`h-4 w-4 ${color} shrink-0`} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-xs font-medium ${color} truncate`}>{label}</p>
+                                                {s?.connected ? (
+                                                    <>
+                                                        <p className="text-[10px] text-muted-foreground">Last sync: {formatSyncTime(s.lastSyncedAt)}</p>
+                                                        {s.productCount != null && (
+                                                            <p className="text-[10px] text-muted-foreground">{s.productCount} items</p>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <p className="text-[10px] text-muted-foreground">Not connected</p>
+                                                )}
+                                            </div>
+                                            {s?.connected && (
+                                                <Button size="sm" variant="ghost"
+                                                    className="h-6 w-6 p-0 shrink-0 hover:bg-white/20"
+                                                    disabled={syncingSlug === key}
+                                                    onClick={() => handleSyncNow(key)}>
+                                                    {syncingSlug === key
+                                                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                                                        : <RefreshCw className="h-3 w-3" />}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            {/* Cron command display */}
+                            <div className="rounded-lg bg-muted/60 border border-border/50 px-3 py-2">
+                                <p className="text-[10px] text-muted-foreground mb-1">Server cron command:</p>
+                                <code className="text-[10px] font-mono text-foreground/80 break-all">
+                                    {`0 ${cronHour} * * * curl -s -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/sync-products`}
+                                </code>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {integrations.map((intg) => {
                             const allowed = isAllowed(intg.slug)
@@ -607,12 +788,28 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                     {/* CTA */}
                                     <div>
                                         {isActive && intg.href ? (
-                                            <Button asChild size="sm" className="w-full h-8 text-xs gap-1.5">
-                                                <Link href={intg.href}>
-                                                    {t('hub.configure')}
-                                                    <ArrowRight className="h-3.5 w-3.5" />
-                                                </Link>
-                                            </Button>
+                                            <div className="flex gap-1.5">
+                                                <Button asChild size="sm" className="flex-1 h-8 text-xs gap-1">
+                                                    <Link href={intg.href}>
+                                                        {t('hub.configure')}
+                                                        <ArrowRight className="h-3.5 w-3.5" />
+                                                    </Link>
+                                                </Button>
+                                                {(['shopify', 'etsy', 'wordpress'].includes(intg.slug)) && syncStatus?.channelId && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-8 w-8 p-0 border-primary/30 text-primary hover:bg-primary/10 shrink-0"
+                                                        title="Sync now"
+                                                        disabled={syncingSlug === intg.slug}
+                                                        onClick={() => handleSyncNow(intg.slug)}
+                                                    >
+                                                        {syncingSlug === intg.slug
+                                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                            : <RefreshCw className="h-3.5 w-3.5" />}
+                                                    </Button>
+                                                )}
+                                            </div>
                                         ) : isLocked && availableAddon ? (
                                             <Button asChild size="sm" variant="outline" className="w-full h-8 text-xs border-blue-500/30 text-blue-600 hover:bg-blue-500/10 gap-1">
                                                 <Link href="/dashboard/billing">
