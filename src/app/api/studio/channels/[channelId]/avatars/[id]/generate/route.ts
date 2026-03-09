@@ -173,105 +173,81 @@ async function runGenerationBackground(opts: {
     // Start from existing poseImages array (6 slots), preserving already-done slots
     const poseImages: string[] = Array.from({ length: 6 }, (_, i) => existingPoseImages[i] || '')
 
+    const FACE_INDEX = 1 // "Cận mặt" position in ANGLES array
+    const isGeneratingAll = anglesToGenerate.length > 1
+
     console.log(`[generate:bg] Start ${provider} — ${anglesToGenerate.length} angle(s) for avatar ${id}`)
+
+    // Helper: generate one angle, save to DB immediately when done
+    const generateAndSave = async (index: number, angle: typeof ANGLES[0], refImage?: string): Promise<string | null> => {
+        const prompt = buildAnglePrompt(
+            characterDesc, style,
+            (anglePromptOverride && !isGeneratingAll) ? anglePromptOverride : angle.prompt,
+            refImage,
+        )
+        console.log(`[generate:bg] Angle ${index} "${angle.label}" ref=${refImage ? '✓' : 'none'}`)
+
+        try {
+            const imageUrl = await generateSingleImage({
+                provider, model, apiKey, prompt,
+                referenceImage: refImage,
+                aspectRatio: angle.aspectRatio,
+                rwWidth: angle.rwWidth, rwHeight: angle.rwHeight,
+                id, channelId, angleIndex: index,
+            })
+            if (imageUrl) {
+                poseImages[index] = imageUrl
+                // Save incrementally so UI can show partial results while others are still running
+                const coverImage = poseImages[FACE_INDEX] || poseImages.find(u => !!u) || undefined
+                await (prisma.studioAvatar.update as (args: unknown) => Promise<unknown>)({
+                    where: { id },
+                    data: { poseImages: [...poseImages], coverImage },
+                })
+                console.log(`[generate:bg] Angle ${index} ✓ → ${imageUrl.slice(0, 60)}`)
+                return imageUrl
+            }
+        } catch (err) {
+            console.error(`[generate:bg] Angle ${index} failed: ${err}`)
+        }
+        return null
+    }
 
     let anySuccess = false
 
-    // ── Face-first strategy (only when generating ALL 6 angles) ──────────────
-    // Index 1 = "Cận mặt" (face close-up). Generate it first, then use it as
-    // the reference image for every other angle to ensure character consistency.
-    const isGeneratingAll = anglesToGenerate.length > 1
-    const FACE_INDEX = 1 // "Cận mặt" position in ANGLES array
-
-    let faceRefImage: string | undefined = referenceImage // user-supplied ref takes priority
-
     if (isGeneratingAll) {
-        // Reorder: face close-up first, then the rest in original order
+        // ── Strategy: Face-first → then all others in PARALLEL ────────────────
+        // 1) Generate face close-up first (needed as reference for others)
         const faceEntry = anglesToGenerate.find(a => a.index === FACE_INDEX)
         const otherEntries = anglesToGenerate.filter(a => a.index !== FACE_INDEX)
-        const ordered = faceEntry ? [faceEntry, ...otherEntries] : anglesToGenerate
 
-        for (const { index, angle } of ordered) {
-            // For non-face angles, use the generated face close-up as ref (if available)
-            const effectiveRef = index !== FACE_INDEX && faceRefImage ? faceRefImage : referenceImage
+        let faceRefImage: string | undefined = referenceImage // user-supplied ref wins
 
-            const basePrompt = buildAnglePrompt(
-                characterDesc,
-                style,
-                anglePromptOverride && anglesToGenerate.length === 1 ? anglePromptOverride : angle.prompt,
-                effectiveRef,
-            )
-
-            console.log(`[generate:bg] Angle ${index} "${angle.label}" ref=${effectiveRef ? '✓' : 'none'}`)
-
-            try {
-                const imageUrl = await generateSingleImage({
-                    provider, model, apiKey, prompt: basePrompt,
-                    referenceImage: effectiveRef,
-                    aspectRatio: angle.aspectRatio,
-                    rwWidth: angle.rwWidth, rwHeight: angle.rwHeight,
-                    id, channelId, angleIndex: index,
-                })
-
-                if (imageUrl) {
-                    poseImages[index] = imageUrl
-                    anySuccess = true
-
-                    // If this was the face close-up, use it as ref for subsequent angles
-                    if (index === FACE_INDEX && !referenceImage) {
-                        faceRefImage = imageUrl
-                        console.log(`[generate:bg] Face close-up generated → using as ref for remaining angles`)
-                    }
-
-                    // Cover image = face close-up (index 1) if available, otherwise first non-empty
-                    const coverImage = poseImages[FACE_INDEX] || poseImages.find(u => !!u) || undefined
-
-                    // Save progress after each angle so UI can poll and show partial results
-                    await (prisma.studioAvatar.update as (args: unknown) => Promise<unknown>)({
-                        where: { id },
-                        data: { poseImages, coverImage },
-                    })
-                    console.log(`[generate:bg] Angle ${index} ✓ → ${imageUrl.slice(0, 60)}`)
+        if (faceEntry) {
+            const faceUrl = await generateAndSave(faceEntry.index, faceEntry.angle, referenceImage)
+            if (faceUrl) {
+                anySuccess = true
+                // Use generated face as reference for all remaining angles (unless user already supplied one)
+                if (!referenceImage) {
+                    faceRefImage = faceUrl
+                    console.log(`[generate:bg] Face ✓ — using it as ref image for ${otherEntries.length} parallel jobs`)
                 }
-            } catch (err) {
-                console.error(`[generate:bg] Angle ${index} failed: ${err}`)
+            }
+        }
+
+        // 2) Generate remaining angles in parallel (all fired at the same time)
+        if (otherEntries.length > 0) {
+            const results = await Promise.allSettled(
+                otherEntries.map(({ index, angle }) => generateAndSave(index, angle, faceRefImage))
+            )
+            for (const r of results) {
+                if (r.status === 'fulfilled' && r.value) anySuccess = true
             }
         }
     } else {
-        // Single-angle mode: just generate that angle normally
+        // ── Single-angle mode (individual regenerate button) ──────────────────
         for (const { index, angle } of anglesToGenerate) {
-            const basePrompt = buildAnglePrompt(
-                characterDesc,
-                style,
-                anglePromptOverride ?? angle.prompt,
-                referenceImage,
-            )
-
-            console.log(`[generate:bg] Single angle ${index} "${angle.label}" with ${provider}`)
-
-            try {
-                const imageUrl = await generateSingleImage({
-                    provider, model, apiKey, prompt: basePrompt,
-                    referenceImage,
-                    aspectRatio: angle.aspectRatio,
-                    rwWidth: angle.rwWidth, rwHeight: angle.rwHeight,
-                    id, channelId, angleIndex: index,
-                })
-
-                if (imageUrl) {
-                    poseImages[index] = imageUrl
-                    anySuccess = true
-
-                    const coverImage = poseImages[FACE_INDEX] || poseImages.find(u => !!u) || undefined
-                    await (prisma.studioAvatar.update as (args: unknown) => Promise<unknown>)({
-                        where: { id },
-                        data: { poseImages, coverImage },
-                    })
-                    console.log(`[generate:bg] Angle ${index} ✓ → ${imageUrl.slice(0, 60)}`)
-                }
-            } catch (err) {
-                console.error(`[generate:bg] Angle ${index} failed: ${err}`)
-            }
+            const url = await generateAndSave(index, angle, referenceImage)
+            if (url) anySuccess = true
         }
     }
 
@@ -286,8 +262,9 @@ async function runGenerationBackground(opts: {
         },
     })
 
-    console.log(`[generate:bg] Done ✓ avatar=${id} poseImages=${poseImages.filter(Boolean).length}/6 cover=face_closeup`)
+    console.log(`[generate:bg] Done ✓ avatar=${id} poses=${poseImages.filter(Boolean).length}/6`)
 }
+
 
 
 // ─── Single-image generator per provider ─────────────────────────────────────
