@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useWorkspace } from '@/lib/workspace-context'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -188,6 +189,8 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
     const isAllowed = (slug: string) => allowedIntegrations.includes(slug)
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { activeChannel } = useWorkspace()
+    const activeChannelId = activeChannel?.id ?? null
 
     // ── Google Drive state ──
     const [gdriveStatus, setGdriveStatus] = useState<GDriveStatus | null>(null)
@@ -210,10 +213,13 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
 
     const fetchSyncStatus = useCallback(async () => {
         try {
-            const res = await fetch('/api/integrations/sync-status')
+            const url = activeChannelId
+                ? `/api/integrations/sync-status?channelId=${activeChannelId}`
+                : '/api/integrations/sync-status'
+            const res = await fetch(url)
             if (res.ok) setSyncStatus(await res.json())
         } catch { /* */ }
-    }, [])
+    }, [activeChannelId])
 
     const fetchSchedule = useCallback(async () => {
         try {
@@ -248,7 +254,7 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
         fetchCanvaStatus()
         fetchSyncStatus()
         fetchSchedule()
-    }, [fetchGDriveStatus, fetchCanvaStatus, fetchSyncStatus, fetchSchedule])
+    }, [fetchGDriveStatus, fetchCanvaStatus, fetchSyncStatus, fetchSchedule, activeChannelId])
 
     // integration defs resolved with translations
     const integrations: IntegrationCard[] = integrationDefs.map(d => ({

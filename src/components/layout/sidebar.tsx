@@ -187,7 +187,10 @@ export function Sidebar({ session }: { session: Session }) {
 
     useEffect(() => {
         const fetchShortcuts = () => {
-            fetch('/api/integrations/sidebar-status')
+            const url = activeChannel?.id
+                ? `/api/integrations/sidebar-status?channelId=${activeChannel.id}`
+                : '/api/integrations/sidebar-status'
+            fetch(url)
                 .then(r => r.ok ? r.json() : { items: [] })
                 .then(d => setIntegrationShortcuts(d.items ?? []))
                 .catch(() => { })
@@ -195,7 +198,7 @@ export function Sidebar({ session }: { session: Session }) {
         fetchShortcuts()
         const id = setInterval(fetchShortcuts, 60_000)
         return () => clearInterval(id)
-    }, [])
+    }, [activeChannel?.id])
 
     const studioHref = activeChannel?.id
         ? `/dashboard/studio/${activeChannel.id}`
