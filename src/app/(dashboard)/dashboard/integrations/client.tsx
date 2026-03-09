@@ -37,6 +37,7 @@ interface CanvaStatus {
 
 interface SyncSourceStatus {
     connected: boolean
+    channelId?: string    // the channel this integration is attached to
     lastSyncedAt: string | null
     productCount: number | null
 }
@@ -404,12 +405,14 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
     // ── Sync handlers ──
     const handleSyncNow = async (slug: string) => {
         if (!syncStatus?.channelId) return
+        const source = syncStatus[slug as 'shopify' | 'etsy' | 'wordpress']
+        const channelId = source?.channelId ?? syncStatus.channelId  // use per-integration channelId
         setSyncingSlug(slug)
         try {
             const res = await fetch('/api/integrations/sync-now', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ slug, channelId: syncStatus.channelId }),
+                body: JSON.stringify({ slug, channelId }),
             })
             const data = await res.json()
             if (res.ok) {

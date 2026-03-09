@@ -1,11 +1,10 @@
 /**
  * GET /api/integrations/sync-status
- * Returns the sync status (last synced, product count) for
- * Shopify, Etsy, and WordPress on the user's default channel.
- * Used by the Integrations page to show sync status + Sync button.
+ * Returns the sync status for Shopify, Etsy, and WordPress.
+ * Searches ALL user channels for each integration so the hub
+ * always finds the connected one regardless of channel order.
  *
- * productCount is read from actual ProductCatalog rows (not cached ShopifyConfig.productCount)
- * so it's always accurate even if a previous sync failed to update the cache.
+ * productCount is read from actual ProductCatalog rows (not cached config.productCount).
  */
 
 import { NextResponse } from 'next/server'
@@ -16,59 +15,70 @@ export async function GET() {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Find the user's first channel
     const db = prisma as any
-    const channel = await prisma.channel.findFirst({
+
+    // Get ALL channels the user belongs to
+    const channels = await prisma.channel.findMany({
         where: { members: { some: { userId: session.user.id as string } } },
         select: { id: true, timezone: true },
         orderBy: { createdAt: 'asc' },
     })
 
-    if (!channel) return NextResponse.json({ channelId: null, timezone: 'UTC', shopify: null, etsy: null, wordpress: null })
+    if (!channels.length) return NextResponse.json({ channelId: null, timezone: 'UTC', shopify: null, etsy: null, wordpress: null })
 
-    const channelId = channel.id
-    const timezone = (channel as any).timezone || 'UTC'
+    const channelIds = channels.map(c => c.id)
+    const defaultChannelId = channels[0].id
+    const timezone = (channels[0] as any).timezone || 'UTC'
 
-    const [shopify, etsy, wordpress, shopifyCount, etsyCount, wpCount] = await Promise.all([
-        db.shopifyConfig.findUnique({
-            where: { channelId },
-            select: { shopDomain: true, lastSyncedAt: true },
+    // For each integration, find whichever channel has the config
+    const [shopifyConfigs, etsyConfigs, wpConfigs] = await Promise.all([
+        db.shopifyConfig.findFirst({
+            where: { channelId: { in: channelIds } },
+            select: { channelId: true, shopDomain: true, lastSyncedAt: true },
+            orderBy: { updatedAt: 'desc' },
         }),
-        db.etsyConfig.findUnique({
-            where: { channelId },
-            select: { shopId: true, lastSyncedAt: true },
+        db.etsyConfig.findFirst({
+            where: { channelId: { in: channelIds } },
+            select: { channelId: true, shopId: true, lastSyncedAt: true },
+            orderBy: { updatedAt: 'desc' },
         }),
-        db.wordPressConfig.findUnique({
-            where: { channelId },
-            select: { siteUrl: true, lastSyncedAt: true },
+        db.wordPressConfig.findFirst({
+            where: { channelId: { in: channelIds } },
+            select: { channelId: true, siteUrl: true, lastSyncedAt: true },
+            orderBy: { updatedAt: 'desc' },
         }),
-        // Read actual counts from ProductCatalog — always accurate
-        prisma.productCatalog.count({ where: { channelId, syncSource: 'shopify' } }),
-        prisma.productCatalog.count({ where: { channelId, syncSource: 'etsy' } }),
-        prisma.productCatalog.count({ where: { channelId, syncSource: 'wordpress' } }),
     ])
 
-    console.log(`[sync-status] userId=${session.user.id} channelId=${channelId} shopify=${shopify ? shopify.shopDomain : 'NULL'}`)
+    const [shopifyCount, etsyCount, wpCount] = await Promise.all([
+        shopifyConfigs ? prisma.productCatalog.count({ where: { channelId: shopifyConfigs.channelId, syncSource: 'shopify' } }) : 0,
+        etsyConfigs ? prisma.productCatalog.count({ where: { channelId: etsyConfigs.channelId, syncSource: 'etsy' } }) : 0,
+        wpConfigs ? prisma.productCatalog.count({ where: { channelId: wpConfigs.channelId, syncSource: 'wordpress' } }) : 0,
+    ])
+
+    console.log(`[sync-status] userId=${session.user.id} defaultChannelId=${defaultChannelId} shopify=${shopifyConfigs ? `${shopifyConfigs.shopDomain} (ch:${shopifyConfigs.channelId})` : 'NULL'}`)
 
     return NextResponse.json({
-        channelId,
+        channelId: defaultChannelId,
         timezone,
-        shopify: shopify ? {
+        shopify: shopifyConfigs ? {
             connected: true,
-            shopDomain: shopify.shopDomain,
-            lastSyncedAt: shopify.lastSyncedAt,
+            channelId: shopifyConfigs.channelId,
+            shopDomain: shopifyConfigs.shopDomain,
+            lastSyncedAt: shopifyConfigs.lastSyncedAt,
             productCount: shopifyCount,
         } : null,
-        etsy: etsy ? {
+        etsy: etsyConfigs ? {
             connected: true,
-            shopId: etsy.shopId,
-            lastSyncedAt: etsy.lastSyncedAt,
+            channelId: etsyConfigs.channelId,
+            shopId: etsyConfigs.shopId,
+            lastSyncedAt: etsyConfigs.lastSyncedAt,
             productCount: etsyCount,
         } : null,
-        wordpress: wordpress ? {
+        wordpress: wpConfigs ? {
             connected: true,
-            siteUrl: wordpress.siteUrl,
-            lastSyncedAt: wordpress.lastSyncedAt,
+            channelId: wpConfigs.channelId,
+            siteUrl: wpConfigs.siteUrl,
+            lastSyncedAt: wpConfigs.lastSyncedAt,
             productCount: wpCount,
         } : null,
     })
