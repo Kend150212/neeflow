@@ -16,6 +16,7 @@ import {
     FileText,
     Hash,
     Bell,
+    MessageSquare,
     Palette,
     Plus,
     Trash2,
@@ -337,6 +338,9 @@ export default function ChannelDetailPage({
     const [zaloFollowers, setZaloFollowers] = useState<{ userId: string; displayName: string; avatar: string }[]>([])
     const [zaloLoadingFollowers, setZaloLoadingFollowers] = useState(false)
     const [testingWebhook, setTestingWebhook] = useState<string | null>(null)
+    // WhatsApp Business state
+    const [webhookWhatsappPhoneId, setWebhookWhatsappPhoneId] = useState('')
+    const [webhookWhatsappToken, setWebhookWhatsappToken] = useState('')
 
     // Business Info state
     const [bizPhone, setBizPhone] = useState('')
@@ -1286,7 +1290,7 @@ export default function ChannelDetailPage({
                         { v: 'knowledge', icon: <BookOpen className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.knowledge') },
                         { v: 'templates', icon: <FileText className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.templates') },
                         { v: 'hashtags', icon: <Hash className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.hashtags') },
-                        { v: 'webhooks', icon: <Bell className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.webhooks') },
+                        { v: 'webhooks', icon: <MessageSquare className="h-3.5 w-3.5 shrink-0" />, label: 'Integrations' },
                         { v: 'members', icon: <Users className="h-3.5 w-3.5 shrink-0" />, label: t('channels.tabs.members') },
                         { v: 'customers', icon: <UserPlus className="h-3.5 w-3.5 shrink-0" />, label: 'Customers' },
                     ] as { v: string; icon: React.ReactNode; label: string }[]).map(({ v, icon, label }) => (
@@ -1318,7 +1322,7 @@ export default function ChannelDetailPage({
                             { v: 'knowledge', icon: <BookOpen className="h-4 w-4 shrink-0" />, label: t('channels.tabs.knowledge') },
                             { v: 'templates', icon: <FileText className="h-4 w-4 shrink-0" />, label: t('channels.tabs.templates') },
                             { v: 'hashtags', icon: <Hash className="h-4 w-4 shrink-0" />, label: t('channels.tabs.hashtags') },
-                            { v: 'webhooks', icon: <Bell className="h-4 w-4 shrink-0" />, label: t('channels.tabs.webhooks') },
+                            { v: 'webhooks', icon: <MessageSquare className="h-4 w-4 shrink-0" />, label: 'Integrations' },
                             { v: 'members', icon: <Users className="h-4 w-4 shrink-0" />, label: t('channels.tabs.members') },
                             { v: 'customers', icon: <UserPlus className="h-4 w-4 shrink-0" />, label: 'Customers' },
                         ] as { v: string; icon: React.ReactNode; label: string }[]).map(({ v, icon, label }) => (
@@ -3035,56 +3039,74 @@ export default function ChannelDetailPage({
                             </Card>
                         </TabsContent>
 
-                        {/* ─── Webhooks Tab ───────────────────── */}
+                        {/* ─── Integrations Tab ─────────────────────── */}
                         <TabsContent value="webhooks" className="space-y-4">
+
+                            {/* ── Card 1: Inbox Messaging ── */}
                             <Card>
-                                <CardHeader>
+                                <CardHeader className="pb-3">
                                     <CardTitle className="text-base flex items-center gap-2">
-                                        <Bell className="h-4 w-4" />
-                                        {t('channels.webhooks.title')}
+                                        <MessageSquare className="h-4 w-4 text-green-500" />
+                                        {t('channels.webhooks.inboxMessagingTitle')}
                                     </CardTitle>
                                     <CardDescription>
-                                        {t('channels.webhooks.desc')}
+                                        {t('channels.webhooks.inboxMessagingDesc')}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
-                                    {/* Discord */}
-                                    <div className="space-y-2">
-                                        <Label className="flex items-center gap-2">
-                                            <span className="h-4 w-4 rounded-full bg-[#5865F2] inline-block" />
-                                            Discord {t('channels.webhooks.webhookUrl')}
-                                        </Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                placeholder="https://discord.com/api/webhooks/..."
-                                                value={webhookDiscordUrl}
-                                                onChange={(e) => setWebhookDiscordUrl(e.target.value)}
-                                                className="flex-1"
-                                            />
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleWebhookTest('discord')}
-                                                disabled={!webhookDiscordUrl || testingWebhook === 'discord'}
-                                                className="gap-1.5 shrink-0"
-                                            >
-                                                {testingWebhook === 'discord' ? (
-                                                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('channels.webhooks.testing')}</>
-                                                ) : (
-                                                    <><Send className="h-3.5 w-3.5" /> {t('channels.webhooks.test')}</>
-                                                )}
-                                            </Button>
+
+                                    {/* WhatsApp Business */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-4 w-4 rounded-full bg-[#25D366] inline-block shrink-0" />
+                                            <Label className="font-medium">WhatsApp Business</Label>
+                                            <Badge variant="outline" className="text-[10px] text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30">{t('channels.webhooks.badgeInbox')}</Badge>
                                         </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('channels.webhooks.whatsappDesc')}{' '}
+                                            <a href="https://developers.facebook.com/docs/whatsapp/cloud-api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{t('channels.webhooks.whatsappGuide')}</a>
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <Label className="text-xs text-muted-foreground">{t('channels.webhooks.whatsappPhoneId')}</Label>
+                                                <Input
+                                                    placeholder="123456789012345"
+                                                    value={webhookWhatsappPhoneId}
+                                                    onChange={(e) => setWebhookWhatsappPhoneId(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-xs text-muted-foreground">{t('channels.webhooks.whatsappToken')}</Label>
+                                                <Input
+                                                    type="password"
+                                                    placeholder="EAAxxxxxx..."
+                                                    value={webhookWhatsappToken}
+                                                    onChange={(e) => setWebhookWhatsappToken(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        {isAdmin && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {t('channels.webhooks.whatsappAdminNote')}{' '}
+                                                <a href="/admin/integrations" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{t('channels.webhooks.whatsappAdminNoteLink')}</a>{' '}
+                                                {t('channels.webhooks.whatsappAdminNoteEnd')}
+                                            </p>
+                                        )}
                                     </div>
 
                                     <Separator />
 
                                     {/* Telegram */}
                                     <div className="space-y-3">
-                                        <Label className="flex items-center gap-2">
-                                            <span className="h-4 w-4 rounded-full bg-[#0088cc] inline-block" />
-                                            Telegram
-                                        </Label>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-4 w-4 rounded-full bg-[#0088cc] inline-block shrink-0" />
+                                            <Label className="font-medium">Telegram</Label>
+                                            <Badge variant="outline" className="text-[10px] text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30">{t('channels.webhooks.badgeInbox')}</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('channels.webhooks.telegramDesc')}{' '}
+                                            <a href="https://core.telegram.org/bots#botfather" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{t('channels.webhooks.telegramCreateBot')}</a>
+                                        </p>
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-1">
                                                 <Label className="text-xs text-muted-foreground">{t('channels.webhooks.botToken')}</Label>
@@ -3120,43 +3142,17 @@ export default function ChannelDetailPage({
 
                                     <Separator />
 
-                                    {/* Slack */}
-                                    <div className="space-y-2">
-                                        <Label className="flex items-center gap-2">
-                                            <span className="h-4 w-4 rounded-full bg-[#4A154B] inline-block" />
-                                            Slack {t('channels.webhooks.webhookUrl')}
-                                        </Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                placeholder="https://hooks.slack.com/services/..."
-                                                value={webhookSlackUrl}
-                                                onChange={(e) => setWebhookSlackUrl(e.target.value)}
-                                                className="flex-1"
-                                            />
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleWebhookTest('slack')}
-                                                disabled={!webhookSlackUrl || testingWebhook === 'slack'}
-                                                className="gap-1.5 shrink-0"
-                                            >
-                                                {testingWebhook === 'slack' ? (
-                                                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('channels.webhooks.testing')}</>
-                                                ) : (
-                                                    <><Send className="h-3.5 w-3.5" /> {t('channels.webhooks.test')}</>
-                                                )}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    <Separator />
-
                                     {/* Zalo OA */}
                                     <div className="space-y-3">
-                                        <Label className="flex items-center gap-2">
-                                            <span className="h-4 w-4 rounded-full bg-[#0068FF] inline-block" />
-                                            Zalo OA
-                                        </Label>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-4 w-4 rounded-full bg-[#0068FF] inline-block shrink-0" />
+                                            <Label className="font-medium">Zalo OA</Label>
+                                            <Badge variant="outline" className="text-[10px] text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30">{t('channels.webhooks.badgeInbox')}</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('channels.webhooks.zaloDesc')}{' '}
+                                            <a href="https://developers.zalo.me/docs" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{t('channels.webhooks.zaloDocs')}</a>
+                                        </p>
 
                                         {webhookZaloOaName ? (
                                             /* Connected state */
@@ -3168,7 +3164,7 @@ export default function ChannelDetailPage({
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-sm font-medium truncate">{webhookZaloOaName}</p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            {t('channels.webhooks.connectedAt') || 'Connected'}{' '}
+                                                            {t('channels.webhooks.connectedAt')}{' '}
                                                             {webhookZaloConnectedAt ? new Date(webhookZaloConnectedAt).toLocaleDateString() : ''}
                                                         </p>
                                                     </div>
@@ -3182,7 +3178,7 @@ export default function ChannelDetailPage({
                                                             setWebhookZaloRefreshToken('')
                                                             setWebhookZaloOaName('')
                                                             setWebhookZaloConnectedAt('')
-                                                            toast.info('Zalo OA disconnected. Click Save to confirm. / Đã ngắt kết nối Zalo OA. Nhấn Lưu để xác nhận.')
+                                                            toast.info(t('channels.webhooks.zaloDisconnected'))
                                                         }}
                                                     >
                                                         <X className="h-3.5 w-3.5" />
@@ -3190,14 +3186,18 @@ export default function ChannelDetailPage({
                                                     </Button>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-xs text-muted-foreground">Người nhận thông báo (Follower)</Label>
+                                                    <Label className="text-xs text-muted-foreground">{t('channels.webhooks.zaloFollowerLabel')}</Label>
                                                     <div className="flex gap-2">
                                                         <select
                                                             className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
                                                             value={webhookZaloUserId}
                                                             onChange={(e) => setWebhookZaloUserId(e.target.value)}
                                                         >
-                                                            <option value="">{zaloFollowers.length > 0 ? '-- Chọn follower --' : '-- Nhấn Load để tải danh sách --'}</option>
+                                                            <option value="">
+                                                                {zaloFollowers.length > 0
+                                                                    ? t('channels.webhooks.zaloSelectFollower')
+                                                                    : t('channels.webhooks.zaloLoadFollowers')}
+                                                            </option>
                                                             {zaloFollowers.map((f) => (
                                                                 <option key={f.userId} value={f.userId}>
                                                                     {f.displayName} ({f.userId})
@@ -3217,15 +3217,15 @@ export default function ChannelDetailPage({
                                                                     if (res.ok && data.followers) {
                                                                         setZaloFollowers(data.followers)
                                                                         if (data.followers.length === 0) {
-                                                                            toast.info('Không có follower nào. Hãy follow OA trước.')
+                                                                            toast.info(t('channels.webhooks.zaloNoFollowers'))
                                                                         } else {
-                                                                            toast.success(`Đã tải ${data.followers.length} follower`)
+                                                                            toast.success(t('channels.webhooks.zaloLoadedFollowers').replace('{{count}}', String(data.followers.length)))
                                                                         }
                                                                     } else {
-                                                                        toast.error(data.error || 'Không thể tải followers')
+                                                                        toast.error(data.error || t('channels.webhooks.zaloFollowerError'))
                                                                     }
                                                                 } catch {
-                                                                    toast.error('Lỗi kết nối')
+                                                                    toast.error(t('channels.webhooks.zaloConnectionError'))
                                                                 } finally {
                                                                     setZaloLoadingFollowers(false)
                                                                 }
@@ -3266,7 +3266,7 @@ export default function ChannelDetailPage({
                                                     </div>
                                                     <div className="flex-1">
                                                         <p className="text-sm text-muted-foreground">
-                                                            {t('channels.webhooks.zaloNotConnected') || 'Chưa kết nối Zalo OA. Nhấn nút bên dưới để kết nối qua OAuth.'}
+                                                            {t('channels.webhooks.zaloNotConnected')}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -3280,32 +3280,122 @@ export default function ChannelDetailPage({
                                                     }}
                                                 >
                                                     {zaloConnecting ? (
-                                                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang kết nối...</>
+                                                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('channels.webhooks.zaloConnecting')}</>
                                                     ) : (
-                                                        <><LinkIcon className="h-3.5 w-3.5" /> Connect Zalo OA / Kết nối Zalo OA</>
+                                                        <><LinkIcon className="h-3.5 w-3.5" /> {t('channels.webhooks.zaloConnect')}</>
                                                     )}
                                                 </Button>
                                                 {isAdmin && (
                                                     <p className="text-xs text-muted-foreground">
-                                                        Admin cần cấu hình Zalo App ID + Secret trong{' '}
+                                                        {t('channels.webhooks.zaloAdminNote')}{' '}
                                                         <a href="/admin/integrations" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                                            Admin → Integrations
+                                                            {t('channels.webhooks.whatsappAdminNoteLink')}
                                                         </a>{' '}
-                                                        trước khi kết nối.
+                                                        {t('channels.webhooks.zaloAdminNoteEnd')}
                                                     </p>
                                                 )}
                                             </div>
                                         )}
                                     </div>
 
+                                </CardContent>
+                            </Card>
+
+                            {/* ── Card 2: Outbound Notifications ── */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <Bell className="h-4 w-4 text-orange-400" />
+                                        {t('channels.webhooks.outboundNotificationsTitle')}
+                                    </CardTitle>
+                                    <CardDescription>
+                                        {t('channels.webhooks.outboundNotificationsDesc')}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+
+                                    {/* Discord */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-4 w-4 rounded-full bg-[#5865F2] inline-block shrink-0" />
+                                            <Label className="font-medium">Discord</Label>
+                                            <Badge variant="outline" className="text-[10px] text-muted-foreground">{t('channels.webhooks.badgeNotification')}</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('channels.webhooks.discordDesc')}{' '}
+                                            <a href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{t('channels.webhooks.discordWebhook')}</a>
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="https://discord.com/api/webhooks/..."
+                                                value={webhookDiscordUrl}
+                                                onChange={(e) => setWebhookDiscordUrl(e.target.value)}
+                                                className="flex-1"
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleWebhookTest('discord')}
+                                                disabled={!webhookDiscordUrl || testingWebhook === 'discord'}
+                                                className="gap-1.5 shrink-0"
+                                            >
+                                                {testingWebhook === 'discord' ? (
+                                                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('channels.webhooks.testing')}</>
+                                                ) : (
+                                                    <><Send className="h-3.5 w-3.5" /> {t('channels.webhooks.test')}</>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+
                                     <Separator />
 
-                                    {/* Custom */}
+                                    {/* Slack */}
                                     <div className="space-y-2">
-                                        <Label className="flex items-center gap-2">
-                                            <Zap className="h-4 w-4 text-orange-400" />
-                                            {t('channels.webhooks.customWebhook')}
-                                        </Label>
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-4 w-4 rounded-full bg-[#4A154B] inline-block shrink-0" />
+                                            <Label className="font-medium">Slack</Label>
+                                            <Badge variant="outline" className="text-[10px] text-muted-foreground">{t('channels.webhooks.badgeNotification')}</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('channels.webhooks.slackDesc')}{' '}
+                                            <a href="https://api.slack.com/messaging/webhooks" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{t('channels.webhooks.slackWebhook')}</a>
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="https://hooks.slack.com/services/..."
+                                                value={webhookSlackUrl}
+                                                onChange={(e) => setWebhookSlackUrl(e.target.value)}
+                                                className="flex-1"
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleWebhookTest('slack')}
+                                                disabled={!webhookSlackUrl || testingWebhook === 'slack'}
+                                                className="gap-1.5 shrink-0"
+                                            >
+                                                {testingWebhook === 'slack' ? (
+                                                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('channels.webhooks.testing')}</>
+                                                ) : (
+                                                    <><Send className="h-3.5 w-3.5" /> {t('channels.webhooks.test')}</>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* Custom Webhook */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Zap className="h-4 w-4 text-orange-400 shrink-0" />
+                                            <Label className="font-medium">{t('channels.webhooks.customWebhook')}</Label>
+                                            <Badge variant="outline" className="text-[10px] text-muted-foreground">{t('channels.webhooks.badgeNotification')}</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('channels.webhooks.customWebhookDesc')}
+                                        </p>
                                         <div className="flex gap-2">
                                             <Input
                                                 placeholder="https://your-server.com/webhook"
@@ -3327,337 +3417,334 @@ export default function ChannelDetailPage({
                                                 )}
                                             </Button>
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            {t('channels.webhooks.customWebhookDesc')}
-                                        </p>
                                     </div>
+
                                 </CardContent>
                             </Card>
                         </TabsContent>
 
-                        {/* ─── Members Tab ───────────────────── */}
-                        <TabsContent value="members" className="space-y-4">
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <CardTitle className="text-base">{t('channels.members.title')}</CardTitle>
-                                            <CardDescription>{t('channels.members.desc')}</CardDescription>
+                <TabsContent value="members" className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-base">{t('channels.members.title')}</CardTitle>
+                                    <CardDescription>{t('channels.members.desc')}</CardDescription>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        setAddingMember(!addingMember)
+                                        if (!addingMember && isAdmin && allUsers.length === 0) {
+                                            fetch('/api/admin/users').then(r => r.ok ? r.json() : []).then(data => setAllUsers(data)).catch(() => { })
+                                        }
+                                    }}
+                                    className="gap-1.5"
+                                >
+                                    <UserPlus className="h-3.5 w-3.5" />
+                                    {t('channels.members.addMember')}
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Add member form */}
+                            {addingMember && (
+                                <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                                    {/* Admin: Select existing user */}
+                                    {isAdmin && (
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div className="col-span-2">
+                                                <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('channels.members.selectUser')}</label>
+                                                <select
+                                                    value={selectedUserId}
+                                                    onChange={(e) => setSelectedUserId(e.target.value)}
+                                                    className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                                                >
+                                                    <option value="">{t('channels.members.selectUser')}</option>
+                                                    {allUsers
+                                                        .filter(u => !members.some(m => m.userId === u.id))
+                                                        .map(u => (
+                                                            <option key={u.id} value={u.id}>{u.name ? `${u.name} (${u.email})` : u.email}</option>
+                                                        ))
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('channels.members.role')}</label>
+                                                <select
+                                                    value={selectedRole}
+                                                    onChange={(e) => setSelectedRole(e.target.value)}
+                                                    className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                                                >
+                                                    <option value="OWNER">{t('channels.memberRoles.owner')}</option>
+                                                    <option value="MANAGER">{t('channels.memberRoles.manager')}</option>
+                                                    <option value="STAFF">{t('channels.memberRoles.staff')}</option>
+                                                    <option value="CUSTOMER">{t('channels.memberRoles.customer')}</option>
+                                                </select>
+                                            </div>
                                         </div>
+                                    )}
+
+                                    {/* Admin: Add by user button */}
+                                    {isAdmin && selectedUserId && (
+                                        <div className="flex gap-2 justify-end">
+                                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUserId(''); setAddingMember(false) }}>
+                                                {t('common.cancel')}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={async () => {
+                                                    try {
+                                                        const res = await fetch(`/api/admin/channels/${id}/members`, {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ userId: selectedUserId, role: selectedRole }),
+                                                        })
+                                                        if (res.status === 409) { toast.error(t('channels.members.alreadyMember')); return }
+                                                        if (!res.ok) throw new Error()
+                                                        const member = await res.json()
+                                                        setMembers(prev => [...prev, member])
+                                                        setSelectedUserId('')
+                                                        setAddingMember(false)
+                                                        toast.success(t('channels.members.added'))
+                                                    } catch { toast.error(t('channels.members.addFailed')) }
+                                                }}
+                                            >
+                                                <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                                                {t('channels.members.addMember')}
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {/* Divider for admin */}
+                                    {isAdmin && (
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                            <div className="flex-1 border-t" />
+                                            <span>{t('channels.members.orInviteByEmail')}</span>
+                                            <div className="flex-1 border-t" />
+                                        </div>
+                                    )}
+
+                                    {/* Email invite (all users) */}
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('channels.members.inviteByEmail')}</label>
+                                            <Input
+                                                type="email"
+                                                placeholder={t('channels.members.emailPlaceholder')}
+                                                value={inviteEmail}
+                                                onChange={(e) => setInviteEmail(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('channels.members.role')}</label>
+                                            <select
+                                                value={selectedRole}
+                                                onChange={(e) => setSelectedRole(e.target.value)}
+                                                className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                                            >
+                                                <option value="OWNER">{t('channels.memberRoles.owner')}</option>
+                                                <option value="MANAGER">{t('channels.memberRoles.manager')}</option>
+                                                <option value="STAFF">{t('channels.memberRoles.staff')}</option>
+                                                <option value="CUSTOMER">{t('channels.memberRoles.customer')}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 justify-end">
+                                        <Button variant="ghost" size="sm" onClick={() => { setInviteEmail(''); setAddingMember(false) }}>
+                                            {t('common.cancel')}
+                                        </Button>
                                         <Button
-                                            variant="outline"
                                             size="sm"
-                                            onClick={() => {
-                                                setAddingMember(!addingMember)
-                                                if (!addingMember && isAdmin && allUsers.length === 0) {
-                                                    fetch('/api/admin/users').then(r => r.ok ? r.json() : []).then(data => setAllUsers(data)).catch(() => { })
-                                                }
+                                            disabled={!inviteEmail || sendingInvite}
+                                            onClick={async () => {
+                                                setSendingInvite(true)
+                                                try {
+                                                    const res = await fetch(`/api/admin/channels/${id}/members`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ email: inviteEmail, role: selectedRole }),
+                                                    })
+                                                    if (res.status === 409) { toast.error(t('channels.members.alreadyMember')); return }
+                                                    if (!res.ok) throw new Error()
+                                                    const member = await res.json()
+                                                    setMembers(prev => [...prev, member])
+                                                    setInviteEmail('')
+                                                    setAddingMember(false)
+                                                    toast.success(t('channels.members.inviteSent'))
+                                                } catch { toast.error(t('channels.members.inviteFailed')) }
+                                                finally { setSendingInvite(false) }
                                             }}
-                                            className="gap-1.5"
                                         >
-                                            <UserPlus className="h-3.5 w-3.5" />
-                                            {t('channels.members.addMember')}
+                                            <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                                            {sendingInvite ? t('channels.members.sending') : t('channels.members.sendInvite')}
                                         </Button>
                                     </div>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    {/* Add member form */}
-                                    {addingMember && (
-                                        <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-                                            {/* Admin: Select existing user */}
-                                            {isAdmin && (
-                                                <div className="grid grid-cols-3 gap-3">
-                                                    <div className="col-span-2">
-                                                        <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('channels.members.selectUser')}</label>
-                                                        <select
-                                                            value={selectedUserId}
-                                                            onChange={(e) => setSelectedUserId(e.target.value)}
-                                                            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                                                        >
-                                                            <option value="">{t('channels.members.selectUser')}</option>
-                                                            {allUsers
-                                                                .filter(u => !members.some(m => m.userId === u.id))
-                                                                .map(u => (
-                                                                    <option key={u.id} value={u.id}>{u.name ? `${u.name} (${u.email})` : u.email}</option>
-                                                                ))
-                                                            }
-                                                        </select>
+                                </div>
+                            )}
+
+                            {/* Members list */}
+                            {members.length === 0 ? (
+                                <div className="text-center py-12 text-muted-foreground">
+                                    <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                                    <p className="font-medium">{t('channels.members.noMembers')}</p>
+                                    <p className="text-xs mt-1">{t('channels.members.noMembersDesc')}</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {members.map((member) => (
+                                        <div key={member.id} className="border rounded-lg overflow-hidden">
+                                            <div className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                                                        {member.user?.name?.[0]?.toUpperCase() || member.user?.email?.[0]?.toUpperCase() || '?'}
                                                     </div>
                                                     <div>
-                                                        <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('channels.members.role')}</label>
-                                                        <select
-                                                            value={selectedRole}
-                                                            onChange={(e) => setSelectedRole(e.target.value)}
-                                                            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+                                                        <p className="text-sm font-medium">{member.user?.name || member.user?.email}</p>
+                                                        <p className="text-xs text-muted-foreground">{member.user?.email}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${member.role === 'ADMIN' ? 'bg-red-500/10 text-red-500' :
+                                                        member.role === 'OWNER' ? 'bg-amber-500/10 text-amber-500' :
+                                                            member.role === 'MANAGER' ? 'bg-blue-500/10 text-blue-500' :
+                                                                member.role === 'STAFF' ? 'bg-indigo-500/10 text-indigo-400' :
+                                                                    'bg-neutral-500/10 text-neutral-400'
+                                                        }`}>
+                                                        {member.role}
+                                                    </span>
+                                                    {isAdmin && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 px-2 gap-1"
+                                                            onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)}
                                                         >
-                                                            <option value="OWNER">{t('channels.memberRoles.owner')}</option>
-                                                            <option value="MANAGER">{t('channels.memberRoles.manager')}</option>
-                                                            <option value="STAFF">{t('channels.memberRoles.staff')}</option>
-                                                            <option value="CUSTOMER">{t('channels.memberRoles.customer')}</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Admin: Add by user button */}
-                                            {isAdmin && selectedUserId && (
-                                                <div className="flex gap-2 justify-end">
-                                                    <Button variant="ghost" size="sm" onClick={() => { setSelectedUserId(''); setAddingMember(false) }}>
-                                                        {t('common.cancel')}
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={async () => {
-                                                            try {
-                                                                const res = await fetch(`/api/admin/channels/${id}/members`, {
-                                                                    method: 'POST',
-                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                    body: JSON.stringify({ userId: selectedUserId, role: selectedRole }),
-                                                                })
-                                                                if (res.status === 409) { toast.error(t('channels.members.alreadyMember')); return }
-                                                                if (!res.ok) throw new Error()
-                                                                const member = await res.json()
-                                                                setMembers(prev => [...prev, member])
-                                                                setSelectedUserId('')
-                                                                setAddingMember(false)
-                                                                toast.success(t('channels.members.added'))
-                                                            } catch { toast.error(t('channels.members.addFailed')) }
-                                                        }}
-                                                    >
-                                                        <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-                                                        {t('channels.members.addMember')}
-                                                    </Button>
-                                                </div>
-                                            )}
-
-                                            {/* Divider for admin */}
-                                            {isAdmin && (
-                                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                                    <div className="flex-1 border-t" />
-                                                    <span>{t('channels.members.orInviteByEmail')}</span>
-                                                    <div className="flex-1 border-t" />
-                                                </div>
-                                            )}
-
-                                            {/* Email invite (all users) */}
-                                            <div className="grid grid-cols-3 gap-3">
-                                                <div className="col-span-2">
-                                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('channels.members.inviteByEmail')}</label>
-                                                    <Input
-                                                        type="email"
-                                                        placeholder={t('channels.members.emailPlaceholder')}
-                                                        value={inviteEmail}
-                                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t('channels.members.role')}</label>
-                                                    <select
-                                                        value={selectedRole}
-                                                        onChange={(e) => setSelectedRole(e.target.value)}
-                                                        className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-                                                    >
-                                                        <option value="OWNER">{t('channels.memberRoles.owner')}</option>
-                                                        <option value="MANAGER">{t('channels.memberRoles.manager')}</option>
-                                                        <option value="STAFF">{t('channels.memberRoles.staff')}</option>
-                                                        <option value="CUSTOMER">{t('channels.memberRoles.customer')}</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 justify-end">
-                                                <Button variant="ghost" size="sm" onClick={() => { setInviteEmail(''); setAddingMember(false) }}>
-                                                    {t('common.cancel')}
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    disabled={!inviteEmail || sendingInvite}
-                                                    onClick={async () => {
-                                                        setSendingInvite(true)
-                                                        try {
-                                                            const res = await fetch(`/api/admin/channels/${id}/members`, {
-                                                                method: 'POST',
-                                                                headers: { 'Content-Type': 'application/json' },
-                                                                body: JSON.stringify({ email: inviteEmail, role: selectedRole }),
-                                                            })
-                                                            if (res.status === 409) { toast.error(t('channels.members.alreadyMember')); return }
-                                                            if (!res.ok) throw new Error()
-                                                            const member = await res.json()
-                                                            setMembers(prev => [...prev, member])
-                                                            setInviteEmail('')
-                                                            setAddingMember(false)
-                                                            toast.success(t('channels.members.inviteSent'))
-                                                        } catch { toast.error(t('channels.members.inviteFailed')) }
-                                                        finally { setSendingInvite(false) }
-                                                    }}
-                                                >
-                                                    <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-                                                    {sendingInvite ? t('channels.members.sending') : t('channels.members.sendInvite')}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Members list */}
-                                    {members.length === 0 ? (
-                                        <div className="text-center py-12 text-muted-foreground">
-                                            <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                                            <p className="font-medium">{t('channels.members.noMembers')}</p>
-                                            <p className="text-xs mt-1">{t('channels.members.noMembersDesc')}</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {members.map((member) => (
-                                                <div key={member.id} className="border rounded-lg overflow-hidden">
-                                                    <div className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-                                                                {member.user?.name?.[0]?.toUpperCase() || member.user?.email?.[0]?.toUpperCase() || '?'}
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-medium">{member.user?.name || member.user?.email}</p>
-                                                                <p className="text-xs text-muted-foreground">{member.user?.email}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${member.role === 'ADMIN' ? 'bg-red-500/10 text-red-500' :
-                                                                member.role === 'OWNER' ? 'bg-amber-500/10 text-amber-500' :
-                                                                    member.role === 'MANAGER' ? 'bg-blue-500/10 text-blue-500' :
-                                                                        member.role === 'STAFF' ? 'bg-indigo-500/10 text-indigo-400' :
-                                                                            'bg-neutral-500/10 text-neutral-400'
-                                                                }`}>
-                                                                {member.role}
-                                                            </span>
-                                                            {isAdmin && (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-7 px-2 gap-1"
-                                                                    onClick={() => setExpandedMember(expandedMember === member.id ? null : member.id)}
-                                                                >
-                                                                    <Shield className="h-3.5 w-3.5" />
-                                                                    {expandedMember === member.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                                                </Button>
-                                                            )}
-                                                            {isAdmin && (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className="h-7 w-7 p-0 text-red-400 hover:text-red-500 hover:bg-red-500/10"
-                                                                    onClick={async () => {
-                                                                        try {
-                                                                            await fetch(`/api/admin/channels/${id}/members?memberId=${member.id}`, { method: 'DELETE' })
-                                                                            setMembers(prev => prev.filter(m => m.id !== member.id))
-                                                                            toast.success(t('channels.members.removed'))
-                                                                        } catch {
-                                                                            toast.error(t('channels.members.removeFailed'))
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Expanded permissions */}
-                                                    {expandedMember === member.id && (
-                                                        <div className="border-t px-4 py-3 bg-muted/20">
-                                                            <p className="text-xs font-medium text-muted-foreground mb-3">
-                                                                <Shield className="h-3 w-3 inline mr-1" />
-                                                                {t('channels.members.permissions')}
-                                                            </p>
-                                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                                                {[
-                                                                    'canCreatePost', 'canEditPost', 'canDeletePost', 'canApprovePost',
-                                                                    'canSchedulePost', 'canUploadMedia', 'canDeleteMedia', 'canViewMedia',
-                                                                    'canCreateEmail', 'canManageContacts', 'canViewReports', 'canEditSettings',
-                                                                ].map((perm) => (
-                                                                    <label
-                                                                        key={perm}
-                                                                        className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/40 rounded px-2 py-1.5 transition-colors"
-                                                                    >
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={member.permission?.[perm] ?? false}
-                                                                            onChange={async (e) => {
-                                                                                const newVal = e.target.checked
-                                                                                // Optimistic update
-                                                                                setMembers(prev => prev.map(m =>
-                                                                                    m.id === member.id
-                                                                                        ? { ...m, permission: { ...m.permission, [perm]: newVal } }
-                                                                                        : m
-                                                                                ))
-                                                                                try {
-                                                                                    await fetch(`/api/admin/channels/${id}/members/${member.id}`, {
-                                                                                        method: 'PUT',
-                                                                                        headers: { 'Content-Type': 'application/json' },
-                                                                                        body: JSON.stringify({ permissions: { ...member.permission, [perm]: newVal } }),
-                                                                                    })
-                                                                                } catch {
-                                                                                    // Revert on error
-                                                                                    setMembers(prev => prev.map(m =>
-                                                                                        m.id === member.id
-                                                                                            ? { ...m, permission: { ...m.permission, [perm]: !newVal } }
-                                                                                            : m
-                                                                                    ))
-                                                                                    toast.error(t('channels.members.updateFailed'))
-                                                                                }
-                                                                            }}
-                                                                            className="rounded border-muted-foreground/30"
-                                                                        />
-                                                                        <span>{t(`channels.members.permissionLabels.${perm}`)}</span>
-                                                                    </label>
-                                                                ))}
-                                                            </div>
-                                                            {/* Reset to defaults */}
-                                                            <div className="mt-2 flex justify-end">
-                                                                <button
-                                                                    className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-                                                                    onClick={async () => {
-                                                                        try {
-                                                                            const res = await fetch(`/api/admin/channels/${id}/members/${member.id}/reset-permissions`, { method: 'POST' })
-                                                                            if (!res.ok) throw new Error()
-                                                                            const updated = await res.json()
-                                                                            setMembers(prev => prev.map(m => m.id === member.id ? updated : m))
-                                                                            toast.success(t('channels.memberPerms.resetSuccess'))
-                                                                        } catch {
-                                                                            toast.error(t('channels.memberPerms.resetFailed'))
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    {t('channels.memberPerms.resetToDefaults')}
-                                                                </button>
-                                                            </div>
-                                                        </div>
+                                                            <Shield className="h-3.5 w-3.5" />
+                                                            {expandedMember === member.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                                        </Button>
                                                     )}
-
+                                                    {isAdmin && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await fetch(`/api/admin/channels/${id}/members?memberId=${member.id}`, { method: 'DELETE' })
+                                                                    setMembers(prev => prev.filter(m => m.id !== member.id))
+                                                                    toast.success(t('channels.members.removed'))
+                                                                } catch {
+                                                                    toast.error(t('channels.members.removeFailed'))
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
                                                 </div>
-                                            ))}
+                                            </div>
+
+                                            {/* Expanded permissions */}
+                                            {expandedMember === member.id && (
+                                                <div className="border-t px-4 py-3 bg-muted/20">
+                                                    <p className="text-xs font-medium text-muted-foreground mb-3">
+                                                        <Shield className="h-3 w-3 inline mr-1" />
+                                                        {t('channels.members.permissions')}
+                                                    </p>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                        {[
+                                                            'canCreatePost', 'canEditPost', 'canDeletePost', 'canApprovePost',
+                                                            'canSchedulePost', 'canUploadMedia', 'canDeleteMedia', 'canViewMedia',
+                                                            'canCreateEmail', 'canManageContacts', 'canViewReports', 'canEditSettings',
+                                                        ].map((perm) => (
+                                                            <label
+                                                                key={perm}
+                                                                className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/40 rounded px-2 py-1.5 transition-colors"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={member.permission?.[perm] ?? false}
+                                                                    onChange={async (e) => {
+                                                                        const newVal = e.target.checked
+                                                                        // Optimistic update
+                                                                        setMembers(prev => prev.map(m =>
+                                                                            m.id === member.id
+                                                                                ? { ...m, permission: { ...m.permission, [perm]: newVal } }
+                                                                                : m
+                                                                        ))
+                                                                        try {
+                                                                            await fetch(`/api/admin/channels/${id}/members/${member.id}`, {
+                                                                                method: 'PUT',
+                                                                                headers: { 'Content-Type': 'application/json' },
+                                                                                body: JSON.stringify({ permissions: { ...member.permission, [perm]: newVal } }),
+                                                                            })
+                                                                        } catch {
+                                                                            // Revert on error
+                                                                            setMembers(prev => prev.map(m =>
+                                                                                m.id === member.id
+                                                                                    ? { ...m, permission: { ...m.permission, [perm]: !newVal } }
+                                                                                    : m
+                                                                            ))
+                                                                            toast.error(t('channels.members.updateFailed'))
+                                                                        }
+                                                                    }}
+                                                                    className="rounded border-muted-foreground/30"
+                                                                />
+                                                                <span>{t(`channels.members.permissionLabels.${perm}`)}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                    {/* Reset to defaults */}
+                                                    <div className="mt-2 flex justify-end">
+                                                        <button
+                                                            className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const res = await fetch(`/api/admin/channels/${id}/members/${member.id}/reset-permissions`, { method: 'POST' })
+                                                                    if (!res.ok) throw new Error()
+                                                                    const updated = await res.json()
+                                                                    setMembers(prev => prev.map(m => m.id === member.id ? updated : m))
+                                                                    toast.success(t('channels.memberPerms.resetSuccess'))
+                                                                } catch {
+                                                                    toast.error(t('channels.memberPerms.resetFailed'))
+                                                                }
+                                                            }}
+                                                        >
+                                                            {t('channels.memberPerms.resetToDefaults')}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-                        {/* ─── Customers Tab ───────────────────── */}
-                        <TabsContent value="customers" className="space-y-4">
-                            <CustomersTab channelId={id} />
-                        </TabsContent>
+                {/* ─── Customers Tab ───────────────────── */}
+                <TabsContent value="customers" className="space-y-4">
+                    <CustomersTab channelId={id} />
+                </TabsContent>
 
-                        {/* ─── Chat Bot Tab ───────────────────── */}
-                        <TabsContent value="chatbot" className="space-y-4">
-                            <ChatBotTab channelId={id} />
-                        </TabsContent>
+                {/* ─── Chat Bot Tab ───────────────────── */}
+                <TabsContent value="chatbot" className="space-y-4">
+                    <ChatBotTab channelId={id} />
+                </TabsContent>
 
-                        {/* ─── Auto Content Pipeline Tab ──────── */}
-                        <TabsContent value="auto-content" className="space-y-4">
-                            <AutoContentTab channelId={id} />
-                        </TabsContent>
+                {/* ─── Auto Content Pipeline Tab ──────── */}
+                <TabsContent value="auto-content" className="space-y-4">
+                    <AutoContentTab channelId={id} />
+                </TabsContent>
 
-                    </div>
-                </div>
-            </Tabs>
-        </div>
+        </div >
+                </div >
+            </Tabs >
+        </div >
     )
 }
 
