@@ -29,7 +29,7 @@ import {
     Pie,
 } from 'recharts'
 import {
-    Sparkles,
+    BarChart2,
     RefreshCw,
     Download,
     Users,
@@ -528,11 +528,19 @@ export default function InsightsPage() {
         URL.revokeObjectURL(url)
     }
 
-    const platformInsights = insights?.platformInsights ?? []
+    const rawInsights = insights?.platformInsights ?? []
     const postInsights = insights?.postInsights ?? []
 
-    // Build tab list: only show accounts with actual live data (or at least a token)
-    // Sort: live first, pending last
+    // Deduplicate: same platform + accountName should only appear once
+    const seen = new Set<string>()
+    const platformInsights = rawInsights.filter(p => {
+        const key = `${p.platform}__${p.accountName}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+    })
+
+    // Build tab list: live platforms first, pending/no-API dimmed after
     const liveAccounts = platformInsights.filter(p => LIVE_API_PLATFORMS.has(p.platform) && !p.pendingApproval)
     const pendingAccounts = platformInsights.filter(p => !LIVE_API_PLATFORMS.has(p.platform) || p.pendingApproval)
 
@@ -552,7 +560,7 @@ export default function InsightsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between px-4 pt-4 pb-3 border-b shrink-0">
                 <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Sparkles className="h-4 w-4 text-primary" />
+                        <BarChart2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
                         <h1 className="text-lg font-bold tracking-tight">{t('reports.title')}</h1>
@@ -599,17 +607,21 @@ export default function InsightsPage() {
                 {liveAccounts.map(pi => {
                     const tabKey = `${pi.platform}__${pi.accountName}`
                     const color = platformColor(pi.platform)
+                    const shortLabel = { facebook: 'FB', instagram: 'IG', youtube: 'YT', tiktok: 'TT', linkedin: 'LI', x: 'X', pinterest: 'PIN', gbp: 'GBP' }[pi.platform] || pi.platform.slice(0, 2).toUpperCase()
                     return (
                         <button
                             key={tabKey}
                             type="button"
                             onClick={() => setActiveTab(tabKey)}
-                            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer ${activeTab === tabKey ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer ${activeTab === tabKey ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
                         >
-                            <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0" style={{ background: color }}>
-                                <div className="w-2.5 h-2.5"><PlatformIcon platform={pi.platform} size="xs" /></div>
+                            {/* Platform icon — clear, not hidden behind colored circle */}
+                            <div className="w-4 h-4 shrink-0">
+                                <PlatformIcon platform={pi.platform} size="sm" />
                             </div>
-                            <span className="truncate max-w-[100px]">{pi.accountName}</span>
+                            <span className="truncate max-w-[90px]">{pi.accountName}</span>
+                            <span className="text-[9px] font-normal px-1 py-0.5 rounded" style={{ background: color + '20', color }}>{shortLabel}</span>
                         </button>
                     )
                 })}
@@ -617,16 +629,20 @@ export default function InsightsPage() {
                 {/* Pending/no-live-API tabs (dimmed) */}
                 {pendingAccounts.map(pi => {
                     const tabKey = `${pi.platform}__${pi.accountName}`
+                    const shortLabel = { facebook: 'FB', instagram: 'IG', youtube: 'YT', tiktok: 'TT', linkedin: 'LI', x: 'X', pinterest: 'PIN', gbp: 'GBP' }[pi.platform] || pi.platform.slice(0, 2).toUpperCase()
                     return (
                         <button
                             key={tabKey}
                             type="button"
                             onClick={() => setActiveTab(tabKey)}
-                            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer opacity-60 ${activeTab === tabKey ? 'border-primary text-primary opacity-100' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap cursor-pointer opacity-50 hover:opacity-80 ${activeTab === tabKey ? 'border-primary text-foreground opacity-100' : 'border-transparent text-muted-foreground'
+                                }`}
                         >
-                            <div className="w-3.5 h-3.5"><PlatformIcon platform={pi.platform} size="xs" /></div>
+                            <div className="w-4 h-4 shrink-0">
+                                <PlatformIcon platform={pi.platform} size="sm" />
+                            </div>
                             <span className="truncate max-w-[80px]">{pi.accountName}</span>
-                            <span className="text-[9px] bg-muted px-1 py-0.5 rounded">No API</span>
+                            <span className="text-[9px] bg-muted text-muted-foreground px-1 py-0.5 rounded">{shortLabel}</span>
                         </button>
                     )
                 })}

@@ -18,7 +18,7 @@ import {
     CheckCircle2,
     Image,
     Mail,
-    Sparkles,
+    BarChart2,
     Plug,
     Clapperboard,
     MoreHorizontal,
@@ -53,7 +53,7 @@ const topNav: NavItem[] = [
 
 const bottomNav: NavItem[] = [
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
-    { titleKey: 'nav.insights', href: '/dashboard/reports', icon: Sparkles },
+    { titleKey: 'nav.insights', href: '/dashboard/insights', icon: BarChart2 },
     { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },
 ]
 
@@ -209,6 +209,7 @@ export function Sidebar({ session }: { session: Session }) {
 
     const isActive = (item: NavItem) => {
         if (item.titleKey === 'nav.studio') return pathname?.startsWith('/dashboard/studio') ?? false
+        if (item.titleKey === 'nav.insights') return pathname?.startsWith('/dashboard/insights') || pathname?.startsWith('/dashboard/reports')
         return item.exact ? pathname === item.href : (pathname === item.href || pathname?.startsWith(item.href + '/'))
     }
 
