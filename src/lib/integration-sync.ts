@@ -80,7 +80,7 @@ export async function syncShopifyProducts(channelId: string): Promise<{ synced: 
                         update: { name: p.title, description, price, salePrice, category, tags, images, productUrl, inStock: totalInventory > 0 || p.status === 'active', syncedAt: new Date() },
                     })
                     synced++
-                } catch { failed++ }
+                } catch (err) { failed++; console.error(`[AutoSync] Shopify product upsert failed:`, err) }
             }
         } while (pageInfo)
 
@@ -171,7 +171,7 @@ export async function syncEtsyProducts(channelId: string): Promise<{ synced: num
                         update: { name: String(listing.title || ''), description: String(listing.description || '').substring(0, 5000), price, images, productUrl, category: String(taxonomyPath?.[0] || ''), tags: [...tagsArr, ...materialsArr], inStock: listing.state === 'active' && Number(listing.quantity) > 0, syncedAt: new Date() },
                     })
                     synced++
-                } catch { failed++ }
+                } catch (err) { failed++; console.error(`[AutoSync] Etsy listing upsert failed:`, err) }
             }
 
             if (data.results.length < limit) break
@@ -218,7 +218,7 @@ export async function syncWordPressProducts(channelId: string): Promise<{ synced
                 update: { ...payload, syncedAt: new Date() },
             })
             synced++
-        } catch { failed++ }
+        } catch (err) { failed++; console.error(`[AutoSync] WordPress product upsert failed:`, err) }
     }
 
     try {
