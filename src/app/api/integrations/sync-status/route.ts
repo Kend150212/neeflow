@@ -17,13 +17,14 @@ export async function GET() {
     const db = prisma as any
     const channel = await prisma.channel.findFirst({
         where: { members: { some: { userId: session.user.id as string } } },
-        select: { id: true },
+        select: { id: true, timezone: true },
         orderBy: { createdAt: 'asc' },
     })
 
-    if (!channel) return NextResponse.json({ channelId: null, shopify: null, etsy: null, wordpress: null })
+    if (!channel) return NextResponse.json({ channelId: null, timezone: 'UTC', shopify: null, etsy: null, wordpress: null })
 
     const channelId = channel.id
+    const timezone = (channel as any).timezone || 'UTC'
 
     const [shopify, etsy, wordpress] = await Promise.all([
         db.shopifyConfig.findUnique({
@@ -42,6 +43,7 @@ export async function GET() {
 
     return NextResponse.json({
         channelId,
+        timezone,
         shopify: shopify ? {
             connected: true,
             shopDomain: shopify.shopDomain,

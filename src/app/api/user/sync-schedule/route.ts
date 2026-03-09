@@ -1,8 +1,8 @@
 /**
- * GET  /api/user/sync-schedule → returns current schedule config
- * POST /api/user/sync-schedule → updates schedule config + restarts in-process cron
+ * GET  /api/user/sync-schedule → returns current schedule config (hour, timezone, enabled)
+ * POST /api/user/sync-schedule → updates config + restarts in-process cron with new timezone
  *
- * Body (POST): { hour: number, enabled: boolean }
+ * Body (POST): { hour: number, timezone: string, enabled: boolean }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -14,20 +14,20 @@ export async function GET() {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const config = readScheduleConfig()
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.APP_URL || ''
-    return NextResponse.json({ ...config, baseUrl })
+    return NextResponse.json(config)
 }
 
 export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { hour, enabled } = await req.json()
+    const { hour, timezone, enabled } = await req.json()
     if (typeof hour !== 'number' || hour < 0 || hour > 23) {
         return NextResponse.json({ error: 'hour must be 0–23' }, { status: 400 })
     }
+    const tz = typeof timezone === 'string' && timezone ? timezone : 'UTC'
 
-    updateSyncScheduler(Math.floor(hour), enabled !== false)
+    updateSyncScheduler(Math.floor(hour), tz, enabled !== false)
 
-    return NextResponse.json({ ok: true, hour, enabled: enabled !== false })
+    return NextResponse.json({ ok: true, hour, timezone: tz, enabled: enabled !== false })
 }

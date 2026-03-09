@@ -43,6 +43,7 @@ interface SyncSourceStatus {
 
 interface SyncStatus {
     channelId: string | null
+    timezone: string
     shopify: SyncSourceStatus | null
     etsy: SyncSourceStatus | null
     wordpress: SyncSourceStatus | null
@@ -294,6 +295,9 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
         } catch { /* */ }
     }, [])
 
+    // Derived: channel timezone from sync status
+    const channelTimezone = syncStatus?.timezone || 'UTC'
+
     const fetchGDriveStatus = useCallback(async () => {
         try {
             const res = await fetch('/api/user/gdrive/status')
@@ -445,12 +449,12 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
             const res = await fetch('/api/user/sync-schedule', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ hour: cronHour, enabled: scheduleEnabled }),
+                body: JSON.stringify({ hour: cronHour, timezone: channelTimezone, enabled: scheduleEnabled }),
             })
             if (res.ok) {
                 setScheduleSaved(true)
                 setTimeout(() => setScheduleSaved(false), 2500)
-                toast.success(`✅ Schedule saved — daily sync at ${String(cronHour).padStart(2, '0')}:00 UTC`)
+                toast.success(`✅ Schedule saved — daily sync at ${String(cronHour).padStart(2, '0')}:00 ${channelTimezone}`)
             } else {
                 toast.error('Failed to save schedule')
             }
@@ -461,7 +465,15 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
     const formatSyncTime = (iso: string | null | undefined) => {
         if (!iso) return 'Never'
         const d = new Date(iso)
-        return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        try {
+            return d.toLocaleString(undefined, {
+                month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+                timeZone: channelTimezone,
+            })
+        } catch {
+            return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        }
     }
 
     return (
@@ -662,7 +674,9 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                     </div>
                                     <div>
                                         <p className="text-sm font-semibold">Auto-Sync Schedule</p>
-                                        <p className="text-xs text-muted-foreground">Set daily sync time for all data sources</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Set daily sync time · <span className="font-medium text-primary/80">{channelTimezone}</span>
+                                        </p>
                                     </div>
                                 </div>
                                 {/* Hour picker */}

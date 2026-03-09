@@ -1,8 +1,8 @@
 /**
  * In-process product sync scheduler using node-cron.
  *
- * Reads the schedule (hour) from /tmp/neeflow-sync-schedule.json
- * (or SYNC_SCHEDULE_PATH env var). Defaults to 2:00 AM daily.
+ * Reads the schedule (hour + timezone) from .sync-schedule.json.
+ * Defaults to 2:00 AM in the channel's local timezone (or UTC).
  *
  * Called from instrumentation.ts on server startup.
  * Also called when user updates schedule via /api/user/sync-schedule.
@@ -16,11 +16,12 @@ const SCHEDULE_FILE = process.env.SYNC_SCHEDULE_PATH
     || path.join(process.cwd(), '.sync-schedule.json')
 
 interface ScheduleConfig {
-    hour: number   // 0–23
+    hour: number       // 0–23 in the given timezone
+    timezone: string   // IANA timezone, e.g. 'Asia/Ho_Chi_Minh', 'America/New_York'
     enabled: boolean
 }
 
-const DEFAULT_CONFIG: ScheduleConfig = { hour: 2, enabled: true }
+const DEFAULT_CONFIG: ScheduleConfig = { hour: 2, timezone: 'UTC', enabled: true }
 
 export function readScheduleConfig(): ScheduleConfig {
     try {
@@ -28,6 +29,7 @@ export function readScheduleConfig(): ScheduleConfig {
         const parsed = JSON.parse(raw) as Partial<ScheduleConfig>
         return {
             hour: typeof parsed.hour === 'number' ? Math.max(0, Math.min(23, parsed.hour)) : DEFAULT_CONFIG.hour,
+            timezone: typeof parsed.timezone === 'string' && parsed.timezone ? parsed.timezone : DEFAULT_CONFIG.timezone,
             enabled: parsed.enabled !== false,
         }
     } catch {
@@ -56,8 +58,11 @@ export function startSyncScheduler(): void {
         return
     }
 
-    const expression = `0 ${config.hour} * * *`   // e.g. "0 2 * * *" for 2:00 AM
-    console.log(`[scheduler] Registering daily product sync at ${String(config.hour).padStart(2, '0')}:00 (${expression})`)
+    // Validate timezone — node-cron will throw if the timezone is invalid
+    const timezone = cron.validate(`0 ${config.hour} * * *`) ? config.timezone : 'UTC'
+
+    const expression = `0 ${config.hour} * * *`
+    console.log(`[scheduler] Registering daily sync at ${String(config.hour).padStart(2, '0')}:00 ${timezone} (${expression})`)
 
     currentTask = cron.schedule(expression, async () => {
         console.log(`[scheduler] 🔄 Running scheduled product sync — ${new Date().toISOString()}`)
@@ -74,12 +79,12 @@ export function startSyncScheduler(): void {
             console.error('[scheduler] ❌ Sync error:', err)
         }
     }, {
-        timezone: 'UTC',
+        timezone,
     })
 }
 
-/** Re-schedule after user changes the hour. */
-export function updateSyncScheduler(hour: number, enabled: boolean): void {
-    writeScheduleConfig({ hour, enabled })
+/** Re-schedule after user changes the config. */
+export function updateSyncScheduler(hour: number, timezone: string, enabled: boolean): void {
+    writeScheduleConfig({ hour, timezone, enabled })
     startSyncScheduler()
 }
