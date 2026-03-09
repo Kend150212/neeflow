@@ -5,6 +5,8 @@
  *  - Auto-sync on first connect (fire-and-forget via setImmediate)
  *  - Daily cron: /api/cron/sync-products
  *  - Manual sync buttons (existing routes still work independently)
+ *
+ * Now includes productUrl so the bot can share direct purchase links.
  */
 
 import { prisma } from '@/lib/prisma'
@@ -18,6 +20,7 @@ interface ShopifyProduct {
     body_html: string
     vendor: string
     product_type: string
+    handle: string    // used to construct storefront URL
     tags: string
     status: string
     variants: { price: string; compare_at_price?: string | null; inventory_quantity: number }[]
@@ -37,8 +40,8 @@ export async function syncShopifyProducts(channelId: string): Promise<{ synced: 
     try {
         do {
             const url = pageInfo
-                ? `https://${domain}/admin/api/2024-10/products.json?limit=250&page_info=${pageInfo}&fields=id,title,body_html,vendor,product_type,tags,status,variants,images`
-                : `https://${domain}/admin/api/2024-10/products.json?limit=250&fields=id,title,body_html,vendor,product_type,tags,status,variants,images`
+                ? `https://${domain}/admin/api/2024-10/products.json?limit=250&page_info=${pageInfo}&fields=id,title,body_html,vendor,product_type,handle,tags,status,variants,images`
+                : `https://${domain}/admin/api/2024-10/products.json?limit=250&fields=id,title,body_html,vendor,product_type,handle,tags,status,variants,images`
 
             const res = await fetch(url, {
                 headers: { 'X-Shopify-Access-Token': token },
@@ -63,16 +66,18 @@ export async function syncShopifyProducts(channelId: string): Promise<{ synced: 
                     const category = [p.vendor, p.product_type].filter(Boolean).join(' · ') || 'General'
                     const tags = p.tags ? p.tags.split(',').map(t => t.trim()).filter(Boolean) : []
                     const description = p.body_html?.replace(/<[^>]+>/g, '').trim() || ''
+                    // Shopify storefront URL: https://{domain}/products/{handle}
+                    const productUrl = p.handle ? `https://${domain}/products/${p.handle}` : null
 
                     const existing = await prisma.productCatalog.findFirst({
                         where: { channelId, syncSource: 'shopify', externalId: String(p.id) },
                         select: { id: true },
                     })
 
-                    await prisma.productCatalog.upsert({
+                    await (prisma.productCatalog as any).upsert({
                         where: { id: existing?.id ?? 'new_' + p.id },
-                        create: { channelId, syncSource: 'shopify', externalId: String(p.id), name: p.title, description, price, salePrice, category, tags, images, inStock: totalInventory > 0 || p.status === 'active', syncedAt: new Date() },
-                        update: { name: p.title, description, price, salePrice, category, tags, images, inStock: totalInventory > 0 || p.status === 'active', syncedAt: new Date() },
+                        create: { channelId, syncSource: 'shopify', externalId: String(p.id), name: p.title, description, price, salePrice, category, tags, images, productUrl, inStock: totalInventory > 0 || p.status === 'active', syncedAt: new Date() },
+                        update: { name: p.title, description, price, salePrice, category, tags, images, productUrl, inStock: totalInventory > 0 || p.status === 'active', syncedAt: new Date() },
                     })
                     synced++
                 } catch { failed++ }
@@ -157,11 +162,13 @@ export async function syncEtsyProducts(channelId: string): Promise<{ synced: num
                     const taxonomyPath = listing.taxonomy_path as string[] | undefined
                     const tagsArr = (listing.tags as string[] | undefined) ?? []
                     const materialsArr = (listing.materials as string[] | undefined) ?? []
+                    // Etsy listing URL: https://www.etsy.com/listing/{listing_id}
+                    const productUrl = listing.listing_id ? `https://www.etsy.com/listing/${listing.listing_id}` : null
 
-                    await prisma.productCatalog.upsert({
+                    await (prisma.productCatalog as any).upsert({
                         where: { id: existing?.id ?? `new_${externalId}` },
-                        create: { channelId, externalId, name: String(listing.title || ''), description: String(listing.description || '').substring(0, 5000), price, salePrice: null, images, category: String(taxonomyPath?.[0] || ''), tags: [...tagsArr, ...materialsArr], inStock: listing.state === 'active' && Number(listing.quantity) > 0, syncSource: 'etsy', syncedAt: new Date() },
-                        update: { name: String(listing.title || ''), description: String(listing.description || '').substring(0, 5000), price, images, category: String(taxonomyPath?.[0] || ''), tags: [...tagsArr, ...materialsArr], inStock: listing.state === 'active' && Number(listing.quantity) > 0, syncedAt: new Date() },
+                        create: { channelId, externalId, name: String(listing.title || ''), description: String(listing.description || '').substring(0, 5000), price, salePrice: null, images, productUrl, category: String(taxonomyPath?.[0] || ''), tags: [...tagsArr, ...materialsArr], inStock: listing.state === 'active' && Number(listing.quantity) > 0, syncSource: 'etsy', syncedAt: new Date() },
+                        update: { name: String(listing.title || ''), description: String(listing.description || '').substring(0, 5000), price, images, productUrl, category: String(taxonomyPath?.[0] || ''), tags: [...tagsArr, ...materialsArr], inStock: listing.state === 'active' && Number(listing.quantity) > 0, syncedAt: new Date() },
                     })
                     synced++
                 } catch { failed++ }
@@ -197,14 +204,15 @@ export async function syncWordPressProducts(channelId: string): Promise<{ synced
     async function upsertProduct(payload: {
         externalId: string; name: string; description: string
         price: number | null; salePrice: number | null
-        category: string; tags: string[]; images: string[]; inStock: boolean
+        category: string; tags: string[]; images: string[]
+        inStock: boolean; productUrl: string | null
     }) {
         try {
             const existing = await prisma.productCatalog.findFirst({
                 where: { channelId, syncSource: 'wordpress', externalId: payload.externalId },
                 select: { id: true },
             })
-            await prisma.productCatalog.upsert({
+            await (prisma.productCatalog as any).upsert({
                 where: { id: existing?.id ?? 'new_' + payload.externalId },
                 create: { channelId, syncSource: 'wordpress', syncedAt: new Date(), ...payload },
                 update: { ...payload, syncedAt: new Date() },
@@ -214,7 +222,7 @@ export async function syncWordPressProducts(channelId: string): Promise<{ synced
     }
 
     try {
-        // WooCommerce products
+        // WooCommerce products — URL from product.permalink
         if (config.syncWooProducts) {
             let page = 1, hasMore = true
             while (hasMore) {
@@ -234,6 +242,7 @@ export async function syncWordPressProducts(channelId: string): Promise<{ synced
                         tags: p.tags.map((t: any) => t.name),
                         images: p.images.map((i: any) => i.src),
                         inStock: p.stock_status === 'instock',
+                        productUrl: p.permalink || null,  // WooCommerce provides permalink directly
                     })
                 }
                 const total = parseInt(res.headers.get('X-WP-TotalPages') || '1')
@@ -241,7 +250,7 @@ export async function syncWordPressProducts(channelId: string): Promise<{ synced
             }
         }
 
-        // WordPress posts/articles
+        // WordPress posts — URL from post.link
         if (config.syncWpPosts) {
             let page = 1, hasMore = true
             while (hasMore) {
@@ -261,6 +270,7 @@ export async function syncWordPressProducts(channelId: string): Promise<{ synced
                         tags: [],
                         images: featImg ? [featImg] : [],
                         inStock: true,
+                        productUrl: p.link || null,  // WordPress REST API provides link field
                     })
                 }
                 const total = parseInt(res.headers.get('X-WP-TotalPages') || '1')

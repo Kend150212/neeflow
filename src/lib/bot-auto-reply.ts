@@ -425,13 +425,14 @@ export async function botAutoReply(
         // ─── Inject matched products (with images) ────────────────────
         if (productResults.length > 0) {
             systemPrompt += `\n\n--- MATCHED PRODUCTS ---`
-            systemPrompt += `\nThese products match the customer's inquiry. Use their details to answer accurately.`
+            systemPrompt += `\nThese products match the customer's inquiry. Use their details to answer accurately. If the customer asks for a purchase link / buy link, share the Product URL directly.`
             for (const p of productResults) {
                 const price = p.salePrice
                     ? `${p.salePrice.toLocaleString()}đ (Sale price, was ${p.price?.toLocaleString()}đ)`
                     : p.price ? `${p.price.toLocaleString()}đ` : 'Contact for price'
                 systemPrompt += `\n\n**${p.name}**${p.category ? ` [${p.category}]` : ''}`
                 systemPrompt += `\nPrice: ${price}`
+                if ((p as any).productUrl) systemPrompt += `\nProduct URL: ${(p as any).productUrl}`
                 if (p.description) systemPrompt += `\nDescription: ${p.description}`
                 if (p.features?.length) systemPrompt += `\nFeatures: ${p.features.join(', ')}`
                 const imgs = (p.images || []).slice(0, 3)

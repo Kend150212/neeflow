@@ -401,6 +401,7 @@ model ProductCatalog {
   description String?  @db.Text
   features    String[] // e.g. ["Không paraben", "SPF30"]
   images      String[] // array of image URLs
+  productUrl  String?  @map("product_url")  // direct purchase link (Shopify/Etsy/WP)
   tags        String[] // search keywords
   inStock     Boolean  @default(true) @map("in_stock")
   embedding   Unsupported("vector(1536)")?  // pgvector — for semantic product search
