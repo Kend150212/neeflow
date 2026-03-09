@@ -425,7 +425,7 @@ export async function botAutoReply(
         // ─── Inject matched products (with images) ────────────────────
         if (productResults.length > 0) {
             systemPrompt += `\n\n--- MATCHED PRODUCTS ---`
-            systemPrompt += `\nThese products match the customer's inquiry. Use their details to answer accurately. If the customer asks for a purchase link / buy link, share the Product URL directly.`
+            systemPrompt += `\nThese products from the store catalog match the customer's inquiry. Use their details to answer accurately.\n⚠️ IMPORTANT: When the customer asks about buying, ordering, pricing, or where to get a product (in ANY language — English, Vietnamese, or other), you MUST share the exact Product URL from the data below. Do NOT make up or substitute any other URL. Do NOT send the shop's homepage URL as a product link — send the specific Product URL listed for each item.`
             for (const p of productResults) {
                 const price = p.salePrice
                     ? `${p.salePrice.toLocaleString()}đ (Sale price, was ${p.price?.toLocaleString()}đ)`
