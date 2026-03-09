@@ -769,6 +769,9 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                             const isLocked = !allowed && !isComingSoon
                             const isActive = allowed && !isComingSoon
                             const availableAddon = !allowed && !isComingSoon ? addonsBySlug[intg.slug] : null
+                            // Check if this integration has an active data connection
+                            const isConnected = isActive && ['shopify', 'etsy', 'wordpress'].includes(intg.slug)
+                                && !!(syncStatus?.[intg.slug as 'shopify' | 'etsy' | 'wordpress']?.connected)
 
                             return (
                                 <div
@@ -806,9 +809,16 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                     )}
                                     {isActive && (
                                         <div className="absolute top-3 right-3">
-                                            <Badge className="text-[10px] px-1.5 py-0.5 bg-primary/15 text-primary border-primary/30">
-                                                {t('hub.active')}
-                                            </Badge>
+                                            {isConnected ? (
+                                                <Badge className="text-[10px] px-1.5 py-0.5 gap-1 bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                                                    <CheckCircle className="h-2.5 w-2.5" />
+                                                    Connected
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="text-[10px] px-1.5 py-0.5 bg-primary/15 text-primary border-primary/30">
+                                                    {t('hub.active')}
+                                                </Badge>
+                                            )}
                                         </div>
                                     )}
 
@@ -841,10 +851,16 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
                                     <div>
                                         {isActive && intg.href ? (
                                             <div className="flex gap-1.5">
-                                                <Button asChild size="sm" className="flex-1 h-8 text-xs gap-1">
+                                                <Button asChild size="sm" className={cn(
+                                                    'flex-1 h-8 text-xs gap-1',
+                                                    isConnected && 'bg-emerald-600 hover:bg-emerald-700'
+                                                )}>
                                                     <Link href={intg.href}>
-                                                        {t('hub.configure')}
-                                                        <ArrowRight className="h-3.5 w-3.5" />
+                                                        {isConnected ? (
+                                                            <><CheckCircle className="h-3.5 w-3.5" /> Connected</>
+                                                        ) : (
+                                                            <>{t('hub.configure')} <ArrowRight className="h-3.5 w-3.5" /></>
+                                                        )}
                                                     </Link>
                                                 </Button>
                                                 {(['shopify', 'etsy', 'wordpress'].includes(intg.slug)) && syncStatus?.channelId && (
