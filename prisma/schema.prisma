@@ -424,6 +424,7 @@ model ProductCatalog {
 
   @@index([channelId])
   @@index([channelId, inStock])
+  @@unique([channelId, syncSource, externalId], name: "product_catalog_dedup", map: "product_catalog_channel_source_external_key")
   @@map("product_catalog")
 }
 

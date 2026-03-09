@@ -69,13 +69,8 @@ export async function syncShopifyProducts(channelId: string): Promise<{ synced: 
                     // Shopify storefront URL: https://{domain}/products/{handle}
                     const productUrl = p.handle ? `https://${domain}/products/${p.handle}` : null
 
-                    const existing = await prisma.productCatalog.findFirst({
-                        where: { channelId, syncSource: 'shopify', externalId: String(p.id) },
-                        select: { id: true },
-                    })
-
                     await (prisma.productCatalog as any).upsert({
-                        where: { id: existing?.id ?? 'new_' + p.id },
+                        where: { product_catalog_dedup: { channelId, syncSource: 'shopify', externalId: String(p.id) } },
                         create: { channelId, syncSource: 'shopify', externalId: String(p.id), name: p.title, description, price, salePrice, category, tags, images, productUrl, inStock: totalInventory > 0 || p.status === 'active', syncedAt: new Date() },
                         update: { name: p.title, description, price, salePrice, category, tags, images, productUrl, inStock: totalInventory > 0 || p.status === 'active', syncedAt: new Date() },
                     })
@@ -208,12 +203,8 @@ export async function syncWordPressProducts(channelId: string): Promise<{ synced
         inStock: boolean; productUrl: string | null
     }) {
         try {
-            const existing = await prisma.productCatalog.findFirst({
-                where: { channelId, syncSource: 'wordpress', externalId: payload.externalId },
-                select: { id: true },
-            })
             await (prisma.productCatalog as any).upsert({
-                where: { id: existing?.id ?? 'new_' + payload.externalId },
+                where: { product_catalog_dedup: { channelId, syncSource: 'wordpress', externalId: payload.externalId } },
                 create: { channelId, syncSource: 'wordpress', syncedAt: new Date(), ...payload },
                 update: { ...payload, syncedAt: new Date() },
             })
