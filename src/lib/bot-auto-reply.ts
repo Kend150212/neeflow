@@ -566,8 +566,8 @@ export async function botAutoReply(
         systemPrompt += `\n\n## Communication Style:\n- You are a REAL person on the team, not a bot. Chat naturally like a helpful colleague would over Messenger.\n- Keep messages SHORT (1-3 sentences max). Nobody likes walls of text in chat.\n- Use casual, warm language. It's okay to use emoji sparingly 😊\n- NEVER repeat yourself or say the same thing in two different ways.\n- NEVER generate multiple greeting options or alternatives.\n- ONE clear, direct response per message.`
         systemPrompt += `\n\n## Intelligence:\n- Analyze the customer's intent, sentiment, and urgency from their messages.\n- If they seem frustrated, be empathetic first before offering solutions.\n- If they ask for pricing/services, give specific information from the knowledge base.\n- If something is outside your knowledge, be honest and offer to connect them with the team.\n- Anticipate follow-up questions and proactively address them.\n- Remember context from earlier in the conversation and reference it naturally.`
         systemPrompt += `\n\n## Language:\n- Default: ${langLabel}\n- CRITICAL: Always reply in the SAME language the customer is writing in. If they switch languages, you switch too.`
-        systemPrompt += `\n\n## Strict Rules:\n- NEVER say you are an AI, bot, or automated system\n- NEVER prefix with "Bot:" or any label\n- NEVER wrap reply in JSON, arrays, code blocks, or brackets\n- NEVER use { } characters in your reply\n- NEVER reveal any names of staff, members, or owners\n- NEVER guess or invent social media handles — use only the Official Links provided\n- IMAGES: Only include [IMAGE: url] tokens when the customer EXPLICITLY asks to see photos/images ("cho xem ảnh", "có ảnh không", "show me", etc.). If they just ask about price or info, reply with text ONLY — no images.\n- PLAIN TEXT ONLY — EXCEPTION: use [IMAGE: url] format (and ONLY this format) when sending images\n- If you don't know something, say "Let me check with the team and get back to you" or connect them with a human`
-        systemPrompt += `\n\n## ESCALATION TO HUMAN — CRITICAL:\nWhen the customer requests to speak with a human, requests the team, or when you cannot answer their question:\n1. Reply warmly that you are connecting them with a teammate (e.g. "I'm grabbing a teammate for you right now! 👋" or "Let me get you a team member who can help!")\n2. Your reply MUST include one of these exact phrases so the system can hand off the conversation:\n   - English: "grabbing a teammate", "getting a teammate", "get you a teammate", "connect you with the team", "transfer you to", "looping in a team member"\n   - Vietnamese: "kết nối bạn với nhân viên", "chuyển cho nhân viên", "để tôi tìm người hỗ trợ", "chuyển bạn qua team"\n3. NEVER just say "connecting to team" without including one of these keyword phrases — the handoff depends on it.`
+        systemPrompt += `\n\n## Strict Rules:\n- NEVER say you are an AI, bot, or automated system\n- NEVER prefix with "Bot:" or any label\n- NEVER reveal any names of staff, members, or owners\n- NEVER guess or invent social media handles — use only the Official Links provided\n- IMAGES: Only include image URLs in the \"images\" field when the customer EXPLICITLY asks to see photos/images.\n- If you don't know something, honestly say you'll connect them with the team and set escalate=true`
+        systemPrompt += `\n\n## ESCALATION DECISION — When to set escalate=true:\n- Customer explicitly requests a human: "let me talk to a person", "connect me with your team", "I want to speak to a human", etc.\n- Customer is very angry or frustrated and needs de-escalation beyond your capability\n- The question is too complex, sensitive, or high-stakes for a bot to handle (pricing negotiation, complaints, refunds, disputes)\n- You genuinely don't know the answer and the FAQ/knowledge base doesn't cover it\n- You just told the customer you're connecting them with the team\n- Normal bot conversations → escalate=false`
 
 
         // ─── 9b. Send read receipt + typing indicator ─────────────
@@ -603,7 +603,14 @@ export async function botAutoReply(
 
 ${contextSection}
 
-Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
+Respond with a JSON object (no markdown, no backticks) exactly in this format:
+{
+  "reply": "<your message to the customer — plain text, 1-3 sentences, correct language>",
+  "escalate": <true if you need to hand off to a human agent, false otherwise>,
+  "images": [<optional array of image URLs to send, only if customer explicitly asked for images>]
+}
+
+IMPORTANT: escalate=true means the system will IMMEDIATELY transfer this conversation to a human teammate. Only set it when genuinely needed.`
 
         const aiResult = await callAIWithUsage(provider, apiKey, model, systemPrompt, userPrompt)
         let cleanReply = aiResult.text.trim()
@@ -676,57 +683,71 @@ Reply naturally in 1-3 sentences (plain text, no JSON, no brackets):`
             return { replied: false, reason: 'Empty AI response' }
         }
 
-        // ─── 11. Extract images from reply and send ───────────────
-        // Extract [IMAGE: url] patterns
+        // ─── 11. Parse structured AI response ─────────────────────
+        // AI returns {reply, escalate, images} JSON.
+        // Gracefully fall back to treating the whole output as plain text
+        // if JSON parsing fails (e.g. older models that ignore the format).
+        let aiEscalate = false
+        let aiImages: string[] = []
+
+        // Try to parse JSON response
+        try {
+            let jsonStr = cleanReply
+                .replace(/^```(?:json)?\s*/i, '')
+                .replace(/\s*```$/i, '')
+                .trim()
+            // Fix common malformed keys
+            jsonStr = jsonStr.replace(/\*{1,2}(\w+)\*{1,2}\s*:/g, '"$1":')
+            jsonStr = jsonStr.replace(/(?<=[{,])\s*(\w+)\s*:/g, '"$1":')
+            const parsed = JSON.parse(jsonStr)
+
+            // Extract the human-facing reply text
+            if (parsed.reply && typeof parsed.reply === 'string') {
+                cleanReply = parsed.reply.trim()
+            } else if (parsed.response && typeof parsed.response === 'string') {
+                cleanReply = parsed.response.trim()
+            } else if (parsed.message && typeof parsed.message === 'string') {
+                cleanReply = parsed.message.trim()
+            }
+
+            // Extract AI-decided escalation (no regex needed)
+            if (typeof parsed.escalate === 'boolean') {
+                aiEscalate = parsed.escalate
+            }
+
+            // Extract images array
+            if (Array.isArray(parsed.images)) {
+                aiImages = parsed.images.filter((u: unknown) => typeof u === 'string' && u.startsWith('http'))
+            }
+        } catch {
+            // JSON parse failed — treat the whole output as plain text reply.
+            // This is fine: AI still responded, we just don't get the escalate signal.
+            // Try legacy [IMAGE: url] extraction as fallback.
+            console.warn('[Bot] Non-JSON reply received — using plain text fallback')
+        }
+
+        cleanReply = cleanReply.trim()
+
+        // ─── 12. Extract legacy [IMAGE: url] tokens (fallback for non-JSON models) ───
         const imageRegex = /\[IMAGE:\s*(https?:\/\/[^\]]+)\]/g
-        const imageUrls: string[] = []
         let textReply = cleanReply
         let match
         while ((match = imageRegex.exec(cleanReply)) !== null) {
-            imageUrls.push(match[1])
+            aiImages.push(match[1])
         }
         textReply = textReply.replace(/\[IMAGE:\s*https?:\/\/[^\]]+\]/g, '').trim()
 
-        // ─── 12. Send reply via platform ──────────────────────────
-        await sendAndSaveReply(conversation, textReply, platform, imageUrls, {
+        // ─── 13. Send reply via platform ──────────────────────────
+        await sendAndSaveReply(conversation, textReply, platform, aiImages, {
             commentMinDelay: botConfig?.commentReplyMinDelay ?? 30,
             commentMaxDelay: botConfig?.commentReplyMaxDelay ?? 600,
         })
 
-        // ─── 13. Detect AI-decided escalation ─────────────────────
-        // If the AI reply contains phrases indicating it's transferring
-        // to a human agent, switch conversation mode to AGENT
-        const escalationPatterns = [
-            // Generic connect/transfer patterns
-            /connect(ing)?\s+(you\s+)?(with|to)\s+(a\s+)?(human|agent|team|staff|representative|member)/i,
-            /transfer(ring)?\s+(you\s+)?(to|over)\s+(a\s+)?(human|agent|team|staff|representative|member)/i,
-            /forward(ing)?\s+(you\s+)?to\s+(a\s+)?(human|agent|team|staff|representative|member)/i,
-            /human\s+agent\s+(will|can|is\s+going\s+to)\s+(help|assist|take\s+over)/i,
-            /let\s+me\s+(get|find|connect|transfer)/i,
-            // Team/teammate patterns (catches "grabbing a teammate", "get you a teammate")
-            /i'?m?\s+(grabbing|getting|finding|fetching)\s+(a\s+)?(team(mate|member|-?mate)?|colleague|agent|human|someone)/i,
-            /i'?ll\s+(get|find|connect|grab|have|send)\s+(a\s+)?(team(mate|member)?|colleague|agent|human)/i,
-            /grab(bing)?\s+(a\s+)?(team(mate|member)?|colleague|agent|someone)/i,
-            /get\s+(a\s+)?team(mate|member)?\s+(for|to\s+help)\s+you/i,
-            /get\s+(a\s+)?team\s+(member|mate)/i,
-            /(just\s+)?a\s+moment\s+(while|as)\s+(i|we)\s+(connect|transfer|get)/i,
-            /team\s+member\s+(for|to\s+help)\s+you/i,
-            /passing\s+(this|you)\s+(to|along|over)/i,
-            /someone\s+(from|on)\s+(the|our)\s+team\s+(will|can|to)/i,
-            // "get you" patterns: "let me get you a real person", "get you someone"
-            /get\s+you\s+(a\s+)?(teammate|team\s*member|agent|human|real\s+person|someone|colleague)/i,
-            /looping\s+in\s+(a\s+)?(team(mate|member)?|agent|human|colleague)/i,
-            /bring(ing)?\s+in\s+(a\s+)?(team(mate|member)?|agent|human|colleague)/i,
-            // Vietnamese patterns
-            /kết\s*nối\s*(bạn\s*)?(với|đến)\s*(nhân\s*viên|agent|người|tư\s*vấn)/i,
-            /chuyển\s*(bạn\s*)?(cho|đến|qua)\s*(nhân\s*viên|agent|người|tư\s*vấn|team)/i,
-            /nhân\s*viên\s*(sẽ|sẽ\s+sớm|đang)\s*(hỗ\s*trợ|liên\s*hệ|phục\s*vụ)/i,
-            /để\s*(tôi|mình|tui|t)\s*(gọi|tìm|lấy|kêu)\s*(người|nhân\s*viên|tư\s*vấn)/i,
-            /tìm\s*(người|nhân\s*viên|ai)\s*(hỗ\s*trợ|giúp|tư\s*vấn)\s*(cho|bạn)/i,
-        ]
-
-        const lowerReply = textReply.toLowerCase()
-        const isEscalation = escalationPatterns.some(p => p.test(textReply))
+        // ─── 14. AI-driven escalation (no regex needed) ───────────
+        // The AI itself decided escalate=true based on its analysis of
+        // conversation intent, customer sentiment, and request type.
+        // No keyword list required — AI reasons about context directly.
+        const isEscalation = aiEscalate
 
         if (isEscalation) {
             // Fetch current metadata to merge (avoid clobbering existing fields)
