@@ -51,19 +51,20 @@ export async function GET(req: NextRequest) {
     }
 
     // ── External DB ──────────────────────────────────────────────────────────
-    // ExternalDbConfig is per-user, not per-channel
+    // ExternalDbConfig is scoped per-channel — only show if the active channel has one
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const extDb = await (prisma as any).externalDbConfig.findFirst({
-        where: { userId },
-        select: { id: true },
+        where: { ...channelFilter, isActive: true },
+        select: { id: true, channelId: true },
     })
     if (extDb) {
         items.push({
             slug: 'external_db',
             name: 'Ext. DB',
-            href: '/dashboard/integrations/external-db',
+            href: `/dashboard/integrations/external-db?channelId=${extDb.channelId}`,
         })
     }
+
 
     // ── Shopify ──────────────────────────────────────────────────────────────
     const shopify = await prisma.shopifyConfig.findFirst({
