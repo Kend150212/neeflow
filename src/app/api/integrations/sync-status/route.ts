@@ -48,6 +48,8 @@ export async function GET() {
         prisma.productCatalog.count({ where: { channelId, syncSource: 'wordpress' } }),
     ])
 
+    console.log(`[sync-status] userId=${session.user.id} channelId=${channelId} shopify=${shopify ? shopify.shopDomain : 'NULL'}`)
+
     return NextResponse.json({
         channelId,
         timezone,
