@@ -433,10 +433,14 @@ export function IntegrationsClient({ allowedIntegrations, addonsBySlug }: Props)
         let totalSynced = 0
         for (const slug of slugs) {
             try {
+                // Use per-integration channelId (the channel where that integration is configured),
+                // falling back to the default channel if not set.
+                const source = syncStatus[slug]
+                const channelId = source?.channelId ?? syncStatus.channelId
                 const res = await fetch('/api/integrations/sync-now', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ slug, channelId: syncStatus.channelId }),
+                    body: JSON.stringify({ slug, channelId }),
                 })
                 if (res.ok) { const d = await res.json(); totalSynced += d.synced ?? 0 }
             } catch { /* */ }
