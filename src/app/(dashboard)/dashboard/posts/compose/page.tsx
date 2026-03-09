@@ -5836,10 +5836,25 @@ export default function ComposePage() {
                                     })() : (
                                         /* Neeflow placeholder */
                                         <div className="flex flex-col items-center justify-center py-16 gap-3">
-                                            <div className="w-14 h-14 rounded-3xl bg-primary/15 flex items-center justify-center shadow-inner">
-                                                <span className="text-primary font-bold text-xl">N</span>
+                                            <div className="w-14 h-14 rounded-3xl bg-primary/15 flex items-center justify-center shadow-inner overflow-hidden">
+                                                {branding.logoUrl ? (
+                                                    <img
+                                                        src={branding.logoUrl}
+                                                        alt={branding.appName}
+                                                        className="w-10 h-10 object-contain"
+                                                        onError={(e) => {
+                                                            const el = e.currentTarget
+                                                            el.style.display = 'none'
+                                                            const fb = el.nextSibling as HTMLElement | null
+                                                            if (fb) fb.style.display = 'flex'
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <span className="text-primary font-bold text-xl" style={{ display: branding.logoUrl ? 'none' : 'block' }}>
+                                                    {branding.appName?.charAt(0) || 'N'}
+                                                </span>
                                             </div>
-                                            <p className="text-sm font-semibold text-foreground/80 tracking-wide">Neeflow</p>
+                                            <p className="text-sm font-semibold text-foreground/80 tracking-wide">{branding.appName || 'Neeflow'}</p>
                                             <p className="text-[10px] text-muted-foreground text-center leading-relaxed px-4">
                                                 {selectedEntries.length === 0 ? 'Select a platform to preview' : 'Start typing to preview your post'}
                                             </p>
