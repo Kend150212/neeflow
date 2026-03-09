@@ -16,7 +16,7 @@ interface AssetImage { url: string; label?: string; createdAt?: string }
 interface AvatarAsset { id: string; type: 'outfit' | 'accessory' | 'prop'; name: string; images: AssetImage[]; prompt?: string }
 interface StudioAvatar {
     id: string; name: string; description: string | null; prompt: string; style: string
-    referenceImages: string[]; coverImage: string | null; status: string; createdAt: string
+    referenceImages: string[]; poseImages: string[]; coverImage: string | null; status: string; createdAt: string
     poses?: AvatarPose[]; assets?: AvatarAsset[]; _shared?: boolean
 }
 
@@ -81,7 +81,14 @@ const ASSET_TYPES = [
     { value: 'accessory', label: 'Phụ kiện', icon: Glasses, color: 'text-cyan-400' },
     { value: 'prop', label: 'Props', icon: Package, color: 'text-amber-400' },
 ]
-const ANGLE_LABELS = ['Toàn thân (trước)', 'Mặt close-up', 'Góc bên (90°)', 'Góc 3/4', 'Sau lưng']
+const ANGLE_LABELS = [
+    'Chính diện bán thân',       // 0 — full body front
+    'Cận mặt',                   // 1 — face close-up
+    'Chính diện cận bán thân',   // 2 — close upper body front
+    'Nghiêng trái',              // 3 — side profile
+    '3/4 sau',                   // 4 — 3/4 rear angle
+    'Sau lưng',                  // 5 — full back view
+]
 
 /* ─── Lightbox ─── */
 function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
@@ -235,10 +242,10 @@ export default function ChannelAvatarsPage() {
             if (res.ok) {
                 const data = await res.json()
                 if (data.status === 'done') {
-                    toast.success('✅ Reference sheet xong!', { id: toastId })
+                    toast.success('✅ 6 góc nhìn đã hoàn thành!', { id: toastId })
                     await fetchAvatarDetail(avatar.id)
                 } else {
-                    toast.success('⏳ Đang tạo... (~45s)', { id: toastId })
+                    toast.success('⏳ Đang tạo 6 ảnh riêng biệt... Poll sẽ cập nhật từng góc', { id: toastId })
                     setAvatars(prev => prev.map(a => a.id === avatar.id ? { ...a, status: 'generating' } : a))
                     if (selected?.id === avatar.id) setSelected(prev => prev ? { ...prev, status: 'generating' } : null)
                     pollAvatarStatus(avatar.id)
@@ -272,21 +279,20 @@ export default function ChannelAvatarsPage() {
 
     async function generateAngle(avatar: StudioAvatar, angleIndex: number, extraPrompt: string) {
         setGeneratingAngle(angleIndex)
-        const anglePrompts = ['full body front-facing', 'front view face portrait', 'side profile view', '3/4 dynamic angle view']
-        const angleDesc = anglePrompts[angleIndex] || 'character view'
-        const label = ANGLE_LABELS[angleIndex]
+        const label = ANGLE_LABELS[angleIndex] || `Góc ${angleIndex}`
         const toastId = toast.loading(`Đang tạo ${label}...`)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    provider: genProvider, model: genModel, numAngles: 1,
-                    anglePrompt: `${angleDesc}. ${extraPrompt || ''}`.trim(),
+                    provider: genProvider, model: genModel,
+                    angleIndex,
+                    anglePrompt: extraPrompt || undefined,
                 }),
             })
             if (res.ok) {
                 const data = await res.json()
-                toast.success(`✅ ${label} xong!`, { id: toastId })
+                toast.success(`✅ ${label} đang xử lý...`, { id: toastId })
                 if (data.status === 'done') { await fetchAvatarDetail(avatar.id) }
                 else { pollAvatarStatus(avatar.id) }
             } else { const d = await res.json(); toast.error(d.error || 'Failed', { id: toastId }) }
@@ -508,7 +514,7 @@ export default function ChannelAvatarsPage() {
                                         <button onClick={() => generateAvatar(selected)}
                                             disabled={!!generating} className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-black font-bold text-xs rounded-xl hover:bg-emerald-400 disabled:opacity-50 transition-all">
                                             {generating === selected.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                                            Tạo 5 góc nhìn
+                                            Tạo 6 góc nhìn
                                         </button>
                                     </>
                                 )}
@@ -577,17 +583,28 @@ export default function ChannelAvatarsPage() {
                             {/* ── Section 2: Pose Matrix ── */}
                             <section>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Pose Matrix & Body Angles</h3>
+                                    <div>
+                                        <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Pose Matrix — 6 Góc Nhìn</h3>
+                                        <p className="text-[9px] text-slate-600 mt-0.5">{(selected.poseImages || []).filter(Boolean).length}/6 góc đã tạo</p>
+                                    </div>
                                     {!selected._shared && (
-                                        <button onClick={() => refCoverRef.current?.click()} className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-400 transition-colors">
-                                            <Upload size={10} /> Upload
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => generateAvatar(selected)}
+                                                disabled={!!generating}
+                                                className="flex items-center gap-1 text-[10px] px-2.5 py-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-emerald-500/30 disabled:opacity-50 transition-all"
+                                            >
+                                                {generating === selected.id ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                                                Generate All
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
-                                <div className="grid grid-cols-5 gap-3">
+                                {/* 3×2 grid — exactly like the reference photo example */}
+                                <div className="grid grid-cols-3 gap-3">
                                     {ANGLE_LABELS.map((label, i) => {
-                                        const imgs = selected.referenceImages || []
-                                        const url = imgs[i]
+                                        const poseImgs: string[] = selected.poseImages || []
+                                        const url = poseImgs[i] || ''
                                         return (
                                             <PoseMatrixSlot
                                                 key={label}

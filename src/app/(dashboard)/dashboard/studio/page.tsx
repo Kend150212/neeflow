@@ -131,7 +131,7 @@ export default function StudioPage() {
 
                 {[
                     { label: 'All Projects', icon: FolderOpen, href: '/dashboard/studio', active: true },
-                    { label: 'Avatars', icon: User, href: '/dashboard/studio/avatars', active: false },
+                    { label: 'Avatars', icon: User, href: activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio', active: false },
                     { label: 'History', icon: Clock, href: '/dashboard/studio/history', active: false },
                 ].map((item) => (
                     <Link
@@ -169,7 +169,7 @@ export default function StudioPage() {
                         <p className="text-slate-400 text-sm mt-0.5">AI image & video generation workspace</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Link href="/dashboard/studio/avatars">
+                        <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'}>
                             <Button variant="outline" size="sm" className="gap-2 border-emerald-400/20 text-emerald-400 hover:bg-emerald-400/10">
                                 <User className="h-4 w-4" />
                                 Create Avatar
@@ -211,13 +211,13 @@ export default function StudioPage() {
                         <div>
                             <div className="flex items-center justify-between mb-3">
                                 <h2 className="text-sm font-bold text-white">Your Avatars</h2>
-                                <Link href="/dashboard/studio/avatars" className="text-xs text-emerald-400 hover:underline flex items-center gap-1">
+                                <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'} className="text-xs text-emerald-400 hover:underline flex items-center gap-1">
                                     View all <ChevronRight className="h-3 w-3" />
                                 </Link>
                             </div>
                             <div className="flex gap-3 overflow-x-auto pb-1">
                                 {/* Add Avatar card */}
-                                <Link href="/dashboard/studio/avatars">
+                                <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'}>
                                     <div className="w-20 h-20 rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-1 hover:border-emerald-400/40 hover:bg-emerald-400/5 transition-colors cursor-pointer shrink-0">
                                         <Plus className="h-5 w-5 text-slate-500" />
                                         <span className="text-[10px] text-slate-500">New</span>

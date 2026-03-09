@@ -1300,7 +1300,8 @@ model StudioAvatar {
   description     String?  @db.Text
   prompt          String   @db.Text
   style           String   @default("realistic") // realistic, anime, cartoon, 3d
-  referenceImages Json     @default("[]") @map("reference_images") // array of image URLs (up to 4 angles)
+  referenceImages Json     @default("[]") @map("reference_images") // uploaded reference photos by user
+  poseImages      Json     @default("[]") @map("pose_images")      // AI-generated: array of 6 angle image URLs
   coverImage      String?  @map("cover_image")
   falJobId        String?  @map("fal_job_id")
   status          String   @default("idle") // idle, generating, done, failed
