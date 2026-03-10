@@ -334,23 +334,33 @@ ${businessContext ? '- Include website link naturally: "Visit [website] for more
 
     const userPrompt = `Create platform-specific social media content. Generate a SEPARATE, COMPLETE post for EACH platform — do NOT create a generic version.
 
+━━━ WHAT TO WRITE ABOUT (MANDATORY — THIS IS THE SUBJECT) ━━━
 Topic / Input: ${cleanTopic}
+${articleContext ? articleContext : ''}
+
+⚠️ CRITICAL: The post content MUST be specifically about the topic above.
+- If the topic mentions a product, write about THAT product.
+- If the topic mentions a specific task (e.g. "in 2 mins"), treat it as a time-benefit angle.
+- Do NOT write about the brand's other products or services unless they directly relate to the topic.
+- Do NOT default to generic brand content. The topic OVERRIDES brand defaults.
+
+━━━ BRAND CONTEXT (USE FOR STYLE / TONE ONLY — NOT AS THE SUBJECT) ━━━
 Brand: ${channel.displayName}
 Language: ${langLabel}
 ${vibeStr ? `Tone & Style: ${vibeStr}` : ''}
 ${brandProfileContext}
-${kbContext ? `\nBrand Knowledge:\n${kbContext}` : ''}
-${templateContext ? `\nContent Templates (use as style reference):\n${templateContext}` : ''}
-${articleContext}
-${businessContext ? `\n${businessContext}\nIMPORTANT: You MUST include the business contact information in each platform's content. Follow the platform-specific guidelines on HOW to include it (sign-off, link in bio, footer, etc.). Do NOT ignore this data.` : ''}
+${kbContext ? `\nBrand Knowledge (use for style/voice reference, NOT as the post subject):\n${kbContext}` : ''}
+${templateContext ? `\nContent Templates (use as style reference only):\n${templateContext}` : ''}
+${businessContext ? `\n${businessContext}\nIMPORTANT: You MUST include the business contact information in each platform's content. Follow the platform-specific guidelines on HOW to include it.` : ''}
 ${allHashtags.length > 0 ? `\nAvailable hashtags to use/reference: ${allHashtags.join(' ')}` : ''}
 
+━━━ CONTENT FORMAT ━━━
 Mandatory Content Format for this request (${requestSeed}):
 Format: "${pickedFormat.name}"
 Instruction: ${pickedFormat.instruction}
 Apply this format consistently across ALL platform versions — adapt the platform-specific rules BUT keep the core format structure.
 
-PLATFORM RULES (follow these EXACTLY for each platform):
+━━━ PLATFORM RULES (follow these EXACTLY for each platform) ━━━
 
 ${platformRulesText}
 
@@ -366,14 +376,14 @@ ${contentPerPlatformJson}
 
 CRITICAL RULES:
 - Write ENTIRELY in ${langLabel}
+- The post MUST be ABOUT: "${cleanTopic.substring(0, 120)}" — this is non-negotiable
 - EACH platform version must be COMPLETELY DIFFERENT — different length, different tone, different structure
 - Do NOT just copy the same text across platforms with minor tweaks
 - TikTok MUST be under 150 chars. X/Twitter MUST be under 280 chars total.
-${isUrlTopic ? `- REWRITE the article content into original, engaging posts. Paraphrase creatively — do NOT copy verbatim.
-- For article-based content: be thorough (500-2000 chars for long-form platforms like Facebook/LinkedIn/YouTube)` : '- Keep content engaging and platform-appropriate in length'}
+${isUrlTopic ? `- REWRITE the article content into original, engaging posts. Paraphrase creatively — do NOT copy verbatim.\n- For article-based content: be thorough (500-2000 chars for long-form platforms like Facebook/LinkedIn/YouTube)` : '- Keep content engaging and platform-appropriate in length'}
 - Start each version with a powerful hook/attention-grabber SPECIFIC to that platform's style AND aligned with the mandatory format above
 - Sound AUTHENTIC — like a real person posting, NOT like an AI or a corporation
-- The visualIdea should describe a compelling image concept (art style, composition, mood, lighting, subject)
+- The visualIdea should describe a compelling image concept (art style, composition, mood, lighting, subject) related to the topic
 - DIVERSITY IS MANDATORY: Do NOT use the same opening word, phrase, or sentence structure across any two platform versions
 - FORBIDDEN phrases (never use these): "In today's world", "In the digital age", "Are you ready?", "Game changer", "Dive in", "Unlock your potential", "Exciting news", "We are thrilled"
 - Every platform version must feel like it was written by a different writer in a different mood
