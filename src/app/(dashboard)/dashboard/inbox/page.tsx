@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { LeadsView } from '@/components/inbox/LeadsView'
+import ContactCardPanel from '@/components/inbox/ContactCardPanel'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -55,6 +56,7 @@ import {
     LayoutTemplate,
     Columns,
     Square,
+    ContactRound,
 } from 'lucide-react'
 import {
     DropdownMenu,
@@ -331,6 +333,7 @@ export default function InboxPage() {
     const [sendingReply, setSendingReply] = useState(false)
     const [updatingConv, setUpdatingConv] = useState(false)
     const [syncingProfiles, setSyncingProfiles] = useState(false)
+    const [showContactCard, setShowContactCard] = useState<Set<string>>(new Set())
 
     // ─── Multi-pane layout ────────────
     const MAX_PANELS = 4
@@ -1838,6 +1841,25 @@ export default function InboxPage() {
                                                             )}
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
+                                                    {/* Contact Card toggle button */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className={cn(
+                                                            'h-7 w-7',
+                                                            showContactCard.has(sc.id) && 'bg-primary/10 text-primary'
+                                                        )}
+                                                        title={t('leads.card.toggle')}
+                                                        onClick={() => setShowContactCard(prev => {
+                                                            const next = new Set(prev)
+                                                            if (next.has(sc.id)) next.delete(sc.id)
+                                                            else next.add(sc.id)
+                                                            return next
+                                                        })}
+                                                    >
+                                                        <ContactRound className="h-3.5 w-3.5" />
+                                                    </Button>
+
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -1881,6 +1903,16 @@ export default function InboxPage() {
                                                     </DropdownMenu>
                                                 </div>
                                             </div>
+
+                                            {/* Contact Card Panel */}
+                                            {showContactCard.has(sc.id) && sc.channelId && (
+                                                <ContactCardPanel
+                                                    conversationId={sc.id}
+                                                    channelId={sc.channelId}
+                                                    externalUserName={sc.externalUserName}
+                                                    t={t}
+                                                />
+                                            )}
 
                                             {/* Agent escalation alert banner */}
                                             {sc.mode === 'AGENT' && sc.status !== 'done' && sc.status !== 'archived' && (

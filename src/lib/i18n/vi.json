@@ -2459,6 +2459,12 @@
     "cancel": "Hủy",
     "delete": "Xóa",
     "openConversation": "Mở cuộc hội thoại",
+    "card": {
+      "toggle": "Thông tin khách hàng",
+      "createLead": "Lưu thông tin khách",
+      "newLead": "Tạo liên hệ mới",
+      "unknownContact": "Khách không rõ danh tính"
+    },
     "status": {
       "new": "Mới",
       "qualified": "Tiềm năng",

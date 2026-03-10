@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const channelId = searchParams.get('channelId')
+    const conversationId = searchParams.get('conversationId')
     const status = searchParams.get('status')
     const search = searchParams.get('search') || ''
     const page = parseInt(searchParams.get('page') || '1')
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
     const where: Record<string, unknown> = {
         channelId: { in: channelIds },
     }
+    if (conversationId) where.conversationId = conversationId
     if (status) where.status = status
     if (search) {
         where.OR = [

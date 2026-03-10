@@ -2459,6 +2459,12 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "openConversation": "Open conversation",
+    "card": {
+      "toggle": "Customer Info",
+      "createLead": "Save customer info",
+      "newLead": "New Contact",
+      "unknownContact": "Unknown contact"
+    },
     "status": {
       "new": "New",
       "qualified": "Qualified",

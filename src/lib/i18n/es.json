@@ -2090,6 +2090,12 @@
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "openConversation": "Abrir conversación",
+    "card": {
+      "toggle": "Info del cliente",
+      "createLead": "Guardar info del cliente",
+      "newLead": "Nuevo contacto",
+      "unknownContact": "Contacto desconocido"
+    },
     "status": {
       "new": "Nuevo",
       "qualified": "Calificado",
