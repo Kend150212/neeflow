@@ -1676,12 +1676,16 @@
       "aiSummary": "Resumen IA",
       "delete": "Eliminar",
       "deleteConfirm": "¿Estás seguro de que deseas eliminar esta conversación?",
-      "view": "Ver"
+      "view": "Ver",
+      "assign": "Asignar",
+      "assignTo": "Asignar a",
+      "unassign": "Desasignar"
     },
     "escalation": {
       "botEscalated": "El bot escaló esta conversación.",
       "needsHumanAgent": "Un agente humano necesita tomar el control.",
-      "replyNow": "Responder ahora"
+      "replyNow": "Responder ahora",
+      "assignMe": "Asignarme esta conversación"
     },
     "postPreview": {
       "originalPost": "📄 Publicación original",

@@ -2141,12 +2141,16 @@
       "aiSummary": "AI Summary",
       "delete": "Delete",
       "deleteConfirm": "Are you sure you want to delete this conversation? This cannot be undone.",
-      "view": "View"
+      "view": "View",
+      "assign": "Assign",
+      "assignTo": "Assign to",
+      "unassign": "Unassign"
     },
     "escalation": {
       "botEscalated": "Bot has escalated this conversation.",
       "needsHumanAgent": "A human agent needs to take over and respond.",
-      "replyNow": "Reply Now"
+      "replyNow": "Reply Now",
+      "assignMe": "Assign to me"
     },
     "postPreview": {
       "originalPost": "📄 Original Post",
