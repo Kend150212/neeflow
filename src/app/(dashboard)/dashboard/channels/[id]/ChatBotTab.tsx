@@ -12,7 +12,7 @@ import {
     MessageCircle, Zap, Send, BarChart3, ChevronDown,
     Search, Package, Edit, Download, Copy,
     RotateCcw, Paperclip, Tag, Ban, Eye, LayoutGrid, Bell,
-    AlertTriangle, CheckCircle2, ExternalLink as ExternalLinkIcon,
+    AlertTriangle, CheckCircle2, ExternalLink as ExternalLinkIcon, Users,
 } from 'lucide-react'
 
 
@@ -94,6 +94,11 @@ interface BotConfigData {
     webhookWhatsappPhoneId: string
     webhookTelegramToken: string
     webhookZaloOaName: string
+    // Lead Capture
+    leadCaptureMode: 'disabled' | 'ai' | 'form' | 'hybrid'
+    leadCaptureFields: string[]
+    leadCapturePrompts: Record<string, string>
+    leadAskAfterMsgs: number
 }
 
 interface ChatBotTabProps {
@@ -161,6 +166,11 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
         webhookWhatsappPhoneId: '',
         webhookTelegramToken: '',
         webhookZaloOaName: '',
+        // Lead Capture
+        leadCaptureMode: 'disabled' as const,
+        leadCaptureFields: ['fullName', 'phone'],
+        leadCapturePrompts: {},
+        leadAskAfterMsgs: 3,
     })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -554,6 +564,11 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         webhookWhatsappPhoneId: data.webhookWhatsappPhoneId || '',
                         webhookTelegramToken: data.webhookTelegramToken || '',
                         webhookZaloOaName: data.webhookZaloOaName || '',
+                        // Lead Capture
+                        leadCaptureMode: data.leadCaptureMode || 'disabled',
+                        leadCaptureFields: data.leadCaptureFields || ['fullName', 'phone'],
+                        leadCapturePrompts: data.leadCapturePrompts || {},
+                        leadAskAfterMsgs: data.leadAskAfterMsgs ?? 3,
                     })
                 }
             } catch { /* ignore */ }
@@ -3694,6 +3709,97 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                         </div>
                     </div>
                 )}
+
+                {/* ─── Lead Capture Section ─────────────────── */}
+                <div className="rounded-xl border bg-card p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-primary" />
+                        <h3 className="font-semibold text-sm">{t('leads.settings.sectionTitle')}</h3>
+                        <span className="ml-auto text-[11px] text-muted-foreground">{t('leads.settings.sectionDesc')}</span>
+                    </div>
+
+                    {/* Capture Mode */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('leads.settings.mode')}</label>
+                        <select
+                            value={config?.leadCaptureMode || 'disabled'}
+                            onChange={e => update('leadCaptureMode', e.target.value as BotConfigData['leadCaptureMode'])}
+                            className="w-full text-sm border rounded-lg px-3 py-2 bg-background"
+                        >
+                            <option value="disabled">{t('leads.settings.modeDisabled')}</option>
+                            <option value="ai">{t('leads.settings.modeAi')}</option>
+                            <option value="form">{t('leads.settings.modeForm')}</option>
+                            <option value="hybrid">{t('leads.settings.modeHybrid')}</option>
+                        </select>
+                    </div>
+
+                    {config?.leadCaptureMode !== 'disabled' && (
+                        <>
+                            {/* Required Fields */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('leads.settings.requiredFields')}</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {(['fullName', 'phone', 'email', 'address'] as const).map(field => (
+                                        <label key={field} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded"
+                                                checked={(config?.leadCaptureFields || []).includes(field)}
+                                                onChange={e => {
+                                                    const fields = config?.leadCaptureFields || []
+                                                    update('leadCaptureFields', e.target.checked
+                                                        ? [...fields, field]
+                                                        : fields.filter(f => f !== field)
+                                                    )
+                                                }}
+                                            />
+                                            {t(`leads.fields.${field}`)}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Form Prompts — show for form/hybrid modes */}
+                            {(config?.leadCaptureMode === 'form' || config?.leadCaptureMode === 'hybrid') && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('leads.settings.prompts')}</label>
+                                    <div className="space-y-2">
+                                        {(config?.leadCaptureFields || []).map(field => (
+                                            <div key={field} className="flex items-center gap-2">
+                                                <span className="text-xs w-20 shrink-0 text-muted-foreground">{t(`leads.fields.${field}`)}</span>
+                                                <input
+                                                    type="text"
+                                                    placeholder={t('leads.settings.promptPlaceholder')}
+                                                    value={config?.leadCapturePrompts?.[field] || ''}
+                                                    onChange={e => update('leadCapturePrompts', {
+                                                        ...(config?.leadCapturePrompts || {}),
+                                                        [field]: e.target.value,
+                                                    })}
+                                                    className="flex-1 text-sm border rounded-lg px-3 py-1.5 bg-background"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Hybrid timing */}
+                            {config?.leadCaptureMode === 'hybrid' && (
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('leads.settings.askAfterMsgs')}</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={20}
+                                        value={config?.leadAskAfterMsgs ?? 3}
+                                        onChange={e => update('leadAskAfterMsgs', parseInt(e.target.value) || 3)}
+                                        className="w-24 text-sm border rounded-lg px-3 py-1.5 bg-background"
+                                    />
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
 
                 {/* ─── Bottom Save ─────────────────────── */}
                 <div className="flex justify-end pt-2">

@@ -2480,6 +2480,8 @@
     },
     "settings": {
       "title": "Thu thập Lead",
+      "sectionTitle": "Thu thập Lead",
+      "sectionDesc": "Bot tự động thu thập thông tin liên lạc khách hàng",
       "mode": "Chế độ thu thập",
       "modeDisabled": "Tắt",
       "modeAi": "AI tự động",

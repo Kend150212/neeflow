@@ -872,11 +872,196 @@ IMPORTANT: escalate=true means the system will IMMEDIATELY transfer this convers
             })
         }
 
+        // ─── Lead Capture (async, non-blocking) ─────────────────────
+        setImmediate(() => {
+            handleLeadCapture(conversationId, inboundContent, botConfig, channel.id, conversation, sendAndSaveReply)
+                .catch(err => console.error('[LeadCapture] ❌', err))
+        })
+
         return { replied: true }
     } catch (err) {
         console.error('[Bot Auto-Reply] ❌ Error:', err)
         return { replied: false, reason: `Error: ${(err as Error).message}` }
     }
+}
+
+// ─── Contact Info Extractor (regex, zero AI cost) ───────────────────────────
+function extractContactInfo(text: string): {
+    fullName?: string | null
+    phone?: string | null
+    email?: string | null
+} {
+    const result: { fullName?: string | null; phone?: string | null; email?: string | null } = {}
+
+    // Phone: VN / international formats
+    const phoneMatch = text.match(/(?:\+?\d{1,3}[\s\-.]?)?\(?\d{2,4}\)?[\s\-.]?\d{3,4}[\s\-.]?\d{3,4}/)
+    if (phoneMatch) {
+        result.phone = phoneMatch[0].replace(/[\s\-.]/g, '').trim()
+    }
+
+    // Email
+    const emailMatch = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/)
+    if (emailMatch) {
+        result.email = emailMatch[0]
+    }
+
+    // Vietnamese name pattern: 2-4 capitalized words (Nguyễn Văn An)
+    const nameMatch = text.match(/\b([A-ZÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴ][a-záàảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+(?:\s[A-ZÁÀẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬĐÉÈẺẼẸÊẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÚÙỦŨỤƯỨỪỬỮỰÝỲỶỸỴ][a-záàảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+){1,3})\b/)
+    if (nameMatch) {
+        result.fullName = nameMatch[0]
+    }
+
+    return result
+}
+
+// ─── Lead Capture Logic ─────────────────────────────────────────────────────
+async function handleLeadCapture(
+    conversationId: string,
+    inboundContent: string,
+    botConfig: any,
+    channelId: string,
+    conversation: any,
+    sendReplyFn: typeof sendAndSaveReply
+) {
+    const mode: string = botConfig?.leadCaptureMode || 'disabled'
+    if (mode === 'disabled') return
+
+    const captureFields: string[] = botConfig?.leadCaptureFields || ['fullName', 'phone']
+    const prompts: Record<string, string> = botConfig?.leadCapturePrompts || {}
+    const askAfterMsgs: number = botConfig?.leadAskAfterMsgs ?? 3
+
+    // Default prompts fallback
+    const defaultPrompts: Record<string, string> = {
+        fullName: 'May I know your name?',
+        phone: 'Could you share your phone number?',
+        email: 'What is your email address?',
+        address: 'What is your address?',
+    }
+
+    // Check if lead already captured for this conversation
+    const existing = await prisma.inboxContact.findUnique({
+        where: { conversationId },
+    })
+    if (existing) return  // already captured, skip
+
+    const platform = conversation.platform || 'unknown'
+    const externalUserId = conversation.externalUserId || conversation.id
+
+    // ─── AI Mode: regex extraction ────────────────────────────────────
+    if (mode === 'ai') {
+        // Load last 20 messages for extraction
+        const messages = await prisma.inboxMessage.findMany({
+            where: { conversationId, direction: 'inbound' },
+            orderBy: { sentAt: 'asc' },
+            take: 20,
+            select: { content: true },
+        })
+        const fullText = messages.map(m => m.content).join(' ')
+
+        const extracted = extractContactInfo(fullText)
+        if (extracted.phone || extracted.email || extracted.fullName) {
+            await prisma.inboxContact.upsert({
+                where: { conversationId },
+                create: {
+                    channelId,
+                    conversationId,
+                    platform,
+                    externalUserId,
+                    captureMethod: 'ai',
+                    ...extracted,
+                },
+                update: extracted,
+            })
+            console.log(`[LeadCapture] ✅ AI extracted lead for conversation ${conversationId}`)
+        }
+        return
+    }
+
+    // ─── Hybrid Mode: try AI first, then fall back to form ────────────
+    if (mode === 'hybrid') {
+        // Count inbound messages
+        const msgCount = await prisma.inboxMessage.count({
+            where: { conversationId, direction: 'inbound' },
+        })
+
+        if (msgCount <= 1) {
+            // First message: try AI extraction
+            const firstText = inboundContent
+            const extracted = extractContactInfo(firstText)
+            if (extracted.phone || extracted.email || extracted.fullName) {
+                await prisma.inboxContact.upsert({
+                    where: { conversationId },
+                    create: { channelId, conversationId, platform, externalUserId, captureMethod: 'ai', ...extracted },
+                    update: extracted,
+                })
+                return
+            }
+        } else if (msgCount >= askAfterMsgs) {
+            // After N messages without capture, fall through to form mode
+            // (handled below by re-using form logic)
+        } else {
+            return  // Still in early messages, keep waiting for AI extraction
+        }
+    }
+
+    // ─── Form Mode (also used as hybrid fallback) ─────────────────────
+    const metadata = (conversation.metadata as Record<string, unknown>) || {}
+    const leadFormData = (metadata.leadForm as Record<string, string>) || {}
+    const currentStep = (metadata.leadFormStep as number) || 0
+    const totalSteps = captureFields.length
+
+    // All fields collected → upsert InboxContact
+    if (currentStep >= totalSteps) {
+        if (Object.keys(leadFormData).length > 0) {
+            await prisma.inboxContact.upsert({
+                where: { conversationId },
+                create: {
+                    channelId,
+                    conversationId,
+                    platform,
+                    externalUserId,
+                    captureMethod: 'form',
+                    fullName: leadFormData.fullName || null,
+                    phone: leadFormData.phone || null,
+                    email: leadFormData.email || null,
+                    address: leadFormData.address || null,
+                },
+                update: {
+                    fullName: leadFormData.fullName || null,
+                    phone: leadFormData.phone || null,
+                    email: leadFormData.email || null,
+                    address: leadFormData.address || null,
+                },
+            })
+            console.log(`[LeadCapture] ✅ Form captured lead for conversation ${conversationId}`)
+        }
+        return
+    }
+
+    // ─── Save response to the previous step ─────────────────────────
+    if (currentStep > 0) {
+        const prevField = captureFields[currentStep - 1]
+        leadFormData[prevField] = inboundContent.trim()
+    }
+
+    // ─── Ask next question ─────────────────────────────────────────
+    const nextField = captureFields[currentStep]
+    const question = prompts[nextField] || defaultPrompts[nextField] || `Please provide your ${nextField}.`
+
+    // Update conversation metadata with current form state
+    await prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+            metadata: {
+                ...(typeof metadata === 'object' ? metadata : {}),
+                leadForm: leadFormData,
+                leadFormStep: currentStep + 1,
+            } as any,
+        },
+    })
+
+    // Send the question via bot
+    await sendReplyFn(conversation, question, platform)
 }
 
 /**

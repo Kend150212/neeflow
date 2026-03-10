@@ -2480,6 +2480,8 @@
     },
     "settings": {
       "title": "Lead Capture",
+      "sectionTitle": "Lead Capture",
+      "sectionDesc": "Auto-collect customer contact info via bot",
       "mode": "Capture Mode",
       "modeDisabled": "Disabled",
       "modeAi": "AI Auto-Detect",

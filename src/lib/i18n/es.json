@@ -2111,6 +2111,8 @@
     },
     "settings": {
       "title": "Captura de Leads",
+      "sectionTitle": "Captura de Leads",
+      "sectionDesc": "Bot recopila automáticamente información de contacto del cliente",
       "mode": "Modo de captura",
       "modeDisabled": "Desactivado",
       "modeAi": "IA automática",
