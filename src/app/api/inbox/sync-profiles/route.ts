@@ -112,8 +112,9 @@ export async function POST(req: NextRequest) {
             await prisma.conversation.update({
                 where: { id: conv.id },
                 data: {
-                    externalUserName: newName || undefined, // only update if we got a real name
-                    externalUserAvatar: newAvatar || conv.externalUserAvatar || fallbackAvatar,
+                    externalUserName: newName || undefined,
+                    // Only store CDN URLs (from profile_pic field), not graph.facebook.com/picture redirects
+                    externalUserAvatar: newAvatar || conv.externalUserAvatar || null,
                 },
             })
             if (newName) {
@@ -121,10 +122,10 @@ export async function POST(req: NextRequest) {
             } else {
                 // No name from API (permission issue) - already has 'Facebook User' from webhook
                 if (/^\d{10,}$/.test(conv.externalUserName || '')) {
-                    // Still has raw PSID - set friendly name
+                    // Still has raw PSID - set friendly name, leave avatar for proxy to resolve
                     await prisma.conversation.update({
                         where: { id: conv.id },
-                        data: { externalUserName: 'Facebook User', externalUserAvatar: fallbackAvatar },
+                        data: { externalUserName: 'Facebook User' },
                     })
                 }
                 failed++

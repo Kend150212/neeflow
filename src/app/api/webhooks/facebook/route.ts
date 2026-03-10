@@ -563,7 +563,7 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
                 platform: 'facebook',
                 externalUserId: recipientId,
                 externalUserName: senderName !== recipientId ? senderName : 'Facebook User',
-                externalUserAvatar: senderAvatar || `https://graph.facebook.com/${recipientId}/picture?type=small&access_token=${tokenAccount?.accessToken || ''}`,
+                externalUserAvatar: senderAvatar || null,
                 content,
                 direction: 'outbound',
                 senderType: 'agent',
@@ -638,10 +638,10 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
     }
 
     if (!senderAvatar) {
-        // Fallback: only use direct picture URL if we truly have nothing (new user)
-        senderAvatar = tokenAccount.accessToken
-            ? `https://graph.facebook.com/${externalUserId}/picture?type=small&access_token=${tokenAccount.accessToken}`
-            : null
+        // Don't store graph.facebook.com/picture URLs — they count against API quota.
+        // Leave null; the avatar proxy will fetch+resolve the CDN URL on first access
+        // and write it back to DB automatically.
+        senderAvatar = null
     }
 
     // Process for ALL matching channels
