@@ -273,7 +273,9 @@ export default function GeneralTab({
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder={t('channels.general.descriptionPlaceholder')}
-                        className="h-52 resize-none overflow-y-auto text-sm leading-relaxed"
+                        rows={15}
+                        className="resize-none overflow-y-auto text-sm leading-relaxed"
+                        style={{ minHeight: 0, maxHeight: '24rem' }}
                     />
                 </div>
 
