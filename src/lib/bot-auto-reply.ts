@@ -628,55 +628,9 @@ IMPORTANT: escalate=true means the system will IMMEDIATELY transfer this convers
                 },
             }).catch(() => { /* non-blocking — ignore errors */ })
 
-        // AI sometimes wraps reply in JSON — extract text if so
-        if (cleanReply.startsWith('{') || cleanReply.startsWith('[') || cleanReply.startsWith('```')) {
-            try {
-                // Strip markdown code fences if present
-                let jsonStr = cleanReply
-                    .replace(/^```(?:json)?\s*/i, '')
-                    .replace(/\s*```$/i, '')
-                    .trim()
-                // Fix malformed JSON: replace *key* or **key** with "key"
-                jsonStr = jsonStr.replace(/\*{1,2}(\w+)\*{1,2}\s*:/g, '"$1":')
-                // Fix unquoted string keys
-                jsonStr = jsonStr.replace(/(?<=\{|,)\s*(\w+)\s*:/g, '"$1":')
-                const parsed = JSON.parse(jsonStr)
-                // Handle JSON array
-                if (Array.isArray(parsed)) {
-                    // Array of objects: [{"reply": "..."}]
-                    if (parsed.length > 0 && typeof parsed[0] === 'object') {
-                        const obj = parsed[0]
-                        cleanReply = obj.reply || obj.response || obj.message || obj.text || obj.content || obj.answer || JSON.stringify(obj)
-                    } else {
-                        // Array of strings: ["text"]
-                        const textItems = parsed.filter((item: any) => typeof item === 'string')
-                        if (textItems.length > 0) {
-                            cleanReply = textItems.join('\n')
-                        }
-                    }
-                } else {
-                    // Single object: {"reply": "..."}
-                    cleanReply = parsed.reply || parsed.response || parsed.message
-                        || parsed.text || parsed.content || parsed.answer
-                        || cleanReply // fallback to original if no known key
-                }
-            } catch {
-                // JSON.parse failed — try regex extraction as last resort
-                const valueMatch = cleanReply.match(/(?:reply|response|message|text|content|answer)["*]*\s*:\s*"([^"]+)"/i)
-                    || cleanReply.match(/(?:reply|response|message|text|content|answer)["*]*\s*:\s*"([\s\S]+?)"\s*[\}\]]?$/i)
-                if (valueMatch?.[1]) {
-                    cleanReply = valueMatch[1]
-                }
-                // Also try extracting from array-like pattern: ["text"] or [{"reply":"text"}]
-                if (!valueMatch) {
-                    const arrayMatch = cleanReply.match(/^\[\s*"([\s\S]+?)"\s*\]$/)
-                        || cleanReply.match(/"(?:reply|response|message|text|content)"\s*:\s*"([\s\S]+?)"/i)
-                    if (arrayMatch?.[1]) {
-                        cleanReply = arrayMatch[1]
-                    }
-                }
-            }
-        }
+        // NOTE: Do NOT pre-parse JSON here — the structured parse below (step 11)
+        // handles both reply text AND escalate/images in one pass.
+        // A first-pass strip would destroy the JSON before escalate can be read.
         cleanReply = cleanReply.trim()
 
         if (!cleanReply) {
@@ -720,10 +674,21 @@ IMPORTANT: escalate=true means the system will IMMEDIATELY transfer this convers
                 aiImages = parsed.images.filter((u: unknown) => typeof u === 'string' && u.startsWith('http'))
             }
         } catch {
-            // JSON parse failed — treat the whole output as plain text reply.
-            // This is fine: AI still responded, we just don't get the escalate signal.
-            // Try legacy [IMAGE: url] extraction as fallback.
+            // JSON parse failed — AI returned plain text.
+            // Detect escalation intent from the text itself as fallback.
             console.warn('[Bot] Non-JSON reply received — using plain text fallback')
+            const replyLower = cleanReply.toLowerCase()
+            const escalationPhrases = [
+                'looping in', 'loop in', 'connecting you with', 'connect you with',
+                'transfer to', 'transferring to', 'hand off', 'handing off',
+                'human agent', 'team member', 'our team', 'one of our',
+                'chuyển cho', 'kết nối', 'nhân viên', 'đội ngũ', 'tư vấn viên',
+                'chuyển qua', 'để đội', 'hang tight', 'just a moment',
+            ]
+            if (escalationPhrases.some(p => replyLower.includes(p))) {
+                aiEscalate = true
+                console.log('[Bot] ⚡ Escalation detected from plain-text reply')
+            }
         }
 
         cleanReply = cleanReply.trim()
