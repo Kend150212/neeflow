@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import { LeadsView } from '@/components/inbox/LeadsView'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,7 @@ import {
     Tag,
     UserPlus,
     UserX,
+    Users,
     CheckCircle2,
     Archive,
     Mail,
@@ -308,6 +310,7 @@ export default function InboxPage() {
 
     // ─── State ────────────────────────
     const [statusFilter, setStatusFilter] = useState('all')
+    const [viewMode, setViewMode] = useState<'conversations' | 'leads'>('conversations')
     const [activeTab, setActiveTab] = useState('messages')
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -1067,6 +1070,24 @@ export default function InboxPage() {
                         </nav>
                     </div>
 
+                    {/* Leads & CRM nav */}
+                    <div className="px-2 py-1">
+                        <button
+                            onClick={() => setViewMode(v => v === 'leads' ? 'conversations' : 'leads')}
+                            title={sidebarCollapsed ? (t('leads.title') || 'Leads & CRM') : undefined}
+                            className={cn(
+                                'w-full flex items-center rounded-md transition-colors cursor-pointer',
+                                sidebarCollapsed ? 'justify-center p-1.5' : 'gap-2.5 px-2.5 py-1.5 text-xs',
+                                viewMode === 'leads'
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            )}
+                        >
+                            <Users className="h-3.5 w-3.5 shrink-0" />
+                            {!sidebarCollapsed && <span className="flex-1 text-left">{t('leads.title') || 'Leads & CRM'}</span>}
+                        </button>
+                    </div>
+
                     {!sidebarCollapsed && <Separator className="mx-2" />}
 
                     {!sidebarCollapsed && (
@@ -1324,10 +1345,29 @@ export default function InboxPage() {
             </div>
 
 
+            {/* ═══ LEADS & CRM VIEW ═══ */}
+            {viewMode === 'leads' && (
+                <div className="flex-1 min-w-0 overflow-hidden">
+                    <LeadsView
+                        channelId={activeChannel?.id}
+                        onOpenConversation={(convId) => {
+                            const conv = conversations.find(c => c.id === convId)
+                            if (conv) {
+                                setViewMode('conversations')
+                                const freePane = panels.findIndex(p => !p.conversation)
+                                const pIdx = freePane >= 0 ? freePane : activePanel
+                                setActivePanel(pIdx)
+                                updatePanel(pIdx, { conversation: conv })
+                            }
+                        }}
+                    />
+                </div>
+            )}
+
             {/* ═══ CENTER — Conversation List ═══ */}
             <div className={cn(
-                "w-[320px] border-r flex-col shrink-0 bg-background overflow-hidden flex",
-                selectedConversation ? 'hidden md:flex' : 'flex'
+                "w-[320px] border-r flex-col shrink-0 bg-background overflow-hidden",
+                viewMode === 'leads' ? 'hidden' : selectedConversation ? 'hidden md:flex' : 'flex'
             )}>
                 {/* Tabs */}
                 <div className="border-b">

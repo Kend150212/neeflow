@@ -2077,5 +2077,49 @@
       "tokens": "tokens",
       "replies": "respuestas"
     }
+  },
+  "leads": {
+    "title": "Leads & CRM",
+    "searchPlaceholder": "Buscar nombre, teléfono, email...",
+    "allStatus": "Todos",
+    "loading": "Cargando...",
+    "empty": "Aún no hay leads. El bot capturará información del cliente automáticamente.",
+    "confirmDelete": "¿Eliminar este lead?",
+    "edit": "Editar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "openConversation": "Abrir conversación",
+    "status": {
+      "new": "Nuevo",
+      "qualified": "Calificado",
+      "customer": "Cliente",
+      "lost": "Perdido"
+    },
+    "captureMethod": {
+      "ai": "IA",
+      "form": "Formulario",
+      "manual": "Manual"
+    },
+    "fields": {
+      "fullName": "Nombre completo",
+      "phone": "Teléfono",
+      "email": "Email",
+      "address": "Dirección",
+      "note": "Nota",
+      "tags": "Etiquetas"
+    },
+    "settings": {
+      "title": "Captura de Leads",
+      "mode": "Modo de captura",
+      "modeDisabled": "Desactivado",
+      "modeAi": "IA automática",
+      "modeForm": "Formulario",
+      "modeHybrid": "Híbrido (IA + Form)",
+      "requiredFields": "Campos requeridos",
+      "prompts": "Preguntas del formulario",
+      "askAfterMsgs": "Preguntar tras N mensajes",
+      "promptPlaceholder": "Ej: ¿Cuál es tu nombre?"
+    }
   }
 }

@@ -2446,5 +2446,49 @@
     "progressLabel": "{done}/{total}",
     "runningInBackground": "Running in background",
     "leaveWarning": "⚠️ Bulk post creation is still in progress ({done}/{total} posts created).\n\nIf you leave or refresh this page, the remaining posts will NOT be created.\n\nClick 'Stay on Page' to continue creating, or 'Leave' to stop."
+  },
+  "leads": {
+    "title": "Leads & CRM",
+    "searchPlaceholder": "Search name, phone, email...",
+    "allStatus": "All status",
+    "loading": "Loading...",
+    "empty": "No leads yet. Bot will capture customer info automatically.",
+    "confirmDelete": "Delete this lead?",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "openConversation": "Open conversation",
+    "status": {
+      "new": "New",
+      "qualified": "Qualified",
+      "customer": "Customer",
+      "lost": "Lost"
+    },
+    "captureMethod": {
+      "ai": "AI",
+      "form": "Form",
+      "manual": "Manual"
+    },
+    "fields": {
+      "fullName": "Full Name",
+      "phone": "Phone",
+      "email": "Email",
+      "address": "Address",
+      "note": "Note",
+      "tags": "Tags"
+    },
+    "settings": {
+      "title": "Lead Capture",
+      "mode": "Capture Mode",
+      "modeDisabled": "Disabled",
+      "modeAi": "AI Auto-Detect",
+      "modeForm": "Form",
+      "modeHybrid": "Hybrid (AI + Form)",
+      "requiredFields": "Required Fields",
+      "prompts": "Form Prompts",
+      "askAfterMsgs": "Ask after N messages (Hybrid)",
+      "promptPlaceholder": "E.g. What is your name?"
+    }
   }
 }

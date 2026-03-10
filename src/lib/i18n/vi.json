@@ -2446,5 +2446,49 @@
     "progressLabel": "{done}/{total}",
     "runningInBackground": "Đang chạy nền",
     "leaveWarning": "⚠️ Đang tạo bài hàng loạt ({done}/{total} bài đã tạo xong).\n\nNếu bạn rời trang hoặc tải lại, các bài còn lại sẽ KHÔNG được tạo.\n\nBấm 'Ở lại trang' để tiếp tục tạo bài, hoặc 'Rời đi' để dừng."
+  },
+  "leads": {
+    "title": "Leads & CRM",
+    "searchPlaceholder": "Tìm tên, SĐT, email...",
+    "allStatus": "Tất cả",
+    "loading": "Đang tải...",
+    "empty": "Chưa có lead nào. Bot sẽ tự động thu thập thông tin khách hàng.",
+    "confirmDelete": "Xóa lead này?",
+    "edit": "Chỉnh sửa",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "openConversation": "Mở cuộc hội thoại",
+    "status": {
+      "new": "Mới",
+      "qualified": "Tiềm năng",
+      "customer": "Khách hàng",
+      "lost": "Đã mất"
+    },
+    "captureMethod": {
+      "ai": "AI",
+      "form": "Form",
+      "manual": "Thủ công"
+    },
+    "fields": {
+      "fullName": "Họ và tên",
+      "phone": "Điện thoại",
+      "email": "Email",
+      "address": "Địa chỉ",
+      "note": "Ghi chú",
+      "tags": "Nhãn"
+    },
+    "settings": {
+      "title": "Thu thập Lead",
+      "mode": "Chế độ thu thập",
+      "modeDisabled": "Tắt",
+      "modeAi": "AI tự động",
+      "modeForm": "Form hỏi đáp",
+      "modeHybrid": "Kết hợp (AI + Form)",
+      "requiredFields": "Trường bắt buộc",
+      "prompts": "Câu hỏi trong Form",
+      "askAfterMsgs": "Hỏi sau N tin nhắn (Kết hợp)",
+      "promptPlaceholder": "VD: Bạn tên gì?"
+    }
   }
 }

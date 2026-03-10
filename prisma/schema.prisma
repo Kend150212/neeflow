@@ -307,6 +307,7 @@ model Channel {
   shopifyConfig        ShopifyConfig?
   wordpressConfig      WordPressConfig?
   etsyConfig           EtsyConfig?
+  inboxContacts        InboxContact[]
 
 
   @@map("channels")
@@ -991,11 +992,44 @@ model Conversation {
   agent           User?           @relation(fields: [assignedTo], references: [id])
   platformAccount ChannelPlatform @relation(fields: [platformAccountId], references: [id], onDelete: Cascade)
   messages        InboxMessage[]
+  contact         InboxContact?
 
   @@unique([channelId, platform, externalUserId])
   @@index([channelId, status])
   @@index([platformAccountId])
   @@map("conversations")
+}
+
+model InboxContact {
+  id              String   @id @default(cuid())
+  channelId       String   @map("channel_id")
+  conversationId  String?  @unique @map("conversation_id")
+  platform        String
+  externalUserId  String   @map("external_user_id")
+
+  // Lead info
+  fullName        String?  @map("full_name")
+  phone           String?
+  email           String?
+  address         String?  @db.Text
+  note            String?  @db.Text
+  tags            Json?    @default("[]")
+  customFields    Json?    @default("{}") @map("custom_fields") // { key: value }
+
+  // Lead status & source
+  status          String   @default("new") @map("status") // new | qualified | customer | lost
+  captureMethod   String   @default("manual") @map("capture_method") // ai | form | manual
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  channel      Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@unique([channelId, platform, externalUserId])
+  @@index([channelId, status])
+  @@index([channelId, createdAt])
+  @@map("inbox_contacts")
 }
 
 model InboxMessage {
@@ -1117,6 +1151,12 @@ model BotConfig {
   discordEnabled       Boolean @default(false) @map("discord_enabled")
   discordWebhookUrl    String? @map("discord_webhook_url") @db.Text
   discordEvents        Json?   @default("[\"escalation\",\"stale\"]") @map("discord_events")
+
+  // Lead Capture & CRM
+  leadCaptureMode    String  @default("disabled") @map("lead_capture_mode") // disabled | ai | form | hybrid
+  leadCaptureFields  Json?   @default("[\"fullName\",\"phone\"]") @map("lead_capture_fields")
+  leadCapturePrompts Json?   @default("{}") @map("lead_capture_prompts") // { fullName: "Bạn tên gì?", phone: "SĐT?" }
+  leadAskAfterMsgs   Int     @default(3) @map("lead_ask_after_msgs") // Hybrid: ask if not detected after N msgs
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
