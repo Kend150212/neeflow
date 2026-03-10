@@ -66,6 +66,29 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
+// ─── Avatar proxy helper ─────────────────────────────────────────────────────
+// Prevents browser from calling graph.facebook.com/User/picture directly,
+// routing through our server-side cache instead.
+function fbProxyAvatar(avatar: string | null | undefined, externalUserId?: string, channelId?: string): string | null {
+    if (!avatar) return null
+    // Only proxy graph.facebook.com picture URLs (these count against API quota)
+    // CDN URLs (scontent.fbcdn.net, platform-lookaside etc.) are fine directly
+    if (avatar.includes('graph.facebook.com') && avatar.includes('picture')) {
+        const params = new URLSearchParams()
+        if (externalUserId) params.set('u', externalUserId)
+        if (channelId) params.set('c', channelId)
+        return `/api/proxy/avatar?${params.toString()}`
+    }
+    // For fbcdn.net/scontent URLs: these expire, also route through proxy for caching
+    if (avatar.includes('fbcdn.net') || avatar.includes('fbsbx.com')) {
+        const params = new URLSearchParams()
+        if (externalUserId) params.set('u', externalUserId)
+        if (channelId) params.set('c', channelId)
+        return `/api/proxy/avatar?${params.toString()}`
+    }
+    return avatar
+}
+
 // ─── Types ─────────────────────────────
 interface PlatformAccount {
     id: string
@@ -1532,7 +1555,10 @@ export default function InboxPage() {
                                     <div className="relative">
                                         <Avatar className="h-9 w-9">
                                             {conv.externalUserAvatar && (
-                                                <AvatarImage src={conv.externalUserAvatar} alt={conv.externalUserName || ''} />
+                                                <AvatarImage
+                                                    src={fbProxyAvatar(conv.externalUserAvatar, conv.externalUserId, conv.channelId) || ''}
+                                                    alt={conv.externalUserName || ''}
+                                                />
                                             )}
                                             <AvatarFallback className={cn(
                                                 'text-xs font-medium',
@@ -1699,7 +1725,10 @@ export default function InboxPage() {
                                                 </button>
                                                 <Avatar className="h-8 w-8">
                                                     {sc.externalUserAvatar && (
-                                                        <AvatarImage src={sc.externalUserAvatar} alt={sc.externalUserName || ''} />
+                                                        <AvatarImage
+                                                            src={fbProxyAvatar(sc.externalUserAvatar, sc.externalUserId, sc.channelId) || ''}
+                                                            alt={sc.externalUserName || ''}
+                                                        />
                                                     )}
                                                     <AvatarFallback className={cn(
                                                         'text-xs',
@@ -2066,7 +2095,10 @@ export default function InboxPage() {
                                                                     <div className="flex gap-2 py-1">
                                                                         <Avatar className={cn('shrink-0 mt-0.5', isReply ? 'h-7 w-7' : 'h-8 w-8')}>
                                                                             {msg.direction === 'inbound' && senderAvatar ? (
-                                                                                <AvatarImage src={senderAvatar} alt={senderName} />
+                                                                                <AvatarImage
+                                                                                    src={fbProxyAvatar(senderAvatar, sc.externalUserId, sc.channelId) || ''}
+                                                                                    alt={senderName}
+                                                                                />
                                                                             ) : null}
                                                                             <AvatarFallback className={cn(
                                                                                 'text-[10px] font-medium',
@@ -2217,7 +2249,10 @@ export default function InboxPage() {
                                                                 {msg.direction === 'inbound' && (
                                                                     <Avatar className="h-7 w-7 shrink-0 mt-1">
                                                                         {sc.externalUserAvatar && (
-                                                                            <AvatarImage src={sc.externalUserAvatar} alt={sc.externalUserName || ''} />
+                                                                            <AvatarImage
+                                                                                src={fbProxyAvatar(sc.externalUserAvatar, sc.externalUserId, sc.channelId) || ''}
+                                                                                alt={sc.externalUserName || ''}
+                                                                            />
                                                                         )}
                                                                         <AvatarFallback className="text-[10px] bg-gray-100 dark:bg-gray-800">
                                                                             {sc.externalUserName?.charAt(0)}
