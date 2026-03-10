@@ -110,6 +110,8 @@ const providerColors: Record<string, string> = {
     google_oauth: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     recaptcha: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     shopify: 'bg-[#96bf47]/10 text-[#96bf47] border-[#96bf47]/20',
+    whatsapp: 'bg-[#25D366]/10 text-[#25D366] border-[#25D366]/20',
+    zalo: 'bg-[#0068FF]/10 text-[#0068FF] border-[#0068FF]/20',
 }
 
 const providerGuideUrls: Record<string, string> = {
@@ -136,6 +138,8 @@ const providerGuideUrls: Record<string, string> = {
     google_oauth: 'https://console.cloud.google.com/apis/credentials',
     recaptcha: 'https://www.google.com/recaptcha/admin',
     shopify: 'https://partners.shopify.com/',
+    whatsapp: 'https://developers.facebook.com/docs/whatsapp/cloud-api/get-started',
+    zalo: 'https://developers.zalo.me/',
 }
 
 interface PlatformGuide {
@@ -495,6 +499,27 @@ const platformGuides: Record<string, PlatformGuide> = {
         url: 'https://www.etsy.com/developers/register',
         urlLabel: 'Open Etsy Developer Portal',
     },
+    whatsapp: {
+        title: '💬 WhatsApp Business API Setup Guide / Hướng Dẫn Cài Đặt WhatsApp Business',
+        description: 'Connect WhatsApp Business to receive and reply to customer messages directly in Inbox.\nKết nối WhatsApp Business để nhận và trả lời tin nhắn khách hàng trong Inbox.',
+        steps: [
+            { title: 'Step 1: Go to Meta for Developers / Vào Meta for Developers', detail: 'Visit developers.facebook.com → click "My Apps" → "Create App" → choose "Business" type.\n\nTruy cập developers.facebook.com → nhấn "My Apps" → "Create App" → chọn loại "Business".' },
+            { title: 'Step 2: Add WhatsApp Product / Thêm WhatsApp Product', detail: 'In App Dashboard → left sidebar → "Add Product" → find "WhatsApp" → click "Set Up".\n\nTrong App Dashboard → menu bên trái → "Add Product" → tìm "WhatsApp" → nhấn "Set Up".' },
+            { title: 'Step 3: Get Phone Number ID / Lấy Phone Number ID', detail: 'In WhatsApp → Getting Started → copy the "Phone Number ID" (not the phone number itself). Paste it below.\n\nTrong WhatsApp → Getting Started → copy "Phone Number ID" (không phải số điện thoại). Dán vào ô bên dưới.' },
+            { title: 'Step 4: Get WhatsApp Business Account ID / Lấy WABA ID', detail: 'On the same page, copy the "WhatsApp Business Account ID" (WABA ID). Paste it below.\n\nTrên cùng trang, copy "WhatsApp Business Account ID" (WABA ID). Dán vào ô bên dưới.' },
+            { title: 'Step 5: Generate a System Token / Tạo System Token', detail: 'Go to Meta Business Suite → Business Settings → System Users → Add System User.\nAssign assets (your WABA), generate a token with whatsapp_business_messaging permission.\nCopy the token and paste below as the API Key.\n\nVào Meta Business Suite → Business Settings → System Users → Thêm System User.\nGán tài sản (WABA), tạo token với quyền whatsapp_business_messaging.\nCopy token và dán vào ô API Key bên dưới.' },
+            { title: 'Step 6: Set Webhook / Cấu hình Webhook', detail: 'In API Setup → Webhooks → Configure. Set:\nCallback URL: {YOUR_DOMAIN}/api/webhook/whatsapp\nVerify Token: (any string — save it as WHATSAPP_VERIFY_TOKEN in .env)\nSubscribe to: messages\n\nTrong API Setup → Webhooks → Configure. Điền:\nCallback URL: {YOUR_DOMAIN}/api/webhook/whatsapp\nVerify Token: (chuỗi bất kỳ — lưu vào .env là WHATSAPP_VERIFY_TOKEN)\nĐăng ký: messages' },
+        ],
+        tips: [
+            '✅ Webhook URL: {YOUR_DOMAIN}/api/webhook/whatsapp',
+            '✅ Required permission: whatsapp_business_messaging',
+            '⚠️ Free tier: 1,000 user-initiated conversations/month',
+            '💡 Use System User token for stable long-lived access',
+            '💡 After saving here, users connect WhatsApp from Channel → Integrations tab',
+        ],
+        url: 'https://developers.facebook.com/docs/whatsapp/cloud-api/get-started',
+        urlLabel: 'Open WhatsApp Cloud API Docs',
+    },
 }
 
 export default function IntegrationsPage() {
@@ -654,6 +679,12 @@ export default function IntegrationsPage() {
                     oauthConfigMap[i.id] = {
                         clientId: config.zaloAppId || '',
                         clientSecret: '',
+                    }
+                }
+                if (i.provider === 'whatsapp') {
+                    oauthConfigMap[i.id] = {
+                        clientId: config.whatsappPhoneNumberId || '',
+                        clientSecret: config.whatsappBusinessAccountId || '',
                     }
                 }
                 if (i.provider === 'shopify') {
@@ -897,6 +928,19 @@ export default function IntegrationsPage() {
                 if (oauth) {
                     body.config = { etsyClientId: oauth.clientId }
                     if (oauth.clientSecret) body.apiKey = oauth.clientSecret
+                }
+            }
+
+            // WhatsApp Business config
+            if (integration.provider === 'whatsapp') {
+                const oauth = oauthConfigs[integration.id]
+                if (oauth) {
+                    body.config = {
+                        whatsappPhoneNumberId: oauth.clientId,
+                        whatsappBusinessAccountId: oauth.clientSecret,
+                    }
+                    // System User Token stored as encrypted API key
+                    if (apiKeys[integration.id]) body.apiKey = apiKeys[integration.id]
                 }
             }
 

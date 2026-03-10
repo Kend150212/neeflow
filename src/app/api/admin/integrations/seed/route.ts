@@ -85,6 +85,26 @@ export async function POST() {
             status: 'INACTIVE' as const,
             baseUrl: 'https://openapi.etsy.com/v3',
         },
+        {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            category: 'WEBHOOK' as any,
+            provider: 'whatsapp',
+            name: 'WhatsApp Business',
+            isActive: false,
+            isDefault: false,
+            status: 'INACTIVE' as const,
+            baseUrl: 'https://graph.facebook.com/v19.0',
+        },
+        {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            category: 'WEBHOOK' as any,
+            provider: 'zalo',
+            name: 'Zalo OA',
+            isActive: false,
+            isDefault: false,
+            status: 'INACTIVE' as const,
+            baseUrl: 'https://openapi.zalo.me',
+        },
     ]
 
     const results = []
