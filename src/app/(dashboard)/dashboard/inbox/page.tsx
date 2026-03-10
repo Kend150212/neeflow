@@ -1504,7 +1504,7 @@ export default function InboxPage() {
                                         'w-full flex gap-3 p-3 text-left transition-colors cursor-pointer',
                                         selectedConversation?.id === conv.id
                                             ? 'bg-primary/5 border-l-2 border-l-primary'
-                                            : conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && !conv.assignedTo
+                                            : conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && !conv.assignedTo && (conv.metadata?.pendingFollowup || conv.metadata?.escalatedAt)
                                                 ? 'hover:bg-red-500/10 border-l-2 border-l-red-500 bg-red-500/5'
                                                 : conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && conv.assignedTo
                                                     ? 'hover:bg-amber-500/10 border-l-2 border-l-amber-500 bg-amber-500/5'
@@ -1562,7 +1562,7 @@ export default function InboxPage() {
                                             </p>
                                             <div className="flex items-center gap-1 shrink-0">
                                                 {conv.mode === 'BOT' && <Bot className="h-3 w-3 text-green-500" />}
-                                                {conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && !conv.assignedTo && (
+                                                {conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && !conv.assignedTo && (conv.metadata?.pendingFollowup || conv.metadata?.escalatedAt) && (
                                                     <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-500">
                                                         <span className="relative flex h-1.5 w-1.5">
                                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
