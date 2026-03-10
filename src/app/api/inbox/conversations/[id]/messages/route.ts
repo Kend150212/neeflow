@@ -274,8 +274,13 @@ export async function POST(
                     })
 
                     // Strip _channelId suffix if set during multi-account upsert
+                    // FB comment IDs are numeric like "pageId_commentId" so any non-numeric trailing segment = channelId suffix
                     const rawCommentId = lastInboundMsg?.externalId || ''
-                    const commentId = rawCommentId.includes('_') ? rawCommentId.split('_')[0] : rawCommentId
+                    const segments = rawCommentId.split('_')
+                    const lastSeg = segments[segments.length - 1]
+                    const commentId = segments.length > 1 && !/^\d+$/.test(lastSeg)
+                        ? segments.slice(0, -1).join('_')  // Strip non-numeric channelId suffix
+                        : rawCommentId                      // Use as-is (already clean)
 
                     if (commentId) {
                         let replyText = content.trim().replace(/@\[([^\]]+)\]/g, '@$1')
