@@ -154,6 +154,13 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
         discordEnabled: false,
         discordWebhookUrl: '',
         discordEvents: ['escalation', 'stale'],
+        // Messaging Apps bot toggles
+        whatsappBotEnabled: false,
+        telegramBotEnabled: false,
+        zaloBotEnabled: false,
+        webhookWhatsappPhoneId: '',
+        webhookTelegramToken: '',
+        webhookZaloOaName: '',
     })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
