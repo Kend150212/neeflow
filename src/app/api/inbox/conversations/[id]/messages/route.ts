@@ -265,22 +265,23 @@ export async function POST(
                 }
 
                 if (conv?.type === 'comment') {
-                    // Reply to comment
-                    const postExternalId = conv.externalUserId?.replace('post_', '') || ''
-                    const lastComment = await prisma.socialComment.findFirst({
-                        where: {
-                            platformAccountId: conversation.platformAccountId,
-                            externalPostId: postExternalId,
-                            platform: 'facebook',
-                        },
-                        orderBy: { commentedAt: 'desc' },
-                        select: { externalCommentId: true, authorName: true },
+                    // Reply to Facebook comment
+                    // Use inboxMessage.externalId — always set by webhook, no _channelId suffix issues
+                    const lastInboundMsg = await prisma.inboxMessage.findFirst({
+                        where: { conversationId: id, direction: 'inbound' },
+                        orderBy: { sentAt: 'desc' },
+                        select: { externalId: true, senderName: true },
                     })
-                    const commentId = lastComment?.externalCommentId
+
+                    // Strip _channelId suffix if set during multi-account upsert
+                    const rawCommentId = lastInboundMsg?.externalId || ''
+                    const commentId = rawCommentId.includes('_') ? rawCommentId.split('_')[0] : rawCommentId
+
                     if (commentId) {
                         let replyText = content.trim().replace(/@\[([^\]]+)\]/g, '@$1')
-                        if (lastComment.authorName && !replyText.startsWith(`@${lastComment.authorName}`)) {
-                            replyText = `@${lastComment.authorName} ${replyText}`
+                        const authorName = lastInboundMsg?.senderName
+                        if (authorName && !replyText.startsWith(`@${authorName}`)) {
+                            replyText = `@${authorName} ${replyText}`
                         }
                         const fbRes = await fetch(
                             `https://graph.facebook.com/v19.0/${commentId}/comments`,
@@ -301,8 +302,10 @@ export async function POST(
                             })
                             console.log(`[FB Reply] ✅ Comment reply posted: ${fbData.id}`)
                         } else {
-                            console.warn(`[FB Reply] ⚠️ Comment reply failed:`, JSON.stringify(fbData))
+                            console.warn(`[FB Reply] ⚠️ Comment reply failed (commentId=${commentId}):`, JSON.stringify(fbData))
                         }
+                    } else {
+                        console.warn(`[FB Reply] ⚠️ No inbound comment externalId for conversation ${id} — not sent to Facebook`)
                     }
                 } else {
                     // Send DM via Messenger Send API
