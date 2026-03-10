@@ -209,7 +209,9 @@ export default function GeneralTab({
                                 value={brandTargetAudience}
                                 onChange={(e) => setBrandTargetAudience(e.target.value)}
                                 placeholder={t('channels.general.targetAudiencePlaceholder')}
-                                className="h-28 resize-none overflow-y-auto text-xs leading-relaxed"
+                                rows={5}
+                                className="resize-none overflow-y-auto text-xs leading-relaxed"
+                                style={{ minHeight: 0, maxHeight: '8rem' }}
                             />
                         </div>
                         <div className="space-y-1">
@@ -218,7 +220,9 @@ export default function GeneralTab({
                                 value={brandContentTypes}
                                 onChange={(e) => setBrandContentTypes(e.target.value)}
                                 placeholder={t('channels.general.contentTypesPlaceholder')}
-                                className="h-28 resize-none overflow-y-auto text-xs leading-relaxed"
+                                rows={5}
+                                className="resize-none overflow-y-auto text-xs leading-relaxed"
+                                style={{ minHeight: 0, maxHeight: '8rem' }}
                             />
                         </div>
                         <div className="space-y-1">
@@ -227,7 +231,9 @@ export default function GeneralTab({
                                 value={brandValues}
                                 onChange={(e) => setBrandValues(e.target.value)}
                                 placeholder={t('channels.general.brandValuesPlaceholder')}
-                                className="h-28 resize-none overflow-y-auto text-xs leading-relaxed"
+                                rows={5}
+                                className="resize-none overflow-y-auto text-xs leading-relaxed"
+                                style={{ minHeight: 0, maxHeight: '8rem' }}
                             />
                         </div>
                         <div className="space-y-1">
@@ -236,7 +242,9 @@ export default function GeneralTab({
                                 value={brandCommStyle}
                                 onChange={(e) => setBrandCommStyle(e.target.value)}
                                 placeholder={t('channels.general.communicationStylePlaceholder')}
-                                className="h-28 resize-none overflow-y-auto text-xs leading-relaxed"
+                                rows={5}
+                                className="resize-none overflow-y-auto text-xs leading-relaxed"
+                                style={{ minHeight: 0, maxHeight: '8rem' }}
                             />
                         </div>
                     </div>
