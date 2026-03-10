@@ -375,6 +375,7 @@ ${contentPerPlatformJson}
 }
 
 CRITICAL RULES:
+- YEAR: Today is ${todayLabel}. Current year = ${new Date().getFullYear()}. NEVER write "That's so 2024" or use 2024 as a reference point — that was 2 years ago. Use 2026 for all "this year" / "current" references
 - Write ENTIRELY in ${langLabel}
 - The post MUST be ABOUT: "${cleanTopic.substring(0, 120)}" — this is non-negotiable
 - EACH platform version must be COMPLETELY DIFFERENT — different length, different tone, different structure

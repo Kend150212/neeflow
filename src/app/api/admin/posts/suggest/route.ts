@@ -199,7 +199,7 @@ Return EXACTLY this JSON structure (raw JSON, no markdown):
   ]
 }
 
-Generate exactly 9 suggestions — 3 per cluster. Write ALL in ${langLabel}. Every topic must feel invented RIGHT NOW for seed ${requestSeed}. Be BOLD, be SPECIFIC, be UNEXPECTED.`
+Generate exactly 9 suggestions — 3 per cluster. Write ALL in ${langLabel}. Current year is ${new Date().getFullYear()} — NEVER use 2024 as a recent/current reference in topic titles or angles. Every topic must feel invented RIGHT NOW for seed ${requestSeed}. Be BOLD, be SPECIFIC, be UNEXPECTED.`
 
     try {
         const result = await callAI(providerName, apiKey, model, systemPrompt, userPrompt, baseUrl)

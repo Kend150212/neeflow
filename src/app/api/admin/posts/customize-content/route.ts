@@ -63,7 +63,10 @@ export async function POST(req: NextRequest) {
         .map(p => `- ${platformRules[p]}`)
         .join('\n')
 
-    const systemPrompt = `You are a social media content expert. Your job is to adapt a single piece of content for different social media platforms, optimizing for each platform's unique audience, format, and best practices. Maintain the core message but adjust tone, length, format, hashtags, and style for maximum engagement on each platform.`
+    const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
+    const currentYear = new Date().getFullYear()
+
+    const systemPrompt = `You are a social media content expert. Your job is to adapt a single piece of content for different social media platforms, optimizing for each platform's unique audience, format, and best practices. Maintain the core message but adjust tone, length, format, hashtags, and style for maximum engagement on each platform. TODAY is ${todayLabel}. The current year is ${currentYear}. NEVER reference 2024 as current/recent — that was TWO years ago.`
 
     const userPrompt = `Here is the ORIGINAL content to adapt:
 
@@ -81,6 +84,7 @@ IMPORTANT RULES:
 3. DO NOT add placeholder text like [YOUR LINK] or [INSERT IMAGE]. Only include real, actionable content
 4. Write in ${langLabel} unless the original content is in another language — then match that language
 5. Return VALID JSON only, no markdown
+6. YEAR RULE: Today is ${todayLabel}. Current year = ${currentYear}. Do NOT write "That's so 2024" or reference 2024 as current or recent — use ${currentYear} for any year references
 
 Return JSON:
 {
