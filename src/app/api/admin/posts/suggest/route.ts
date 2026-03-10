@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const channel = await prisma.channel.findUnique({
         where: { id: channelId },
         include: {
-            knowledgeBase: { take: 5, orderBy: { updatedAt: 'desc' } },
+            knowledgeBase: { take: 8, orderBy: { updatedAt: 'desc' } },
             hashtagGroups: true,
             contentTemplates: { take: 5 },
         },
@@ -62,29 +62,27 @@ export async function POST(req: NextRequest) {
         targetAudience?: string; contentTypes?: string;
         brandValues?: string; communicationStyle?: string;
     } | null
+    let targetAudience = ''
     let brandContext = ''
     if (brandProfile) {
         const parts: string[] = []
-        if (brandProfile.targetAudience) parts.push(`Target Audience: ${brandProfile.targetAudience}`)
+        if (brandProfile.targetAudience) { parts.push(`Target Audience: ${brandProfile.targetAudience}`); targetAudience = brandProfile.targetAudience }
         if (brandProfile.contentTypes) parts.push(`Content Types: ${brandProfile.contentTypes}`)
         if (brandProfile.brandValues) parts.push(`Brand Values: ${brandProfile.brandValues}`)
         if (brandProfile.communicationStyle) parts.push(`Communication Style: ${brandProfile.communicationStyle}`)
         if (parts.length > 0) brandContext = parts.join('\n')
     }
 
-    // Knowledge Base (content, not just titles)
+    // Knowledge Base — extract main topics for clustering
     const kbContext = channel.knowledgeBase
-        .map(kb => `[${kb.title}]: ${kb.content.slice(0, 300)}`)
+        .map(kb => `[${kb.title}]: ${kb.content.slice(0, 400)}`)
         .join('\n')
 
-    // SEO Tags
+    // SEO Tags (use as seed keywords for clustering)
     const seoTags = ((channel.seoTags as string[]) || []).join(', ')
 
     // Hashtags
     const hashtags = channel.hashtagGroups.flatMap(g => (g.hashtags as string[]) || []).slice(0, 20).join(' ')
-
-    // Content Templates
-    const templateNames = channel.contentTemplates.map(t => t.name).join(', ')
 
     // Business Info
     const bizInfo = (channel as any).businessInfo as {
@@ -98,103 +96,110 @@ export async function POST(req: NextRequest) {
         if (parts.length > 0) bizContext = parts.join(', ')
     }
 
-    // Random seed to force AI to generate fresh ideas every call
-    const seedTime = Date.now()
-    const seedMinute = Math.floor(seedTime / 60000)
+    // ── True random seed (millisecond + crypto-like suffix) ──
+    const randomSuffix = Math.random().toString(36).slice(2, 8).toUpperCase()
+    const requestSeed = `${Date.now()}-${randomSuffix}`
 
-    // Randomly pick 5 content styles from a big pool to force variety each refresh
+    // ── Pick 10 non-repeating content styles + 3 search intent types ──
     const ALL_CONTENT_STYLES = [
-        'Hot Take / Controversial Opinion', 'Myth vs Reality', 'Unpopular Opinion + Why I Stand By It',
-        'Step-by-Step Tutorial', 'Quick Tips (3 in 60 seconds)', 'Deep Dive Explainer',
-        'Before & After Transformation', 'Day in the Life', 'Behind the Scenes',
-        'Customer Success Story (storytelling format)', 'Mistake I Made + Lesson Learned',
-        'The Truth About [Topic] Nobody Talks About', 'I Tried X For 30 Days — Here\'s What Happened',
-        'Comparison / Head-to-Head Battle', 'Red Flags vs Green Flags', 'Tier List Ranking',
-        'This or That Poll', 'Fill in the Blank', 'Would You Rather',
-        'Trending Audio / Sound', 'React & Respond to Industry News', 'Stitch / Duet Opportunity',
-        'POV: You\'re a [customer type]', 'A Day Without [Product/Service]',
-        'Industry Predictions for This Year', 'I Asked 100 Customers This — Their Answers Surprised Me',
-        'Why Most People Get [Topic] Wrong', 'The [X] Things I Wish I Knew Earlier',
-        'Science-backed Fact + Surprise Twist', 'Local / Community Event Tie-in',
-        'Seasonal / Holiday Angle', 'Cultural Moment Leverage', 'Nostalgia Hook',
-        'Aesthetic / Vibe Post (no caption needed, visual story)', 'ASMR / Sensory Content',
-        'Founder Story / Origin Arc', 'Team Spotlight', 'Process Reveal (how we make it)',
-        'FAQ Smash (answer 5 questions in one post)', 'Testimonial Remix',
-        'User-Generated Content Prompt', 'Challenge Launch', 'Series Post (episode 1 of X)',
-        'Listicle (Top 7, Top 10, Top 13)', 'Stats & Data that Shock', 'Infographic Style',
-        'Rant Post (passionate about something in industry)', 'Appreciation / Thank You Post',
-        'Aspirational / Dream Big Content', 'Relatable Struggle Post', 'Humor / Meme Format',
+        'Controversial Hot Take', 'Myth vs Reality Bust', 'Unpopular Opinion + Proof',
+        'Step-by-Step How-To', 'Quick Tips (3 things in 60 seconds)', 'Deep Dive Explainer',
+        'Before & After Transformation', 'Behind the Scenes Reveal', 'Day in the Life POV',
+        'Customer Pain Point Story', 'Mistake I Made + Lesson', 'The Truth Nobody Talks About',
+        'I Tried X For 30 Days Result', 'Head-to-Head Comparison', 'Red Flags vs Green Flags',
+        'This or That Poll', 'Fill in the Blank Engagement', 'Industry Predictions This Year',
+        'I Asked 100 People — Results Shocked Me', 'Why Most People Get This Wrong',
+        'Science-backed Fact + Twist', 'Seasonal / Event Tie-in', 'Founder Origin Story',
+        'FAQ Smash (5 questions in 1 post)', 'Aspirational Dream Content',
+        'Rant Post (passionate industry take)', 'Humor / Relatable Meme Format',
+        'Stats & Data That Shock', 'Series Episode (episodic content arc)',
+        'Challenge or Contest Launch', 'User Pain Journey Arc', 'Product Demo in Use',
+        'Local Community Angle', 'Trend Newsjacking', 'Nostalgia Hook',
+        'Storytelling with Cliffhanger', 'Tutorial with Shortcut Reveal',
+        'List: Top X Things (unexpected ranking)', 'Analogy from Unexpected Field',
+        'The Cost of NOT Doing X', 'What Experts Won\'t Tell You'
     ]
-    const shuffled = ALL_CONTENT_STYLES.sort(() => 0.5 - Math.random())
-    const pickedStyles = shuffled.slice(0, 10).join('\n- ')
 
-    const ALL_VIBES = [
-        'Raw & Unfiltered', 'Cinematic & Moody', 'Gen Z Chaotic Energy', 'Luxury & Aspirational',
-        'Warm & Community-driven', 'Edgy & Provocative', 'Playful & Silly',
-        'Expert Authority', 'Underdog Story', 'Minimalist Clean',
-        'Nostalgic Retro', 'Hype & High Energy', 'ASMR Calm & Soothing',
-        'Academic & Research-backed', 'Street-level Authentic',
+    // Fisher-Yates shuffle for true randomness
+    const shuffled = [...ALL_CONTENT_STYLES]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    const pickedStyles = shuffled.slice(0, 9).join('\n- ')
+
+    // ── 3 search intent clusters to organize topics ──
+    const SEARCH_INTENTS = [
+        ['Informational — audience seeking to learn or understand something'],
+        ['Commercial — audience comparing or evaluating options before a decision'],
+        ['Navigational/Brand — audience searching for this brand specifically or its use cases'],
     ]
-    const pickedVibes = shuffled.slice(0, 4).map((_, i) => ALL_VIBES[i % ALL_VIBES.length]).join(', ')
+    const pickedIntents = SEARCH_INTENTS.map(i => i[0]).join('\n- ')
 
-    const systemPrompt = `You are the world's most creative social media content ideation engine. You specialize in generating WILDLY DIVERSE, UNEXPECTED, and HIGHLY ENGAGING content ideas. Your ideas never repeat. You think across all formats, vibes, styles, emotions, and cultural angles. You mix viral formulas with brand-specific nuance. You NEVER generate generic content. Respond ONLY with valid JSON.`
+    const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
 
-    const userPrompt = `You are generating content topic ideas for a social media brand. Your job is to be MAXIMALLY CREATIVE and DIVERSE.
+    const systemPrompt = `You are an expert SEO content strategist AND social media virality expert. You combine deep keyword research methodology with social media psychology to generate content ideas that are both search-rankable AND highly shareable. You NEVER generate generic ideas. Every idea is specific, fresh, and grounded in real audience pain points. Today is ${todayLabel}. Respond ONLY with raw valid JSON — no markdown fences.`
 
-SEED: ${seedMinute} — use this as your creative starting point to ensure fresh, unique output every single time.
+    const userPrompt = `Perform creative content ideation using SEO keyword cluster methodology for a social media brand. Generate 9 COMPLETELY UNIQUE topic ideas grouped into 3 clusters.
 
-═══ BRAND DATA ═══
-Brand: ${channel.displayName}
+REQUEST SEED (guarantees fresh output): ${requestSeed}
+
+━━━ BRAND PROFILE ━━━
+Brand Name: ${channel.displayName}
 Description: ${channel.description || 'N/A'}
 Language: ${langLabel}
-${vibeStr ? `Tone & Style: ${vibeStr}` : ''}
+${vibeStr ? `Tone & Vibe: ${vibeStr}` : ''}
 ${brandContext ? `\n${brandContext}` : ''}
-${kbContext ? `\nKnowledge Base:\n${kbContext}` : ''}
-${seoTags ? `SEO Tags: ${seoTags}` : ''}
-${hashtags ? `Popular Hashtags: ${hashtags}` : ''}
-${bizContext ? `Business: ${bizContext}` : ''}
+${targetAudience ? `\nAudience Niche: ${targetAudience}` : ''}
+${kbContext ? `\nBrand Knowledge Base (use these topics as seed keywords for clustering):\n${kbContext}` : ''}
+${seoTags ? `SEO Focus Tags: ${seoTags}` : ''}
+${hashtags ? `Brand Hashtags: ${hashtags}` : ''}
+${bizContext ? `Business Info: ${bizContext}` : ''}
 
-═══ THIS SESSION'S ASSIGNED CONTENT STYLES ═══
-You MUST use these 10 content styles (one per suggestion, in order):
+━━━ METHODOLOGY: SEO TOPIC CLUSTER APPROACH ━━━
+You MUST organize the 9 topics into exactly 3 search intent clusters:
+- ${pickedIntents}
+
+For each cluster, generate 3 topics that target DIFFERENT keyword angles within that intent.
+Think like an SEO strategist: what are people actually searching for? What long-tail questions do they ask?
+
+━━━ THIS SESSION'S CONTENT FORMATS ━━━
+Each topic MUST use a DIFFERENT format from this assigned list (in order):
 - ${pickedStyles}
 
-═══ THIS SESSION'S ASSIGNED EMOTIONAL VIBES ═══
-Rotate through these vibes across your suggestions: ${pickedVibes}
+━━━ RULES ━━━
+1. Each topic must have a PUNCHY HEADLINE (5-12 words max) — provocative, specific, curiosity-driven
+2. Include the primary SEO-style keyword people would actually search for
+3. Include 2-3 related long-tail keywords / LSI keywords
+4. Explain in ONE sentence WHY this topic will perform well (search + social angle)
+5. Each cluster should feel like a coherent content pillar strategy
+6. Mix search volume signals: some broad (high volume), some niche (low competition, high intent)
+7. NO TWO topics can start with the same word or use the same structure
+8. Topics must feel SPECIFIC to this brand's niche — ZERO generic ideas
+9. Make topics that create urgency, FOMO, or satisfy a specific search intent
 
-═══ INSTRUCTIONS ═══
-Generate EXACTLY 10 content topic ideas. Each must:
-1. Match one of the assigned content styles above (in order)
-2. Be 100% specific to this brand's niche — NEVER generic
-3. Have a different emotional angle from the others
-4. Feel like it was written by a creator who deeply knows this brand AND is obsessed with virality
-5. Include a punchy 5-12 word headline as the topic
-6. Use specific numbers, names, or provocative hooks where possible
+━━━ STRICTLY FORBIDDEN ━━━
+- Generic phrases: "5 tips for", "Why X is important", "How to be successful"
+- Starting with the same word twice
+- Repeating the same emotional angle
+- Topics that could apply to ANY brand in any industry
 
-═══ ANTI-REPETITION RULES ═══
-- NO two topics can start with the same word
-- NO two topics can use the same structure (e.g. "How to X" twice)
-- NO safe, boring, predictable topics (no "5 tips for...", no "Why X is important")
-- Each topic should feel completely different in FORMAT, EMOTION, and ANGLE
-- Mix serious ↔ playful ↔ controversial ↔ educational ↔ emotional
-- Some topics should be risky/edgy but brand-aligned
-
-═══ RESPONSE FORMAT ═══
-Return EXACTLY this JSON (no extra text):
+━━━ RESPONSE FORMAT ━━━
+Return EXACTLY this JSON structure (raw JSON, no markdown):
 {
   "suggestions": [
     {
       "topic": "Punchy 5-12 word headline",
       "emoji": "🔥",
-      "keyword": "primary seo keyword",
-      "angle": "One sentence: what makes this fresh and engaging",
-      "relatedKeywords": ["keyword1", "keyword2"]
+      "keyword": "primary seo keyword phrase",
+      "angle": "One sentence: search intent + viral angle that makes this unique",
+      "relatedKeywords": ["long-tail keyword 1", "LSI keyword 2", "question keyword 3"],
+      "cluster": "Informational|Commercial|Brand"
     }
   ]
 }
 
-CRITICAL: Write ALL content in ${langLabel}. Be BOLD. Be UNEXPECTED. Create topics that make the creator think "I HAVE to post this."
-The topics MUST feel like they were invented RIGHT NOW, not recycled ideas. Seed ${seedMinute} ensures uniqueness.`
-
+Generate exactly 9 suggestions — 3 per cluster. Write ALL in ${langLabel}. Every topic must feel invented RIGHT NOW for seed ${requestSeed}. Be BOLD, be SPECIFIC, be UNEXPECTED.`
 
     try {
         const result = await callAI(providerName, apiKey, model, systemPrompt, userPrompt, baseUrl)
@@ -202,8 +207,16 @@ The topics MUST feel like they were invented RIGHT NOW, not recycled ideas. Seed
         const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
         if (jsonMatch) cleaned = jsonMatch[0]
 
-        let parsed: { suggestions?: { topic: string; emoji: string; keyword?: string; angle?: string; relatedKeywords?: string[] }[] }
+        let parsed: { suggestions?: { topic: string; emoji: string; keyword?: string; angle?: string; relatedKeywords?: string[]; cluster?: string }[] }
         try { parsed = JSON.parse(cleaned) } catch { parsed = { suggestions: [] } }
+
+        // Increment usage
+        if (usingPlatformKey && ownerId) {
+            await Promise.all([
+                incrementTextUsage(ownerId, false),
+                integrationId ? prisma.apiIntegration.update({ where: { id: integrationId }, data: { usageCount: { increment: 1 } } }) : Promise.resolve(),
+            ])
+        }
 
         return NextResponse.json({ suggestions: parsed.suggestions || [] })
     } catch (error) {
