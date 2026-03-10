@@ -2150,7 +2150,8 @@
       "botEscalated": "Bot đã chuyển tiếp cuộc trò chuyện này.",
       "needsHumanAgent": "Cần nhân viên tiếp nhận và phản hồi.",
       "replyNow": "Phản hồi ngay",
-      "assignMe": "Nhận cuộc trò chuyện này"
+      "assignMe": "Nhận cuộc trò chuyện này",
+      "agentNeeded": "Cần nhân viên"
     },
     "postPreview": {
       "originalPost": "📄 Bài viết gốc",

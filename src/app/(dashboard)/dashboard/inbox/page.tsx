@@ -1172,49 +1172,7 @@ export default function InboxPage() {
 
                             <Separator className="mx-2" />
 
-                            {/* ═══ PERSISTENT AGENT ESCALATION BANNER ═══ */}
-                            {!sidebarCollapsed && needsAgent > 0 && (() => {
-                                const escalated = conversations.filter(c =>
-                                    c.mode === 'AGENT' && c.status !== 'done' && c.status !== 'archived'
-                                )
-                                return (
-                                    <div className="mx-2 my-2 rounded-lg border border-red-500/40 bg-red-500/10 overflow-hidden">
-                                        <div className="flex items-center gap-1.5 px-3 py-2 bg-red-500/15 border-b border-red-500/20">
-                                            <span className="relative flex h-2 w-2 shrink-0">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                                            </span>
-                                            <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide flex-1">
-                                                {needsAgent} {t('inbox.escalation.agentNeeded') || 'Needs Agent'}
-                                            </p>
-                                        </div>
-                                        <div className="divide-y divide-red-500/10 max-h-48 overflow-y-auto">
-                                            {escalated.map(conv => (
-                                                <div key={conv.id} className="flex items-center gap-2 px-3 py-2">
-                                                    <button
-                                                        className="text-[10px] text-left flex-1 min-w-0 cursor-pointer"
-                                                        onClick={() => {
-                                                            const freePane = panels.findIndex(p => !p.conversation)
-                                                            const pIdx = freePane >= 0 ? freePane : activePanel
-                                                            setActivePanel(pIdx)
-                                                            updatePanel(pIdx, { conversation: conv })
-                                                        }}
-                                                    >
-                                                        <span className="font-medium text-foreground truncate block">{conv.externalUserName || t('inbox.unknown')}</span>
-                                                        <span className="text-muted-foreground">{conv.platform}</span>
-                                                    </button>
-                                                    <button
-                                                        className="shrink-0 text-[9px] px-2 py-0.5 rounded border border-red-500/50 text-red-400 hover:bg-red-500/20 cursor-pointer font-medium whitespace-nowrap"
-                                                        onClick={() => updateConversation(conv.id, { assignedTo: session?.user?.id })}
-                                                    >
-                                                        {t('inbox.escalation.assignMe') || 'Assign me'}
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )
-                            })()}
+
 
                             {/* AI Quick Stats */}
                             <div className="p-2">
@@ -1546,9 +1504,11 @@ export default function InboxPage() {
                                         'w-full flex gap-3 p-3 text-left transition-colors cursor-pointer',
                                         selectedConversation?.id === conv.id
                                             ? 'bg-primary/5 border-l-2 border-l-primary'
-                                            : conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived'
-                                                ? 'hover:bg-amber-500/10 border-l-2 border-l-amber-500 bg-amber-500/5'
-                                                : 'hover:bg-primary/6 border-l-2 border-l-transparent'
+                                            : conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && !conv.assignedTo
+                                                ? 'hover:bg-red-500/10 border-l-2 border-l-red-500 bg-red-500/5'
+                                                : conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && conv.assignedTo
+                                                    ? 'hover:bg-amber-500/10 border-l-2 border-l-amber-500 bg-amber-500/5'
+                                                    : 'hover:bg-primary/6 border-l-2 border-l-transparent'
                                     )}
                                 >
                                     {/* Avatar */}
@@ -1602,7 +1562,16 @@ export default function InboxPage() {
                                             </p>
                                             <div className="flex items-center gap-1 shrink-0">
                                                 {conv.mode === 'BOT' && <Bot className="h-3 w-3 text-green-500" />}
-                                                {conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && (
+                                                {conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && !conv.assignedTo && (
+                                                    <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-500">
+                                                        <span className="relative flex h-1.5 w-1.5">
+                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                                                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+                                                        </span>
+                                                        <span className="text-[8px] font-bold uppercase tracking-wide">{t('inbox.actions.assign')}</span>
+                                                    </span>
+                                                )}
+                                                {conv.mode === 'AGENT' && conv.status !== 'done' && conv.status !== 'archived' && conv.assignedTo && (
                                                     <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
                                                         <span className="relative flex h-1.5 w-1.5">
                                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />

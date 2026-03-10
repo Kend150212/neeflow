@@ -2150,7 +2150,8 @@
       "botEscalated": "Bot has escalated this conversation.",
       "needsHumanAgent": "A human agent needs to take over and respond.",
       "replyNow": "Reply Now",
-      "assignMe": "Assign to me"
+      "assignMe": "Assign to me",
+      "agentNeeded": "Needs Agent"
     },
     "postPreview": {
       "originalPost": "📄 Original Post",

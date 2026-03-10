@@ -1685,7 +1685,8 @@
       "botEscalated": "El bot escaló esta conversación.",
       "needsHumanAgent": "Un agente humano necesita tomar el control.",
       "replyNow": "Responder ahora",
-      "assignMe": "Asignarme esta conversación"
+      "assignMe": "Asignarme esta conversación",
+      "agentNeeded": "Necesita agente"
     },
     "postPreview": {
       "originalPost": "📄 Publicación original",
