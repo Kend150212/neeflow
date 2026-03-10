@@ -142,6 +142,33 @@ export async function PUT(
             },
         })
         console.log(`[BotConfig] ✅ Telegram ChannelPlatform upserted for channel ${channelId}`)
+
+        // Auto-register Telegram webhook — so users don't need to run curl manually
+        const appUrl = process.env.NEXTAUTH_URL
+            || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+            || req.headers.get('origin')
+            || 'https://neeflow.com'
+        const webhookUrl = `${appUrl.replace(/\/$/, '')}/api/webhook/telegram`
+
+        try {
+            const tgRes = await fetch(
+                `https://api.telegram.org/bot${savedToken}/setWebhook`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: webhookUrl }),
+                }
+            )
+            const tgData = await tgRes.json()
+            if (tgData.ok) {
+                console.log(`[BotConfig] ✅ Telegram webhook registered: ${webhookUrl}`)
+            } else {
+                console.warn(`[BotConfig] ⚠️ Telegram setWebhook failed:`, JSON.stringify(tgData))
+            }
+        } catch (err) {
+            console.error('[BotConfig] ❌ Telegram setWebhook error:', err)
+        }
+
     } else if (body.telegramBotToken === '' || body.telegramBotToken === null) {
         // Token was cleared — deactivate Telegram platform
         await prisma.channelPlatform.updateMany({
