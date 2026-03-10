@@ -300,11 +300,19 @@ async function handleInstagramMessaging(igAccountId: string, event: any, botTask
     const mediaUrl = event.message?.attachments?.[0]?.payload?.url || null
     const mediaType = event.message?.attachments?.[0]?.type || null
 
-    // Get user profile once using first account's token
+    // Get user profile — ONLY if not already cached in DB (avoids repeated Graph API calls)
     const tokenAccount = platformAccounts.find(a => a.accessToken) || platformAccounts[0]
     let senderName = externalUserId
     let senderAvatar: string | null = null
-    if (tokenAccount.accessToken) {
+
+    const existingIgConv = await prisma.conversation.findFirst({
+        where: { platform: 'instagram', externalUserId, channelId: platformAccounts[0].channelId },
+        select: { externalUserAvatar: true, externalUserName: true },
+    })
+    const igHasCachedAvatar = !!existingIgConv?.externalUserAvatar && !existingIgConv.externalUserAvatar.includes('graph.facebook.com')
+    const igHasCachedName = !!(existingIgConv?.externalUserName && existingIgConv.externalUserName !== externalUserId)
+
+    if (tokenAccount.accessToken && (!igHasCachedAvatar || !igHasCachedName)) {
         try {
             const res = await fetch(
                 `https://graph.facebook.com/v19.0/${externalUserId}?fields=name,username,profile_pic&access_token=${tokenAccount.accessToken}`
@@ -315,6 +323,9 @@ async function handleInstagramMessaging(igAccountId: string, event: any, botTask
                 senderAvatar = data.profile_pic || null
             }
         } catch { /* fallback */ }
+    } else if (igHasCachedAvatar) {
+        senderAvatar = existingIgConv!.externalUserAvatar
+        senderName = igHasCachedName ? existingIgConv!.externalUserName! : senderName
     }
 
     // Process for ALL matching channels
@@ -522,10 +533,17 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
         const mediaType = event.message?.attachments?.[0]?.type || null
         const tokenAccount = platformAccounts.find(a => a.accessToken) || platformAccounts[0]
 
-        // Get customer profile for conversation labelling
+        // Get customer profile — ONLY if not already cached
         let senderName = recipientId
         let senderAvatar: string | null = null
-        if (tokenAccount.accessToken) {
+        const existingEchoConv = await prisma.conversation.findFirst({
+            where: { channelId: platformAccounts[0].channelId, platform: 'facebook', externalUserId: recipientId },
+            select: { externalUserAvatar: true, externalUserName: true },
+        })
+        if (existingEchoConv?.externalUserAvatar && !existingEchoConv.externalUserAvatar.includes('graph.facebook.com')) {
+            senderAvatar = existingEchoConv.externalUserAvatar
+            senderName = existingEchoConv.externalUserName || senderName
+        } else if (tokenAccount.accessToken) {
             try {
                 const res = await fetch(
                     `https://graph.facebook.com/v19.0/${recipientId}?fields=name,profile_pic&access_token=${tokenAccount.accessToken}`
@@ -580,11 +598,20 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
     const mediaUrl = event.message?.attachments?.[0]?.payload?.url || null
     const mediaType = event.message?.attachments?.[0]?.type || null
 
-    // Get user profile once using first account's token
+    // Get user profile — ONLY if not already cached in DB
     const tokenAccount = platformAccounts.find(a => a.accessToken) || platformAccounts[0]
-    let senderName: string | null = null  // null = unknown, will use 'Facebook User' fallback
+    let senderName: string | null = null
     let senderAvatar: string | null = null
-    if (tokenAccount.accessToken) {
+
+    // Check if conversation already has avatar cached (avoids repeated Graph API calls)
+    const existingConv = await prisma.conversation.findFirst({
+        where: { channelId: platformAccounts[0].channelId, platform: 'facebook', externalUserId, type: 'message' },
+        select: { externalUserAvatar: true, externalUserName: true },
+    })
+    const hasCachedAvatar = !!existingConv?.externalUserAvatar && !existingConv.externalUserAvatar.includes('graph.facebook.com')
+    const hasCachedName = !!(existingConv?.externalUserName && !/^\d{10,}$/.test(existingConv.externalUserName) && existingConv.externalUserName !== 'Facebook User')
+
+    if (tokenAccount.accessToken && (!hasCachedAvatar || !hasCachedName)) {
         try {
             const res = await fetch(
                 `https://graph.facebook.com/v19.0/${externalUserId}?fields=name,profile_pic&access_token=${tokenAccount.accessToken}`
@@ -604,10 +631,17 @@ async function handleMessaging(pageId: string, event: any, botTasks: BotTask[]) 
         } catch (e) {
             console.warn(`[FB Webhook] ⚠️ Profile fetch exception for ${externalUserId}:`, e)
         }
-        if (!senderAvatar) {
-            // Fallback: Facebook profile picture endpoint (may still serve generic avatar)
-            senderAvatar = `https://graph.facebook.com/${externalUserId}/picture?type=small&access_token=${tokenAccount.accessToken}`
-        }
+    } else if (hasCachedAvatar) {
+        // Use cached values — skip Graph API call entirely
+        senderAvatar = existingConv!.externalUserAvatar
+        senderName = hasCachedName ? existingConv!.externalUserName : null
+    }
+
+    if (!senderAvatar) {
+        // Fallback: only use direct picture URL if we truly have nothing (new user)
+        senderAvatar = tokenAccount.accessToken
+            ? `https://graph.facebook.com/${externalUserId}/picture?type=small&access_token=${tokenAccount.accessToken}`
+            : null
     }
 
     // Process for ALL matching channels
