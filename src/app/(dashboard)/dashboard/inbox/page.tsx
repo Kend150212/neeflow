@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSession } from 'next-auth/react'
 import { useWorkspace } from '@/lib/workspace-context'
 import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -301,6 +302,7 @@ function timeAgo(date: string, t: (key: string) => string) {
 // MAIN COMPONENT
 // ═══════════════════════════════════════
 export default function InboxPage() {
+    const { data: session } = useSession()
     const { activeChannel } = useWorkspace()
     const t = useTranslation()
 
@@ -340,6 +342,7 @@ export default function InboxPage() {
 
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const prevUnreadRef = useRef<number>(0)
+    const prevEscalationIdsRef = useRef<Set<string>>(new Set())
     const audioContextRef = useRef<AudioContext | null>(null)
     const notifIntervalRef = useRef<NodeJS.Timeout | null>(null)
     const [soundMuted, setSoundMuted] = useState(() => {
@@ -602,6 +605,24 @@ export default function InboxPage() {
                     }
                 }
                 prevUnreadRef.current = totalUnread
+
+                // 3. Detect NEW agent escalations (conversations that switched to AGENT mode)
+                const nowEscalated = freshConversations.filter((c: any) =>
+                    c.mode === 'AGENT' && c.status !== 'done' && c.status !== 'archived'
+                )
+                const newEscalations = nowEscalated.filter((c: any) => !prevEscalationIdsRef.current.has(c.id))
+                if (newEscalations.length > 0) {
+                    playNotificationSound()
+                    newEscalations.forEach((conv: any) => {
+                        const senderName = conv.externalUserName || t('inbox.unknown')
+                        showBrowserNotification(
+                            `🚨 ${t('inbox.escalation.agentNeeded') || 'Agent Needed'}`,
+                            `${senderName} ${t('inbox.escalation.needsHumanAgent') || 'needs a human agent'}`,
+                            conv.id
+                        )
+                    })
+                }
+                prevEscalationIdsRef.current = new Set(nowEscalated.map((c: any) => c.id))
 
                 // 3. Merge + re-sort — server already returns page-1 sorted by lastMessageAt desc.
                 // Keep extra-loaded (page 2+) convs at bottom, re-sort first-page items by lastMessageAt.
@@ -994,7 +1015,16 @@ export default function InboxPage() {
                                 <PanelLeftClose className="h-3.5 w-3.5 text-white" />
                             )}
                         </button>
-                        {!sidebarCollapsed && <span className="text-sm font-semibold whitespace-nowrap">{t('inbox.title')}</span>}
+                        {!sidebarCollapsed && (
+                            <span className="text-sm font-semibold whitespace-nowrap flex items-center gap-2">
+                                {t('inbox.title')}
+                                {needsAgent > 0 && (
+                                    <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold animate-pulse">
+                                        {needsAgent}
+                                    </span>
+                                )}
+                            </span>
+                        )}
                     </div>
                     {!sidebarCollapsed && (
                         <p className="text-[10px] text-muted-foreground px-1 mt-1 whitespace-nowrap">
@@ -1094,6 +1124,50 @@ export default function InboxPage() {
                             </div>
 
                             <Separator className="mx-2" />
+
+                            {/* ═══ PERSISTENT AGENT ESCALATION BANNER ═══ */}
+                            {!sidebarCollapsed && needsAgent > 0 && (() => {
+                                const escalated = conversations.filter(c =>
+                                    c.mode === 'AGENT' && c.status !== 'done' && c.status !== 'archived'
+                                )
+                                return (
+                                    <div className="mx-2 my-2 rounded-lg border border-red-500/40 bg-red-500/10 overflow-hidden">
+                                        <div className="flex items-center gap-1.5 px-3 py-2 bg-red-500/15 border-b border-red-500/20">
+                                            <span className="relative flex h-2 w-2 shrink-0">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                                            </span>
+                                            <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide flex-1">
+                                                {needsAgent} {t('inbox.escalation.agentNeeded') || 'Needs Agent'}
+                                            </p>
+                                        </div>
+                                        <div className="divide-y divide-red-500/10 max-h-48 overflow-y-auto">
+                                            {escalated.map(conv => (
+                                                <div key={conv.id} className="flex items-center gap-2 px-3 py-2">
+                                                    <button
+                                                        className="text-[10px] text-left flex-1 min-w-0 cursor-pointer"
+                                                        onClick={() => {
+                                                            const freePane = panels.findIndex(p => !p.conversation)
+                                                            const pIdx = freePane >= 0 ? freePane : activePanel
+                                                            setActivePanel(pIdx)
+                                                            updatePanel(pIdx, { conversation: conv })
+                                                        }}
+                                                    >
+                                                        <span className="font-medium text-foreground truncate block">{conv.externalUserName || t('inbox.unknown')}</span>
+                                                        <span className="text-muted-foreground">{conv.platform}</span>
+                                                    </button>
+                                                    <button
+                                                        className="shrink-0 text-[9px] px-2 py-0.5 rounded border border-red-500/50 text-red-400 hover:bg-red-500/20 cursor-pointer font-medium whitespace-nowrap"
+                                                        onClick={() => updateConversation(conv.id, { assignedTo: session?.user?.id })}
+                                                    >
+                                                        {t('inbox.escalation.assignMe') || 'Assign me'}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )
+                            })()}
 
                             {/* AI Quick Stats */}
                             <div className="p-2">
