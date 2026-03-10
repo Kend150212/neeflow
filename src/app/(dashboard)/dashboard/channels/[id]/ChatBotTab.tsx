@@ -86,6 +86,14 @@ interface BotConfigData {
     discordEnabled: boolean
     discordWebhookUrl: string
     discordEvents: string[]
+    // Messaging Apps bot toggles
+    whatsappBotEnabled: boolean
+    telegramBotEnabled: boolean
+    zaloBotEnabled: boolean
+    // Webhook config refs (read from channel config, read-only here)
+    webhookWhatsappPhoneId: string
+    webhookTelegramToken: string
+    webhookZaloOaName: string
 }
 
 interface ChatBotTabProps {
@@ -531,6 +539,14 @@ export default function ChatBotTab({ channelId }: ChatBotTabProps) {
                         discordEnabled: data.discordEnabled ?? false,
                         discordWebhookUrl: data.discordWebhookUrl || '',
                         discordEvents: data.discordEvents || ['escalation', 'stale'],
+                        // Messaging Apps bot toggles
+                        whatsappBotEnabled: data.whatsappBotEnabled ?? false,
+                        telegramBotEnabled: data.telegramBotEnabled ?? false,
+                        zaloBotEnabled: data.zaloBotEnabled ?? false,
+                        // Webhook config refs
+                        webhookWhatsappPhoneId: data.webhookWhatsappPhoneId || '',
+                        webhookTelegramToken: data.webhookTelegramToken || '',
+                        webhookZaloOaName: data.webhookZaloOaName || '',
                     })
                 }
             } catch { /* ignore */ }
@@ -3251,14 +3267,16 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 </span>
                             )}
                         </div>
+                        {/* ── Social Platforms section ── */}
                         {pageAccounts.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+                            <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
                                 <LayoutGrid className="h-8 w-8 text-muted-foreground/40" />
-                                <p className="text-sm text-muted-foreground">Chưa có tài khoản nào được kết nối</p>
-                                <p className="text-xs text-muted-foreground">Thêm tài khoản trong tab <strong>Connections</strong> của channel</p>
+                                <p className="text-sm text-muted-foreground">No connected accounts yet</p>
+                                <p className="text-xs text-muted-foreground">Add accounts in the <strong>Connections</strong> tab</p>
                             </div>
                         ) : (
-                            <div className="space-y-1.5">
+                            <div className="space-y-1">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-1 pb-1">Social Platforms</p>
                                 {pageAccounts.map(page => (
                                     <div key={page.id} className="flex items-center justify-between py-2 px-3 rounded-lg border hover:bg-muted/30 transition-colors">
                                         <div className="flex items-center gap-2.5 min-w-0">
@@ -3274,8 +3292,6 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                 <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#000" /><path d="M13.8 10.5L18 6h-1.3l-3.6 3.9L10 6H6l4.4 6.4L6 17h1.3l3.8-4.1L14.3 17H18l-4.2-6.5zm-1.3 1.5l-.5-.6L8 7h1.5l3 4.2.5.6L17 16h-1.5l-3-4z" fill="#fff" /></svg>
                                             ) : page.platform === 'linkedin' ? (
                                                 <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#0A66C2" /><path d="M8.5 10v6h-2v-6h2zm-1-3.2a1.15 1.15 0 110 2.3 1.15 1.15 0 010-2.3zM10 10h1.9v.8a2.1 2.1 0 011.9-1c2 0 2.4 1.3 2.4 3.1V16h-2v-2.8c0-.7 0-1.6-1-1.6s-1.1.7-1.1 1.5V16H10v-6z" fill="#fff" /></svg>
-                                            ) : page.platform === 'zalo' ? (
-                                                <span className="h-6 w-6 flex-shrink-0 rounded-full bg-blue-500 flex items-center justify-center text-white text-[9px] font-bold">ZL</span>
                                             ) : (
                                                 <svg className="h-6 w-6 flex-shrink-0" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#666" /><path d="M12 7a2 2 0 00-2 2v2H8v3h2v6h3v-6h2l.5-3H13V9.5a.5.5 0 01.5-.5H15V7h-3z" fill="#fff" /></svg>
                                             )}
@@ -3302,7 +3318,7 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                                         })
                                                         toast.success(v ? `Bot ON: ${page.accountName}` : `Bot OFF: ${page.accountName}`)
                                                     } catch {
-                                                        toast.error('Lỗi cập nhật')
+                                                        toast.error('Update error')
                                                         setPageAccounts(prev => prev.map(p =>
                                                             p.id === page.id ? { ...p, botEnabled: !v } : p
                                                         ))
@@ -3314,6 +3330,107 @@ DV002,Phòng 102 - Tiêu chuẩn,Dịch vụ,150000,,Phòng tiêu chuẩn sức 
                                 ))}
                             </div>
                         )}
+
+                        {/* ── Divider ── */}
+                        <div className="relative my-4">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-dashed border-muted-foreground/20" />
+                            </div>
+                        </div>
+
+                        {/* ── Messaging Apps section ── */}
+                        <div className="space-y-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-1 pb-1">Messaging Apps</p>
+
+                            {/* WhatsApp */}
+                            <div className="flex items-center justify-between py-2 px-3 rounded-lg border hover:bg-muted/30 transition-colors">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="h-6 w-6 flex-shrink-0 rounded-full bg-[#25D366] flex items-center justify-center">
+                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium">WhatsApp Business</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {config.webhookWhatsappPhoneId ? `ID: ${config.webhookWhatsappPhoneId}` : 'Not configured — set up in Integrations tab'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {!config.webhookWhatsappPhoneId ? (
+                                        <span className="text-xs text-muted-foreground/60">—</span>
+                                    ) : (
+                                        <>
+                                            <span className={`text-xs ${config.whatsappBotEnabled ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                                {config.whatsappBotEnabled ? t('chatbot.accounts.on') : t('chatbot.accounts.off')}
+                                            </span>
+                                            <Switch
+                                                checked={config.whatsappBotEnabled ?? false}
+                                                onCheckedChange={(v) => update('whatsappBotEnabled' as any, v)}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Telegram */}
+                            <div className="flex items-center justify-between py-2 px-3 rounded-lg border hover:bg-muted/30 transition-colors">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="h-6 w-6 flex-shrink-0 rounded-full bg-[#0088cc] flex items-center justify-center">
+                                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="white"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" /></svg>
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium">Telegram</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {config.webhookTelegramToken ? `Token: ${config.webhookTelegramToken.slice(0, 8)}...` : 'Not configured — set up in Integrations tab'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {!config.webhookTelegramToken ? (
+                                        <span className="text-xs text-muted-foreground/60">—</span>
+                                    ) : (
+                                        <>
+                                            <span className={`text-xs ${config.telegramBotEnabled ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                                {config.telegramBotEnabled ? t('chatbot.accounts.on') : t('chatbot.accounts.off')}
+                                            </span>
+                                            <Switch
+                                                checked={config.telegramBotEnabled ?? false}
+                                                onCheckedChange={(v) => update('telegramBotEnabled' as any, v)}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Zalo OA */}
+                            <div className="flex items-center justify-between py-2 px-3 rounded-lg border hover:bg-muted/30 transition-colors">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="h-6 w-6 flex-shrink-0 rounded-full bg-[#0068FF] flex items-center justify-center text-white text-[9px] font-bold">ZL</span>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium">Zalo OA</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {config.webhookZaloOaName ? config.webhookZaloOaName : 'Not connected — link in Integrations tab'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {!config.webhookZaloOaName ? (
+                                        <span className="text-xs text-muted-foreground/60">—</span>
+                                    ) : (
+                                        <>
+                                            <span className={`text-xs ${config.zaloBotEnabled ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                                {config.zaloBotEnabled ? t('chatbot.accounts.on') : t('chatbot.accounts.off')}
+                                            </span>
+                                            <Switch
+                                                checked={config.zaloBotEnabled ?? false}
+                                                onCheckedChange={(v) => update('zaloBotEnabled' as any, v)}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 )}
 
