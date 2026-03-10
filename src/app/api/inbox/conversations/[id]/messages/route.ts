@@ -469,6 +469,75 @@ export async function POST(
         }
     }
 
+    // ── Send reply via Telegram Bot API ──
+    if (conversation.platform === 'telegram') {
+        const platformAccount = await prisma.channelPlatform.findUnique({
+            where: { id: conversation.platformAccountId },
+        })
+
+        const botToken = platformAccount?.accessToken
+        if (botToken) {
+            const conv = await prisma.conversation.findUnique({
+                where: { id },
+                select: { externalUserId: true },
+            })
+
+            const chatId = conv?.externalUserId
+            if (chatId) {
+                try {
+                    const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
+
+                    if (cleanText) {
+                        const tgRes = await fetch(
+                            `https://api.telegram.org/bot${botToken}/sendMessage`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    chat_id: chatId,
+                                    text: cleanText,
+                                    parse_mode: 'HTML',
+                                }),
+                            }
+                        )
+                        const tgData = await tgRes.json()
+                        if (tgData.ok && tgData.result?.message_id) {
+                            await prisma.inboxMessage.update({
+                                where: { id: message.id },
+                                data: { externalId: String(tgData.result.message_id) },
+                            })
+                            console.log(`[TG Reply] ✅ Message sent to chat ${chatId}: ${tgData.result.message_id}`)
+                        } else {
+                            console.warn(`[TG Reply] ⚠️ Send failed:`, JSON.stringify(tgData))
+                        }
+                    }
+
+                    // Send image if present
+                    if (imageFile) {
+                        const imgBuffer = Buffer.from(await imageFile.arrayBuffer())
+                        const imgForm = new FormData()
+                        imgForm.append('chat_id', chatId)
+                        imgForm.append('photo', new Blob([imgBuffer], { type: imageFile.type }), imageFile.name)
+                        if (cleanText) imgForm.append('caption', cleanText)
+
+                        const tgImgRes = await fetch(
+                            `https://api.telegram.org/bot${botToken}/sendPhoto`,
+                            { method: 'POST', body: imgForm }
+                        )
+                        const tgImgData = await tgImgRes.json()
+                        if (tgImgData.ok) {
+                            console.log(`[TG Reply] ✅ Photo sent to chat ${chatId}`)
+                        } else {
+                            console.warn(`[TG Reply] ⚠️ Photo send failed:`, JSON.stringify(tgImgData))
+                        }
+                    }
+                } catch (err) {
+                    console.error(`[TG Reply] ❌ Error sending reply:`, err)
+                }
+            }
+        }
+    }
+
     return NextResponse.json({
         message: {
             id: message.id,

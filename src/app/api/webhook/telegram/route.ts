@@ -1,17 +1,17 @@
 /**
  * Telegram Webhook — receives bot updates, ingests messages into Inbox,
- * and optionally ingests media into the SmartFlow pipeline.
+ * triggers AI Bot auto-reply, and allows agents to reply back from Inbox.
  *
- * Telegram sends updates when users send messages to the bot.
- * This endpoint:
- *  1. Finds the channel whose BotConfig has matching webhookTelegramToken
- *  2. Upserts a ChannelPlatform record for telegram (virtual account)
- *  3. Creates / upserts a Conversation + InboxMessage so it appears in Inbox
- *  4. If the message contains media, also ingests it into SmartFlow
+ * Flow:
+ *  1. Finds channel whose BotConfig has matching telegramBotToken
+ *  2. Upserts a virtual ChannelPlatform record (platform='telegram')
+ *  3. Upserts Conversation + creates InboxMessage
+ *  4. Triggers botAutoReply — AI generates reply and sends back via Bot API
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { botAutoReply, sendBotGreeting } from '@/lib/bot-auto-reply'
 
 export async function POST(req: NextRequest) {
     try {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: true })
         }
 
-        // Find all channels that have a BotConfig with telegramBotToken set
+        // Find all channels with Telegram Bot Token configured
         const botConfigs = await prisma.botConfig.findMany({
             where: {
                 telegramBotToken: { not: null },
@@ -55,13 +55,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: true })
         }
 
-        // Match by chatId (the Chat ID configured in the bot config)
-        // telegramChatId in BotConfig is the notification chat ID (for admins)
-        // For inbox: we accept messages from ANY user who sends to the bot
-        // Use the first channel that has this bot configured (or match by specific chat if set)
+        // Match by configured chatId, fall back to first configured channel
         let targetConfig = botConfigs.find(c => c.telegramChatId === chatId)
         if (!targetConfig) {
-            // Fall back to first configured channel (single-bot scenario)
             targetConfig = botConfigs[0]
         }
 
@@ -71,17 +67,12 @@ export async function POST(req: NextRequest) {
 
         const { channelId, telegramBotToken } = targetConfig
 
-        // Upsert a virtual ChannelPlatform record for Telegram
-        // accountId = bot token prefix (unique per bot)
-        const botTokenPrefix = telegramBotToken.split(':')[0] // numeric bot ID
+        // Upsert virtual ChannelPlatform for Telegram (uses bot numeric ID as accountId)
+        const botTokenPrefix = telegramBotToken.split(':')[0]
         const virtualAccountId = `telegram_bot_${botTokenPrefix}`
 
         let platformAccount = await prisma.channelPlatform.findFirst({
-            where: {
-                channelId,
-                platform: 'telegram',
-                accountId: virtualAccountId,
-            },
+            where: { channelId, platform: 'telegram', accountId: virtualAccountId },
         })
 
         if (!platformAccount) {
@@ -96,12 +87,31 @@ export async function POST(req: NextRequest) {
                 },
             })
             console.log(`[Telegram Webhook] Created virtual ChannelPlatform for channel ${channelId}`)
+        } else if (platformAccount.accessToken !== telegramBotToken) {
+            // Keep token in sync if it changed
+            await prisma.channelPlatform.update({
+                where: { id: platformAccount.id },
+                data: { accessToken: telegramBotToken },
+            })
         }
 
-        // Determine content
-        const content = text || (message.photo ? '[📷 Photo]' : message.video ? '[🎥 Video]' : message.document ? '[📎 File]' : message.sticker ? '[🎭 Sticker]' : '[Message]')
+        // Build message content
+        const content = text ||
+            (message.photo ? '[📷 Photo]' :
+                message.video ? '[🎥 Video]' :
+                    message.document ? '[📎 File]' :
+                        message.voice ? '[🎤 Voice]' :
+                            message.sticker ? '[🎭 Sticker]' : '[Message]')
+
+        // Check bot config for conversation mode
+        const botConfig = await prisma.botConfig.findUnique({
+            where: { channelId },
+            select: { isEnabled: true },
+        })
+        const convMode = botConfig?.isEnabled ? 'BOT' : 'AGENT'
 
         // Upsert Conversation
+        let isNewConversation = false
         let conversation = await prisma.conversation.findFirst({
             where: {
                 channelId,
@@ -111,14 +121,8 @@ export async function POST(req: NextRequest) {
             },
         })
 
-        // Check bot mode
-        const botConfig = await prisma.botConfig.findUnique({
-            where: { channelId },
-            select: { isEnabled: true },
-        })
-        const convMode = botConfig?.isEnabled ? 'BOT' : 'AGENT'
-
         if (!conversation) {
+            isNewConversation = true
             conversation = await prisma.conversation.create({
                 data: {
                     channelId,
@@ -133,9 +137,8 @@ export async function POST(req: NextRequest) {
                     lastMessageAt: new Date(),
                 },
             })
-            console.log(`[Telegram Webhook] Created new conversation for user ${telegramUserId}`)
+            console.log(`[Telegram Webhook] Created new conversation ${conversation.id} for user ${telegramUserId}`)
         } else {
-            // Update last message timestamp and unread count
             await prisma.conversation.update({
                 where: { id: conversation.id },
                 data: {
@@ -146,7 +149,7 @@ export async function POST(req: NextRequest) {
             })
         }
 
-        // Create InboxMessage (dedup by externalId)
+        // Create InboxMessage (dedup by Telegram message_id)
         const existingMsg = messageId
             ? await prisma.inboxMessage.findFirst({
                 where: { conversationId: conversation.id, externalId: messageId },
@@ -167,7 +170,24 @@ export async function POST(req: NextRequest) {
             })
         }
 
-        console.log(`[Telegram Webhook] Ingested message from ${telegramUserName} (${telegramUserId}) for channel ${channelId}`)
+        // Trigger AI Bot auto-reply in background (non-blocking)
+        // botAutoReply handles: checking if bot is enabled, generating AI response,
+        // and sending it back via Telegram Bot API (see bot-auto-reply.ts)
+        setImmediate(async () => {
+            try {
+                if (isNewConversation) {
+                    await sendBotGreeting(conversation!.id, 'telegram')
+                }
+                const result = await botAutoReply(conversation!.id, content, 'telegram')
+                if (result) {
+                    console.log(`[Telegram Webhook] Bot auto-reply for ${conversation!.id}:`, result)
+                }
+            } catch (err) {
+                console.error('[Telegram Webhook] Bot auto-reply error:', err)
+            }
+        })
+
+        console.log(`[Telegram Webhook] ✅ Message from ${telegramUserName} (${telegramUserId}) → channel ${channelId}`)
         return NextResponse.json({ ok: true })
     } catch (error) {
         console.error('[Telegram Webhook] Error:', error)

@@ -982,6 +982,55 @@ async function sendAndSaveReply(
         }
     }
 
+    // ── Telegram DM reply ──
+    if (platform === 'telegram' && platformAccount?.accessToken) {
+        const botToken = platformAccount.accessToken
+        const dedupKey = `tg_${conversation.externalUserId}`
+        const lastSent = recentBotReplies.get(dedupKey)
+        const now = Date.now()
+
+        if (lastSent && (now - lastSent) < DEDUP_TTL_MS) {
+            console.log(`[Bot] ⏭️ Skipping Telegram send (dedup) for ${dedupKey} - saving to DB only`)
+        } else {
+            recentBotReplies.set(dedupKey, now)
+            try {
+                const tgRes = await fetch(
+                    `https://api.telegram.org/bot${botToken}/sendMessage`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: conversation.externalUserId,
+                            text,
+                            parse_mode: 'HTML',
+                        }),
+                    }
+                )
+                const tgData = await tgRes.json()
+                if (tgData.ok && tgData.result?.message_id) {
+                    botSentMessageId = String(tgData.result.message_id)
+                    console.log(`[Bot] ✅ TG DM sent to ${conversation.externalUserId}: ${botSentMessageId}`)
+                } else {
+                    console.warn(`[Bot] ⚠️ TG DM send failed:`, JSON.stringify(tgData))
+                }
+
+                // Send images if any
+                for (const imgUrl of imageUrls || []) {
+                    await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: conversation.externalUserId,
+                            photo: imgUrl,
+                        }),
+                    }).catch(() => { })
+                }
+            } catch (err) {
+                console.error('[Bot] ❌ TG DM send error:', err)
+            }
+        }
+    }
+
     // ── COMMENT REPLIES (with human-like random delay) ──
     // For comments, we schedule the API call with a random delay (30s - 10min)
     // to appear more natural. The DB message is saved immediately below.
@@ -1087,8 +1136,10 @@ async function sendAndSaveReply(
         }
     }
 
-    // Save outbound message to DB (with FB message_id as externalId to prevent echo duplicates)
-    const fbMessageId = platform === 'facebook' || platform === 'instagram' ? (botSentMessageId || null) : null
+    // Save outbound message to DB (with message_id as externalId to prevent echo duplicates)
+    const outboundExternalId = platform === 'facebook' || platform === 'instagram' || platform === 'telegram'
+        ? (botSentMessageId || null)
+        : null
     await prisma.inboxMessage.create({
         data: {
             conversationId: conversation.id,
@@ -1098,7 +1149,7 @@ async function sendAndSaveReply(
             senderName: 'Bot',
             mediaUrl: imageUrls?.[0] || null,
             mediaType: imageUrls?.[0] ? 'image' : null,
-            externalId: fbMessageId,
+            externalId: outboundExternalId,
             sentAt: new Date(),
         },
     })
