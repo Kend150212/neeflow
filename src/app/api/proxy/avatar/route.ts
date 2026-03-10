@@ -16,7 +16,7 @@ import { prisma } from '@/lib/prisma'
 
 // ─── In-memory cache (URL → image blob buffer) ──────────────────────────────
 interface CacheEntry {
-    buffer: Buffer
+    buffer: Uint8Array
     contentType: string
     expiresAt: number
 }
@@ -101,13 +101,13 @@ export async function GET(req: NextRequest) {
         if (!imgRes.ok) throw new Error(`HTTP ${imgRes.status}`)
 
         const arrayBuf = await imgRes.arrayBuffer()
-        const buffer = Buffer.from(arrayBuf)
+        const buffer = new Uint8Array(arrayBuf)
         const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
 
         // Store in in-memory cache
         avatarCache.set(cacheKey, { buffer, contentType, expiresAt: Date.now() + CACHE_TTL_MS })
 
-        return new NextResponse(new Uint8Array(arrayBuf), {
+        return new NextResponse(buffer, {
             status: 200,
             headers: {
                 'Content-Type': contentType,
