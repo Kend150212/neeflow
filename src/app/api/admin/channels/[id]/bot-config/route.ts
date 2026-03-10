@@ -112,5 +112,43 @@ export async function PUT(
         },
     })
 
+    // ── Pre-create Telegram virtual ChannelPlatform ──
+    // Telegram ChannelPlatform is needed for the Inbox sidebar to show "Telegram".
+    // Without this, it only gets created on first webhook message (too late).
+    const savedToken = data.telegramBotToken ?? config.telegramBotToken
+    if (savedToken) {
+        const botTokenPrefix = savedToken.split(':')[0]
+        const virtualAccountId = `telegram_bot_${botTokenPrefix}`
+        await prisma.channelPlatform.upsert({
+            where: {
+                channelId_platform_accountId: {
+                    channelId,
+                    platform: 'telegram',
+                    accountId: virtualAccountId,
+                },
+            },
+            update: {
+                accessToken: savedToken,
+                isActive: true,
+            },
+            create: {
+                channelId,
+                platform: 'telegram',
+                accountId: virtualAccountId,
+                accountName: 'Telegram Bot',
+                accessToken: savedToken,
+                isActive: true,
+                config: { botEnabled: true },
+            },
+        })
+        console.log(`[BotConfig] ✅ Telegram ChannelPlatform upserted for channel ${channelId}`)
+    } else if (body.telegramBotToken === '' || body.telegramBotToken === null) {
+        // Token was cleared — deactivate Telegram platform
+        await prisma.channelPlatform.updateMany({
+            where: { channelId, platform: 'telegram' },
+            data: { isActive: false },
+        })
+    }
+
     return NextResponse.json(config)
 }
