@@ -1386,7 +1386,7 @@ function IntegrationCard({
     const isGDrive = integration.provider === 'gdrive'
     const isR2 = integration.provider === 'r2'
     const isStripe = integration.provider === 'stripe'
-    const isOAuth = ['youtube', 'tiktok', 'facebook', 'instagram', 'linkedin', 'x', 'pinterest', 'canva', 'google_oauth', 'threads', 'gbp', 'zalo', 'shopify', 'etsy'].includes(integration.provider)
+    const isOAuth = ['youtube', 'tiktok', 'facebook', 'instagram', 'linkedin', 'x', 'pinterest', 'canva', 'google_oauth', 'threads', 'gbp', 'zalo', 'shopify', 'etsy', 'whatsapp'].includes(integration.provider)
     const textModels = providerModels.filter((m) => m.type === 'text')
     const imageModels = providerModels.filter((m) => m.type === 'image')
     const videoModels = providerModels.filter((m) => m.type === 'video')
@@ -1874,6 +1874,7 @@ function IntegrationCard({
                                     zalo: 'Zalo App ID',
                                     shopify: 'Shopify Client ID (Keystring)',
                                     etsy: 'Etsy Keystring (Client ID)',
+                                    whatsapp: 'Phone Number ID',
                                 }[integration.provider] || 'Client ID'}
                             </Label>
                             <Input
@@ -1896,6 +1897,7 @@ function IntegrationCard({
                                     zalo: 'Zalo Secret Key',
                                     shopify: 'Shopify Client Secret',
                                     etsy: 'Etsy Shared Secret (Client Secret)',
+                                    whatsapp: 'WhatsApp Business Account ID (WABA ID)',
                                 }[integration.provider] || 'Client Secret'}
                             </Label>
                             <div className="relative">
@@ -1931,9 +1933,36 @@ function IntegrationCard({
                                     zalo: 'Vào developers.zalo.me → tạo ứng dụng → copy App ID và Secret Key. Thêm callback URL: {YOUR_DOMAIN}/api/oauth/zalo/callback. Sau đó vào Channel Settings để kết nối OA.',
                                     shopify: 'Go to partners.shopify.com → Apps → Create app. Set Callback URL to {YOUR_DOMAIN}/api/integrations/shopify/oauth/callback. Required scopes: read_products, read_inventory. Copy Client ID (Keystring) and Client Secret.',
                                     etsy: 'Go to etsy.com/developers → Create App. Set Callback URL to {YOUR_DOMAIN}/api/integrations/etsy/oauth/callback. Required scopes: listings_r, shops_r. Copy the Keystring as Client ID and Shared Secret as Client Secret.',
+                                    whatsapp: 'Go to developers.facebook.com → Create App (Business) → Add WhatsApp product. In Getting Started, copy the Phone Number ID and WhatsApp Business Account ID (WABA ID) from the fields above. Then go to Meta Business Suite → System Users to generate a System User Token with whatsapp_business_messaging permission — paste it in the API Key field below. Set Webhook: {YOUR_DOMAIN}/api/webhook/whatsapp',
                                 }[integration.provider] || 'Configure OAuth credentials for this platform.'}
                             </p>
                         </div>
+
+                        {/* WhatsApp System Token (API Key) */}
+                        {integration.provider === 'whatsapp' && (
+                            <div className="space-y-1 pt-2 border-t border-dashed">
+                                <Label className="text-[11px]">System User Token (API Key)</Label>
+                                <div className="relative">
+                                    <Input
+                                        type={showKey ? 'text' : 'password'}
+                                        value={apiKey || ''}
+                                        onChange={(e) => onApiKeyChange(e.target.value)}
+                                        placeholder={integration.apiKeyMasked || 'EAAxxxxxxx...'}
+                                        className="pr-8 h-8 text-xs"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={onToggleShow}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                    Generate from Meta Business Suite → System Users → whatsapp_business_messaging permission
+                                </p>
+                            </div>
+                        )}
 
                         {/* Pinterest Sandbox toggle + token input */}
                         {integration.provider === 'pinterest' && (
