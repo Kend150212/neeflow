@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | Article Editor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#08080a",
+                        "surface": "#121417",
+                        "border-subtle": "#1f2937"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #08080a;
+        }
+        .glass {
+            background: rgba(18, 20, 23, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .editor-canvas {
+            min-height: calc(100vh - 200px);
+        }
+    </style>
+</head>
+<body class="text-slate-100 antialiased selection:bg-primary/30 selection:text-primary">
+<div class="flex flex-col h-screen overflow-hidden">
+<!-- Top Navigation Bar -->
+<header class="h-16 flex items-center justify-between px-6 border-b border-white/5 glass z-50">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">grid_view</span>
+</div>
+<h1 class="text-lg font-bold tracking-tight uppercase">Neeflow <span class="text-primary/70 font-light">Docs</span></h1>
+</div>
+<div class="h-6 w-px bg-white/10"></div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-medium text-slate-400 hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium text-primary" href="#">Editor</a>
+<a class="text-sm font-medium text-slate-400 hover:text-primary transition-colors" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 mr-2">
+<span class="size-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs text-slate-400 uppercase tracking-widest">Auto-saved 2m ago</span>
+</div>
+<button class="px-4 py-2 text-sm font-semibold rounded-lg bg-white/5 hover:bg-white/10 transition-all border border-white/5">
+                    Save Draft
+                </button>
+<button class="px-6 py-2 text-sm font-semibold rounded-lg bg-primary text-background-dark hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,255,149,0.2)]">
+                    Publish Article
+                </button>
+<div class="size-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden ml-2">
+<img alt="User avatar" data-alt="Abstract professional user profile avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWArXIvCx5QO_IZeKTOJLYvQcJ1vB12kJXhCfW7U5JwdRiPT7sqOGa3z3lSu13yMU7z4Mr9BnmTuCQAlLN6Cl7axRzUQuTKJxq-Wunj_OldbPJAFINyCaDqRIC9pC1pPqCIOFt8ryuSPYR8DACRMpHygIcZbvDP4JYlZCVceXDu1bnouKC_ZI8rXEG7tsJI-vwxn7nUtAX4bz_pJto5cf9p-NcBHB9As4su3UJ81eVVQSuXI0rm0x1Yned3uup9qjAL_LzGgY4qs8"/>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Left Sidebar: Article Settings -->
+<aside class="w-80 border-r border-white/5 bg-background-dark overflow-y-auto custom-scrollbar p-6 space-y-8">
+<div>
+<h3 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">Article Settings</h3>
+<div class="space-y-5">
+<!-- Title Input -->
+<div class="space-y-2">
+<label class="text-sm font-medium text-slate-300">Article Title</label>
+<input class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-slate-600" placeholder="Enter title..." type="text" value="Getting Started with Neeflow Automation"/>
+</div>
+<!-- Category Dropdown -->
+<div class="space-y-2">
+<label class="text-sm font-medium text-slate-300">Category</label>
+<div class="relative">
+<select class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm appearance-none focus:border-primary outline-none cursor-pointer">
+<option>General Guides</option>
+<option>Technical Docs</option>
+<option>Product Updates</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-slate-500 pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Status Select -->
+<div class="space-y-2">
+<label class="text-sm font-medium text-slate-300">Visibility Status</label>
+<div class="grid grid-cols-3 gap-2 p-1 bg-white/5 rounded-lg border border-white/10">
+<button class="py-1.5 text-xs font-medium rounded-md bg-primary text-background-dark">Draft</button>
+<button class="py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white">Live</button>
+<button class="py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-white">Archived</button>
+</div>
+</div>
+<!-- Tags -->
+<div class="space-y-2">
+<label class="text-sm font-medium text-slate-300">Tags</label>
+<div class="flex flex-wrap gap-2 p-3 bg-white/5 border border-white/10 rounded-lg">
+<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded flex items-center gap-1">
+                                    AUTOMATION <span class="material-symbols-outlined text-xs cursor-pointer">close</span>
+</span>
+<span class="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded flex items-center gap-1">
+                                    GUIDE <span class="material-symbols-outlined text-xs cursor-pointer">close</span>
+</span>
+<input class="bg-transparent border-none p-0 text-xs focus:ring-0 w-20" placeholder="Add tag..." type="text"/>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-4 border-t border-white/5">
+<h3 class="text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mb-6">SEO Metadata</h3>
+<div class="space-y-5">
+<div class="space-y-2">
+<label class="text-sm font-medium text-slate-300">URL Slug</label>
+<div class="flex items-center bg-white/5 border border-white/10 rounded-lg px-4 py-2.5">
+<span class="text-slate-600 text-xs">/docs/</span>
+<input class="bg-transparent border-none p-0 text-sm focus:ring-0 w-full ml-1" type="text" value="getting-started-automation"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-medium text-slate-300">Meta Description</label>
+<textarea class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:border-primary outline-none resize-none placeholder:text-slate-600" rows="3">A comprehensive guide to building your first automated workflow in Neeflow dashboard.</textarea>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Editor Area -->
+<main class="flex-1 overflow-y-auto bg-background-dark relative">
+<!-- Toolbar Floating -->
+<div class="sticky top-0 z-30 p-4 flex justify-center">
+<div class="glass flex items-center gap-1 p-1.5 rounded-xl border border-white/10 shadow-2xl">
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">format_bold</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">format_italic</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">format_strikethrough</span>
+</button>
+<div class="w-px h-6 bg-white/10 mx-1"></div>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">format_h1</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">format_h2</span>
+</button>
+<div class="w-px h-6 bg-white/10 mx-1"></div>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">format_list_bulleted</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">format_list_numbered</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">format_quote</span>
+</button>
+<div class="w-px h-6 bg-white/10 mx-1"></div>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">link</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg bg-primary/20 text-primary border border-primary/20">
+<span class="material-symbols-outlined text-xl">image</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-300">
+<span class="material-symbols-outlined text-xl">code</span>
+</button>
+</div>
+</div>
+<!-- Editor Canvas -->
+<div class="max-w-4xl mx-auto px-12 py-10 pb-32">
+<div class="editor-canvas prose prose-invert prose-slate max-w-none focus:outline-none" contenteditable="true">
+<h1 class="text-4xl font-bold mb-8 text-white">Getting Started with Neeflow Automation</h1>
+<p class="text-lg text-slate-300 mb-6 leading-relaxed">
+                            Automation is at the heart of the Neeflow ecosystem. By connecting your favorite tools and setting up intelligent triggers, you can eliminate manual tasks and focus on what matters most.
+                        </p>
+<div class="my-10 p-1 bg-gradient-to-br from-primary/20 to-transparent rounded-2xl">
+<div class="aspect-video bg-surface rounded-xl flex flex-col items-center justify-center border border-white/5 relative overflow-hidden">
+<img alt="Dashboard interface preview" class="absolute inset-0 w-full h-full object-cover opacity-40 grayscale" data-alt="Abstract UI dashboard with glowing green data connections" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPJEYbEXFyGdE3JluzrdwdcAvIYNoVXnY5pHvzqghj-MTR43dTPE_kNKzbUHj5k1DWv5Sv3OwYgtCo7SRBVMqnVhkOErrQ7KW3-JJ904DSChcSlGMCgAU9NaqHOsCtoes0ZUraNM0QFNgX6IZQimcx7TA3Ver74ezJYMvoYkU8n1I9HnUmyDTgsz2vJ49BuII314YdFa5_wYAzVNKXseRTuIa8m7ayyQggr408NZmjhrwJAtPs8IGnqXF3HWnlUYw4qFtngg7rZ9Q"/>
+<div class="relative z-10 flex flex-col items-center gap-4">
+<div class="size-16 rounded-full bg-primary/20 flex items-center justify-center text-primary backdrop-blur-sm border border-primary/30">
+<span class="material-symbols-outlined text-4xl">play_arrow</span>
+</div>
+<p class="text-sm font-medium text-primary">Preview: Automated Node Workflow</p>
+</div>
+</div>
+</div>
+<h2 class="text-2xl font-bold mt-12 mb-4 text-white">Setting up your first Trigger</h2>
+<p class="text-slate-400 mb-4">
+                            Every automation begins with a trigger. This is the event that starts your workflow. In Neeflow, you can choose from over 500+ native triggers or use webhooks for custom integrations.
+                        </p>
+<ul class="space-y-3 text-slate-300 list-disc pl-5">
+<li>Navigate to the <strong class="text-primary font-medium">Automations</strong> tab in your sidebar.</li>
+<li>Click on "Create New Flow" in the top right corner.</li>
+<li>Select a trigger source (e.g., Shopify, Stripe, or Webhook).</li>
+<li>Configure the specific event that should fire the flow.</li>
+</ul>
+<blockquote class="border-l-4 border-primary bg-primary/5 p-6 rounded-r-xl my-8 italic text-slate-300">
+                            "Automation is not about replacing human creativity, it's about giving humans more time to be creative."
+                        </blockquote>
+<p class="text-slate-400">
+                            Continue by adding actions to your workflow. Actions are the steps that Neeflow takes once a trigger is detected. You can chain as many actions as needed, including conditional logic and loops.
+                        </p>
+</div>
+</div>
+</main>
+<!-- Right Sidebar: Helpers (Optional) -->
+<aside class="w-16 border-l border-white/5 flex flex-col items-center py-6 gap-6 bg-background-dark/50">
+<button class="size-10 flex items-center justify-center rounded-xl bg-white/5 hover:text-primary transition-colors text-slate-500" title="History">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="size-10 flex items-center justify-center rounded-xl bg-white/5 hover:text-primary transition-colors text-slate-500" title="Comments">
+<span class="material-symbols-outlined">chat_bubble</span>
+</button>
+<button class="size-10 flex items-center justify-center rounded-xl bg-white/5 hover:text-primary transition-colors text-slate-500" title="Versions">
+<span class="material-symbols-outlined">layers</span>
+</button>
+<div class="mt-auto">
+<button class="size-10 flex items-center justify-center rounded-xl bg-white/5 hover:text-primary transition-colors text-slate-500" title="Settings">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</aside>
+</div>
+</div>
+</body></html>

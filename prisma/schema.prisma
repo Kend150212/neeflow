@@ -63,6 +63,12 @@ model User {
   studioAvatars  StudioAvatar[]
   studioProjects StudioProject[]
 
+  // Help Center & Support
+  supportTickets       SupportTicket[]  @relation("UserTickets")
+  agentTickets         SupportTicket[]  @relation("AgentTickets")
+  ticketMessages       TicketMessage[]  @relation("TicketMessageSender")
+  authoredArticles     SupportArticle[] @relation("ArticleAuthor")
+
   // NextAuth
   accounts Account[]
   sessions Session[]
@@ -1561,4 +1567,95 @@ model EtsyConfig {
 
   @@index([channelId])
   @@map("etsy_configs")
+}
+
+// ─── Help Center & Knowledge Base ────────────────────────────────────────────
+
+model SupportArticle {
+  id           String   @id @default(cuid())
+  title        String
+  slug         String   @unique
+  content      String   @db.Text // Rich editor JSON blocks (text/image/video nodes)
+  excerpt      String?  @db.Text
+  coverImage   String?  @map("cover_image")
+  category     String   // getting_started | ai | integrations | billing | troubleshooting | security | other
+  tags         Json     @default("[]")
+  status       String   @default("draft") // draft | published | archived
+  metaDesc     String?  @map("meta_desc") @db.Text
+  authorId     String   @map("author_id")
+  viewCount    Int      @default(0) @map("view_count")
+  helpfulCount Int      @default(0) @map("helpful_count")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  author User @relation("ArticleAuthor", fields: [authorId], references: [id])
+
+  @@index([category, status])
+  @@index([status, sortOrder])
+  @@map("support_articles")
+}
+
+model ArticleCategory {
+  id        String   @id @default(cuid())
+  slug      String   @unique  // e.g. getting_started | ai | integrations | billing
+  name      String
+  icon      String   @default("description") // SVG icon key
+  color     String   @default("primary")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("article_categories")
+}
+
+model SupportTicket {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  subject     String
+  category    String    // billing | bug | feature | account | other
+  priority    String    @default("medium") // low | medium | high | urgent
+  status      String    @default("open")   // open | pending | resolved | closed
+  planName    String?   @map("plan_name")  // snapshot at creation time
+  slaDeadline DateTime? @map("sla_deadline")
+  assignedTo  String?   @map("assigned_to")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  resolvedAt  DateTime? @map("resolved_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user     User            @relation("UserTickets", fields: [userId], references: [id])
+  agent    User?           @relation("AgentTickets", fields: [assignedTo], references: [id])
+  messages TicketMessage[]
+
+  @@index([userId, status])
+  @@index([status, priority])
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id          String   @id @default(cuid())
+  ticketId    String   @map("ticket_id")
+  senderId    String   @map("sender_id")
+  content     String   @db.Text
+  isInternal  Boolean  @default(false) @map("is_internal") // admin-only private note
+  isBotMsg    Boolean  @default(false) @map("is_bot_msg")  // ready for chatbot integration
+  attachments Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender User          @relation("TicketMessageSender", fields: [senderId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
+}
+
+model CannedResponse {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  shortcut  String   @unique // e.g. "/refund", "/reset", "/billing"
+  category  String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("canned_responses")
 }

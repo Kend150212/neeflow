@@ -23,6 +23,7 @@ import {
     Clapperboard,
     MoreHorizontal,
     ShieldCheck,
+    LifeBuoy,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useWorkspace } from '@/lib/workspace-context'
@@ -53,6 +54,7 @@ const topNav: NavItem[] = [
 
 const bottomNav: NavItem[] = [
     { titleKey: 'nav.inbox', href: '/dashboard/inbox', icon: Mail },
+    { titleKey: 'nav.helpCenter', href: '/dashboard/support', icon: LifeBuoy },
     { titleKey: 'nav.insights', href: '/dashboard/insights', icon: BarChart2 },
     { titleKey: 'nav.integrations', href: '/dashboard/integrations', icon: Plug },
 ]

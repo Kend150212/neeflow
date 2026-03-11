@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | Admin Knowledge Base</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#050505",
+                        "surface-dark": "#0a0a0a",
+                        "border-dark": "#1a1a1a",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .glass-card {
+            background: rgba(10, 10, 10, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .sidebar-item-active {
+            color: #00ff95;
+            background: rgba(0, 255, 149, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-24 flex flex-col items-center py-8 bg-surface-dark border-r border-border-dark">
+<div class="mb-10">
+<div class="size-12 bg-primary rounded-xl flex items-center justify-center text-background-dark">
+<span class="material-symbols-outlined font-bold text-3xl">bolt</span>
+</div>
+</div>
+<nav class="flex flex-col gap-6 w-full px-2">
+<a class="flex flex-col items-center gap-1 py-3 rounded-xl transition-all hover:bg-white/5 text-slate-400" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-medium uppercase tracking-wider">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 py-3 rounded-xl sidebar-item-active" href="#">
+<span class="material-symbols-outlined">library_books</span>
+<span class="text-[10px] font-medium uppercase tracking-wider">Docs</span>
+</a>
+<a class="flex flex-col items-center gap-1 py-3 rounded-xl transition-all hover:bg-white/5 text-slate-400" href="#">
+<span class="material-symbols-outlined">category</span>
+<span class="text-[10px] font-medium uppercase tracking-wider">Taxonomy</span>
+</a>
+<a class="flex flex-col items-center gap-1 py-3 rounded-xl transition-all hover:bg-white/5 text-slate-400" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="text-[10px] font-medium uppercase tracking-wider">Users</span>
+</a>
+<a class="flex flex-col items-center gap-1 py-3 rounded-xl transition-all hover:bg-white/5 text-slate-400 mt-auto" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-medium uppercase tracking-wider">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-hidden bg-background-dark">
+<!-- Header -->
+<header class="h-20 flex items-center justify-between px-8 border-b border-border-dark">
+<div class="flex items-center gap-4">
+<h1 class="text-xl font-bold text-slate-100 tracking-tight">Knowledge Base Management</h1>
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+<span class="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs font-semibold text-primary uppercase tracking-widest">Sync Live</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">search</span>
+<input class="bg-surface-dark border-border-dark rounded-xl pl-10 pr-4 py-2 text-sm w-64 focus:ring-primary focus:border-primary focus:outline-none transition-all" placeholder="Search documentation..." type="text"/>
+</div>
+<button class="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all border border-white/10">
+<span class="material-symbols-outlined text-lg">create_new_folder</span>
+                        New Category
+                    </button>
+<button class="flex items-center gap-2 bg-primary hover:brightness-110 text-background-dark px-4 py-2 rounded-xl text-sm font-bold transition-all">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+                        New Article
+                    </button>
+<div class="h-10 w-10 rounded-full border border-border-dark overflow-hidden ml-4">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="Stylized modern character avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp54_DRo4Sa2qHKgqAEl8ctviSOocGa8VxZW1bqoB5NB_9XV_yfnZZ1MQFE_vBZQatuxB_psygAuYoTmNwrkmzI-r1iYV4w9eKazkJbBtr1LcBdR8nx1V6PguTl87mXB5sHU-0Kfg4WQZj_Sm63vXo90HGBD-Se7_GGaXUwIImsFmE9yGMJCXvSkuhSdym6HE0hBtRZPhoZf4uy-060AdymBYI-gX0jkyTxUxbTdaG2LFuy6wX2Z3jnueaL_cl_-wlZp-BNaT66d8"/>
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="flex-1 overflow-y-auto p-8 space-y-8">
+<!-- Category Stats Row -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-1">
+<span class="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Articles</span>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-bold text-white">1,284</span>
+<span class="text-primary text-sm font-medium flex items-center">+12% <span class="material-symbols-outlined text-sm">trending_up</span></span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-1">
+<span class="text-slate-500 text-xs font-bold uppercase tracking-widest">Active Categories</span>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-bold text-white">24</span>
+<span class="text-slate-400 text-sm font-medium">Stable</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-1 border-primary/20">
+<span class="text-slate-500 text-xs font-bold uppercase tracking-widest">Last Updated</span>
+<div class="flex items-end justify-between">
+<span class="text-xl font-bold text-white truncate">Just Now</span>
+<span class="material-symbols-outlined text-primary">cloud_done</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl flex flex-col gap-1">
+<span class="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Views</span>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-bold text-white">42.8k</span>
+<span class="text-primary text-sm font-medium flex items-center">+5% <span class="material-symbols-outlined text-sm">trending_up</span></span>
+</div>
+</div>
+</div>
+<!-- Category Manager -->
+<section>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-lg font-bold text-white">Category Manager</h2>
+<button class="text-primary text-sm font-semibold flex items-center gap-1 hover:underline">
+                            View All <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+<button class="flex items-center gap-3 glass-card px-5 py-3 rounded-xl border-primary/40 bg-primary/5 min-w-[200px]">
+<div class="size-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<div class="text-left">
+<p class="text-white text-sm font-bold">Getting Started</p>
+<p class="text-slate-500 text-xs">42 Articles</p>
+</div>
+</button>
+<button class="flex items-center gap-3 glass-card px-5 py-3 rounded-xl hover:border-white/20 transition-all min-w-[200px]">
+<div class="size-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+<span class="material-symbols-outlined">integration_instructions</span>
+</div>
+<div class="text-left">
+<p class="text-white text-sm font-bold">Integrations</p>
+<p class="text-slate-500 text-xs">156 Articles</p>
+</div>
+</button>
+<button class="flex items-center gap-3 glass-card px-5 py-3 rounded-xl hover:border-white/20 transition-all min-w-[200px]">
+<div class="size-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<div class="text-left">
+<p class="text-white text-sm font-bold">Billing &amp; Plans</p>
+<p class="text-slate-500 text-xs">28 Articles</p>
+</div>
+</button>
+<button class="flex items-center gap-3 glass-card px-5 py-3 rounded-xl hover:border-white/20 transition-all min-w-[200px]">
+<div class="size-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+<span class="material-symbols-outlined">security</span>
+</div>
+<div class="text-left">
+<p class="text-white text-sm font-bold">Security &amp; Privacy</p>
+<p class="text-slate-500 text-xs">18 Articles</p>
+</div>
+</button>
+<button class="flex items-center justify-center gap-2 border-2 border-dashed border-border-dark px-5 py-3 rounded-xl hover:border-primary/50 text-slate-500 hover:text-primary transition-all min-w-[150px]">
+<span class="material-symbols-outlined">add</span>
+<span class="text-sm font-bold">New Category</span>
+</button>
+</div>
+</section>
+<!-- Article Table -->
+<section class="glass-card rounded-2xl overflow-hidden">
+<div class="px-6 py-4 border-b border-border-dark flex items-center justify-between bg-white/5">
+<div class="flex items-center gap-4">
+<h2 class="text-lg font-bold text-white">Recent Articles</h2>
+<div class="flex border border-border-dark rounded-lg overflow-hidden">
+<button class="px-4 py-1.5 text-xs font-bold bg-primary text-background-dark">All</button>
+<button class="px-4 py-1.5 text-xs font-bold text-slate-400 hover:bg-white/5">Published</button>
+<button class="px-4 py-1.5 text-xs font-bold text-slate-400 hover:bg-white/5">Drafts</button>
+</div>
+</div>
+<button class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+                            Advanced Filters
+                        </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="text-slate-500 text-xs font-bold uppercase tracking-widest border-b border-border-dark">
+<th class="px-6 py-4">Article Title</th>
+<th class="px-6 py-4">Category</th>
+<th class="px-6 py-4">Author</th>
+<th class="px-6 py-4">Last Updated</th>
+<th class="px-6 py-4">Status</th>
+<th class="px-6 py-4 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-dark">
+<!-- Row 1 -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="text-white font-semibold text-sm">Configuring Webhooks for Slack</span>
+<span class="text-slate-500 text-xs">slug: /integrations/slack-webhooks</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-bold uppercase">Integrations</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<img alt="Author" class="size-6 rounded-full" data-alt="Small round user avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOhfrU-AHougcEzLWb2sX3AgGNHCpF0bZwPoFEnVEfOZ9TGjHZZyuoKu4hyEF49e0HUVz8rn4k-XkIjDOLa9qbC1dXElClQKd7nLrtkVuJvBoWugt0pBv8wCG78Pzq_xonwF0Qgk3_bUgRr1oppVPj9jf3CHGcQJaYmYVo_5y4vSnGifmakFgIMUyVteJaY7e71C3_nn3ZKoDmkX5VXh7OSeh9PF5RDdypwUYW_zJgJ7Dy_JZnFHtVwywNklocz67Ihis1e__yFnU"/>
+<span class="text-slate-300 text-sm">Alex Rivera</span>
+</div>
+</td>
+<td class="px-6 py-5 text-slate-400 text-sm">2 hours ago</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="size-1.5 rounded-full bg-primary"></span>
+<span class="text-[10px] font-bold uppercase">Published</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center justify-end gap-3">
+<button class="p-2 rounded-lg bg-white/5 hover:bg-primary/20 hover:text-primary text-slate-400 transition-all flex items-center gap-2 text-xs font-bold">
+<span class="material-symbols-outlined text-lg">edit</span> Quick Edit
+                                            </button>
+<button class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 transition-all">
+<span class="material-symbols-outlined text-lg">visibility</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="text-white font-semibold text-sm">Enterprise Billing FAQ</span>
+<span class="text-slate-500 text-xs">slug: /billing/enterprise-faq</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase">Billing</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<img alt="Author" class="size-6 rounded-full" data-alt="Small round user avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCymhYLMLzCQSTMvnnY_o-whLIetJPyG7TZ2jINdUERf_03rcDbTrwDNeeh91qqbaWuwxSEIrtFjWLZB5vUbmAnPsC85_EuNTHze15VP2ASMJdLtAR5n3n4INK_fNcnYllg6Bs8hjDFeBlQZa2wVJBLSzpSch4V1-E-Lh9VQWgCc7HWfUH9LmM7Qef22qnoQ3692u6nQqULS72YI7b8Hrv3rF4k989-L4Tq9mnPXuyVUWZGf_3Zkhtn5ANFistqPrLVWYbAzVaHm64"/>
+<span class="text-slate-300 text-sm">Jordan Lee</span>
+</div>
+</td>
+<td class="px-6 py-5 text-slate-400 text-sm">Yesterday</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-1.5 text-slate-400">
+<span class="size-1.5 rounded-full bg-slate-500"></span>
+<span class="text-[10px] font-bold uppercase">Draft</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center justify-end gap-3">
+<button class="p-2 rounded-lg bg-white/5 hover:bg-primary/20 hover:text-primary text-slate-400 transition-all flex items-center gap-2 text-xs font-bold">
+<span class="material-symbols-outlined text-lg">edit</span> Quick Edit
+                                            </button>
+<button class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 transition-all">
+<span class="material-symbols-outlined text-lg">visibility</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="text-white font-semibold text-sm">Legacy API Documentation</span>
+<span class="text-slate-500 text-xs">slug: /v1/legacy-api</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-bold uppercase">Security</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<img alt="Author" class="size-6 rounded-full" data-alt="Small round user avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAk5tAR-m7sj7AgAIwvGXygAyORoZzen1tQSUYvZk0pgITYtOEkLgz8qDH8U2IvYPhwXHnnPfgp6Kbbf2t6NFPY6rvbND0U8uYYGxGdDmeWZD8OH5Lqeh3rjxJ_bYSMeKTm6YKgHP0TWkcTrY9iRgkVG5zpNxcthGVBq5Ep55iS7-kIzDculU0s2m59EyExw2nwZmdmoxOdV0OEUcSi3eF9R7oD9E-0C9OQ8A2Whsm6fEfSto_IF7Eoh2sEjpcPzWdd35ZxVkg-xvI"/>
+<span class="text-slate-300 text-sm">Sam Chen</span>
+</div>
+</td>
+<td class="px-6 py-5 text-slate-400 text-sm">12 Oct 2023</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-1.5 text-rose-500">
+<span class="size-1.5 rounded-full bg-rose-500"></span>
+<span class="text-[10px] font-bold uppercase">Archived</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center justify-end gap-3">
+<button class="p-2 rounded-lg bg-white/5 hover:bg-primary/20 hover:text-primary text-slate-400 transition-all flex items-center gap-2 text-xs font-bold">
+<span class="material-symbols-outlined text-lg">edit</span> Quick Edit
+                                            </button>
+<button class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 transition-all">
+<span class="material-symbols-outlined text-lg">visibility</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 border-t border-border-dark flex items-center justify-between">
+<span class="text-xs text-slate-500 font-medium">Showing 1 to 10 of 1,284 entries</span>
+<div class="flex items-center gap-2">
+<button class="p-1 rounded-lg border border-border-dark text-slate-500 hover:text-white hover:bg-white/5 disabled:opacity-50">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="px-3 py-1 rounded-lg bg-primary text-background-dark text-xs font-bold">1</button>
+<button class="px-3 py-1 rounded-lg hover:bg-white/5 text-slate-400 text-xs font-bold transition-all">2</button>
+<button class="px-3 py-1 rounded-lg hover:bg-white/5 text-slate-400 text-xs font-bold transition-all">3</button>
+<button class="p-1 rounded-lg border border-border-dark text-slate-500 hover:text-white hover:bg-white/5">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

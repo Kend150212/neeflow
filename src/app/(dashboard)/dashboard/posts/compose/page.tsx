@@ -6061,7 +6061,7 @@ export default function ComposePage() {
                                                                         const d2 = await res2.json()
                                                                         if (res2.ok) {
                                                                             // Merge: keep dayScores from original, update hourly + bestTime
-                                                                            setAiHeatmap((prev: typeof aiHeatmap) => prev ? {
+                                                                            setAiHeatmap((prev) => prev ? {
                                                                                 ...prev,
                                                                                 bestDayHourlyScores: d2.bestDayHourlyScores,
                                                                                 bestTime: d2.bestTime,

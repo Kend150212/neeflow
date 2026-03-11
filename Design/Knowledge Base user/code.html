@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#0f231b",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>Neeflow Knowledge Base</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 border-b border-primary/10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-10 py-4">
+<div class="max-w-[1440px] mx-auto flex items-center justify-between gap-8">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">database</span>
+<h2 class="text-xl font-bold tracking-tight">Neeflow</h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm font-medium" href="#">Dashboard</a>
+<a class="text-primary text-sm font-medium" href="#">Knowledge Base</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm font-medium" href="#">Support</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors text-sm font-medium" href="#">Docs</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 max-w-xl">
+<div class="relative w-full max-w-sm">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/60">search</span>
+<input class="w-full bg-primary/5 border border-primary/10 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-1 focus:ring-primary text-sm placeholder:text-primary/40" placeholder="Search for articles..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full border-2 border-primary/20 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="User avatar placeholder" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCziK7DiT0jBVIUxKh5ewZSGLNUt8XWoy2pGsKejsSN481APhu9ax5AjDrIxErTBoUhqIdyCQ3IJgWLEQT4hCy0Iz55zaumNPle4GSF2JuuQr-_fI540oiUr2p1rnM3-HfzU-KlqXj8H95zLikC7exqYQFefaDlCJ0MgZHA4_93xZ2AOCLtPorqGjX5tpKP6pGQ7wlI3azjk-Kc9DUjL2v8Cq4FhqLvdFspV5cRyI0_gC3sONwzuC3rNIPpw-P2l1GQ2g1dZHGmphw"/>
+</div>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-[1440px] mx-auto flex flex-col md:flex-row min-h-[calc(100vh-80px)]">
+<!-- Left Sidebar Navigation -->
+<aside class="w-full md:w-80 border-r border-primary/10 p-6 flex flex-col gap-8 shrink-0">
+<div>
+<h3 class="text-xs font-bold uppercase tracking-widest text-primary mb-4">Categories</h3>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-primary/5 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-xl">rocket_launch</span>
+<span class="text-sm font-medium">Getting Started</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary text-background-dark font-bold shadow-lg shadow-primary/20" href="#">
+<span class="material-symbols-outlined text-xl">star</span>
+<span class="text-sm">Core Features</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-primary/5 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-xl">hub</span>
+<span class="text-sm font-medium">Integrations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-primary/5 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-xl">terminal</span>
+<span class="text-sm font-medium">API Reference</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-primary/5 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined text-xl">build</span>
+<span class="text-sm font-medium">Troubleshooting</span>
+</a>
+</nav>
+</div>
+<div class="pt-6 border-t border-primary/5">
+<h3 class="text-xs font-bold uppercase tracking-widest text-primary/60 mb-4">Core Features Articles</h3>
+<nav class="space-y-1">
+<a class="block px-3 py-2 rounded-lg text-sm text-primary font-medium border-l-2 border-primary bg-primary/5" href="#">Data Synchronization</a>
+<a class="block px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-100" href="#">Workflow Automation</a>
+<a class="block px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-100" href="#">User Access Control</a>
+<a class="block px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-100" href="#">Custom Webhooks</a>
+<a class="block px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-100" href="#">Reporting Engine</a>
+</nav>
+</div>
+<div class="mt-auto pt-6">
+<div class="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20">
+<p class="text-sm font-medium mb-3">Can't find what you need?</p>
+<button class="w-full bg-primary text-background-dark py-2 px-4 rounded-lg text-sm font-bold hover:brightness-110 transition-all">
+                        Submit Request
+                    </button>
+</div>
+</div>
+</aside>
+<!-- Article Content Section -->
+<article class="flex-1 p-6 md:p-12 max-w-4xl mx-auto">
+<!-- Breadcrumbs -->
+<div class="flex items-center gap-2 text-sm text-slate-500 mb-8">
+<a class="hover:text-primary" href="#">Knowledge Base</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<a class="hover:text-primary" href="#">Core Features</a>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-primary font-medium">Data Synchronization</span>
+</div>
+<!-- Title and Meta -->
+<header class="mb-10">
+<h1 class="text-4xl md:text-5xl font-black mb-4 leading-tight">Understanding Data Synchronization in Neeflow</h1>
+<div class="flex items-center gap-4 text-slate-400 text-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+<span>Updated 2 days ago</span>
+</div>
+<span>•</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">schedule</span>
+<span>8 min read</span>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<div class="prose prose-invert max-w-none space-y-6 text-slate-300 leading-relaxed">
+<p class="text-lg text-slate-200">
+                    Neeflow uses a proprietary real-time engine to ensure your data stays consistent across all connected platforms. This guide covers the architectural overview, configuration steps, and best practices for conflict resolution.
+                </p>
+<h2 class="text-2xl font-bold text-slate-100 pt-4 flex items-center gap-3">
+<span class="h-8 w-1.5 bg-primary rounded-full"></span>
+                    Architectural Overview
+                </h2>
+<p>
+                    The sync engine operates on a distributed event-mesh. When a change is detected in any connected source system, Neeflow generates a "Delta Event" which is then propagated to all relevant endpoints within milliseconds.
+                </p>
+<div class="my-10 rounded-xl border border-primary/10 bg-primary/5 overflow-hidden">
+<div class="h-64 bg-slate-800 flex items-center justify-center" style="background-image: linear-gradient(135deg, rgba(0, 255, 149, 0.05) 0%, rgba(15, 35, 27, 1) 100%);">
+<img class="max-w-[80%] opacity-80" data-alt="Technical diagram showing data sync flow" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBIqLSFhb7B9gsfRKn7mvPVT7ZCli4l3G1I7aZq21Kc570aTH5zYbRm3P-lWb_L6elLJ73C2qx3gbHKOQtoCm1ZGjESWpjwzwC7IrIJRTZynAFVPw1R0iGCl0tT1AnsRfxqM5MiSJxh6ehnu04jg4sFG_hrsdtbh8L3kyBPBvy-b0tmW3RTipvABeSGlIoT7giAQdAjs0cCjkgetde9nvzQ6pVzPCbLePKhXMSPqdL9koA9OvusPv-Y_X6wLi0ilT21eZIKkTJ2YI"/>
+</div>
+<div class="p-4 text-center text-xs text-slate-500 italic">
+                        Fig 1.0: The Neeflow Multi-Directional Sync Topology
+                    </div>
+</div>
+<h2 class="text-2xl font-bold text-slate-100 pt-4 flex items-center gap-3">
+<span class="h-8 w-1.5 bg-primary rounded-full"></span>
+                    Configuring Your First Sync
+                </h2>
+<p>
+                    Follow these steps to establish a secure synchronization link between your primary database and the Neeflow cloud instance:
+                </p>
+<ol class="list-decimal list-inside space-y-4 marker:text-primary marker:font-bold">
+<li>Navigate to <strong class="text-slate-100">Settings &gt; Data Management</strong> in your dashboard.</li>
+<li>Select the "Add New Source" button and choose your provider.</li>
+<li>Authenticate using our OAuth2 flow or provide an encrypted API Key.</li>
+<li>Define your <strong class="text-primary">Sync Frequency</strong> (Real-time, Hourly, or Daily).</li>
+</ol>
+<div class="bg-primary/10 border-l-4 border-primary p-6 rounded-r-lg my-8">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary">info</span>
+<div>
+<h4 class="font-bold text-slate-100 mb-1">Pro Tip</h4>
+<p class="text-sm">For high-traffic applications, we recommend using a 5-minute polling interval instead of true real-time to optimize API quota usage on legacy systems.</p>
+</div>
+</div>
+</div>
+<h2 class="text-2xl font-bold text-slate-100 pt-4 flex items-center gap-3">
+<span class="h-8 w-1.5 bg-primary rounded-full"></span>
+                    Conflict Resolution
+                </h2>
+<p>
+                    In instances where two sources update the same record simultaneously, Neeflow defaults to "Last Write Wins" (LWW). However, you can customize this logic using our 
+                    <code class="px-1.5 py-0.5 rounded bg-slate-800 text-primary text-sm">Conflict-Policy</code> header.
+                </p>
+</div>
+<!-- Feedback Section -->
+<footer class="mt-16 pt-10 border-t border-primary/10 text-center">
+<p class="text-lg font-medium mb-6">Was this article helpful?</p>
+<div class="flex items-center justify-center gap-4">
+<button class="flex items-center gap-2 px-6 py-2.5 rounded-full border border-primary/20 hover:bg-primary hover:text-background-dark transition-all group">
+<span class="material-symbols-outlined">thumb_up</span>
+<span class="font-bold">Yes, it was!</span>
+</button>
+<button class="flex items-center gap-2 px-6 py-2.5 rounded-full border border-primary/20 hover:border-red-500/50 hover:bg-red-500/10 transition-all">
+<span class="material-symbols-outlined">thumb_down</span>
+<span class="font-bold">Not really</span>
+</button>
+</div>
+<div class="mt-12 p-8 rounded-2xl bg-gradient-to-t from-primary/5 to-transparent border border-primary/5">
+<h4 class="text-slate-100 font-bold mb-2">Still need help?</h4>
+<p class="text-slate-400 text-sm mb-6">Our dedicated support engineering team is available 24/7 for Enterprise customers.</p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+<a class="text-primary hover:underline text-sm font-bold" href="#">Contact Support</a>
+<span class="hidden sm:inline text-slate-600">•</span>
+<a class="text-primary hover:underline text-sm font-bold" href="#">Community Forum</a>
+<span class="hidden sm:inline text-slate-600">•</span>
+<a class="text-primary hover:underline text-sm font-bold" href="#">Developer Docs</a>
+</div>
+</div>
+</footer>
+</article>
+</main>
+</body></html>

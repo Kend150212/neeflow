@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Neeflow | Unified Support Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ff95",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#050a08",
+                        "surface-dark": "#0f231b",
+                        "border-dark": "#1a352a",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .glass {
+            background: rgba(15, 35, 27, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(26, 53, 42, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1a352a;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-slate-100 font-display min-h-screen flex flex-col overflow-hidden">
+<header class="flex items-center justify-between px-6 py-3 border-b border-border-dark bg-background-dark/80 backdrop-blur-md z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-3xl font-bold">database</span>
+<h1 class="text-xl font-bold tracking-tight text-white">Neeflow</h1>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">Dashboard</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">Analytics</a>
+<a class="text-slate-400 hover:text-primary text-sm font-medium transition-colors" href="#">Calendar</a>
+<a class="text-primary text-sm font-bold border-b-2 border-primary pb-1" href="#">Support</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xl">search</span>
+<input class="bg-surface-dark border-none rounded-xl pl-10 pr-4 py-2 text-sm w-64 focus:ring-1 focus:ring-primary text-slate-200 placeholder:text-slate-600" placeholder="Search conversations..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-400 hover:text-white hover:bg-surface-dark rounded-xl transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-white hover:bg-surface-dark rounded-xl transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="Operator profile picture avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnIwuLfl78Zvk-MtluXfg9oWCF56F_d_Px3AuM6MxKQlIJ9KmK7XxjQ9kG8NZ5VeiO5fP3IiNA9zlyi1HKn4wzWB9y5ZX-xLNDkJQCLKdM_zwLEAwTXJYrNCN7B512utqg0zHheyz2xwjBLnt9FlRZT1cDzdrIkgBt8CTJ0ihkK1Cn8T1KP5n-YTmfTA01_X33RYeMgohkX3qEgwhDrmo_COtcU4wSL2PbFddN65vVolwJuxhle_8XgHSnMVN5rvI3bYZuKhvcPyc"/>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-1 flex overflow-hidden">
+<aside class="w-80 border-r border-border-dark flex flex-col bg-background-dark/40">
+<div class="p-4 flex gap-2 overflow-x-auto custom-scrollbar border-b border-border-dark">
+<button class="flex flex-col items-center gap-1 min-w-[64px] p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+<span class="material-symbols-outlined">chat</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">All</span>
+</button>
+<button class="flex flex-col items-center gap-1 min-w-[64px] p-2 rounded-xl hover:bg-surface-dark text-slate-500 hover:text-slate-200 transition-all">
+<span class="material-symbols-outlined text-green-500">chat</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">WhatsApp</span>
+</button>
+<button class="flex flex-col items-center gap-1 min-w-[64px] p-2 rounded-xl hover:bg-surface-dark text-slate-500 hover:text-slate-200 transition-all">
+<span class="material-symbols-outlined text-pink-500">photo_camera</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Insta</span>
+</button>
+<button class="flex flex-col items-center gap-1 min-w-[64px] p-2 rounded-xl hover:bg-surface-dark text-slate-500 hover:text-slate-200 transition-all">
+<span class="material-symbols-outlined text-blue-500">mail</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Email</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar">
+<div class="p-4 space-y-2">
+<div class="p-3 rounded-xl bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-all">
+<div class="flex justify-between items-start mb-1">
+<div class="flex items-center gap-2">
+<div class="relative">
+<img class="h-10 w-10 rounded-full border border-border-dark" data-alt="Alex Rivera customer profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaEP9I4XahOF6CduQ0WcO_j9KwhZjNZfQgllUPLrCdQsly5DKOJcPnqCJe3YSkXuBpwCY8qFr8Ax5Ml5njRUqTI_KP_lxu1G5n3iCXwPmlCEap0cICwe-Im1zvR6mYH08fRNM7I_9g_hHk4GUS1fVUwLmiDAmqbYekaDQ66EyZvz0Bl45ZYT0dZEv99sL8gQf96a5Inriah-zea2H_ceRwKMurozjghqBvjQGF-18KE5Hm35DqpYGN160kP1KtjzW3XBO1H89eJZA"/>
+<div class="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-background-dark">
+<span class="material-symbols-outlined text-[10px] text-white block font-bold">chat</span>
+</div>
+</div>
+<div>
+<h4 class="text-sm font-semibold text-white">Alex Rivera</h4>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-primary text-black font-bold uppercase tracking-tighter">VIP</span>
+</div>
+</div>
+<span class="text-[10px] text-slate-500 font-medium">2m ago</span>
+</div>
+<p class="text-xs text-slate-400 line-clamp-1">Can you help me with my subscription? I think I was...</p>
+</div>
+<div class="p-3 rounded-xl hover:bg-surface-dark cursor-pointer transition-all border border-transparent">
+<div class="flex justify-between items-start mb-1">
+<div class="flex items-center gap-2">
+<div class="relative">
+<img class="h-10 w-10 rounded-full border border-border-dark" data-alt="Sarah Chen customer profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdeNcopJLxmlA-Pxk6bZOM_vfDcCnVHywyR5vynt5LXrbHCCSEgs_en4yhRRRw-WPTZch4Lzjk9-fTNYkeXSBTNXE0RFgONLXQErOjBK8YT-_gYwqpkEIbl5N8HgU050X3QuqPre9ESZtIkyvvSnHR0QsLWNQJDrdnRJNYDLLi1r0HoJg1hVffk25d7YrFBkJPmbmGnJKDDoZxbMrVZcDaxRIDojcpgcVuaN9een404HRUli8MMY9Vw_BEfXLkMRa9SbnoIf5MA-4"/>
+<div class="absolute -bottom-1 -right-1 bg-pink-500 rounded-full p-0.5 border-2 border-background-dark">
+<span class="material-symbols-outlined text-[10px] text-white block font-bold">photo_camera</span>
+</div>
+</div>
+<div>
+<h4 class="text-sm font-semibold text-slate-200">Sarah Chen</h4>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-bold uppercase tracking-tighter">Issue</span>
+</div>
+</div>
+<span class="text-[10px] text-slate-500 font-medium">15m ago</span>
+</div>
+<p class="text-xs text-slate-500 line-clamp-1">The 2FA code is not working. I've tried three times.</p>
+</div>
+<div class="p-3 rounded-xl hover:bg-surface-dark cursor-pointer transition-all border border-transparent">
+<div class="flex justify-between items-start mb-1">
+<div class="flex items-center gap-2">
+<div class="relative">
+<img class="h-10 w-10 rounded-full border border-border-dark" data-alt="Marcus Wright customer profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNRmqyQ7QLCY5AwSIXM2gEmjz3Xk2ghCpzN46D71VD_i6Pe9Q-wL3qSG555Uo6loKQKHeLS2gBqp7nSheV1cfEK8j8ma48fmlzcT1ZCTC8PXkD_EytkAzC2G00d6yY_1JkTsNBtsw3_A8OmKDLuY-qAvpl8RIOhU3KraLLOkrUZEPbJT2-d9iiaILg0c8H8XqQXqI16tsySy53-CxGPIZpNp2khJdQ2QXV_uHak75FiDC09j6Tq__KgYVHW5sKxc2kBHumWWWffdM"/>
+<div class="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-0.5 border-2 border-background-dark">
+<span class="material-symbols-outlined text-[10px] text-white block font-bold">mail</span>
+</div>
+</div>
+<div>
+<h4 class="text-sm font-semibold text-slate-200">Marcus Wright</h4>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold uppercase tracking-tighter">In Progress</span>
+</div>
+</div>
+<span class="text-[10px] text-slate-500 font-medium">1h ago</span>
+</div>
+<p class="text-xs text-slate-500 line-clamp-1">Checking the status of my order #88291.</p>
+</div>
+<div class="p-3 rounded-xl hover:bg-surface-dark cursor-pointer transition-all border border-transparent opacity-60">
+<div class="flex justify-between items-start mb-1">
+<div class="flex items-center gap-2">
+<div class="relative">
+<img class="h-10 w-10 rounded-full border border-border-dark" data-alt="Linda Jo customer profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBA5zF_B9s4OVjjZ0x35i2vHatKMvfQl8K2ZXCSoo8mg-L1m9uP6568GOYaahSuzU_d68icQO01C3OeesykZElp0bzp47Ldh4crSIYPNlQX4PcNKjIM6wSMBOMgMBwNY7WFnjwcNaLiDFqr96etB526hexLrVWvEgJB5-Yh9GE_LNzlBwCqB-sbGehTN-T4Ojm7ujOoph9qpxnWHWBqg85zRBMNVdY8w15n1TE6swyaHnTUfJDJueZNA51Zg-5wwEQzUiS1VlD5IAo"/>
+<div class="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-background-dark">
+<span class="material-symbols-outlined text-[10px] text-white block font-bold">chat</span>
+</div>
+</div>
+<div>
+<h4 class="text-sm font-semibold text-slate-200">Linda Jo</h4>
+<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400 font-bold uppercase tracking-tighter">Pending</span>
+</div>
+</div>
+<span class="text-[10px] text-slate-500 font-medium">3h ago</span>
+</div>
+<p class="text-xs text-slate-500 line-clamp-1">Thank you for the update!</p>
+</div>
+</div>
+</div>
+</aside>
+<section class="flex-1 flex flex-col bg-background-dark relative">
+<div class="h-16 border-b border-border-dark flex items-center justify-between px-6 bg-surface-dark/30">
+<div class="flex items-center gap-3">
+<img class="h-8 w-8 rounded-full" data-alt="Active chat user Alex Rivera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDC6HxvJUV8ne5NWI-MKUBHzZhHtZZoPDbvtc98SlY68pq3DAsAQiFOqepnKhK_HeQGFgmok2_a9B5fR3wUHDvGnz1y2X15fy6QeI0JZ1sWvr2pGnfKdNT62cHDCbQ5SGlOsw95esyVM3xZTNYQQNDRYoone8GP8XhbGlZ4s1m-q37ibcNHKSiurdMO97bPaRmkXqOL80WbVzv6s4d0JAJN4P5BDCA9OpAsIpEW-uw2q8_z9vRjhH1pZd35FpDlRzAhnVruYJ33F3g"/>
+<div>
+<h3 class="text-sm font-bold text-white leading-none">Alex Rivera</h3>
+<div class="flex items-center gap-1 mt-1">
+<span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+<span class="text-[10px] text-slate-400 font-medium">Active on WhatsApp</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-dark hover:bg-border-dark text-slate-300 text-xs transition-colors">
+<span class="material-symbols-outlined text-sm">call</span>
+                        Voice Call
+                    </button>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-dark hover:bg-border-dark text-slate-300 text-xs transition-colors">
+<span class="material-symbols-outlined text-sm">videocam</span>
+                        Video
+                    </button>
+<button class="p-1.5 rounded-lg bg-surface-dark hover:bg-border-dark text-slate-300 transition-colors">
+<span class="material-symbols-outlined text-sm">more_vert</span>
+</button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+<div class="flex justify-center">
+<span class="text-[10px] font-bold text-slate-600 bg-surface-dark px-3 py-1 rounded-full uppercase tracking-widest">Yesterday, Dec 14</span>
+</div>
+<div class="flex flex-col gap-1 max-w-[70%]">
+<div class="bg-surface-dark p-4 rounded-2xl rounded-tl-none border border-border-dark">
+<p class="text-sm text-slate-200">Hi, I'm having trouble with my subscription renewal. It seems like it's charging me twice but the dashboard still says 'Expired'.</p>
+</div>
+<span class="text-[10px] text-slate-500 ml-1">10:42 PM • WhatsApp</span>
+</div>
+<div class="flex flex-col gap-1 max-w-[70%] self-end items-end">
+<div class="bg-primary text-black p-4 rounded-2xl rounded-tr-none font-medium">
+<p class="text-sm">Hello Alex! I'm sorry to hear about that. Let me look into your account records right away. Could you please confirm the last 4 digits of the card used?</p>
+</div>
+<span class="text-[10px] text-slate-500 mr-1">10:45 PM • Read</span>
+</div>
+<div class="flex flex-col gap-1 max-w-[70%]">
+<div class="bg-surface-dark p-4 rounded-2xl rounded-tl-none border border-border-dark">
+<p class="text-sm text-slate-200">Sure, it ends in 4492. I also have the transaction ID if that helps: TXN-82910-X</p>
+</div>
+<span class="text-[10px] text-slate-500 ml-1">10:46 PM • WhatsApp</span>
+</div>
+<div class="flex justify-center">
+<div class="bg-primary/10 border border-primary/20 px-4 py-2 rounded-xl flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">auto_awesome</span>
+<p class="text-[10px] text-primary font-bold uppercase tracking-wider">AI Insight: Transaction found. Duplicate charge detected due to sync lag.</p>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-border-dark space-y-4">
+<div class="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-xs font-bold hover:bg-primary hover:text-black transition-all whitespace-nowrap">
+<span class="material-symbols-outlined text-sm">magic_button</span>
+                        Suggest Response
+                    </button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-dark text-slate-300 border border-border-dark text-xs font-bold hover:border-primary/50 transition-all whitespace-nowrap">
+<span class="material-symbols-outlined text-sm">translate</span>
+                        Translate
+                    </button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-dark text-slate-300 border border-border-dark text-xs font-bold hover:border-primary/50 transition-all whitespace-nowrap">
+<span class="material-symbols-outlined text-sm">article</span>
+                        Summarize
+                    </button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-dark text-slate-300 border border-border-dark text-xs font-bold hover:border-primary/50 transition-all whitespace-nowrap">
+<span class="material-symbols-outlined text-sm">database</span>
+                        KB Search
+                    </button>
+</div>
+<div class="relative">
+<div class="bg-surface-dark border border-border-dark rounded-2xl p-2 focus-within:ring-1 focus-within:ring-primary/50 transition-all">
+<textarea class="w-full bg-transparent border-none text-slate-100 placeholder:text-slate-600 focus:ring-0 text-sm resize-none min-h-[44px]" placeholder="Type your message..." rows="2"></textarea>
+<div class="flex justify-between items-center px-2 pt-2 border-t border-border-dark/50">
+<div class="flex gap-2">
+<button class="text-slate-500 hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">add_circle</span></button>
+<button class="text-slate-500 hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">mood</span></button>
+<button class="text-slate-500 hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">image</span></button>
+</div>
+<button class="bg-primary text-black font-bold px-4 py-1.5 rounded-xl text-xs flex items-center gap-2 hover:opacity-90 transition-opacity">
+                                Send
+                                <span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<aside class="w-80 border-l border-border-dark bg-background-dark/60 flex flex-col overflow-y-auto custom-scrollbar">
+<div class="p-6 text-center border-b border-border-dark">
+<div class="relative inline-block">
+<img class="h-24 w-24 rounded-2xl border-2 border-primary/20 p-1" data-alt="Alex Rivera customer profile detailed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcR6wz5yF5zJ26FRd57lKkL0bqp4V1EKX0aQi46N3RUwIJKjxMVFSu7Uv6YeOENQmrBrw_HR80fXbaHgcIm2oytcXgoapEFTqEK0I0vTGIZDDpwDQJuD_HdvvE-uY_3190sb-Dm2IPTGzK2BoNVqv1fAjGBxVwzHnP58HjVZSYsSd9_TX7ZYvRVCWGEi9YomoqZqntgCLN3rI2xcp3OLyuK_CStM-ot4EumEjicxM-cajDphPU5BFnp8zhaDOGZAhh3XjHhH8_heA"/>
+<span class="absolute -bottom-2 -right-2 bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-background-dark">ACTIVE</span>
+</div>
+<h2 class="text-lg font-bold text-white mt-4">Alex Rivera</h2>
+<p class="text-xs text-slate-500">Software Engineer at TechCorp</p>
+<div class="flex justify-center gap-2 mt-4">
+<button class="h-8 w-8 rounded-lg bg-surface-dark flex items-center justify-center text-slate-400 hover:text-primary border border-border-dark"><span class="material-symbols-outlined text-sm">mail</span></button>
+<button class="h-8 w-8 rounded-lg bg-surface-dark flex items-center justify-center text-slate-400 hover:text-primary border border-border-dark"><span class="material-symbols-outlined text-sm">call</span></button>
+<button class="h-8 w-8 rounded-lg bg-surface-dark flex items-center justify-center text-slate-400 hover:text-primary border border-border-dark"><span class="material-symbols-outlined text-sm">share</span></button>
+</div>
+</div>
+<div class="p-6 space-y-6">
+<section>
+<h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Customer Details</h3>
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-xs text-slate-500">Location</span>
+<span class="text-xs text-slate-200 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+                                Austin, TX
+                            </span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs text-slate-500">Device</span>
+<span class="text-xs text-slate-200 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">phone_iphone</span>
+                                iPhone 15 Pro
+                            </span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs text-slate-500">Timezone</span>
+<span class="text-xs text-slate-200">GMT-6 (3:15 PM)</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs text-slate-500">Member Since</span>
+<span class="text-xs text-slate-200">Jan 2023</span>
+</div>
+</div>
+</section>
+<section>
+<h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Segments</h3>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 rounded bg-surface-dark text-[10px] font-bold text-slate-400 border border-border-dark">ISSUE</span>
+<span class="px-2 py-1 rounded bg-surface-dark text-[10px] font-bold text-slate-400 border border-border-dark">2FA</span>
+<span class="px-2 py-1 rounded bg-primary/10 text-[10px] font-bold text-primary border border-primary/20 uppercase tracking-tighter">VIP-TIER</span>
+<span class="px-2 py-1 rounded bg-surface-dark text-[10px] font-bold text-slate-400 border border-border-dark">LEAD-GEN</span>
+</div>
+</section>
+<section>
+<div class="flex items-center justify-between mb-3">
+<h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Private Notes</h3>
+<button class="text-primary text-[10px] font-bold uppercase">Add</button>
+</div>
+<div class="bg-surface-dark p-3 rounded-xl border border-border-dark border-dashed">
+<p class="text-[11px] text-slate-400 italic">"Client preferes async communication. Responds best to technical explanations."</p>
+<div class="mt-2 flex items-center justify-between">
+<span class="text-[9px] text-slate-600">- Sarah Chen, Dec 12</span>
+<span class="material-symbols-outlined text-[14px] text-slate-600">edit</span>
+</div>
+</div>
+</section>
+<section class="pb-8">
+<h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Quick Actions</h3>
+<div class="grid grid-cols-2 gap-2">
+<button class="p-2 rounded-xl bg-surface-dark border border-border-dark text-[10px] font-bold text-slate-300 hover:border-primary/50 transition-all flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-sm text-primary">local_shipping</span>
+                            Refund
+                        </button>
+<button class="p-2 rounded-xl bg-surface-dark border border-border-dark text-[10px] font-bold text-slate-300 hover:border-primary/50 transition-all flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-sm text-primary">verified</span>
+                            Verify
+                        </button>
+<button class="p-2 rounded-xl bg-surface-dark border border-border-dark text-[10px] font-bold text-slate-300 hover:border-primary/50 transition-all flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-sm text-primary">lock_reset</span>
+                            Reset PWD
+                        </button>
+<button class="p-2 rounded-xl bg-surface-dark border border-border-dark text-[10px] font-bold text-slate-300 hover:border-primary/50 transition-all flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-sm text-primary">block</span>
+                            Ban
+                        </button>
+</div>
+</section>
+</div>
+</aside>
+</main>
+</body></html>
