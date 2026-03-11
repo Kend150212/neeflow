@@ -239,22 +239,6 @@ export function DashboardHeader({ session }: { session: Session }) {
                 </Link>
             </div>
 
-            {/* ── Center: Help Center quick link ── */}
-            <div className="flex items-center gap-1 min-w-0 flex-1 justify-center hidden md:flex">
-                <Link
-                    href="/dashboard/support"
-                    className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                        pathname?.startsWith('/dashboard/support')
-                            ? 'bg-primary/15 text-primary'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                >
-                    <LifeBuoy className="h-4 w-4 shrink-0" />
-                    <span className="hidden lg:block">{t('nav.helpCenter') || 'Help Center'}</span>
-                </Link>
-            </div>
-
             {/* ── Right: Utilities ── */}
             <div className="flex items-center gap-1 shrink-0">
                 {/* Plan usage bars */}
@@ -274,6 +258,20 @@ export function DashboardHeader({ session }: { session: Session }) {
                 <div className="flex items-center justify-center w-8 h-8">
                     <NotificationBell />
                 </div>
+
+                {/* Help Center icon */}
+                <Link
+                    href="/dashboard/support"
+                    title={t('nav.helpCenter') || 'Help Center'}
+                    className={cn(
+                        'flex items-center justify-center w-8 h-8 rounded-lg transition-colors',
+                        pathname?.startsWith('/dashboard/support')
+                            ? 'text-primary bg-primary/10'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    )}
+                >
+                    <LifeBuoy className="h-4.5 w-4.5" />
+                </Link>
 
                 {/* Divider */}
                 <div className="w-px h-5 bg-border mx-1" />
