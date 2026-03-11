@@ -96,10 +96,18 @@ export default function AdminSupportHubPage() {
         if (filterAssigned) params.set('assignedTo', filterAssigned)
         if (q) params.set('q', q)
 
-        const data = await fetch(`/api/admin/support/tickets?${params}`).then(r => r.json())
-        setTickets(data.tickets || [])
-        setTotal(data.total || 0)
-        setLoading(false)
+        try {
+            const res = await fetch(`/api/admin/support/tickets?${params}`)
+            if (res.ok) {
+                const data = await res.json()
+                setTickets(data.tickets || [])
+                setTotal(data.total || 0)
+            }
+        } catch (err) {
+            console.error('Failed to load tickets:', err)
+        } finally {
+            setLoading(false)
+        }
     }, [filterStatus, filterPriority, filterAssigned, q])
 
     useEffect(() => { fetchTickets() }, [fetchTickets])

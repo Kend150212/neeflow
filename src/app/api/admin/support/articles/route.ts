@@ -19,12 +19,12 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') || ''
     const category = searchParams.get('category') || ''
     const page = Math.max(parseInt(searchParams.get('page') || '1'), 1)
-    const limit = 20
+    const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
     const where: Record<string, unknown> = {}
     if (status) where.status = status
-    if (category) where.category = { slug: category }
+    if (category) where.category = category
     if (q) {
         where.OR = [
             { title: { contains: q, mode: 'insensitive' } },
@@ -32,36 +32,47 @@ export async function GET(req: NextRequest) {
         ]
     }
 
-    const [articles, total] = await Promise.all([
+    const [articles, total, publishedCount, draftCount, viewsAgg] = await Promise.all([
         db.supportArticle.findMany({
             where,
             skip,
             take: limit,
             orderBy: { updatedAt: 'desc' },
-            include: {
-                category: { select: { id: true, name: true, slug: true } },
-                author: { select: { id: true, name: true, image: true } },
+            select: {
+                id: true,
+                title: true,
+                slug: true,
+                status: true,
+                category: true,
+                tags: true,
+                viewCount: true,
+                helpfulCount: true,
+                updatedAt: true,
+                author: { select: { name: true, image: true } },
             },
         }),
         db.supportArticle.count({ where }),
-    ])
-
-    // Stats
-    const [publishedCount, draftCount, totalViews] = await Promise.all([
         db.supportArticle.count({ where: { status: 'published' } }),
         db.supportArticle.count({ where: { status: 'draft' } }),
         db.supportArticle.aggregate({ _sum: { viewCount: true } }),
     ])
 
+    // Map to match the UI's expected shape (category as { id, name, slug })
+    const mapped = articles.map((a: Record<string, unknown>) => ({
+        ...a,
+        publishedAt: null,
+        category: { id: a.category, name: String(a.category).replace(/_/g, ' '), slug: a.category },
+    }))
+
     return NextResponse.json({
-        articles,
+        articles: mapped,
         total,
         page,
         limit,
         stats: {
             published: publishedCount,
             drafts: draftCount,
-            totalViews: totalViews._sum.viewCount || 0,
+            totalViews: viewsAgg._sum.viewCount || 0,
         },
     })
 }
@@ -72,9 +83,11 @@ export async function POST(req: NextRequest) {
     if (requireAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { title, slug, excerpt, content, seoMeta, categoryId, status, tags } = body
+    const { title, slug, excerpt, content, seoMeta, category, categoryId, status, tags } = body
 
-    if (!title || !slug || !content || !categoryId) {
+    // Accept either category string or categoryId (for backwards compat)
+    const categoryVal = category || categoryId
+    if (!title || !slug || !content || !categoryVal) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -87,15 +100,14 @@ export async function POST(req: NextRequest) {
             slug,
             excerpt: excerpt || '',
             content,
-            seoMeta: seoMeta || '',
-            categoryId,
+            metaDesc: seoMeta || '',
+            category: categoryVal,
             status: status || 'draft',
             tags: tags || [],
             authorId: session!.user!.id,
             publishedAt: status === 'published' ? new Date() : null,
         },
         include: {
-            category: { select: { id: true, name: true, slug: true } },
             author: { select: { id: true, name: true, image: true } },
         },
     })

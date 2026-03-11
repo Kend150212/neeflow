@@ -9,17 +9,43 @@ function requireAdmin(session: { user?: { role?: string } } | null) {
     return !session?.user || session.user.role !== 'ADMIN'
 }
 
-// GET /api/admin/support/categories
+// Built-in categories derived from the SupportArticle.category enum values
+const BUILTIN_CATEGORIES = [
+    { id: 'getting_started', slug: 'getting_started', name: 'Getting Started', description: 'First steps and setup guides', iconSvg: '', isActive: true, sortOrder: 0 },
+    { id: 'ai', slug: 'ai', name: 'AI Features', description: 'AI tools, models, and generation', iconSvg: '', isActive: true, sortOrder: 1 },
+    { id: 'integrations', slug: 'integrations', name: 'Integrations', description: 'Connect platforms and tools', iconSvg: '', isActive: true, sortOrder: 2 },
+    { id: 'billing', slug: 'billing', name: 'Billing', description: 'Subscriptions and payments', iconSvg: '', isActive: true, sortOrder: 3 },
+    { id: 'troubleshooting', slug: 'troubleshooting', name: 'Troubleshooting', description: 'Fix common issues', iconSvg: '', isActive: true, sortOrder: 4 },
+    { id: 'security', slug: 'security', name: 'Security', description: 'Account and data security', iconSvg: '', isActive: true, sortOrder: 5 },
+    { id: 'other', slug: 'other', name: 'Other', description: 'Everything else', iconSvg: '', isActive: true, sortOrder: 6 },
+]
+
+// GET /api/admin/support/categories — returns merged DB + builtin categories with article counts
 export async function GET() {
     const session = await auth()
     if (requireAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const categories = await db.articleCategory.findMany({
-        orderBy: { sortOrder: 'asc' },
-        include: {
-            _count: { select: { articles: true } },
-        },
+    // Get article counts per category slug
+    const counts = await db.supportArticle.groupBy({
+        by: ['category'],
+        _count: { id: true },
     })
+    const countMap: Record<string, number> = {}
+    for (const row of counts) {
+        countMap[row.category] = row._count.id
+    }
+
+    // Try to get custom categories from ArticleCategory table; fall back to builtins if table empty
+    let dbCats: Array<Record<string, unknown>> = []
+    try {
+        dbCats = await db.articleCategory.findMany({ orderBy: { sortOrder: 'asc' } })
+    } catch {
+        // table might not exist yet — ignore
+    }
+
+    const categories = dbCats.length > 0
+        ? dbCats.map(c => ({ ...c, _count: { articles: countMap[String(c.slug)] || 0 } }))
+        : BUILTIN_CATEGORIES.map(c => ({ ...c, _count: { articles: countMap[c.slug] || 0 } }))
 
     return NextResponse.json(categories)
 }
@@ -30,28 +56,19 @@ export async function POST(req: NextRequest) {
     if (requireAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { name, slug, description, iconSvg, sortOrder } = await req.json()
-
     if (!name || !slug) return NextResponse.json({ error: 'name and slug required' }, { status: 400 })
 
     const existing = await db.articleCategory.findFirst({ where: { slug } })
     if (existing) return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
 
     const category = await db.articleCategory.create({
-        data: {
-            name,
-            slug,
-            description: description || '',
-            iconSvg: iconSvg || '',
-            sortOrder: sortOrder ?? 0,
-            isActive: true,
-        },
+        data: { name, slug, description: description || '', iconSvg: iconSvg || '', sortOrder: sortOrder ?? 0, isActive: true },
     })
 
     return NextResponse.json(category, { status: 201 })
 }
 
-// PATCH /api/admin/support/categories — bulk sort-order update body: { orders: [{id, sortOrder}] }
-// Or single update body: { id, ...fields }
+// PATCH /api/admin/support/categories
 export async function PATCH(req: NextRequest) {
     const session = await auth()
     if (requireAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -59,7 +76,6 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json()
 
     if (body.orders) {
-        // Bulk reorder
         await Promise.all(
             body.orders.map(({ id, sortOrder }: { id: string; sortOrder: number }) =>
                 db.articleCategory.update({ where: { id }, data: { sortOrder } })

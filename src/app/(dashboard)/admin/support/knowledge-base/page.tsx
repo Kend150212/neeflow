@@ -34,7 +34,6 @@ interface Article {
     viewCount: number
     helpfulCount: number
     updatedAt: string
-    publishedAt: string | null
     tags: string[]
     category: { id: string; name: string; slug: string }
     author: { name: string | null; image: string | null }
@@ -94,19 +93,27 @@ export default function AdminKbPage() {
         if (filterStatus) params.set('status', filterStatus)
         if (filterCategory) params.set('category', filterCategory)
 
-        const [artRes, catRes] = await Promise.all([
-            fetch(`/api/admin/support/articles?${params}`),
-            fetch('/api/admin/support/categories'),
-        ])
+        try {
+            const [artRes, catRes] = await Promise.all([
+                fetch(`/api/admin/support/articles?${params}`),
+                fetch('/api/admin/support/categories'),
+            ])
 
-        const artData = await artRes.json()
-        const catData = await catRes.json()
-
-        setArticles(artData.articles || [])
-        setTotal(artData.total || 0)
-        setStats(artData.stats || { published: 0, drafts: 0, totalViews: 0 })
-        setCategories(catData || [])
-        setLoading(false)
+            if (artRes.ok) {
+                const artData = await artRes.json()
+                setArticles(artData.articles || [])
+                setTotal(artData.total || 0)
+                setStats(artData.stats || { published: 0, drafts: 0, totalViews: 0 })
+            }
+            if (catRes.ok) {
+                const catData = await catRes.json()
+                setCategories(catData || [])
+            }
+        } catch (err) {
+            console.error('Failed to load KB data:', err)
+        } finally {
+            setLoading(false)
+        }
     }, [q, filterStatus, filterCategory])
 
     useEffect(() => { fetchData() }, [fetchData])
