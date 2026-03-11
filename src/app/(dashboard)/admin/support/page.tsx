@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import {
-    MessageSquare, Search, Filter, ChevronDown, ChevronUp,
+    MessageSquare, Search, ChevronDown, ChevronUp,
     Circle, Clock, CheckCircle2, XCircle, User,
     Loader2, Send, Lock, Bot, StickyNote,
-    MoreVertical, UserCheck, BookOpen, Sparkles, Tag, Zap,
-    AlertTriangle, Phone, ExternalLink
+    MoreVertical, UserCheck, BookOpen, Zap,
+    AlertTriangle, ExternalLink, Hash, Layers,
+    TrendingUp, Activity, CreditCard, MonitorX,
+    Globe, Calendar, LogIn, FileText, Wifi
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,16 +28,49 @@ import { toast } from 'sonner'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 
-interface TicketUser {
-    id: string; name: string | null; email: string; image: string | null; createdAt: string; isActive: boolean
-    subscription?: { status: string; currentPeriodEnd: string | null; plan?: { name: string } | null }
+interface ChannelPlatform { platform: string; accountName: string; isActive: boolean }
+interface ChannelMember {
+    role: string
+    channel: {
+        id: string; name: string; displayName: string; avatarUrl: string | null; isActive: boolean
+        platforms: ChannelPlatform[]
+        _count: { members: number; posts: number }
+    }
 }
-
+interface TicketUser {
+    id: string; name: string | null; email: string; image: string | null
+    role: string; createdAt: string; isActive: boolean; lastLoginAt: string | null
+    channelMembers: ChannelMember[]
+    subscription?: {
+        status: string; billingInterval: string; currentPeriodEnd: string | null
+        trialEndsAt: string | null; cancelAtPeriodEnd: boolean
+        plan?: { name: string; maxPostsPerMonth: number; maxAiImagesPerMonth: number; maxAiTextPerMonth: number; maxChannels: number } | null
+        usages?: { month: string; postsCreated: number; imagesGenerated: number; aiTextGenerated: number }[]
+    }
+}
 interface Message {
     id: string; content: string; isInternal: boolean; isBotMsg: boolean; createdAt: string
     sender: { id: string; name: string | null; image: string | null; role: string }
 }
-
+interface FailedPost {
+    id: string; updatedAt: string
+    channel: { displayName: string }
+    platformStatuses: { platform: string; errorMsg: string | null }[]
+}
+interface ActivityEntry {
+    action: string; details: Record<string, unknown>; createdAt: string; channelId: string | null
+}
+interface PostByChannel { channelId: string; channelName: string; count: number }
+interface UserContext {
+    totalPostsPublished: number; totalPostsFailed: number
+    lastPublishedAt: string | null; lastPublishedChannel: string | null
+    postsByChannel: PostByChannel[]
+    recentFailedPosts: FailedPost[]
+    ticketHistory: number
+    thisMonthUsage: { month: string; postsCreated: number; imagesGenerated: number; aiTextGenerated: number } | null
+    currentMonth: string
+    recentActivity: ActivityEntry[]
+}
 interface Ticket {
     id: string; subject: string; status: string; priority: string; category: string
     createdAt: string; updatedAt: string
@@ -43,6 +78,7 @@ interface Ticket {
     agent: { id: string; name: string | null; image: string | null } | null
     messages: Message[]
     _count: { messages: number }
+    userContext?: UserContext
 }
 
 const STATUS_STYLES: Record<string, { icon: React.ReactNode; className: string }> = {
@@ -63,6 +99,44 @@ function formatDate(iso: string) {
 }
 function formatTime(iso: string) {
     return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+function formatRelative(iso: string | null) {
+    if (!iso) return 'Never'
+    const d = new Date(iso)
+    const diff = Date.now() - d.getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.floor(hrs / 24)
+    if (days < 30) return `${days}d ago`
+    return formatDate(iso)
+}
+const PLATFORM_COLORS: Record<string, string> = {
+    facebook: 'bg-blue-600', instagram: 'bg-pink-500', tiktok: 'bg-black dark:bg-white',
+    youtube: 'bg-red-600', linkedin: 'bg-sky-700', x: 'bg-neutral-800', pinterest: 'bg-red-500',
+    gbp: 'bg-green-600', wistia: 'bg-cyan-500', vimeo: 'bg-blue-400',
+}
+function PlatformDot({ platform }: { platform: string }) {
+    return <span title={platform} className={`inline-block w-2 h-2 rounded-full ${PLATFORM_COLORS[platform] ?? 'bg-muted-foreground'}`} />
+}
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="flex justify-between items-start gap-2">
+            <span className="text-muted-foreground shrink-0">{label}</span>
+            <span className="font-medium text-right">{children}</span>
+        </div>
+    )
+}
+function SectionHeader({ icon, label, open, onToggle }: { icon: React.ReactNode; label: string; open: boolean; onToggle: () => void }) {
+    return (
+        <button onClick={onToggle} className="flex items-center justify-between w-full text-left group">
+            <span className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                {icon}{label}
+            </span>
+            {open ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+        </button>
+    )
 }
 
 export default function AdminSupportHubPage() {
@@ -395,113 +469,352 @@ export default function AdminSupportHubPage() {
                 )}
             </div>
 
-            {/* Right: User info panel */}
+            {/* Right: Enriched User Info Panel */}
             {selected && (
-                <div className="w-64 shrink-0 border-l flex flex-col overflow-y-auto p-4 space-y-5 text-sm">
-                    {/* User info */}
-                    <div>
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-3">
-                            {t('support.admin.userInfo')}
-                        </p>
-                        <div className="flex items-center gap-3 mb-3">
-                            <Avatar className="h-10 w-10">
-                                <AvatarImage src={selected.user.image || ''} />
-                                <AvatarFallback>{(selected.user.name || '?').slice(0, 2).toUpperCase()}</AvatarFallback>
+                <EnrichedUserPanel
+                    selected={selected}
+                    onPriorityChange={handlePriorityChange}
+                    onStatusChange={handleStatusChange}
+                    onNavigate={router.push}
+                />
+            )}
+        </div>
+    )
+}
+
+// ─── Enriched Right Panel ────────────────────────────────────────────────────
+function EnrichedUserPanel({
+    selected, onPriorityChange, onStatusChange, onNavigate,
+}: {
+    selected: Ticket
+    onPriorityChange: (p: string) => void
+    onStatusChange: (s: string) => void
+    onNavigate: (path: string) => void
+}) {
+    const ctx = selected.userContext
+    const user = selected.user
+    const sub = user.subscription
+    const plan = sub?.plan
+    const usage = sub?.usages?.[0] ?? ctx?.thisMonthUsage
+
+    const [openSections, setOpenSections] = useState({
+        user: true, ticket: true, channels: true, stats: true, quota: true, errors: true, activity: false,
+    })
+    const toggle = (k: keyof typeof openSections) =>
+        setOpenSections(p => ({ ...p, [k]: !p[k] }))
+
+    const statusColors: Record<string, string> = {
+        active: 'text-green-500', trialing: 'text-blue-500',
+        past_due: 'text-yellow-500', canceled: 'text-destructive',
+    }
+
+    return (
+        <div className="w-72 shrink-0 border-l flex flex-col overflow-y-auto text-xs">
+            {/* ── USER INFO ── */}
+            <div className="p-4 space-y-3 border-b">
+                <SectionHeader
+                    icon={<User className="h-3 w-3" />}
+                    label="User Info"
+                    open={openSections.user}
+                    onToggle={() => toggle('user')}
+                />
+                {openSections.user && (
+                    <>
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9 ring-2 ring-primary/20">
+                                <AvatarImage src={user.image || ''} />
+                                <AvatarFallback className="text-sm font-bold">
+                                    {(user.name || '?').slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
                             </Avatar>
-                            <div className="min-w-0">
-                                <p className="font-medium text-sm truncate">{selected.user.name || 'Unknown'}</p>
-                                <p className="text-xs text-muted-foreground truncate">{selected.user.email}</p>
+                            <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-sm truncate">{user.name || 'Unknown'}</p>
+                                <p className="text-muted-foreground truncate">{user.email}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className={cn('text-[10px] font-medium', user.isActive ? 'text-green-500' : 'text-destructive')}>
+                                        ● {user.isActive ? 'Active' : 'Inactive'}
+                                    </span>
+                                    <span className="text-muted-foreground">·</span>
+                                    <span className="text-muted-foreground capitalize">{user.role.toLowerCase()}</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-1.5 text-xs">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('support.admin.plan')}</span>
-                                <span className="font-medium">{selected.user.subscription?.plan?.name || 'Free'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">{t('support.admin.memberSince')}</span>
-                                <span>{formatDate(selected.user.createdAt)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Account</span>
-                                <span className={selected.user.isActive ? 'text-green-600' : 'text-destructive'}>
-                                    {selected.user.isActive ? 'Active' : 'Inactive'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-border" />
-
-                    {/* Ticket meta */}
-                    <div className="space-y-2">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Ticket</p>
-                        <div className="space-y-1.5 text-xs">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Priority</span>
-                                <Select value={selected.priority} onValueChange={p => handlePriorityChange(p)}>
-                                    <SelectTrigger className="h-6 text-xs w-24 border-0 p-0 pr-2">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {['low', 'medium', 'high', 'urgent'].map(p => (
-                                            <SelectItem key={p} value={p} className="capitalize text-xs">{p}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Category</span>
-                                <span className="capitalize">{selected.category}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Created</span>
-                                <span>{formatDate(selected.createdAt)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Agent</span>
-                                <span>{selected.agent?.name || 'Unassigned'}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-border" />
-
-                    {/* Quick actions */}
-                    <div>
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-3">
-                            {t('support.admin.quickActions')}
-                        </p>
                         <div className="space-y-1.5">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full justify-start h-8 text-xs gap-2"
-                                onClick={() => router.push('/admin/support/knowledge-base')}
-                            >
-                                <BookOpen className="h-3.5 w-3.5" />
-                                {t('support.admin.searchKb')}
+                            <InfoRow label="Plan">
+                                <span className="inline-flex items-center gap-1">
+                                    <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">
+                                        {plan?.name ?? 'Free'}
+                                    </span>
+                                    {sub && (
+                                        <span className={cn('capitalize', statusColors[sub.status])}>
+                                            {sub.status}
+                                        </span>
+                                    )}
+                                </span>
+                            </InfoRow>
+                            {sub?.trialEndsAt && new Date(sub.trialEndsAt) > new Date() && (
+                                <InfoRow label="Trial ends">
+                                    <span className="text-yellow-500">{formatDate(sub.trialEndsAt)}</span>
+                                </InfoRow>
+                            )}
+                            {sub?.currentPeriodEnd && (
+                                <InfoRow label={sub.cancelAtPeriodEnd ? '⚠ Cancels' : 'Renews'}>
+                                    <span className={cn(sub.cancelAtPeriodEnd && 'text-destructive')}>
+                                        {formatDate(sub.currentPeriodEnd)}
+                                    </span>
+                                </InfoRow>
+                            )}
+                            <InfoRow label="Member since">{formatDate(user.createdAt)}</InfoRow>
+                            <InfoRow label="Last login">
+                                <span className={user.lastLoginAt ? '' : 'text-muted-foreground'}>
+                                    {formatRelative(user.lastLoginAt)}
+                                </span>
+                            </InfoRow>
+                            {ctx && (
+                                <InfoRow label="Past tickets">
+                                    <span className={ctx.ticketHistory > 0 ? 'text-yellow-500' : ''}>
+                                        {ctx.ticketHistory} ticket{ctx.ticketHistory !== 1 ? 's' : ''}
+                                    </span>
+                                </InfoRow>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* ── TICKET META ── */}
+            <div className="p-4 space-y-3 border-b">
+                <SectionHeader
+                    icon={<FileText className="h-3 w-3" />}
+                    label="Ticket"
+                    open={openSections.ticket}
+                    onToggle={() => toggle('ticket')}
+                />
+                {openSections.ticket && (
+                    <div className="space-y-1.5">
+                        <InfoRow label="Priority">
+                            <Select value={selected.priority} onValueChange={onPriorityChange}>
+                                <SelectTrigger className="h-5 text-xs border-0 p-0 w-20">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {['low', 'medium', 'high', 'urgent'].map(p => (
+                                        <SelectItem key={p} value={p} className="capitalize text-xs">{p}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </InfoRow>
+                        <InfoRow label="Category"><span className="capitalize">{selected.category}</span></InfoRow>
+                        <InfoRow label="Created">{formatDate(selected.createdAt)}</InfoRow>
+                        <InfoRow label="Agent">{selected.agent?.name ?? 'Unassigned'}</InfoRow>
+                        <div className="flex gap-1.5 pt-1">
+                            <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1 text-green-600"
+                                onClick={() => onStatusChange('resolved')}>
+                                <CheckCircle2 className="h-3 w-3" />Resolve
                             </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full justify-start h-8 text-xs gap-2 text-destructive hover:text-destructive"
-                                onClick={() => handleStatusChange('closed')}
-                            >
-                                <XCircle className="h-3.5 w-3.5" />
-                                {t('support.admin.close')}
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full justify-start h-8 text-xs gap-2 text-green-600"
-                                onClick={() => handleStatusChange('resolved')}
-                            >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                {t('support.admin.resolve')}
+                            <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1 text-destructive"
+                                onClick={() => onStatusChange('closed')}>
+                                <XCircle className="h-3 w-3" />Close
                             </Button>
                         </div>
+                        <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1 justify-start"
+                            onClick={() => onNavigate('/admin/support/knowledge-base')}>
+                            <BookOpen className="h-3 w-3" />Search Knowledge Base
+                        </Button>
                     </div>
+                )}
+            </div>
+
+            {/* ── CHANNELS ── */}
+            <div className="p-4 space-y-3 border-b">
+                <SectionHeader
+                    icon={<Layers className="h-3 w-3" />}
+                    label={`Channels (${user.channelMembers?.length ?? 0})`}
+                    open={openSections.channels}
+                    onToggle={() => toggle('channels')}
+                />
+                {openSections.channels && (
+                    <div className="space-y-2">
+                        {(!user.channelMembers || user.channelMembers.length === 0) ? (
+                            <p className="text-muted-foreground">No channels</p>
+                        ) : user.channelMembers.map(m => (
+                            <div key={m.channel.id} className="rounded-lg border bg-muted/30 p-2.5 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <p className="font-medium truncate flex-1">{m.channel.displayName}</p>
+                                    <span className={cn('text-[10px] ml-1', m.channel.isActive ? 'text-green-500' : 'text-muted-foreground')}>
+                                        {m.channel.isActive ? '●' : '○'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                    {m.channel.platforms.map(p => (
+                                        <span key={p.platform} className="flex items-center gap-1 text-[10px] bg-background rounded px-1 py-0.5 border">
+                                            <PlatformDot platform={p.platform} />
+                                            <span className="capitalize">{p.platform}</span>
+                                        </span>
+                                    ))}
+                                    {m.channel.platforms.length === 0 && (
+                                        <span className="text-muted-foreground">No platforms</span>
+                                    )}
+                                </div>
+                                <div className="flex items-center justify-between text-muted-foreground">
+                                    <span>{m.channel._count.members} member{m.channel._count.members !== 1 ? 's' : ''}</span>
+                                    <span className="capitalize text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                        {m.role.toLowerCase()}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── ACTIVITY STATS ── */}
+            {ctx && (
+                <div className="p-4 space-y-3 border-b">
+                    <SectionHeader
+                        icon={<TrendingUp className="h-3 w-3" />}
+                        label="Post Activity"
+                        open={openSections.stats}
+                        onToggle={() => toggle('stats')}
+                    />
+                    {openSections.stats && (
+                        <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-lg border bg-green-50 dark:bg-green-900/20 p-2 text-center">
+                                    <p className="text-lg font-bold text-green-600">{ctx.totalPostsPublished}</p>
+                                    <p className="text-muted-foreground">Published</p>
+                                </div>
+                                <div className="rounded-lg border bg-red-50 dark:bg-red-900/20 p-2 text-center">
+                                    <p className={cn('text-lg font-bold', ctx.totalPostsFailed > 0 ? 'text-red-500' : 'text-muted-foreground')}>
+                                        {ctx.totalPostsFailed}
+                                    </p>
+                                    <p className="text-muted-foreground">Failed</p>
+                                </div>
+                            </div>
+                            <InfoRow label="Last post">
+                                <span title={ctx.lastPublishedChannel ?? undefined}>
+                                    {ctx.lastPublishedAt ? formatRelative(ctx.lastPublishedAt) : 'Never'}
+                                </span>
+                            </InfoRow>
+                            {ctx.lastPublishedChannel && (
+                                <InfoRow label="Last channel">
+                                    <span className="truncate max-w-[120px]">{ctx.lastPublishedChannel}</span>
+                                </InfoRow>
+                            )}
+                            {ctx.postsByChannel.length > 0 && (
+                                <div className="space-y-1 pt-0.5">
+                                    <p className="text-muted-foreground">Posts by channel</p>
+                                    {ctx.postsByChannel.map(c => (
+                                        <div key={c.channelId} className="flex justify-between items-center">
+                                            <span className="truncate flex-1 text-muted-foreground">{c.channelName}</span>
+                                            <span className="font-medium ml-2">{c.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── QUOTA & USAGE ── */}
+            {ctx && plan && (
+                <div className="p-4 space-y-3 border-b">
+                    <SectionHeader
+                        icon={<CreditCard className="h-3 w-3" />}
+                        label={`Quota · ${usage?.month ?? ctx.currentMonth}`}
+                        open={openSections.quota}
+                        onToggle={() => toggle('quota')}
+                    />
+                    {openSections.quota && (
+                        <div className="space-y-2">
+                            {[
+                                { label: 'Posts', used: usage?.postsCreated ?? 0, max: plan.maxPostsPerMonth },
+                                { label: 'AI Images', used: usage?.imagesGenerated ?? 0, max: plan.maxAiImagesPerMonth },
+                                { label: 'AI Text', used: usage?.aiTextGenerated ?? 0, max: plan.maxAiTextPerMonth },
+                            ].map(({ label, used, max }) => {
+                                const pct = max <= 0 ? 0 : Math.min(100, Math.round((used / max) * 100))
+                                const isUnlimited = max === -1
+                                const isOver = !isUnlimited && pct >= 90
+                                return (
+                                    <div key={label} className="space-y-0.5">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">{label}</span>
+                                            <span className={isOver ? 'text-red-500 font-medium' : ''}>
+                                                {isUnlimited ? '∞' : `${used} / ${max}`}
+                                            </span>
+                                        </div>
+                                        {!isUnlimited && (
+                                            <div className="h-1 rounded-full bg-muted overflow-hidden">
+                                                <div
+                                                    className={cn('h-full rounded-full transition-all', isOver ? 'bg-red-500' : 'bg-primary')}
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── FAILED POSTS / ERRORS ── */}
+            {ctx?.recentFailedPosts && ctx.recentFailedPosts.length > 0 && (
+                <div className="p-4 space-y-3 border-b">
+                    <SectionHeader
+                        icon={<MonitorX className="h-3 w-3 text-red-500" />}
+                        label={`Post Errors (${ctx.recentFailedPosts.length})`}
+                        open={openSections.errors}
+                        onToggle={() => toggle('errors')}
+                    />
+                    {openSections.errors && (
+                        <div className="space-y-2">
+                            {ctx.recentFailedPosts.slice(0, 5).map(fp => (
+                                <div key={fp.id} className="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 p-2 space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-medium text-red-600 truncate flex-1">{fp.channel?.displayName}</span>
+                                        <span className="text-muted-foreground ml-1">{formatRelative(fp.updatedAt)}</span>
+                                    </div>
+                                    {fp.platformStatuses.map((ps, i) => (
+                                        <div key={i} className="flex gap-1.5 items-start">
+                                            <PlatformDot platform={ps.platform} />
+                                            <p className="text-muted-foreground break-words leading-tight">
+                                                <span className="capitalize font-medium text-foreground">{ps.platform}:</span>{' '}
+                                                {ps.errorMsg ?? 'Unknown error'}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── ACTIVITY LOG ── */}
+            {ctx?.recentActivity && ctx.recentActivity.length > 0 && (
+                <div className="p-4 space-y-3">
+                    <SectionHeader
+                        icon={<Activity className="h-3 w-3" />}
+                        label="Activity Log"
+                        open={openSections.activity}
+                        onToggle={() => toggle('activity')}
+                    />
+                    {openSections.activity && (
+                        <div className="space-y-1.5">
+                            {ctx.recentActivity.map((a, i) => (
+                                <div key={i} className="flex gap-2 items-start">
+                                    <span className="mt-0.5 text-primary">·</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium capitalize">{a.action.replace(/_/g, ' ')}</p>
+                                        <p className="text-muted-foreground">{formatRelative(a.createdAt)}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

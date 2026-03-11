@@ -9,7 +9,7 @@ function requireAdmin(session: { user?: { role?: string; id?: string } } | null)
     return !session?.user || session.user.role !== 'ADMIN'
 }
 
-// GET /api/admin/support/tickets/[id] — full thread including internal notes
+// GET /api/admin/support/tickets/[id] — full thread + enriched user context
 export async function GET(
     _req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -28,13 +28,56 @@ export async function GET(
                     name: true,
                     email: true,
                     image: true,
+                    role: true,
                     createdAt: true,
                     isActive: true,
+                    lastLoginAt: true,
                     subscription: {
                         select: {
                             status: true,
+                            billingInterval: true,
                             currentPeriodEnd: true,
-                            plan: { select: { name: true } },
+                            trialEndsAt: true,
+                            cancelAtPeriodEnd: true,
+                            plan: {
+                                select: {
+                                    name: true,
+                                    maxPostsPerMonth: true,
+                                    maxAiImagesPerMonth: true,
+                                    maxAiTextPerMonth: true,
+                                    maxChannels: true,
+                                    hasPrioritySupport: true,
+                                },
+                            },
+                            usages: {
+                                orderBy: { month: 'desc' },
+                                take: 1,
+                                select: {
+                                    month: true,
+                                    postsCreated: true,
+                                    imagesGenerated: true,
+                                    aiTextGenerated: true,
+                                },
+                            },
+                        },
+                    },
+                    channelMembers: {
+                        include: {
+                            channel: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    displayName: true,
+                                    avatarUrl: true,
+                                    isActive: true,
+                                    platforms: {
+                                        select: { platform: true, accountName: true, isActive: true },
+                                    },
+                                    _count: {
+                                        select: { members: true, posts: true },
+                                    },
+                                },
+                            },
                         },
                     },
                 },
@@ -48,7 +91,99 @@ export async function GET(
     })
 
     if (!ticket) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(ticket)
+
+    const userId = ticket.user?.id
+    if (!userId) return NextResponse.json(ticket)
+
+    // ── Parallel enrichment queries ──────────────────────────────────────────
+    const now = new Date()
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+    const [
+        totalPostsPublished,
+        totalPostsFailed,
+        lastPost,
+        postsByChannel,
+        recentFailedPosts,
+        ticketHistory,
+        recentActivity,
+    ] = await Promise.all([
+        // Total published posts
+        db.post.count({ where: { authorId: userId, status: 'PUBLISHED' } }),
+
+        // Total failed posts
+        db.post.count({ where: { authorId: userId, status: 'FAILED' } }),
+
+        // Last published post
+        db.post.findFirst({
+            where: { authorId: userId, status: 'PUBLISHED' },
+            orderBy: { publishedAt: 'desc' },
+            select: { publishedAt: true, channelId: true, channel: { select: { displayName: true } } },
+        }),
+
+        // Posts per channel (published)
+        db.post.groupBy({
+            by: ['channelId'],
+            where: { authorId: userId, status: 'PUBLISHED' },
+            _count: { _all: true },
+        }),
+
+        // Recent failed posts with error details (last 10)
+        db.post.findMany({
+            where: { authorId: userId, status: 'FAILED' },
+            orderBy: { updatedAt: 'desc' },
+            take: 10,
+            select: {
+                id: true,
+                updatedAt: true,
+                channel: { select: { displayName: true } },
+                platformStatuses: {
+                    where: { status: 'failed' },
+                    select: { platform: true, errorMsg: true },
+                },
+            },
+        }),
+
+        // Ticket history (all other tickets by this user)
+        db.supportTicket.count({ where: { userId, id: { not: id } } }),
+
+        // Recent activity logs (last 15)
+        db.activityLog.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: 15,
+            select: { action: true, details: true, createdAt: true, channelId: true },
+        }),
+    ])
+
+    // Build channel name lookup map
+    const channelMap: Record<string, string> = {}
+    for (const m of ticket.user.channelMembers) {
+        channelMap[m.channel.id] = m.channel.displayName
+    }
+
+    // Attach postsByChannel label
+    const postsByChannelLabeled = postsByChannel.map((g: { channelId: string; _count: { _all: number } }) => ({
+        channelId: g.channelId,
+        channelName: channelMap[g.channelId] ?? g.channelId,
+        count: g._count._all,
+    }))
+
+    return NextResponse.json({
+        ...ticket,
+        userContext: {
+            totalPostsPublished,
+            totalPostsFailed,
+            lastPublishedAt: lastPost?.publishedAt ?? null,
+            lastPublishedChannel: lastPost?.channel?.displayName ?? null,
+            postsByChannel: postsByChannelLabeled,
+            recentFailedPosts,
+            ticketHistory,
+            thisMonthUsage: ticket.user.subscription?.usages?.[0] ?? null,
+            currentMonth: thisMonth,
+            recentActivity,
+        },
+    })
 }
 
 // PATCH /api/admin/support/tickets/[id]
