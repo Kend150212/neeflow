@@ -1,0 +1,12 @@
+{
+    "kb": {
+        "labels": {
+            "gettingStarted": "Primeros Pasos",
+            "aiAutomation": "IA & Automatización",
+            "scheduling": "Programación & Publicación",
+            "integrations": "Integraciones",
+            "billing": "Facturación",
+            "troubleshooting": "Solución de Problemas"
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "kb": {
+        "labels": {
+            "gettingStarted": "Getting Started",
+            "aiAutomation": "AI & Automation",
+            "scheduling": "Scheduling & Posting",
+            "integrations": "Integrations",
+            "billing": "Billing",
+            "troubleshooting": "Troubleshooting"
+        }
+    }
+}

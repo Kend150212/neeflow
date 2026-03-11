@@ -1,0 +1,12 @@
+{
+    "kb": {
+        "labels": {
+            "gettingStarted": "Bắt Đầu",
+            "aiAutomation": "AI & Tự Động Hóa",
+            "scheduling": "Lên Lịch & Đăng Bài",
+            "integrations": "Tích Hợp",
+            "billing": "Thanh Toán",
+            "troubleshooting": "Xử Lý Sự Cố"
+        }
+    }
+}

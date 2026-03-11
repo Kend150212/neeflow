@@ -4,10 +4,35 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import en from './en.json'
 import vi from './vi.json'
 import es from './es.json'
+// Chunk files — KB content strings, add more chunks here as needed
+import enKb from './en.kb.json'
+import viKb from './vi.kb.json'
+import esKb from './es.kb.json'
 
 export type Locale = 'en' | 'vi' | 'es'
 
-const translations: Record<Locale, typeof en> = { en, vi, es: es as unknown as typeof en }
+// Deep merge utility
+function deepMerge<T extends Record<string, unknown>>(target: T, ...sources: Record<string, unknown>[]): T {
+    for (const source of sources) {
+        for (const key in source) {
+            const sv = source[key]
+            const tv = (target as Record<string, unknown>)[key]
+            if (sv && typeof sv === 'object' && !Array.isArray(sv) && tv && typeof tv === 'object') {
+                deepMerge(tv as Record<string, unknown>, sv as Record<string, unknown>)
+            } else {
+                (target as Record<string, unknown>)[key] = sv
+            }
+        }
+    }
+    return target
+}
+
+// Build merged translation objects per locale
+const translations: Record<Locale, typeof en> = {
+    en: deepMerge({ ...en } as typeof en, enKb as Record<string, unknown>),
+    vi: deepMerge({ ...vi } as typeof en, viKb as Record<string, unknown>),
+    es: deepMerge({ ...es } as typeof en, esKb as Record<string, unknown>),
+}
 
 interface I18nContextType {
     locale: Locale
@@ -62,6 +87,6 @@ export function useI18n() {
 }
 
 export function useTranslation() {
-    const { t } = useContext(I18nContext)
-    return t
+    const { t } = useI18n()
+    return t as (key: Parameters<typeof t>[0]) => string
 }
