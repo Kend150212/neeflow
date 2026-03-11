@@ -27,11 +27,15 @@ import {
     CreditCard,
     Key,
     Kanban,
+    LifeBuoy,
+    Headphones,
+    BookOpen,
     LogOut,
     PenSquare,
     Plus,
     Sparkles,
     UserCircle,
+    ShieldCheck,
 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { usePathname } from 'next/navigation'
@@ -235,6 +239,22 @@ export function DashboardHeader({ session }: { session: Session }) {
                 </Link>
             </div>
 
+            {/* ── Center: Help Center quick link ── */}
+            <div className="flex items-center gap-1 min-w-0 flex-1 justify-center hidden md:flex">
+                <Link
+                    href="/dashboard/support"
+                    className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                        pathname?.startsWith('/dashboard/support')
+                            ? 'bg-primary/15 text-primary'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                >
+                    <LifeBuoy className="h-4 w-4 shrink-0" />
+                    <span className="hidden lg:block">{t('nav.helpCenter') || 'Help Center'}</span>
+                </Link>
+            </div>
+
             {/* ── Right: Utilities ── */}
             <div className="flex items-center gap-1 shrink-0">
                 {/* Plan usage bars */}
@@ -302,6 +322,31 @@ export function DashboardHeader({ session }: { session: Session }) {
                                 Developer API
                             </Link>
                         </DropdownMenuItem>
+
+                        {/* Admin-only: Support management */}
+                        {session?.user?.role === 'ADMIN' && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <div className="px-2 py-1">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                                        <ShieldCheck className="h-3 w-3" /> Admin
+                                    </p>
+                                </div>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/admin/support" className="flex items-center cursor-pointer">
+                                        <Headphones className="mr-2 h-4 w-4 text-primary" />
+                                        Support Hub
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/admin/support/knowledge-base" className="flex items-center cursor-pointer">
+                                        <BookOpen className="mr-2 h-4 w-4 text-primary" />
+                                        Knowledge Base
+                                    </Link>
+                                </DropdownMenuItem>
+                            </>
+                        )}
+
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={() => signOut({ callbackUrl: '/login' })}
