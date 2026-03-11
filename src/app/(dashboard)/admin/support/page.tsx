@@ -351,33 +351,57 @@ export default function AdminSupportHubPage() {
                 ) : (
                     <>
                         {/* Thread header */}
-                        <div className="border-b px-5 py-3 shrink-0 bg-background flex items-start gap-4">
-                            <div className="flex-1 min-w-0">
-                                <h2 className="font-semibold text-sm truncate">{selected.subject}</h2>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', STATUS_STYLES[selected.status]?.className)}>
-                                        {STATUS_STYLES[selected.status]?.icon}
-                                        {selected.status}
-                                    </span>
-                                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', PRIORITY_COLORS[selected.priority])}>
-                                        {selected.priority}
-                                    </span>
-                                    <Badge variant="outline" className="text-xs">#{selected.id.slice(-6).toUpperCase()}</Badge>
+                        <div className="border-b px-5 py-3 shrink-0 bg-background">
+                            {/* Row 1: subject + action buttons */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <h2 className="font-semibold text-sm truncate">{selected.subject}</h2>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <Select value={selected.status} onValueChange={handleStatusChange}>
+                                        <SelectTrigger className="h-7 text-xs w-28"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {['open', 'pending', 'resolved', 'closed'].map(s => (
+                                                <SelectItem key={s} value={s} className="capitalize text-xs">{s}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button size="sm" variant="outline" onClick={assignToMe} className="h-7 text-xs gap-1.5">
+                                        <UserCheck className="h-3 w-3" />
+                                        Assign me
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <Select value={selected.status} onValueChange={handleStatusChange}>
-                                    <SelectTrigger className="h-8 w-32 text-sm"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {['open', 'pending', 'resolved', 'closed'].map(s => (
-                                            <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Button size="sm" variant="outline" onClick={assignToMe} className="h-8">
-                                    <UserCheck className="h-3.5 w-3.5 mr-1.5" />
-                                    Assign me
-                                </Button>
+                            {/* Row 2: status + priority + ticket id + ASSIGNED AGENT */}
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className={cn('inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full', STATUS_STYLES[selected.status]?.className)}>
+                                    {STATUS_STYLES[selected.status]?.icon}
+                                    {selected.status}
+                                </span>
+                                <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', PRIORITY_COLORS[selected.priority])}>
+                                    {selected.priority}
+                                </span>
+                                <Badge variant="outline" className="text-xs">#{selected.id.slice(-6).toUpperCase()}</Badge>
+                                {/* Divider */}
+                                <span className="text-muted-foreground/40 text-xs">·</span>
+                                {/* Assigned agent */}
+                                {selected.agent ? (
+                                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <Avatar className="h-4 w-4">
+                                            <AvatarImage src={selected.agent.image || ''} />
+                                            <AvatarFallback className="text-[8px]">
+                                                {(selected.agent.name || '?').slice(0, 2).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-medium text-foreground">{selected.agent.name}</span>
+                                        <span className="text-muted-foreground">assigned</span>
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/60 italic">
+                                        <UserCheck className="h-3 w-3" />
+                                        Unassigned
+                                    </span>
+                                )}
                             </div>
                         </div>
 
