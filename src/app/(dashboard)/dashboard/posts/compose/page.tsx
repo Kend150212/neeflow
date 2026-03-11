@@ -1322,6 +1322,7 @@ export default function ComposePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [aiScheduleSuggestions, setAiScheduleSuggestions] = useState<any[]>([])
     const [aiScheduleLoading, setAiScheduleLoading] = useState(false)
+    const [aiHourlyLoading, setAiHourlyLoading] = useState(false)
     // AI Heatmap scheduler state
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [aiHeatmap, setAiHeatmap] = useState<{
@@ -5970,12 +5971,7 @@ export default function ComposePage() {
                                         return 'bg-muted/40 text-muted-foreground/50'
                                     }
 
-                                    const activeDayHourly = heatmapSelectedDay === bestDay
-                                        ? bestDayHourlyScores
-                                        : {} // For non-best days we show bestDay hourly as fallback
-                                    const displayHourly = Object.keys(activeDayHourly).length > 0
-                                        ? activeDayHourly
-                                        : bestDayHourlyScores
+                                    const activeDayHourly = aiHeatmap.bestDayHourlyScores || bestDayHourlyScores
 
                                     const selectedDayLabel = heatmapSelectedDay
                                         ? new Date(heatmapSelectedDay + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -6039,9 +6035,44 @@ export default function ComposePage() {
                                                             <button
                                                                 title={holiday ? `🎉 ${holiday} — Score: ${score}` : `Score: ${score}`}
                                                                 disabled={isPast}
-                                                                onClick={() => {
+                                                                onClick={async () => {
                                                                     setHeatmapSelectedDay(dateStr)
                                                                     setScheduleDate(dateStr)
+                                                                    // Re-fetch hourly breakdown for selected day
+                                                                    if (isPast || !selectedChannel) return
+                                                                    const platforms2 = activePlatforms
+                                                                        .filter(p => selectedPlatformIds.has(p.id))
+                                                                        .map(p => p.platform)
+                                                                    setAiHourlyLoading(true)
+                                                                    try {
+                                                                        const res2 = await fetch('/api/admin/posts/suggest-schedule', {
+                                                                            method: 'POST',
+                                                                            headers: { 'Content-Type': 'application/json' },
+                                                                            body: JSON.stringify({
+                                                                                channelId: selectedChannel.id,
+                                                                                platforms: platforms2,
+                                                                                content: content.slice(0, 200),
+                                                                                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                                                                viewMonth: heatmapViewMonth,
+                                                                                viewYear: heatmapViewYear,
+                                                                                selectedDay: dateStr,
+                                                                            }),
+                                                                        })
+                                                                        const d2 = await res2.json()
+                                                                        if (res2.ok) {
+                                                                            // Merge: keep dayScores from original, update hourly + bestTime
+                                                                            setAiHeatmap((prev: typeof aiHeatmap) => prev ? {
+                                                                                ...prev,
+                                                                                bestDayHourlyScores: d2.bestDayHourlyScores,
+                                                                                bestTime: d2.bestTime,
+                                                                                hourlyForDay: d2.hourlyForDay,
+                                                                                engagement: d2.engagement,
+                                                                                reason: d2.reason,
+                                                                            } : prev)
+                                                                        }
+                                                                    } catch { /* silent */ } finally {
+                                                                        setAiHourlyLoading(false)
+                                                                    }
                                                                 }}
                                                                 className={`w-full aspect-square rounded-[3px] flex items-center justify-center text-[10px] transition-all duration-150 cursor-pointer relative ${isPast ? 'opacity-20 cursor-not-allowed' : 'hover:scale-110 hover:z-10'} ${scoreToClass(score, isSelected, isBest)}`}
                                                             >
@@ -6082,13 +6113,14 @@ export default function ComposePage() {
                                             {/* Hourly heatmap for selected day */}
                                             {heatmapSelectedDay && (
                                                 <div className="space-y-1.5">
-                                                    <div className="text-[10px] font-semibold text-foreground/70">
-                                                        Hourly engagement — {selectedDayLabel} {heatmapSelectedDay !== bestDay && <span className="text-muted-foreground text-[9px]">(showing best day pattern)</span>}
+                                                    <div className="text-[10px] font-semibold text-foreground/70 flex items-center gap-1.5">
+                                                        Hourly engagement — {selectedDayLabel}
+                                                        {aiHourlyLoading && <span className="text-[9px] text-muted-foreground animate-pulse">↻ updating...</span>}
                                                     </div>
                                                     <div className="grid grid-cols-6 gap-1">
                                                         {Array.from({ length: 24 }).map((_, hr) => {
                                                             const hrStr = String(hr).padStart(2, '0')
-                                                            const hrScore = displayHourly[hrStr] ?? 0
+                                                            const hrScore = activeDayHourly[hrStr] ?? 0
                                                             const isSelectedHour = scheduleTime === `${hrStr}:00`
                                                             const hrOpacity = hrScore >= 80 ? 'bg-emerald-500/85 text-white font-bold'
                                                                 : hrScore >= 60 ? 'bg-emerald-500/60 text-white font-semibold'

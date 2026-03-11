@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { channelId, platforms, content, timezone, viewMonth, viewYear } = body
+    const { channelId, platforms, content, timezone, viewMonth, viewYear, selectedDay } = body
 
     if (!channelId || !platforms?.length) {
         return NextResponse.json({ error: 'Channel and platforms are required' }, { status: 400 })
@@ -53,80 +53,135 @@ export async function POST(req: NextRequest) {
         allDays.push(`${targetYear}-${mm}-${dd}`)
     }
 
-    // Gather past post performance for smarter suggestions
+    // Gather past post performance — convert to user timezone for accurate hour analysis
     const pastPosts = await prisma.post.findMany({
         where: { channelId, status: 'PUBLISHED', publishedAt: { not: null } },
         select: { publishedAt: true },
         orderBy: { publishedAt: 'desc' },
         take: 50,
     })
-    const historyContext = pastPosts.length > 0
-        ? `Past posting times (recent): ${pastPosts.slice(0, 20).map(p => {
-            const d = new Date(p.publishedAt!)
-            return `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-        }).join(', ')}`
-        : ''
 
-    const todayLabel = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
+    // Convert publishedAt to user timezone to get accurate local hour/weekday
+    const historyLines: string[] = []
+    for (const p of pastPosts.slice(0, 30)) {
+        if (!p.publishedAt) continue
+        const localDate = new Date(p.publishedAt.toLocaleString('en-US', { timeZone: userTz }))
+        const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][localDate.getDay()]
+        const hour = String(localDate.getHours()).padStart(2, '0')
+        historyLines.push(`${weekday} ${hour}:00`)
+    }
+    const historyContext = historyLines.length > 0
+        ? `Past posting times (in user's timezone ${userTz}): ${historyLines.join(', ')}`
+        : 'No posting history yet.'
 
-    const systemPrompt = `You are a social media strategy expert with deep knowledge of platform algorithms and audience behavior. Today is ${todayLabel}. Respond ONLY with valid JSON — no markdown, no backticks.`
+    // Per-platform day-of-week best score matrix (0=Sun,1=Mon,...,6=Sat)
+    // Based on aggregated industry research — gives AI a concrete base to vary from
+    const platformDayMatrix: Record<string, number[]> = {
+        facebook: [55, 70, 88, 92, 85, 72, 60],  // Sun Mon Tue Wed Thu Fri Sat
+        instagram: [58, 85, 90, 88, 82, 78, 65],
+        tiktok: [75, 65, 78, 80, 72, 90, 92],
+        x: [50, 80, 88, 85, 82, 75, 55],
+        linkedin: [35, 78, 92, 90, 85, 70, 30],
+        youtube: [65, 60, 70, 72, 85, 90, 75],
+        pinterest: [75, 65, 68, 70, 72, 85, 90],
+    }
 
-    const userPrompt = `Analyze optimal posting times for this channel and return a full monthly engagement heatmap.
+    // Build combined avg day-of-week scores for the selected platforms
+    const selectedPlatforms = (platforms as string[]).map((p: string) => p.toLowerCase())
+    const dayOfWeekScores: number[] = Array(7).fill(0)
+    let platformCount = 0
+    for (const p of selectedPlatforms) {
+        if (platformDayMatrix[p]) {
+            platformDayMatrix[p].forEach((score, i) => {
+                dayOfWeekScores[i] += score
+            })
+            platformCount++
+        }
+    }
+    const avgDayOfWeekScores = platformCount > 0
+        ? dayOfWeekScores.map(s => Math.round(s / platformCount))
+        : [60, 75, 85, 88, 82, 76, 65]
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const dayOfWeekContext = avgDayOfWeekScores
+        .map((score, i) => `${dayNames[i]}: ${score}`)
+        .join(', ')
+
+    // Determine which day to get hourly breakdown for
+    // If user selected a specific day, use that; otherwise find best future day
+    const hourlyTargetDay = selectedDay || null
+
+    const todayLabel = now.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: userTz
+    })
+
+    const systemPrompt = `You are a social media strategy expert with deep knowledge of platform algorithms and audience engagement behavior. Today is ${todayLabel} in the user's timezone (${userTz}). Respond ONLY with valid JSON — no markdown, no backticks, no extra text.`
+
+    const userPrompt = `Analyze optimal posting times for this social media channel and return a full monthly engagement heatmap.
 
 Channel: ${channel.displayName}
 Language/Audience: ${langLabel}
-Platforms: ${(platforms as string[]).join(', ')}
-Content preview: ${content ? content.slice(0, 200) : '(no content yet)'}
-Today: ${todayStr}
-User timezone: ${userTz}
+Platforms: ${selectedPlatforms.join(', ')}
+Content preview: "${content ? content.slice(0, 200) : '(no content yet)'}"
+Today: ${todayStr} (user timezone: ${userTz})
+
 ${historyContext}
 
-Platform peak times reference:
-- Facebook: Tue-Thu 9 AM-12 PM, Wed 11 AM-1 PM
-- Instagram: Mon-Fri 11 AM-1 PM, Stories 7-9 AM
-- TikTok: Tue-Thu 2-5 PM, Fri-Sat 7-11 PM
-- X/Twitter: Mon-Fri 8 AM-4 PM
-- LinkedIn: Tue-Thu 7-8 AM, 12 PM, 5-6 PM
-- YouTube: Thu-Fri 2-4 PM
-- Pinterest: Fri-Sun 8-11 PM
+Day-of-week engagement index for this platform combination (0=low, 100=peak):
+${dayOfWeekContext}
 
-Generate scores for each day in the month ${targetYear}-${String(targetMonth).padStart(2, '0')} and an hourly breakdown for the single best day.
+Platform hourly peak windows (in user's LOCAL time):
+- Facebook: 9-12 AM (Tue-Thu strongest), 1-3 PM (secondary)
+- Instagram: 11 AM-1 PM, 7-9 AM for Stories
+- TikTok: 2-5 PM (weekdays), 7-11 PM (Fri-Sat)
+- X/Twitter: 8 AM-4 PM (Mon-Fri, avoid weekends)
+- LinkedIn: 7-8 AM, 12 PM, 5-6 PM (Tue-Thu only — very low on weekends)
+- YouTube: 2-4 PM (Thu-Fri strongest)
+- Pinterest: 8-11 PM (Fri-Sun strongest)
+
+SCORING RULES:
+- Score each day in the month reflecting: day-of-week index above + whether it's a holiday + content type
+- Score 80-100 = excellent (platform peak days, holidays with boost potential)
+- Score 50-79 = good (solid weekday afternoons)
+- Score 20-49 = average (off-peak days)
+- Score 0-19 = poor (early morning, late night, past days)
+- Days before today (${todayStr}) MUST score 0
+- bestDay MUST be the highest-scoring FUTURE day (not today unless tomorrow is worse)
+- bestTime MUST reflect the best HOUR for the dominant platform on that specific day
+- DO NOT always return the same bestDay — vary based on the day-of-week scores above
+- If multiple days have similar scores (within 5 points), prefer the EARLIEST upcoming one
+${hourlyTargetDay ? `- hourlyTargetDay is set to "${hourlyTargetDay}" — generate bestDayHourlyScores FOR THIS SPECIFIC DAY (its weekday: ${dayNames[new Date(hourlyTargetDay + 'T12:00:00').getDay()]})` : '- Generate bestDayHourlyScores for the bestDay you choose'}
+- Tailor hourly scores to the specific day's platform + time-of-week context
+
+Generate appropriate holidays for a ${langLabel}-speaking audience this month.
 
 Return ONLY this JSON:
 {
   "dayScores": {
-    "YYYY-MM-DD": 0-100,
-    ... (one entry per day in the month)
+    "YYYY-MM-DD": 0-100
   },
   "holidays": [
     { "date": "YYYY-MM-DD", "name": "Holiday Name" }
   ],
   "bestDay": "YYYY-MM-DD",
   "bestTime": "HH:MM",
+  "hourlyForDay": "${hourlyTargetDay || 'bestDay'}",
   "bestDayHourlyScores": {
     "00": 0-100, "01": 0-100, "02": 0-100, "03": 0-100, "04": 0-100, "05": 0-100,
     "06": 0-100, "07": 0-100, "08": 0-100, "09": 0-100, "10": 0-100, "11": 0-100,
     "12": 0-100, "13": 0-100, "14": 0-100, "15": 0-100, "16": 0-100, "17": 0-100,
     "18": 0-100, "19": 0-100, "20": 0-100, "21": 0-100, "22": 0-100, "23": 0-100
   },
-  "engagement": "+42% Expected Engagement",
-  "reason": "Brief explanation of why this slot is best (1 sentence)"
-}
+  "engagement": "+XX% Expected Engagement",
+  "reason": "Brief 1-sentence explanation referencing the specific day and platform peak"
+}`
 
-Rules:
-- Score 80-100 = excellent (holidays with shopping/engagement, platform peak days)
-- Score 50-79 = good (weekday afternoons)
-- Score 20-49 = average
-- Score 0-19 = poor (early morning, late night)
-- Holidays: list major ${langLabel}-audience holidays in this month (US holidays if English audience, include holiday shopping boosts)
-- Days before today (${todayStr}) should score 0
-- bestDay must be the highest-scoring future day in the month
-- All dates must be in format YYYY-MM-DD
-- bestTime must be the peak hour on bestDay as HH:MM (24h format)
-- bestDayHourlyScores: score each hour 0-100 based on platform peaks`
+    // Add current year context note
+    const currentYear = new Date().getFullYear()
+    const finalPrompt = userPrompt + `\n\nCurrent year is ${currentYear}. All dates must be in format YYYY-MM-DD for the month ${targetYear}-${String(targetMonth).padStart(2, '0')}.`
 
     try {
-        const result = await callAI(providerName, apiKey, model, systemPrompt, userPrompt, baseUrl || null)
+        const result = await callAI(providerName, apiKey, model, systemPrompt, finalPrompt, baseUrl || null)
 
         let cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
         const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
@@ -152,6 +207,7 @@ Rules:
             bestDay: parsed.bestDay || allDays[0],
             bestTime: parsed.bestTime || '10:00',
             bestDayHourlyScores: parsed.bestDayHourlyScores || {},
+            hourlyForDay: parsed.hourlyForDay || parsed.bestDay || allDays[0],
             engagement: parsed.engagement || '+30% Expected Engagement',
             reason: parsed.reason || 'Peak engagement window for your platforms',
             provider: providerName,
