@@ -658,39 +658,43 @@ function EnrichedUserPanel({
                     onToggle={() => toggle('channels')}
                 />
                 {openSections.channels && (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                         {(!user.channelMembers || user.channelMembers.length === 0) ? (
                             <p className="text-muted-foreground">No channels</p>
-                        ) : user.channelMembers.map(m => (
-                            <div key={m.channel.id} className="rounded-lg border bg-muted/30 p-2.5 space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                    <p className="font-medium truncate flex-1">{m.channel.displayName}</p>
-                                    <span className={cn('text-[10px] ml-1', m.channel.isActive ? 'text-green-500' : 'text-muted-foreground')}>
-                                        {m.channel.isActive ? '●' : '○'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-1 flex-wrap">
-                                    {m.channel.platforms.map(p => (
-                                        <span key={p.platform} className="flex items-center gap-1 text-[10px] bg-background rounded px-1 py-0.5 border">
-                                            <PlatformDot platform={p.platform} />
-                                            <span className="capitalize">{p.platform}</span>
+                        ) : user.channelMembers.map(m => {
+                            // Count unique platforms by name (not accounts)
+                            const uniquePlatforms = [...new Set(m.channel.platforms.map(p => p.platform))]
+                            const totalAccounts = m.channel.platforms.length
+                            const isOwner = m.role === 'OWNER'
+                            return (
+                                <div key={m.channel.id}
+                                    className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors">
+                                    {/* Active dot */}
+                                    <span className={cn('shrink-0 w-1.5 h-1.5 rounded-full', m.channel.isActive ? 'bg-green-500' : 'bg-muted-foreground/40')} />
+                                    {/* Channel name */}
+                                    <span className="flex-1 font-medium truncate">{m.channel.displayName}</span>
+                                    {/* Platform count (unique) */}
+                                    {totalAccounts > 0 && (
+                                        <span className="text-muted-foreground shrink-0">
+                                            {totalAccounts} acct{totalAccounts !== 1 ? 's' : ''}
                                         </span>
-                                    ))}
-                                    {m.channel.platforms.length === 0 && (
-                                        <span className="text-muted-foreground">No platforms</span>
                                     )}
-                                </div>
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span>{m.channel._count.members} member{m.channel._count.members !== 1 ? 's' : ''}</span>
-                                    <span className="capitalize text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                                        {m.role.toLowerCase()}
+                                    {/* Role badge */}
+                                    <span className={cn(
+                                        'shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium',
+                                        isOwner
+                                            ? 'bg-primary/15 text-primary'
+                                            : 'bg-muted text-muted-foreground'
+                                    )}>
+                                        {m.role.charAt(0) + m.role.slice(1).toLowerCase()}
                                     </span>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 )}
             </div>
+
 
             {/* ── ACTIVITY STATS ── */}
             {ctx && (
