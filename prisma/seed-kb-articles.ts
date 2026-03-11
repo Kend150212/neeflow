@@ -1,8 +1,8 @@
 /**
  * Seed script: 15 Knowledge Base articles for NeeFlow
- * Run: npx ts-node --project tsconfig.json prisma/seed-kb-articles.ts
- *   OR: npx tsx prisma/seed-kb-articles.ts
+ * Run: npx tsx prisma/seed-kb-articles.ts
  */
+import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
