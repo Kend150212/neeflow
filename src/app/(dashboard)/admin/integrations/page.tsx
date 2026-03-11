@@ -1188,6 +1188,10 @@ export default function IntegrationsPage() {
                                 onToggleGuide={() => setShowGuide((s) => ({ ...s, [integration.id]: !s[integration.id] }))}
                             />
                         ))}
+                        {/* Support Email card — injected into EMAIL section */}
+                        {category === 'EMAIL' && (
+                            <SupportEmailCard />
+                        )}
                     </div>
 
                     <Separator className="mt-6" />
@@ -2198,6 +2202,61 @@ function IntegrationCard({
                 </div>
             </CardContent>
         </Card >
+    )
+}
+
+function SupportEmailCard() {
+    const t = useTranslation()
+    const router = useRouter()
+    const [isActive, setIsActive] = useState(false)
+    const [loaded, setLoaded] = useState(false)
+
+    useEffect(() => {
+        fetch('/api/admin/support/email-settings')
+            .then(r => r.json())
+            .then(d => { setIsActive(d?.isActive ?? false); setLoaded(true) })
+            .catch(() => setLoaded(true))
+    }, [])
+
+    return (
+        <Card className="relative transition-all hover:shadow-md border border-rose-500/20 bg-rose-500/[0.02]">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                            <Mail className="h-4 w-4 text-rose-500" />
+                        </div>
+                        <CardTitle className="text-base">{t('support.email.cardTitle')}</CardTitle>
+                    </div>
+                    {loaded && (
+                        <Badge
+                            variant="outline"
+                            className={isActive
+                                ? 'text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                : 'text-[10px] bg-muted text-muted-foreground'
+                            }
+                        >
+                            {isActive && <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />}
+                            {isActive ? 'ACTIVE' : t('common.notConfigured')}
+                        </Badge>
+                    )}
+                </div>
+                <CardDescription className="text-xs mt-1">{t('support.email.cardDesc')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                    {t('support.email.cardHint')}
+                </p>
+                <Button
+                    className="w-full gap-2"
+                    size="sm"
+                    onClick={() => router.push('/admin/support/email-settings')}
+                >
+                    <Mail className="h-3.5 w-3.5" />
+                    {t('support.email.configure')}
+                </Button>
+            </CardContent>
+        </Card>
     )
 }
 
