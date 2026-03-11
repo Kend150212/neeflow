@@ -227,7 +227,7 @@ ${businessContext ? '- Include phone/website/address naturally in a sign-off lin
 - Use line breaks between short paragraphs (2-3 lines each)
 - Generous emoji use throughout — 8-15 emojis woven in naturally
 - Include a CTA: "Save this 🔖" or "Share with someone who needs this 💫" or "Comment your [X] below 👇"
-- End with 15-25 hashtags (mix of popular 500K+ tags AND niche-specific tags AND branded tags)
+- End with 5-8 hashtags ONLY (mix niche-specific + 1-2 broad tags) — do NOT spam hashtags
 - Keep main caption under 200 words (before hashtags)
 - FEEL: Aesthetic, aspirational, shareable — like a lifestyle brand
 ${businessContext ? '- Include social media handles naturally: "Follow us @handle for daily [content type]" or "Link in bio for more 🔗"' : ''}`,
@@ -324,7 +324,7 @@ ${businessContext ? '- Include website link naturally: "Visit [website] for more
         { name: 'Step-by-Step How-To', instruction: 'Provide actionable steps (3–5) the reader can take right now. Use action verbs. Keep each step short and concrete. End with an outcome promise.' },
         { name: 'Behind the Scenes', instruction: 'Share insider perspective. What does the brand/creator do that others don’t see? Give a peek behind the curtain. Tone: honest, revealing, slightly raw.' },
         { name: 'Analogy / Metaphor', instruction: 'Explain the topic through a surprising analogy or metaphor from a completely different field (sports, cooking, movies, nature, etc.). The more unexpected the better.' },
-        { name: 'Trend Hook', instruction: 'Open by referencing a current cultural trend, viral moment, or collective mood. Connect it to the topic in a clever, non-forced way. Show cultural awareness.' },
+        { name: 'Trend Hook', instruction: 'Open by referencing a current cultural MOOD or universal feeling (e.g. "burnout is real", "everyone is using AI now"). Do NOT name specific celebrities, public figures, viral memes, or news events. Keep it timeless and relatable.' },
         { name: 'Before / After', instruction: 'Contrast a before state (problem / old way / frustration) with an after state (solution / result / transformation). Use specific, vivid language for both sides.' },
         { name: 'Curated POV', instruction: 'Write as a confident, opinionated expert sharing their perspective. Avoid hedging. Use "Here’s what I know:", "The truth is:", "Stop doing X, start doing Y:" framing.' },
     ]
@@ -386,7 +386,8 @@ ${isUrlTopic ? `- REWRITE the article content into original, engaging posts. Par
 - Sound AUTHENTIC — like a real person posting, NOT like an AI or a corporation
 - The visualIdea should describe a compelling image concept (art style, composition, mood, lighting, subject) related to the topic
 - DIVERSITY IS MANDATORY: Do NOT use the same opening word, phrase, or sentence structure across any two platform versions
-- FORBIDDEN phrases (never use these): "In today's world", "In the digital age", "Are you ready?", "Game changer", "Dive in", "Unlock your potential", "Exciting news", "We are thrilled"
+- FORBIDDEN phrases: "In today's world", "In the digital age", "Are you ready?", "Game changer", "Dive in", "Unlock your potential", "Exciting news", "We are thrilled"
+- FORBIDDEN content: Do NOT reference any real celebrities, public figures, influencers, or specific viral events (e.g. no deepfakes, no "like [celebrity name]..."). Keep all references generic and universally relatable.
 - Every platform version must feel like it was written by a different writer in a different mood
 ${sourceUrlText}`
 
