@@ -540,7 +540,6 @@ async function main() {
                 authorId: admin.id,
                 viewCount: 0,
                 helpfulCount: 0,
-                notHelpfulCount: 0,
             },
         })
         console.log(`✅ Created: ${article.title}`)
