@@ -4,6 +4,16 @@ import { prisma } from '@/lib/prisma'
 
 const db = prisma as any
 
+const CATEGORY_LABELS: Record<string, string> = {
+    getting_started: 'Getting Started',
+    ai: 'AI & Automation',
+    integrations: 'Integrations',
+    billing: 'Billing',
+    troubleshooting: 'Troubleshooting',
+    security: 'Security',
+    other: 'General',
+}
+
 // GET /api/support/articles?q=&category=&limit=20&page=1
 export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl
@@ -19,12 +29,12 @@ export async function GET(req: NextRequest) {
         where.OR = [
             { title: { contains: q, mode: 'insensitive' } },
             { excerpt: { contains: q, mode: 'insensitive' } },
-            { tags: { hasSome: [q] } },
         ]
     }
 
+    // category is a plain string field, not a relation
     if (category) {
-        where.category = { slug: category }
+        where.category = category
     }
 
     const [articles, total] = await Promise.all([
@@ -42,12 +52,23 @@ export async function GET(req: NextRequest) {
                 viewCount: true,
                 helpfulCount: true,
                 updatedAt: true,
-                category: { select: { id: true, name: true, slug: true, iconSvg: true } },
+                category: true,   // plain string
                 author: { select: { id: true, name: true, image: true } },
             },
         }),
         db.supportArticle.count({ where }),
     ])
 
-    return NextResponse.json({ articles, total, page, limit })
+    // Shape category string → object for UI compatibility
+    const shaped = articles.map((a: Record<string, unknown>) => ({
+        ...a,
+        category: {
+            id: a.category,
+            slug: a.category,
+            name: CATEGORY_LABELS[a.category as string] ?? a.category,
+            iconSvg: '',
+        },
+    }))
+
+    return NextResponse.json({ articles: shaped, total, page, limit })
 }

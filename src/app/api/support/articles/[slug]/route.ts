@@ -14,7 +14,6 @@ export async function GET(
     const article = await db.supportArticle.findFirst({
         where: { slug, status: 'published' },
         include: {
-            category: { select: { id: true, name: true, slug: true, iconSvg: true } },
             author: { select: { id: true, name: true, image: true } },
         },
     })
@@ -29,5 +28,25 @@ export async function GET(
         data: { viewCount: { increment: 1 } },
     }).catch(() => null)
 
-    return NextResponse.json(article)
+    // Shape category as an object so the UI can use category.name / category.slug
+    const categoryLabel: Record<string, string> = {
+        getting_started: 'Getting Started',
+        ai: 'AI & Automation',
+        integrations: 'Integrations',
+        billing: 'Billing',
+        troubleshooting: 'Troubleshooting',
+        security: 'Security',
+        other: 'General',
+    }
+    const shaped = {
+        ...article,
+        category: {
+            id: article.category,
+            slug: article.category,
+            name: categoryLabel[article.category] ?? article.category,
+            iconSvg: '',
+        },
+    }
+
+    return NextResponse.json(shaped)
 }
