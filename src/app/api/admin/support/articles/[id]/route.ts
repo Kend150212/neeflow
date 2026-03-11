@@ -5,6 +5,27 @@ import { prisma } from '@/lib/prisma'
 
 const db = prisma as any
 
+const CATEGORY_LABELS: Record<string, string> = {
+    getting_started: 'Getting Started',
+    ai: 'AI & Automation',
+    integrations: 'Integrations',
+    billing: 'Billing',
+    troubleshooting: 'Troubleshooting',
+    security: 'Security',
+    other: 'General',
+}
+
+function shapeArticle(article: Record<string, unknown>) {
+    return {
+        ...article,
+        category: {
+            id: article.category,
+            slug: article.category,
+            name: CATEGORY_LABELS[article.category as string] ?? article.category,
+        },
+    }
+}
+
 function requireAdmin(session: { user?: { role?: string } } | null) {
     return !session?.user || session.user.role !== 'ADMIN'
 }
@@ -22,13 +43,12 @@ export async function GET(
     const article = await db.supportArticle.findFirst({
         where: { OR: [{ id }, { slug: id }] },
         include: {
-            category: { select: { id: true, name: true, slug: true } },
             author: { select: { id: true, name: true, image: true } },
         },
     })
 
     if (!article) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(article)
+    return NextResponse.json(shapeArticle(article))
 }
 
 // PATCH /api/admin/support/articles/[id] — update article
@@ -45,25 +65,25 @@ export async function PATCH(
     const existing = await db.supportArticle.findFirst({ where: { id } })
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // If publishing for the first time, set publishedAt
-    const wasUnpublished = existing.status !== 'published'
-    const isNowPublishing = body.status === 'published'
+    // Remove fields that don't exist in schema
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { publishedAt, notHelpfulCount, category: _cat, ...rest } = body
 
-    const data: Record<string, unknown> = { ...body }
-    if (wasUnpublished && isNowPublishing) {
-        data.publishedAt = new Date()
+    // Keep category as plain string
+    const data: Record<string, unknown> = {
+        ...rest,
+        ...(body.category ? { category: body.category } : {}),
     }
 
     const article = await db.supportArticle.update({
         where: { id },
         data,
         include: {
-            category: { select: { id: true, name: true, slug: true } },
             author: { select: { id: true, name: true, image: true } },
         },
     })
 
-    return NextResponse.json(article)
+    return NextResponse.json(shapeArticle(article))
 }
 
 // DELETE /api/admin/support/articles/[id]
