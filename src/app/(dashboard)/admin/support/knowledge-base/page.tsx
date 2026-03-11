@@ -76,8 +76,8 @@ export default function AdminKbPage() {
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [q, setQ] = useState('')
-    const [filterStatus, setFilterStatus] = useState('')
-    const [filterCategory, setFilterCategory] = useState('')
+    const [filterStatus, setFilterStatus] = useState('all')
+    const [filterCategory, setFilterCategory] = useState('all')
     const [tab, setTab] = useState<'articles' | 'categories'>('articles')
 
     // Category dialog
@@ -90,8 +90,8 @@ export default function AdminKbPage() {
         setLoading(true)
         const params = new URLSearchParams({ limit: '50' })
         if (q) params.set('q', q)
-        if (filterStatus) params.set('status', filterStatus)
-        if (filterCategory) params.set('category', filterCategory)
+        if (filterStatus !== 'all') params.set('status', filterStatus)
+        if (filterCategory !== 'all') params.set('category', filterCategory)
 
         try {
             const [artRes, catRes] = await Promise.all([
@@ -245,7 +245,7 @@ export default function AdminKbPage() {
                                     <SelectValue placeholder="All status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">All status</SelectItem>
+                                    <SelectItem value="all">All status</SelectItem>
                                     <SelectItem value="published">Published</SelectItem>
                                     <SelectItem value="draft">Draft</SelectItem>
                                     <SelectItem value="archived">Archived</SelectItem>
@@ -256,7 +256,7 @@ export default function AdminKbPage() {
                                     <SelectValue placeholder="All categories" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">All categories</SelectItem>
+                                    <SelectItem value="all">All categories</SelectItem>
                                     {categories.map(c => (
                                         <SelectItem key={c.slug} value={c.slug}>{c.name}</SelectItem>
                                     ))}

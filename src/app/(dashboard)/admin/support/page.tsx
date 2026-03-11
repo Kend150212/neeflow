@@ -76,9 +76,9 @@ export default function AdminSupportHubPage() {
     const [selected, setSelected] = useState<Ticket | null>(null)
 
     // Filters
-    const [filterStatus, setFilterStatus] = useState('')
-    const [filterPriority, setFilterPriority] = useState('')
-    const [filterAssigned, setFilterAssigned] = useState('')
+    const [filterStatus, setFilterStatus] = useState('all')
+    const [filterPriority, setFilterPriority] = useState('all')
+    const [filterAssigned, setFilterAssigned] = useState('all')
     const [q, setQ] = useState('')
 
     // Reply
@@ -91,9 +91,9 @@ export default function AdminSupportHubPage() {
     const fetchTickets = useCallback(async () => {
         setLoading(true)
         const params = new URLSearchParams()
-        if (filterStatus) params.set('status', filterStatus)
-        if (filterPriority) params.set('priority', filterPriority)
-        if (filterAssigned) params.set('assignedTo', filterAssigned)
+        if (filterStatus !== 'all') params.set('status', filterStatus)
+        if (filterPriority !== 'all') params.set('priority', filterPriority)
+        if (filterAssigned !== 'all') params.set('assignedTo', filterAssigned)
         if (q) params.set('q', q)
 
         try {
@@ -190,7 +190,7 @@ export default function AdminSupportHubPage() {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All</SelectItem>
+                                <SelectItem value="all">All</SelectItem>
                                 {['open', 'pending', 'resolved', 'closed'].map(s => (
                                     <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
                                 ))}
@@ -201,7 +201,7 @@ export default function AdminSupportHubPage() {
                                 <SelectValue placeholder="Priority" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All</SelectItem>
+                                <SelectItem value="all">All</SelectItem>
                                 {['low', 'medium', 'high', 'urgent'].map(p => (
                                     <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
                                 ))}
@@ -212,7 +212,7 @@ export default function AdminSupportHubPage() {
                                 <SelectValue placeholder="Owner" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All</SelectItem>
+                                <SelectItem value="all">All</SelectItem>
                                 <SelectItem value="me">Mine</SelectItem>
                                 <SelectItem value="unassigned">Unassigned</SelectItem>
                             </SelectContent>
