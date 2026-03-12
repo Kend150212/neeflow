@@ -952,13 +952,24 @@ function OverviewTab({ data, platformInsights, postInsights, t }: {
     )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────
+// ─── Client-side insight cache (stale-while-revalidate, 5 min TTL) ────
+type CacheEntry<T> = { data: T; fetchedAt: number }
+const insightsCache = new Map<string, CacheEntry<{ platformInsights: PlatformInsight[]; postInsights: PostInsight[] }>>()
+const reportsCache = new Map<string, CacheEntry<ReportsData>>()
+const CACHE_TTL_MS = 5 * 60 * 1000  // 5 minutes
+
+function isFresh<T>(entry: CacheEntry<T> | undefined): boolean {
+    return !!entry && (Date.now() - entry.fetchedAt) < CACHE_TTL_MS
+}
+
+
 export default function InsightsPage() {
     const t = useTranslation()
     const { channels, activeChannelId } = useWorkspace()
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(activeChannelId)
     const [range, setRange] = useState('30')
     const [loading, setLoading] = useState(false)
+    const [revalidating, setRevalidating] = useState(false)
     const [insightsLoading, setInsightsLoading] = useState(false)
     const [data, setData] = useState<ReportsData | null>(null)
     const [insights, setInsights] = useState<{ platformInsights: PlatformInsight[]; postInsights: PostInsight[] } | null>(null)
@@ -972,30 +983,48 @@ export default function InsightsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeChannelId])
 
-    const fetchData = useCallback(async () => {
-        setLoading(true)
+    const fetchData = useCallback(async (force = false) => {
+        const key = `${selectedChannelId ?? 'all'}__${range}`
+        const cached = reportsCache.get(key)
+        if (!force && isFresh(cached)) { setData(cached!.data); return }
+        if (cached) { setData(cached.data); setRevalidating(true) } else setLoading(true)
         try {
             const params = new URLSearchParams({ range })
             if (selectedChannelId) params.set('channelId', selectedChannelId)
             const res = await fetch(`/api/admin/reports?${params}`)
-            setData(await res.json())
-        } catch { /* silent */ } finally { setLoading(false) }
+            const json = await res.json() as ReportsData
+            reportsCache.set(key, { data: json, fetchedAt: Date.now() })
+            setData(json)
+        } catch { /* silent */ } finally { setLoading(false); setRevalidating(false) }
     }, [selectedChannelId, range])
 
-    const fetchInsights = useCallback(async () => {
-        setInsightsLoading(true)
+    const fetchInsights = useCallback(async (force = false) => {
+        const key = `${selectedChannelId ?? 'all'}`
+        const cached = insightsCache.get(key)
+        if (!force && isFresh(cached)) { setInsights(cached!.data); return }
+        if (cached) { setInsights(cached.data); setRevalidating(true) } else setInsightsLoading(true)
         try {
             const params = new URLSearchParams()
             if (selectedChannelId) params.set('channelId', selectedChannelId)
             const res = await fetch(`/api/admin/reports/insights?${params}`)
-            setInsights(await res.json())
-        } catch { /* silent */ } finally { setInsightsLoading(false) }
+            const json = await res.json() as { platformInsights: PlatformInsight[]; postInsights: PostInsight[] }
+            insightsCache.set(key, { data: json, fetchedAt: Date.now() })
+            setInsights(json)
+        } catch { /* silent */ } finally { setInsightsLoading(false); setRevalidating(false) }
     }, [selectedChannelId])
 
     useEffect(() => { fetchData(); fetchInsights() }, [fetchData, fetchInsights])
 
     // Reset tab to overview when channel changes
     useEffect(() => { setActiveTab('overview') }, [selectedChannelId])
+
+    // Manual refresh — always bust cache
+    const handleRefresh = useCallback(() => {
+        reportsCache.delete(`${selectedChannelId ?? 'all'}__${range}`)
+        insightsCache.delete(`${selectedChannelId ?? 'all'}`)
+        fetchData(true)
+        fetchInsights(true)
+    }, [fetchData, fetchInsights, selectedChannelId, range])
 
     const exportCSV = () => {
         if (!data) return
@@ -1033,6 +1062,7 @@ export default function InsightsPage() {
         : postInsights
 
     const isRefreshing = loading || insightsLoading
+    const isBgRefreshing = revalidating && !isRefreshing
 
     return (
         <div className="flex flex-col gap-0 h-full overflow-hidden">
@@ -1043,7 +1073,10 @@ export default function InsightsPage() {
                         <BarChart2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold tracking-tight">{t('reports.title')}</h1>
+                        <h1 className="text-lg font-bold tracking-tight flex items-center gap-2">
+                            {t('reports.title')}
+                            {isBgRefreshing && <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title="Refreshing in background" />}
+                        </h1>
                         <p className="text-xs text-muted-foreground">{t('reports.description')}</p>
                     </div>
                 </div>
@@ -1063,8 +1096,8 @@ export default function InsightsPage() {
                             <SelectItem value="90">{t('reports.range90')}</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { fetchData(); fetchInsights() }} disabled={isRefreshing}>
-                        <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />{t('reports.refresh')}
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleRefresh} disabled={isRefreshing || revalidating}>
+                        <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing || revalidating ? 'animate-spin' : ''}`} />{t('reports.refresh')}
                     </Button>
                     <Button variant="outline" size="sm" className="h-8 text-xs" onClick={exportCSV} disabled={!data}>
                         <Download className="h-3.5 w-3.5 mr-1.5" />{t('reports.exportCSV')}
