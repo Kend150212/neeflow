@@ -233,6 +233,96 @@ async function fetchTikTokInsights(channelPlatform: {
     }
 }
 
+// ─── Pinterest API v5 ─────────────────────────────────────────────────
+async function fetchPinterestInsights(channelPlatform: {
+    accountId: string
+    accountName: string
+    accessToken: string | null
+}) {
+    if (!channelPlatform.accessToken) return null
+    const token = channelPlatform.accessToken
+    const base = 'https://api.pinterest.com'
+    const headers = { Authorization: `Bearer ${token}` }
+
+    // Date range: last 30 days (Pinterest requires YYYY-MM-DD, max 90 days)
+    const now = new Date()
+    const endDate = now.toISOString().split('T')[0]
+    const startDate = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+
+    try {
+        // 1. Account info (followers)
+        const userRes = await fetch(`${base}/v5/user_account`, { headers })
+        if (!userRes.ok) return null
+        const userData = await userRes.json()
+        if (userData.code) return null // API error code present
+
+        const followers = userData.follower_count ?? 0
+        const accountName = userData.username || userData.business_name || channelPlatform.accountName
+
+        // 2. Account-level analytics (impressions, engagement, saves)
+        const analyticsRes = await fetch(
+            `${base}/v5/user_account/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=IMPRESSION,OUTBOUND_CLICK,PIN_CLICK,SAVE`,
+            { headers }
+        )
+        let impressions = 0, engagement = 0, saves = 0
+        if (analyticsRes.ok) {
+            const analyticsData = await analyticsRes.json()
+            // Pinterest returns { all: { daily_metrics: [...], summary_metrics: { IMPRESSION: n, ... } } }
+            const summary = analyticsData.all?.summary_metrics || {}
+            impressions = summary.IMPRESSION || 0
+            engagement = (summary.PIN_CLICK || 0) + (summary.OUTBOUND_CLICK || 0)
+            saves = summary.SAVE || 0
+        }
+
+        // 3. Top 10 Pins analytics for "top posts" section
+        const topPinsRes = await fetch(
+            `${base}/v5/user_account/top_pins_analytics?start_date=${startDate}&end_date=${endDate}&metric_types=IMPRESSION&num_of_pins=10&sort_by=IMPRESSION`,
+            { headers }
+        )
+        let topPins: {
+            pinId: string
+            title: string
+            imageUrl: string | null
+            impressions: number
+            saves: number
+            clicks: number
+            pinUrl: string
+        }[] = []
+        if (topPinsRes.ok) {
+            const topPinsData = await topPinsRes.json()
+            topPins = (topPinsData.pins_results || []).map((p: Record<string, unknown>) => {
+                const metrics = (p.metrics as Record<string, number>) || {}
+                const pinData = (p.data_status as Record<string, unknown>) || {}
+                return {
+                    pinId: String(p.pin_id || ''),
+                    title: String(p.description || p.title || ''),
+                    imageUrl: (p.media as Record<string, string>)?.images?.['150x150']?.url || null,
+                    impressions: metrics.IMPRESSION || 0,
+                    saves: metrics.SAVE || 0,
+                    clicks: (metrics.PIN_CLICK || 0) + (metrics.OUTBOUND_CLICK || 0),
+                    pinUrl: `https://www.pinterest.com/pin/${p.pin_id || ''}`,
+                    ...(pinData && {}),
+                }
+            })
+        }
+
+        return {
+            platform: 'pinterest',
+            accountName,
+            followers,
+            engagement,
+            impressions,
+            reach: impressions, // Pinterest doesn't have separate "reach" — use impressions as proxy
+            saves,
+            topPins,
+        }
+    } catch (err) {
+        console.error('[Pinterest Insights]', err)
+        return null
+    }
+}
+
+
 // ─── Post-level insights ─────────────────────────────────────────────
 // Fetches live stats for recently published posts from each platform API
 async function fetchPostInsights(
@@ -364,6 +454,23 @@ async function fetchPostInsights(
                     shares = v.shares
                     reach = v.views
                     impressions = v.views
+                } else if (ps.platform === 'pinterest' && credMap['pinterest']?.accessToken && ps.externalId) {
+                    // Pinterest pin analytics — GET /v5/pins/{pin_id}/analytics
+                    const pinToken = credMap['pinterest'].accessToken
+                    const endDate = new Date().toISOString().split('T')[0]
+                    const startDate = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+                    const pinRes = await fetch(
+                        `https://api.pinterest.com/v5/pins/${ps.externalId}/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`,
+                        { headers: { Authorization: `Bearer ${pinToken}` } }
+                    )
+                    if (pinRes.ok) {
+                        const pinData = await pinRes.json()
+                        const summary = pinData.all?.summary_metrics || {}
+                        impressions = summary.IMPRESSION || 0
+                        likes = summary.PIN_CLICK || 0
+                        shares = summary.SAVE || 0
+                        reach = impressions
+                    }
                 }
             } catch { /* fall back to cfg values */ }
 
@@ -441,7 +548,8 @@ export async function GET(req: NextRequest) {
             if (cp.platform === 'instagram') return fetchInstagramInsights(cp)
             if (cp.platform === 'youtube') return fetchYouTubeInsights(cp)
             if (cp.platform === 'tiktok') return fetchTikTokInsights(cp)
-            // LinkedIn / Pinterest — API not yet active
+            if (cp.platform === 'pinterest') return fetchPinterestInsights(cp)
+            // LinkedIn — API not yet active
             return {
                 platform: cp.platform,
                 accountName: cp.accountName,

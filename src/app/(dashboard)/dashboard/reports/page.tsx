@@ -48,6 +48,7 @@ import {
     ExternalLink,
     Plug,
     ChevronRight,
+    Bookmark,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -70,6 +71,8 @@ interface PlatformInsight {
     engagement: number | null; impressions: number | null; reach: number | null
     mediaCount?: number | null; videoCount?: number | null
     recentViews?: number | null; recentLikes?: number | null; recentComments?: number | null
+    saves?: number | null
+    topPins?: { pinId: string; title: string; imageUrl: string | null; impressions: number; saves: number; clicks: number; pinUrl: string }[]
     pendingApproval?: boolean
 }
 interface PostInsight {
@@ -78,7 +81,7 @@ interface PostInsight {
 }
 
 // ─── Platforms with real live API data ───────────────────────────────
-const LIVE_API_PLATFORMS = new Set(['facebook', 'instagram', 'youtube', 'tiktok'])
+const LIVE_API_PLATFORMS = new Set(['facebook', 'instagram', 'youtube', 'tiktok', 'pinterest'])
 
 // ─── Constants ───────────────────────────────────────────────────────
 const PLATFORM_COLORS: Record<string, string> = {
@@ -175,7 +178,9 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                         { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
                         { label: insight.platform === 'youtube' ? 'Views' : 'Impressions', value: insight.impressions, icon: Eye, color: 'text-purple-500' },
                         { label: 'Reach', value: insight.reach, icon: TrendingUp, color: 'text-green-500' },
-                        { label: 'Engagement', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
+                        insight.platform === 'pinterest'
+                            ? { label: 'Saves', value: insight.saves ?? insight.engagement, icon: Bookmark, color: 'text-rose-500' }
+                            : { label: 'Engagement', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
                     ].map(({ label, value, icon: Icon, color }) => (
                         <div key={label} className="bg-muted/40 rounded-lg p-3 text-center">
                             <Icon className={`h-4 w-4 mx-auto mb-1 ${color}`} />
@@ -210,8 +215,36 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                     </div>
                 ) : null}
 
-                {/* Top posts for this platform */}
-                {topPosts.length > 0 && (
+                {/* Pinterest API top pins — shown when available */}
+                {insight.platform === 'pinterest' && insight.topPins && insight.topPins.length > 0 && (
+                    <div>
+                        <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Top Pins (Last 30 Days)</p>
+                        <div className="grid grid-cols-3 gap-2">
+                            {insight.topPins.slice(0, 6).map((pin, i) => (
+                                <a key={i} href={pin.pinUrl} target="_blank" rel="noopener noreferrer"
+                                    className="border rounded-lg overflow-hidden group hover:border-primary/40 transition-colors block">
+                                    {pin.imageUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={pin.imageUrl} alt={pin.title} className="w-full h-16 object-cover" />
+                                    ) : (
+                                        <div className="w-full h-16 bg-muted flex items-center justify-center">
+                                            <FileText className="h-5 w-5 text-muted-foreground/40" />
+                                        </div>
+                                    )}
+                                    <div className="px-2 py-1.5 space-y-0.5">
+                                        <div className="flex items-center justify-between text-[10px]">
+                                            <span className="text-muted-foreground flex items-center gap-0.5"><Eye className="h-2.5 w-2.5 text-purple-400" />{fmt(pin.impressions)}</span>
+                                            <span className="text-muted-foreground flex items-center gap-0.5"><Bookmark className="h-2.5 w-2.5 text-rose-400" />{fmt(pin.saves)}</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Top posts for this platform (non-Pinterest) */}
+                {insight.platform !== 'pinterest' && topPosts.length > 0 && (
                     <div>
                         <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Top Posts</p>
                         <div className="grid grid-cols-3 gap-2">
@@ -667,7 +700,7 @@ export default function InsightsPage() {
                         ) : null}
                         <AccountCard insight={tabInsight} posts={tabPosts} />
 
-                        {/* If not live platform — show connect prompt */}
+                        {/* If not live platform — show connect prompt (LinkedIn, etc.) */}
                         {!LIVE_API_PLATFORMS.has(tabInsight.platform) && (
                             <ConnectPrompt platform={tabInsight.platform} />
                         )}
