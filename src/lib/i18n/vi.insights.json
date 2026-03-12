@@ -1,0 +1,112 @@
+{
+    "insights": {
+        "title": "Thống kê",
+        "subtitle": "Phân tích hiệu suất theo từng tài khoản trên tất cả các nền tảng",
+        "refresh": "Làm mới",
+        "exportCsv": "Xuất CSV",
+        "tabs": {
+            "overview": "Tổng quan",
+            "views": "Lượt xem",
+            "interactions": "Tương tác",
+            "audience": "Đối tượng",
+            "posts": "Bài viết",
+            "earnings": "Thu nhập"
+        },
+        "kpi": {
+            "followers": "Người theo dõi",
+            "subscribers": "Người đăng ký",
+            "views": "Lượt xem",
+            "impressions": "Hiển thị",
+            "reach": "Phạm vi tiếp cận",
+            "reactions": "Cảm xúc",
+            "likes": "Thích",
+            "comments": "Bình luận",
+            "shares": "Chia sẻ",
+            "saves": "Lưu",
+            "engagement": "Tương tác",
+            "interactions": "Tương tác",
+            "netFollows": "Lượt theo dõi ròng",
+            "unfollows": "Hủy theo dõi",
+            "newFollowers": "Người theo dõi mới",
+            "totalViews": "Tổng lượt xem",
+            "totalInteractions": "Tổng tương tác",
+            "totalFollowers": "Tổng người theo dõi"
+        },
+        "chart": {
+            "daily": "Hàng ngày",
+            "weekly": "Hàng tuần",
+            "last28days": "28 ngày qua",
+            "trend": "Xu hướng 30 ngày",
+            "publishingActivity": "Hoạt động đăng bài",
+            "noData": "Không có dữ liệu cho khoảng thời gian này"
+        },
+        "contentType": {
+            "label": "Lượt xem theo loại nội dung",
+            "photo": "Ảnh",
+            "video": "Video",
+            "reel": "Reel",
+            "multiPhoto": "Nhiều ảnh",
+            "text": "Văn bản",
+            "story": "Story",
+            "share": "Chia sẻ",
+            "other": "Khác"
+        },
+        "audience": {
+            "overview": "Tổng quan đối tượng",
+            "totalFollowers": "Tổng người theo dõi",
+            "netFollows": "Lượt theo dõi ròng",
+            "unfollows": "Hủy theo dõi",
+            "followersTrend": "Xu hướng người theo dõi"
+        },
+        "interaction": {
+            "overview": "Tổng quan tương tác",
+            "byType": "Theo loại tương tác",
+            "byContentType": "Theo loại nội dung",
+            "byFollowerStatus": "Theo dõi vs chưa theo dõi",
+            "followers": "Người theo dõi",
+            "nonFollowers": "Chưa theo dõi",
+            "reactionsLabel": "Cảm xúc",
+            "commentsLabel": "Bình luận",
+            "sharesLabel": "Chia sẻ"
+        },
+        "posts": {
+            "allPosts": "Tất cả bài viết",
+            "recentPosts": "Bài viết gần đây",
+            "topPosts": "Bài viết nổi bật",
+            "topPostsByReach": "Bài viết có reach cao nhất",
+            "topPins": "Top Pins (30 ngày qua)",
+            "noPostsYet": "Chưa có bài viết nào",
+            "publishVia": "Đăng bài qua Neeflow để xem thống kê tại đây",
+            "pending": "Đang chờ duyệt API",
+            "processingInsights": "Đang xử lý thống kê…"
+        },
+        "platforms": {
+            "facebook": "Facebook",
+            "instagram": "Instagram",
+            "tiktok": "TikTok",
+            "youtube": "YouTube",
+            "linkedin": "LinkedIn",
+            "pinterest": "Pinterest",
+            "twitter": "Twitter / X"
+        },
+        "status": {
+            "apiPending": "Chờ API",
+            "limited": "Giới hạn",
+            "connected": "Đã kết nối",
+            "notConnected": "Chưa kết nối",
+            "apiNotConnected": "API chưa được kết nối cho nền tảng này"
+        },
+        "overview": {
+            "totalPosts": "Tổng bài viết",
+            "totalEngagement": "Tổng tương tác",
+            "totalReach": "Tổng phạm vi tiếp cận",
+            "totalImpressions": "Tổng hiển thị",
+            "totalFollowers": "Tổng người theo dõi",
+            "engagementByPlatform": "Tương tác theo nền tảng",
+            "reachByPlatform": "Phạm vi theo nền tảng",
+            "followersByPlatform": "Người theo dõi theo nền tảng",
+            "postsByPlatform": "Bài viết theo nền tảng",
+            "topPerformingPlatform": "Nền tảng hiệu quả nhất"
+        }
+    }
+}

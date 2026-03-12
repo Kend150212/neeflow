@@ -195,17 +195,94 @@ function KpiCard({ label, value, icon: Icon, color }: { label: string; value: nu
     )
 }
 
+// ─── Mini Donut Chart ──────────────────────────────────────────────────
+function DonutChart({ data, size = 80 }: { data: { label: string; value: number; color: string }[]; size?: number }) {
+    const total = data.reduce((s, d) => s + d.value, 0)
+    if (total === 0) return <div style={{ width: size, height: size }} className="rounded-full bg-muted/40 mx-auto" />
+    let offset = 0
+    const r = size / 2 - 8
+    const cx = size / 2
+    const circumference = 2 * Math.PI * r
+    return (
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto -rotate-90">
+            {data.map((d, i) => {
+                const pct = d.value / total
+                const dash = pct * circumference
+                const gap = circumference - dash
+                const seg = (
+                    <circle key={i} cx={cx} cy={cx} r={r} fill="none" stroke={d.color}
+                        strokeWidth={10} strokeDasharray={`${dash} ${gap}`}
+                        strokeDashoffset={-offset * circumference} />
+                )
+                offset += pct
+                return seg
+            })}
+        </svg>
+    )
+}
+
 // ─── Platform Account Card ─────────────────────────────────────────────
 function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: PostInsight[] }) {
+    const t = useTranslation()
     const color = platformColor(insight.platform)
     const topPosts = [...posts].sort((a, b) => (b.reach || 0) - (a.reach || 0)).slice(0, 3)
+    const hasRealData = LIVE_API_PLATFORMS.has(insight.platform)
+    const isMeta = insight.platform === 'facebook' || insight.platform === 'instagram'
+    const ins = insight as any
 
-    // Sparkline — stable 7-day approximation
+    // Tab state — only FB/IG get tabs
+    const TAB_VIEWS = 'views'
+    const TAB_INTERACTIONS = 'interactions'
+    const TAB_AUDIENCE = 'audience'
+    const TAB_POSTS = 'posts'
+    const metaTabs = [
+        { id: TAB_VIEWS, label: t('insights.tabs.views') },
+        { id: TAB_INTERACTIONS, label: t('insights.tabs.interactions') },
+        { id: TAB_AUDIENCE, label: t('insights.tabs.audience') },
+        { id: TAB_POSTS, label: t('insights.tabs.posts') },
+    ]
+    const [activeTab, setActiveTab] = useState(TAB_VIEWS)
+
+    // FB data
+    const fbPosts: Array<{ id: string; createdTime: string; thumbnail?: string; reactions: number; comments: number; shares: number }> =
+        ins.recentPosts || []
+    const igMedia: Array<{ id: string; timestamp: string; thumbnail?: string; likes: number; comments: number }> =
+        ins.recentMedia || []
+    const metaPosts = insight.platform === 'facebook' ? fbPosts.map(p => ({
+        id: p.id, thumbnail: p.thumbnail, publishedAt: p.createdTime,
+        r1: p.reactions, r1Label: t('insights.kpi.reactions'), r1Icon: Heart, r1Color: 'text-rose-400',
+        r2: p.comments, r2Label: t('insights.kpi.comments'), r2Icon: MessageCircle, r2Color: 'text-blue-400',
+        r3: p.shares, r3Label: t('insights.kpi.shares'), r3Icon: Share2, r3Color: 'text-green-400',
+    })) : igMedia.map(m => ({
+        id: m.id, thumbnail: m.thumbnail, publishedAt: m.timestamp,
+        r1: m.likes, r1Label: t('insights.kpi.likes'), r1Icon: Heart, r1Color: 'text-rose-400',
+        r2: m.comments, r2Label: t('insights.kpi.comments'), r2Icon: MessageCircle, r2Color: 'text-blue-400',
+        r3: 0, r3Label: '', r3Icon: Share2, r3Color: '',
+    }))
+
+    const viewsTimeSeries: { date: string; value: number }[] = ins.viewsTimeSeries || []
+    const interactionsTimeSeries: { date: string; value: number }[] = ins.interactionsTimeSeries || []
+    const contentTypeBreakdown: { type: string; count: number; pct: number }[] = ins.contentTypeBreakdown || []
+    const totalInteractions = (ins.reactions ?? 0) + (ins.comments ?? 0) + (ins.shares ?? 0)
+        + (ins.likes ?? 0)
+
+    // Fallback sparkline for non-FB/IG
     const base = Math.round((insight.reach || insight.impressions || 0) / 7)
     const sparkData = Array.from({ length: 7 }, (_, i) => ({
         v: Math.max(0, Math.round(base * (0.5 + 0.5 * Math.sin(i * 1.2 + 1))))
     }))
-    const hasRealData = LIVE_API_PLATFORMS.has(insight.platform)
+
+    const gradId = `grad-${insight.platform}-${insight.accountName.replace(/\s/g, '')}`
+
+    // Content type label helper
+    const ctLabel = (type: string) => ({
+        photo: t('insights.contentType.photo'),
+        video: t('insights.contentType.video'),
+        reel: t('insights.contentType.reel'),
+        multi_photo: t('insights.contentType.multiPhoto'),
+        text: t('insights.contentType.text'),
+        other: t('insights.contentType.other'),
+    })[type] || type
 
     return (
         <div className="border rounded-xl overflow-hidden hover:border-primary/40 transition-all duration-200">
@@ -223,190 +300,337 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                 <div className="flex items-center gap-2">
                     {insight.pendingApproval && (
                         <Badge variant="outline" className="text-[9px] h-5 px-1.5 text-amber-600 border-amber-400">
-                            <AlertCircle className="h-2.5 w-2.5 mr-0.5" />API Pending
+                            <AlertCircle className="h-2.5 w-2.5 mr-0.5" />{t('insights.status.apiPending')}
                         </Badge>
                     )}
                     {!hasRealData && (
                         <Badge variant="outline" className="text-[9px] h-5 px-1.5 text-muted-foreground">
-                            Limited
+                            {t('insights.status.limited')}
                         </Badge>
                     )}
                 </div>
             </div>
 
-            <div className="p-4 space-y-4">
-                {/* KPI metrics row — platform-specific */}
-                {(() => {
-                    const ins = insight as any
-                    const kpis: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string }[] =
-                        insight.platform === 'facebook' ? [
-                            { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
-                            { label: 'Views', value: ins.views ?? insight.impressions, icon: Eye, color: 'text-purple-500' },
-                            { label: 'Reactions', value: ins.reactions ?? insight.engagement, icon: Heart, color: 'text-rose-500' },
-                            { label: 'Comments', value: ins.comments ?? 0, icon: MessageCircle, color: 'text-amber-500' },
-                        ] : insight.platform === 'instagram' ? [
-                            { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
-                            { label: 'Views', value: ins.views ?? insight.impressions, icon: Eye, color: 'text-purple-500' },
-                            { label: 'Likes', value: ins.likes ?? insight.engagement, icon: Heart, color: 'text-rose-500' },
-                            { label: 'Comments', value: ins.comments ?? 0, icon: MessageCircle, color: 'text-amber-500' },
-                        ] : insight.platform === 'youtube' ? [
-                            { label: 'Subscribers', value: insight.followers, icon: Users, color: 'text-blue-500' },
-                            { label: 'Views', value: insight.impressions, icon: Eye, color: 'text-purple-500' },
-                            { label: 'Likes', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
-                            { label: 'Reach', value: insight.reach, icon: TrendingUp, color: 'text-green-500' },
-                        ] : insight.platform === 'pinterest' ? [
-                            { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
-                            { label: 'Impressions', value: insight.impressions, icon: Eye, color: 'text-purple-500' },
-                            { label: 'Engagement', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
-                            { label: 'Saves', value: ins.saves ?? 0, icon: Bookmark, color: 'text-amber-500' },
-                        ] : [
-                            { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
-                            { label: 'Impressions', value: insight.impressions, icon: Eye, color: 'text-purple-500' },
-                            { label: 'Reach', value: insight.reach, icon: TrendingUp, color: 'text-green-500' },
-                            { label: 'Engagement', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
-                        ]
-                    return (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {kpis.map(({ label, value, icon: Icon, color: c }) => (
-                                <div key={label} className="bg-muted/40 rounded-lg p-3 text-center">
-                                    <Icon className={`h-4 w-4 mx-auto mb-1 ${c}`} />
-                                    <p className="text-lg font-bold font-mono">{fmt(value)}</p>
-                                    <p className="text-[10px] text-muted-foreground">{label}</p>
+            {/* ── TABBED LAYOUT: Facebook & Instagram ── */}
+            {isMeta ? (
+                <div>
+                    {/* Tab bar */}
+                    <div className="flex border-b overflow-x-auto scrollbar-none">
+                        {metaTabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${activeTab === tab.id
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                    }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="p-4 space-y-5">
+                        {/* ── VIEWS TAB ── */}
+                        {activeTab === TAB_VIEWS && (
+                            <>
+                                {/* KPIs */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center col-span-2 sm:col-span-1">
+                                        <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ins.views ?? insight.impressions)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.totalViews')}</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(insight.followers)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.followers')}</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <TrendingUp className="h-4 w-4 mx-auto mb-1 text-green-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ins.newFollowers ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.newFollowers')}</p>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    )
-                })()}
 
-                {/* Sparkline */}
-                {(insight.reach || insight.impressions || 0) > 0 ? (
-                    <div>
-                        <p className="text-[10px] text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">30-day trend</p>
-                        <div className="h-16">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={sparkData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id={`spark-${insight.platform}-${insight.accountName}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={color} stopOpacity={0.4} />
-                                            <stop offset="95%" stopColor={color} stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <Area type="monotone" dataKey="v" stroke={color} fill={`url(#spark-${insight.platform}-${insight.accountName})`} strokeWidth={2} dot={false} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                ) : !hasRealData ? (
-                    <div className="h-20 flex flex-col items-center justify-center bg-muted/20 rounded-lg gap-2 text-center">
-                        <AlertCircle className="h-5 w-5 text-muted-foreground/50" />
-                        <p className="text-xs text-muted-foreground">API not yet connected for this platform</p>
-                    </div>
-                ) : null}
+                                {/* Daily views chart */}
+                                {viewsTimeSeries.length > 0 ? (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">{t('insights.chart.last28days')}</p>
+                                        <div className="h-36">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={viewsTimeSeries} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                    <defs>
+                                                        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor={color} stopOpacity={0.4} />
+                                                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} interval={6} />
+                                                    <YAxis tick={{ fontSize: 9 }} />
+                                                    <Tooltip content={<CustomTooltip />} />
+                                                    <Area type="monotone" dataKey="value" name={t('insights.kpi.views')} stroke={color} fill={`url(#${gradId})`} strokeWidth={2} dot={false} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                ) : null}
 
-                {/* All FB posts with real interaction data from page API */}
-                {insight.platform === 'facebook' && (() => {
-                    const ins = insight as any
-                    const fbPosts: Array<{ id: string; message?: string; createdTime: string; thumbnail?: string; reactions: number; comments: number; shares: number }> =
-                        ins.recentPosts || []
-                    if (fbPosts.length === 0) return null
-                    return (
+                                {/* Content type breakdown */}
+                                {contentTypeBreakdown.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">{t('insights.contentType.label')}</p>
+                                        <div className="space-y-2">
+                                            {contentTypeBreakdown.map(({ type, pct }) => (
+                                                <div key={type} className="flex items-center gap-2">
+                                                    <span className="text-xs text-muted-foreground w-20 shrink-0">{ctLabel(type)}</span>
+                                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                                                    </div>
+                                                    <span className="text-xs font-mono w-12 text-right">{pct}%</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* ── INTERACTIONS TAB ── */}
+                        {activeTab === TAB_INTERACTIONS && (
+                            <>
+                                {/* KPI row */}
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Heart className="h-4 w-4 mx-auto mb-1 text-rose-500" />
+                                        <p className="text-lg font-bold font-mono">{fmt(ins.reactions ?? ins.likes ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {insight.platform === 'facebook' ? t('insights.kpi.reactions') : t('insights.kpi.likes')}
+                                        </p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <MessageCircle className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                                        <p className="text-lg font-bold font-mono">{fmt(ins.comments ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.comments')}</p>
+                                    </div>
+                                    {insight.platform === 'facebook' && (
+                                        <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                            <Share2 className="h-4 w-4 mx-auto mb-1 text-green-500" />
+                                            <p className="text-lg font-bold font-mono">{fmt(ins.shares ?? 0)}</p>
+                                            <p className="text-[10px] text-muted-foreground">{t('insights.kpi.shares')}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Interactions chart */}
+                                {interactionsTimeSeries.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">{t('insights.interaction.overview')}</p>
+                                        <div className="h-32">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={interactionsTimeSeries} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                    <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} interval={3} />
+                                                    <YAxis tick={{ fontSize: 9 }} />
+                                                    <Tooltip content={<CustomTooltip />} />
+                                                    <Bar dataKey="value" name={t('insights.kpi.interactions')} fill={color} radius={[3, 3, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Donut by type */}
+                                {totalInteractions > 0 && insight.platform === 'facebook' && (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">{t('insights.interaction.byType')}</p>
+                                        <div className="flex items-center gap-6">
+                                            <DonutChart size={88} data={[
+                                                { label: t('insights.kpi.reactions'), value: ins.reactions ?? 0, color: '#f43f5e' },
+                                                { label: t('insights.kpi.comments'), value: ins.comments ?? 0, color: '#3b82f6' },
+                                                { label: t('insights.kpi.shares'), value: ins.shares ?? 0, color: '#22c55e' },
+                                            ]} />
+                                            <div className="space-y-1.5">
+                                                {[
+                                                    { label: t('insights.kpi.reactions'), value: ins.reactions ?? 0, color: '#f43f5e' },
+                                                    { label: t('insights.kpi.comments'), value: ins.comments ?? 0, color: '#3b82f6' },
+                                                    { label: t('insights.kpi.shares'), value: ins.shares ?? 0, color: '#22c55e' },
+                                                ].map(({ label, value, color: c }) => (
+                                                    <div key={label} className="flex items-center gap-2 text-xs">
+                                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c }} />
+                                                        <span className="text-muted-foreground">{label}</span>
+                                                        <span className="font-semibold ml-auto">{fmt(value)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* ── AUDIENCE TAB ── */}
+                        {activeTab === TAB_AUDIENCE && (
+                            <>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(insight.followers)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.audience.totalFollowers')}</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <TrendingUp className="h-4 w-4 mx-auto mb-1 text-green-500" />
+                                        <p className="text-xl font-bold font-mono">+{fmt(ins.newFollowers ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.netFollows')}</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Users className="h-4 w-4 mx-auto mb-1 text-rose-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ins.unfollows ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.unfollows')}</p>
+                                    </div>
+                                </div>
+                                <div className="h-20 bg-muted/20 rounded-lg flex flex-col items-center justify-center gap-1 text-center px-4">
+                                    <p className="text-xs text-muted-foreground">Age, gender, country breakdowns require Advanced Access review from Meta.</p>
+                                </div>
+                            </>
+                        )}
+
+                        {/* ── POSTS TAB ── */}
+                        {activeTab === TAB_POSTS && (
+                            <>
+                                {metaPosts.length > 0 ? (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">
+                                            {t('insights.posts.allPosts')} ({metaPosts.length})
+                                        </p>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                            {metaPosts.map((post, i) => (
+                                                <PostCard
+                                                    key={post.id || i}
+                                                    thumbnail={post.thumbnail}
+                                                    publishedAt={post.publishedAt}
+                                                    platform={insight.platform}
+                                                    metrics={[
+                                                        { icon: post.r1Icon, label: post.r1Label, value: post.r1, color: post.r1Color },
+                                                        { icon: post.r2Icon, label: post.r2Label, value: post.r2, color: post.r2Color },
+                                                        ...(post.r3Label ? [{ icon: post.r3Icon, label: post.r3Label, value: post.r3, color: post.r3Color }] : []),
+                                                    ]}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="py-10 flex flex-col items-center gap-2 text-center">
+                                        <FileText className="h-8 w-8 text-muted-foreground/30" />
+                                        <p className="text-sm text-muted-foreground">{t('insights.posts.noPostsYet')}</p>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                /* ── NON-META: original layout ── */
+                <div className="p-4 space-y-4">
+                    {/* KPI metrics row — platform-specific */}
+                    {(() => {
+                        const kpis: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string }[] =
+                            insight.platform === 'youtube' ? [
+                                { label: t('insights.kpi.subscribers'), value: insight.followers, icon: Users, color: 'text-blue-500' },
+                                { label: t('insights.kpi.views'), value: insight.impressions, icon: Eye, color: 'text-purple-500' },
+                                { label: t('insights.kpi.likes'), value: insight.engagement, icon: Heart, color: 'text-rose-500' },
+                                { label: t('insights.kpi.reach'), value: insight.reach, icon: TrendingUp, color: 'text-green-500' },
+                            ] : insight.platform === 'pinterest' ? [
+                                { label: t('insights.kpi.followers'), value: insight.followers, icon: Users, color: 'text-blue-500' },
+                                { label: t('insights.kpi.impressions'), value: insight.impressions, icon: Eye, color: 'text-purple-500' },
+                                { label: t('insights.kpi.engagement'), value: insight.engagement, icon: Heart, color: 'text-rose-500' },
+                                { label: t('insights.kpi.saves'), value: ins.saves ?? 0, icon: Bookmark, color: 'text-amber-500' },
+                            ] : [
+                                { label: t('insights.kpi.followers'), value: insight.followers, icon: Users, color: 'text-blue-500' },
+                                { label: t('insights.kpi.impressions'), value: insight.impressions, icon: Eye, color: 'text-purple-500' },
+                                { label: t('insights.kpi.reach'), value: insight.reach, icon: TrendingUp, color: 'text-green-500' },
+                                { label: t('insights.kpi.engagement'), value: insight.engagement, icon: Heart, color: 'text-rose-500' },
+                            ]
+                        return (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {kpis.map(({ label, value, icon: Icon, color: c }) => (
+                                    <div key={label} className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Icon className={`h-4 w-4 mx-auto mb-1 ${c}`} />
+                                        <p className="text-lg font-bold font-mono">{fmt(value)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{label}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    })()}
+
+                    {/* Sparkline */}
+                    {(insight.reach || insight.impressions || 0) > 0 ? (
                         <div>
-                            <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">
-                                All Posts ({fbPosts.length})
-                            </p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                                {fbPosts.map((post, i) => (
-                                    <PostCard
-                                        key={post.id || i}
-                                        thumbnail={post.thumbnail}
-                                        publishedAt={post.createdTime}
-                                        platform="facebook"
+                            <p className="text-[10px] text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">{t('insights.chart.trend')}</p>
+                            <div className="h-16">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={sparkData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={color} stopOpacity={0.4} />
+                                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <Area type="monotone" dataKey="v" stroke={color} fill={`url(#${gradId})`} strokeWidth={2} dot={false} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    ) : !hasRealData ? (
+                        <div className="h-20 flex flex-col items-center justify-center bg-muted/20 rounded-lg gap-2 text-center">
+                            <AlertCircle className="h-5 w-5 text-muted-foreground/50" />
+                            <p className="text-xs text-muted-foreground">{t('insights.status.apiNotConnected')}</p>
+                        </div>
+                    ) : null}
+
+                    {/* Pinterest top pins */}
+                    {insight.platform === 'pinterest' && insight.topPins && insight.topPins.length > 0 && (
+                        <div>
+                            <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">{t('insights.posts.topPins')}</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {insight.topPins.slice(0, 6).map((pin, i) => (
+                                    <PostCard key={i} thumbnail={pin.imageUrl} href={pin.pinUrl}
                                         metrics={[
-                                            { icon: Heart, label: 'Reactions', value: post.reactions, color: 'text-rose-400' },
-                                            { icon: MessageCircle, label: 'Comments', value: post.comments, color: 'text-blue-400' },
-                                            { icon: Share2, label: 'Shares', value: post.shares, color: 'text-green-400' },
+                                            { icon: Eye, label: t('insights.kpi.impressions'), value: pin.impressions, color: 'text-purple-400' },
+                                            { icon: Bookmark, label: t('insights.kpi.saves'), value: pin.saves, color: 'text-rose-400' },
+                                            { icon: ExternalLink, label: 'Clicks', value: pin.clicks, color: 'text-blue-400' },
                                         ]}
                                     />
                                 ))}
                             </div>
                         </div>
-                    )
-                })()}
+                    )}
 
-                {/* All IG posts with real interaction data from media API */}
-                {insight.platform === 'instagram' && (() => {
-                    const ins = insight as any
-                    const igMedia: Array<{ id: string; mediaType: string; thumbnail?: string; timestamp: string; likes: number; comments: number; caption?: string }> =
-                        ins.recentMedia || []
-                    if (igMedia.length === 0) return null
-                    return (
+                    {/* Other platforms — Neeflow DB posts */}
+                    {insight.platform !== 'pinterest' && topPosts.length > 0 && (
                         <div>
-                            <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">
-                                All Posts ({igMedia.length})
-                            </p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                                {igMedia.map((media, i) => (
-                                    <PostCard
-                                        key={media.id || i}
-                                        thumbnail={media.thumbnail}
-                                        publishedAt={media.timestamp}
-                                        platform="instagram"
+                            <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">{t('insights.posts.recentPosts')}</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {topPosts.map((post, i) => (
+                                    <PostCard key={i} thumbnail={post.thumbnail} publishedAt={post.publishedAt}
                                         metrics={[
-                                            { icon: Heart, label: 'Likes', value: media.likes, color: 'text-rose-400' },
-                                            { icon: MessageCircle, label: 'Comments', value: media.comments, color: 'text-blue-400' },
+                                            { icon: Heart, label: t('insights.kpi.likes'), value: post.likes, color: 'text-rose-400' },
+                                            { icon: Eye, label: t('insights.kpi.reach'), value: post.reach, color: 'text-purple-400' },
+                                            { icon: MessageCircle, label: t('insights.kpi.comments'), value: post.comments, color: 'text-blue-400' },
                                         ]}
                                     />
                                 ))}
                             </div>
                         </div>
-                    )
-                })()}
-
-                {/* Pinterest API top pins — shown when available */}
-                {insight.platform === 'pinterest' && insight.topPins && insight.topPins.length > 0 && (
-                    <div>
-                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Top Pins (Last 30 Days)</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {insight.topPins.slice(0, 6).map((pin, i) => (
-                                <PostCard
-                                    key={i}
-                                    thumbnail={pin.imageUrl}
-                                    href={pin.pinUrl}
-                                    metrics={[
-                                        { icon: Eye, label: 'Impressions', value: pin.impressions, color: 'text-purple-400' },
-                                        { icon: Bookmark, label: 'Saves', value: pin.saves, color: 'text-rose-400' },
-                                        { icon: ExternalLink, label: 'Clicks', value: pin.clicks, color: 'text-blue-400' },
-                                    ]}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Top posts for other platforms (TikTok, LinkedIn, YouTube) from Neeflow DB */}
-                {insight.platform !== 'pinterest' && insight.platform !== 'facebook' && insight.platform !== 'instagram' && topPosts.length > 0 && (
-                    <div>
-                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Recent Posts</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {topPosts.map((post, i) => (
-                                <PostCard
-                                    key={i}
-                                    thumbnail={post.thumbnail}
-                                    publishedAt={post.publishedAt}
-                                    metrics={[
-                                        { icon: Heart, label: 'Likes', value: post.likes, color: 'text-rose-400' },
-                                        { icon: Eye, label: 'Reach', value: post.reach, color: 'text-purple-400' },
-                                        { icon: MessageCircle, label: 'Comments', value: post.comments, color: 'text-blue-400' },
-                                    ]}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div >
+                    )}
+                </div>
+            )}
+        </div>
     )
 }
+
+
+
 
 // ─── Empty Connect State ───────────────────────────────────────────────
 function ConnectPrompt({ platform }: { platform: string }) {

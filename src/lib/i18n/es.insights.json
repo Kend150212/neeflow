@@ -1,0 +1,112 @@
+{
+    "insights": {
+        "title": "Estadísticas",
+        "subtitle": "Análisis de rendimiento por cuenta en todas las plataformas conectadas",
+        "refresh": "Actualizar",
+        "exportCsv": "Exportar CSV",
+        "tabs": {
+            "overview": "Resumen",
+            "views": "Vistas",
+            "interactions": "Interacciones",
+            "audience": "Audiencia",
+            "posts": "Publicaciones",
+            "earnings": "Ganancias"
+        },
+        "kpi": {
+            "followers": "Seguidores",
+            "subscribers": "Suscriptores",
+            "views": "Vistas",
+            "impressions": "Impresiones",
+            "reach": "Alcance",
+            "reactions": "Reacciones",
+            "likes": "Me gusta",
+            "comments": "Comentarios",
+            "shares": "Compartir",
+            "saves": "Guardados",
+            "engagement": "Interacción",
+            "interactions": "Interacciones",
+            "netFollows": "Seguidores netos",
+            "unfollows": "Dejaron de seguir",
+            "newFollowers": "Nuevos seguidores",
+            "totalViews": "Total de vistas",
+            "totalInteractions": "Total de interacciones",
+            "totalFollowers": "Total de seguidores"
+        },
+        "chart": {
+            "daily": "Diario",
+            "weekly": "Semanal",
+            "last28days": "Últimos 28 días",
+            "trend": "Tendencia de 30 días",
+            "publishingActivity": "Actividad de publicación",
+            "noData": "No hay datos disponibles para este período"
+        },
+        "contentType": {
+            "label": "Vistas por tipo de contenido",
+            "photo": "Foto",
+            "video": "Video",
+            "reel": "Reel",
+            "multiPhoto": "Varias fotos",
+            "text": "Texto",
+            "story": "Historia",
+            "share": "Compartido",
+            "other": "Otro"
+        },
+        "audience": {
+            "overview": "Resumen de audiencia",
+            "totalFollowers": "Total de seguidores",
+            "netFollows": "Seguidores netos",
+            "unfollows": "Dejaron de seguir",
+            "followersTrend": "Tendencia de seguidores"
+        },
+        "interaction": {
+            "overview": "Resumen de interacciones",
+            "byType": "Por tipo de interacción",
+            "byContentType": "Por tipo de contenido",
+            "byFollowerStatus": "Seguidores vs no seguidores",
+            "followers": "Seguidores",
+            "nonFollowers": "No seguidores",
+            "reactionsLabel": "Reacciones",
+            "commentsLabel": "Comentarios",
+            "sharesLabel": "Compartir"
+        },
+        "posts": {
+            "allPosts": "Todas las publicaciones",
+            "recentPosts": "Publicaciones recientes",
+            "topPosts": "Mejores publicaciones",
+            "topPostsByReach": "Publicaciones con más alcance",
+            "topPins": "Top Pins (Últimos 30 días)",
+            "noPostsYet": "Aún no hay publicaciones",
+            "publishVia": "Publica con Neeflow para ver las estadísticas aquí",
+            "pending": "Pendiente de aprobación API",
+            "processingInsights": "Procesando estadísticas…"
+        },
+        "platforms": {
+            "facebook": "Facebook",
+            "instagram": "Instagram",
+            "tiktok": "TikTok",
+            "youtube": "YouTube",
+            "linkedin": "LinkedIn",
+            "pinterest": "Pinterest",
+            "twitter": "Twitter / X"
+        },
+        "status": {
+            "apiPending": "API pendiente",
+            "limited": "Limitado",
+            "connected": "Conectado",
+            "notConnected": "No conectado",
+            "apiNotConnected": "API aún no conectada para esta plataforma"
+        },
+        "overview": {
+            "totalPosts": "Total de publicaciones",
+            "totalEngagement": "Interacción total",
+            "totalReach": "Alcance total",
+            "totalImpressions": "Impresiones totales",
+            "totalFollowers": "Total de seguidores",
+            "engagementByPlatform": "Interacción por plataforma",
+            "reachByPlatform": "Alcance por plataforma",
+            "followersByPlatform": "Seguidores por plataforma",
+            "postsByPlatform": "Publicaciones por plataforma",
+            "topPerformingPlatform": "Plataforma con mejor rendimiento"
+        }
+    }
+}

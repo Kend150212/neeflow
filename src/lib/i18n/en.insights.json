@@ -1,0 +1,112 @@
+{
+    "insights": {
+        "title": "Insights",
+        "subtitle": "Per-account performance analytics across all connected platforms",
+        "refresh": "Refresh",
+        "exportCsv": "Export CSV",
+        "tabs": {
+            "overview": "Overview",
+            "views": "Views",
+            "interactions": "Interactions",
+            "audience": "Audience",
+            "posts": "Posts",
+            "earnings": "Earnings"
+        },
+        "kpi": {
+            "followers": "Followers",
+            "subscribers": "Subscribers",
+            "views": "Views",
+            "impressions": "Impressions",
+            "reach": "Reach",
+            "reactions": "Reactions",
+            "likes": "Likes",
+            "comments": "Comments",
+            "shares": "Shares",
+            "saves": "Saves",
+            "engagement": "Engagement",
+            "interactions": "Interactions",
+            "netFollows": "Net follows",
+            "unfollows": "Unfollows",
+            "newFollowers": "New followers",
+            "totalViews": "Total views",
+            "totalInteractions": "Total interactions",
+            "totalFollowers": "Total followers"
+        },
+        "chart": {
+            "daily": "Daily",
+            "weekly": "Weekly",
+            "last28days": "Last 28 days",
+            "trend": "30-day trend",
+            "publishingActivity": "Publishing activity",
+            "noData": "No data available for this period"
+        },
+        "contentType": {
+            "label": "Views by content type",
+            "photo": "Photo",
+            "video": "Video",
+            "reel": "Reel",
+            "multiPhoto": "Multi photo",
+            "text": "Text",
+            "story": "Story",
+            "share": "Share",
+            "other": "Other"
+        },
+        "audience": {
+            "overview": "Audience overview",
+            "totalFollowers": "Total followers",
+            "netFollows": "Net follows",
+            "unfollows": "Unfollows",
+            "followersTrend": "Followers trend"
+        },
+        "interaction": {
+            "overview": "Interaction overview",
+            "byType": "By interaction type",
+            "byContentType": "By content type",
+            "byFollowerStatus": "By followers vs non-followers",
+            "followers": "Followers",
+            "nonFollowers": "Non-followers",
+            "reactionsLabel": "Reactions",
+            "commentsLabel": "Comments",
+            "sharesLabel": "Shares"
+        },
+        "posts": {
+            "allPosts": "All Posts",
+            "recentPosts": "Recent Posts",
+            "topPosts": "Top Posts",
+            "topPostsByReach": "Top Posts by Reach",
+            "topPins": "Top Pins (Last 30 Days)",
+            "noPostsYet": "No posts published yet",
+            "publishVia": "Publish via Neeflow to see post insights here",
+            "pending": "Pending API approval",
+            "processingInsights": "Processing insights…"
+        },
+        "platforms": {
+            "facebook": "Facebook",
+            "instagram": "Instagram",
+            "tiktok": "TikTok",
+            "youtube": "YouTube",
+            "linkedin": "LinkedIn",
+            "pinterest": "Pinterest",
+            "twitter": "Twitter / X"
+        },
+        "status": {
+            "apiPending": "API Pending",
+            "limited": "Limited",
+            "connected": "Connected",
+            "notConnected": "Not connected",
+            "apiNotConnected": "API not yet connected for this platform"
+        },
+        "overview": {
+            "totalPosts": "Total Posts",
+            "totalEngagement": "Total Engagement",
+            "totalReach": "Total Reach",
+            "totalImpressions": "Total Impressions",
+            "totalFollowers": "Total Followers",
+            "engagementByPlatform": "Engagement by Platform",
+            "reachByPlatform": "Reach by Platform",
+            "followersByPlatform": "Followers by Platform",
+            "postsByPlatform": "Posts by Platform",
+            "topPerformingPlatform": "Top Performing Platform"
+        }
+    }
+}

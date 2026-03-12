@@ -87,11 +87,70 @@ async function fetchFacebookInsights(channelPlatform: {
             })
         }
 
+        // 4. Daily time-series for Views chart (last 28 days)
+        const since28 = Math.floor(Date.now() / 1000) - 28 * 24 * 3600
+        const until28 = Math.floor(Date.now() / 1000)
+        let viewsTimeSeries: { date: string; value: number }[] = []
+        let interactionsTimeSeries: { date: string; value: number }[] = []
+        try {
+            const dailyRes = await fetch(
+                `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_views_total&period=day&since=${since28}&until=${until28}&access_token=${token}`
+            )
+            const dailyData = await dailyRes.json()
+            if (dailyData.data?.[0]?.values) {
+                viewsTimeSeries = dailyData.data[0].values.map((v: { end_time: string; value: number }) => ({
+                    date: v.end_time.split('T')[0],
+                    value: v.value || 0,
+                }))
+            }
+        } catch { /* non-critical */ }
+
+        // Build interaction time-series from posts (approximate per-day grouping)
+        const interactionsByDay: Record<string, number> = {}
+        for (const post of recentPosts) {
+            const day = post.createdTime.split('T')[0]
+            interactionsByDay[day] = (interactionsByDay[day] || 0) + post.reactions + post.comments + post.shares
+        }
+        interactionsTimeSeries = Object.entries(interactionsByDay)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, value]) => ({ date, value }))
+
+        // 5. Content type breakdown from posts attachments
+        const contentTypeCount: Record<string, number> = { photo: 0, video: 0, reel: 0, multi_photo: 0, text: 0, other: 0 }
+        for (const post of (postsData.data || [])) {
+            const mediaType = post.attachments?.data?.[0]?.media_type || 'text'
+            if (mediaType === 'photo') contentTypeCount.photo++
+            else if (mediaType === 'video_inline') contentTypeCount.video++
+            else if (mediaType === 'video') contentTypeCount.video++
+            else if (mediaType === 'multi_share') contentTypeCount.multi_photo++
+            else if (mediaType === 'share') contentTypeCount.other++
+            else contentTypeCount.text++
+        }
+        const totalPosts28 = Object.values(contentTypeCount).reduce((a, b) => a + b, 0)
+        const contentTypeBreakdown = Object.entries(contentTypeCount)
+            .filter(([, c]) => c > 0)
+            .map(([type, count]) => ({ type, count, pct: totalPosts28 ? Math.round(count / totalPosts28 * 1000) / 10 : 0 }))
+            .sort((a, b) => b.count - a.count)
+
+        // 6. Unfollows from page_fan_removes_unique 
+        let unfollows = 0
+        try {
+            const unfollowsRes = await fetch(
+                `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_fan_removes_unique&period=days_28&access_token=${token}`
+            )
+            const unfollowsData = await unfollowsRes.json()
+            if (unfollowsData.data?.[0]?.values) {
+                const vals = unfollowsData.data[0].values
+                unfollows = vals[vals.length - 1]?.value || 0
+            }
+        } catch { /* non-critical */ }
+
         return {
             platform: 'facebook',
             accountName: pageData.name || channelPlatform.accountName,
             followers: followerCount,
             newFollowers,
+            unfollows,
             engagement: totalEngagement,
             reactions: totalReactions,
             comments: totalComments,
@@ -99,6 +158,9 @@ async function fetchFacebookInsights(channelPlatform: {
             views: totalViews,
             impressions: totalViews,
             reach: totalReach,
+            viewsTimeSeries,
+            interactionsTimeSeries,
+            contentTypeBreakdown,
             recentPosts,
         }
     } catch (err) {
@@ -106,6 +168,7 @@ async function fetchFacebookInsights(channelPlatform: {
         return null
     }
 }
+
 
 // ─── Instagram Graph API ─────────────────────────────────────────────
 async function fetchInstagramInsights(channelPlatform: {
