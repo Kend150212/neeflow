@@ -935,6 +935,7 @@ function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZ
     label: string; url?: string; isShared: boolean; generatingAngle: number | null; angleIndex: number
     onZoom: () => void; onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void; onGenerate: (prompt: string) => void
 }) {
+    const t = useTranslation()
     const [showGenInput, setShowGenInput] = useState(false)
     const [prompt, setPrompt] = useState('')
     const fileRef = useRef<HTMLInputElement>(null)
