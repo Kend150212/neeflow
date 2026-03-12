@@ -38,9 +38,10 @@ export async function GET(req: NextRequest) {
     if (easyToken) stateData.easyToken = easyToken
     const state = Buffer.from(JSON.stringify(stateData)).toString('base64url')
 
-    let scopes = 'openid profile w_member_social'
+    // Always request r_organization_social for follower stats; org posting scope is conditional
+    let scopes = 'openid profile w_member_social r_organization_social'
     if (config.linkedinOrgEnabled === 'true') {
-        scopes += ' w_organization_social r_organization_social'
+        scopes += ' w_organization_social'
     }
 
     const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization')

@@ -81,7 +81,7 @@ interface PostInsight {
 }
 
 // ─── Platforms with real live API data ───────────────────────────────
-const LIVE_API_PLATFORMS = new Set(['facebook', 'instagram', 'youtube', 'tiktok', 'pinterest'])
+const LIVE_API_PLATFORMS = new Set(['facebook', 'instagram', 'youtube', 'tiktok', 'pinterest', 'linkedin'])
 
 // ─── Constants ───────────────────────────────────────────────────────
 const PLATFORM_COLORS: Record<string, string> = {

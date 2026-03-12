@@ -233,6 +233,157 @@ async function fetchTikTokInsights(channelPlatform: {
     }
 }
 
+// ─── LinkedIn Community Management API ───────────────────────────────
+/** Auto-generate LinkedIn API version (YYYYMM) — 1 month behind current date */
+function getLinkedInVersion(): string {
+    const now = new Date()
+    now.setMonth(now.getMonth() - 1)
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    return `${y}${m}`
+}
+
+async function fetchLinkedInInsights(channelPlatform: {
+    accountId: string
+    accountName: string
+    accessToken: string | null
+    config: unknown
+}) {
+    if (!channelPlatform.accessToken) return null
+    const token = channelPlatform.accessToken
+    const cfg = (channelPlatform.config as Record<string, string | boolean>) || {}
+    const isOrg = cfg.type === 'organization'
+    const orgId = isOrg ? String(cfg.orgId || channelPlatform.accountId.replace('org_', '')) : null
+    const liVersion = getLinkedInVersion()
+    const headers = {
+        Authorization: `Bearer ${token}`,
+        'LinkedIn-Version': liVersion,
+        'X-Restli-Protocol-Version': '2.0.0',
+    }
+
+    try {
+        let followers = 0
+        let engagement = 0
+        let impressions = 0
+        let reach = 0
+        let accountName = channelPlatform.accountName
+
+        if (isOrg && orgId) {
+            // ── Organization analytics ──────────────────────────────
+            const orgUrn = encodeURIComponent(`urn:li:organization:${orgId}`)
+
+            // 1. Follower count via networkSizes
+            const netRes = await fetch(
+                `https://api.linkedin.com/rest/networkSizes/urn:li:organization:${orgId}?edgeType=CompanyFollowedByMember`,
+                { headers }
+            )
+            if (netRes.ok) {
+                const netData = await netRes.json()
+                followers = netData.firstDegreeSize ?? 0
+            }
+
+            // 2. Follower gain stats (last 30 days)
+            const endDate = new Date()
+            const startDate = new Date(Date.now() - 30 * 86400000)
+            const followerStatsRes = await fetch(
+                `https://api.linkedin.com/rest/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=${orgUrn}`,
+                { headers }
+            )
+            if (followerStatsRes.ok) {
+                try {
+                    const fStats = await followerStatsRes.json()
+                    const paginated = fStats.paginatedElements || fStats.elements || []
+                    if (paginated.length > 0) {
+                        const el = paginated[0]
+                        const totalCounts = el.totalFollowerCounts || el.followerCounts || {}
+                        if (!followers) followers = (totalCounts.organicFollowerCount || 0) + (totalCounts.paidFollowerCount || 0)
+                    }
+                } catch { /* best effort */ }
+            }
+
+            // 3. Share statistics (impressions, engagement) — requires r_organization_social
+            const shareStatsRes = await fetch(
+                `https://api.linkedin.com/rest/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${orgUrn}&timeIntervals.timeRange.start=${startDate.getTime()}&timeIntervals.timeRange.end=${endDate.getTime()}`,
+                { headers }
+            )
+            if (shareStatsRes.ok) {
+                try {
+                    const ssData = await shareStatsRes.json()
+                    const elements = ssData.elements || []
+                    for (const el of elements) {
+                        const stats = el.totalShareStatistics || {}
+                        impressions += stats.impressionCount || 0
+                        reach += stats.uniqueImpressionsCount || 0
+                        engagement += (stats.likeCount || 0) + (stats.commentCount || 0) + (stats.shareCount || 0)
+                    }
+                } catch { /* best effort */ }
+            }
+
+            // 4. Org name
+            const orgRes = await fetch(`https://api.linkedin.com/rest/organizations/${orgId}?fields=localizedName`, { headers })
+            if (orgRes.ok) {
+                const orgData = await orgRes.json()
+                if (orgData.localizedName) accountName = `🏢 ${orgData.localizedName}`
+            }
+        } else {
+            // ── Personal profile analytics ──────────────────────────
+            // Profile info via OpenID userinfo (already in openid+profile scope)
+            const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            if (profileRes.ok) {
+                const profile = await profileRes.json()
+                accountName = profile.name || `${profile.given_name || ''} ${profile.family_name || ''}`.trim() || accountName
+            }
+
+            // Person follower count (memberFollowersCount — Community Management API)
+            const memberUrn = encodeURIComponent(`urn:li:member:${channelPlatform.accountId}`)
+            const followerRes = await fetch(
+                `https://api.linkedin.com/rest/networkSizes/urn:li:member:${channelPlatform.accountId}?edgeType=FirstDegreeConnectionCount`,
+                { headers }
+            )
+            if (followerRes.ok) {
+                const fData = await followerRes.json()
+                followers = fData.firstDegreeSize ?? 0
+            }
+
+            // Person share stats (if r_member_profileAnalytics in scope — best effort)
+            const endTs = Date.now()
+            const startTs = endTs - 30 * 86400000
+            const personStatsRes = await fetch(
+                `https://api.linkedin.com/rest/memberShareStatistics?q=memberAndTimeRange&timeRange=(start:${startTs},end:${endTs})`,
+                { headers }
+            )
+            if (personStatsRes.ok) {
+                try {
+                    const psData = await personStatsRes.json()
+                    for (const el of psData.elements || []) {
+                        const stats = el.totalShareStatistics || {}
+                        impressions += stats.impressionCount || 0
+                        reach += stats.uniqueImpressionsCount || 0
+                        engagement += (stats.likeCount || 0) + (stats.commentCount || 0) + (stats.shareCount || 0)
+                    }
+                } catch { /* best effort */ }
+            }
+
+            void memberUrn // suppress unused warning
+        }
+
+        return {
+            platform: 'linkedin',
+            accountName,
+            followers,
+            engagement,
+            impressions,
+            reach,
+            // pendingApproval omitted — we have at least follower data
+        }
+    } catch (err) {
+        console.error('[LinkedIn] fetchLinkedInInsights error:', err)
+        return null
+    }
+}
+
 // ─── Pinterest API v5 ─────────────────────────────────────────────────
 async function fetchPinterestInsights(channelPlatform: {
     accountId: string
@@ -478,6 +629,30 @@ async function fetchPostInsights(
                         shares = summary.SAVE ?? summary.save ?? 0
                         reach = impressions
                     }
+                } else if (ps.platform === 'linkedin' && credMap['linkedin']?.accessToken && ps.externalId) {
+                    // LinkedIn post social actions — uses the post URN stored as externalId
+                    const liToken = credMap['linkedin'].accessToken
+                    const liVersion = getLinkedInVersion()
+                    const postUrn = ps.externalId // e.g. "urn:li:share:XXX" or "urn:li:ugcPost:XXX"
+                    const liHeaders = {
+                        Authorization: `Bearer ${liToken}`,
+                        'LinkedIn-Version': liVersion,
+                        'X-Restli-Protocol-Version': '2.0.0',
+                    }
+                    // socialActions returns likesSummary and commentsSummary
+                    const socialRes = await fetch(
+                        `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(postUrn)}`,
+                        { headers: liHeaders }
+                    )
+                    if (socialRes.ok) {
+                        const social = await socialRes.json()
+                        likes = social.likesSummary?.totalLikes ?? social.likesSummary?.count ?? 0
+                        comments = social.commentsSummary?.totalFirstLevelComments ?? social.commentsSummary?.count ?? 0
+                        shares = social.sharesSummary?.count ?? 0
+                        // Re-shares as reach proxy
+                        reach = shares || 0
+                    }
+                    // Impressions for post — requires Marketing API, skip gracefully
                 }
             } catch { /* fall back to cfg values */ }
 
@@ -556,16 +731,7 @@ export async function GET(req: NextRequest) {
             if (cp.platform === 'youtube') return fetchYouTubeInsights(cp)
             if (cp.platform === 'tiktok') return fetchTikTokInsights(cp)
             if (cp.platform === 'pinterest') return fetchPinterestInsights(cp)
-            // LinkedIn — API not yet active
-            return {
-                platform: cp.platform,
-                accountName: cp.accountName,
-                followers: null,
-                engagement: null,
-                impressions: null,
-                reach: null,
-                pendingApproval: true,
-            }
+            if (cp.platform === 'linkedin') return fetchLinkedInInsights(cp)
         })
     )
 
