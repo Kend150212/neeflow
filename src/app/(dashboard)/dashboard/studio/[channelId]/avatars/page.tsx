@@ -80,16 +80,16 @@ const GEN_PROVIDERS = [
 
 const ASSET_TYPES = [
     { value: 'outfit', label: 'Outfit', icon: Shirt, color: 'text-violet-400' },
-    { value: 'accessory', label: 'Phụ kiện', icon: Glasses, color: 'text-cyan-400' },
+    { value: 'accessory', label: 'Accessory', icon: Glasses, color: 'text-cyan-400' },
     { value: 'prop', label: 'Props', icon: Package, color: 'text-amber-400' },
 ]
-const ANGLE_LABELS = [
-    'Chính diện bán thân',       // 0 — full body front
-    'Cận mặt',                   // 1 — face close-up
-    'Chính diện cận bán thân',   // 2 — close upper body front
-    'Nghiêng trái',              // 3 — side profile
-    '3/4 sau',                   // 4 — 3/4 rear angle
-    'Sau lưng',                  // 5 — full back view
+const ANGLE_I18N_KEYS = [
+    'studio.avatar.angles.front',           // 0 — full body front
+    'studio.avatar.angles.closeUp',         // 1 — face close-up
+    'studio.avatar.angles.threeQuarterLeft',// 2 — close upper body front
+    'studio.avatar.angles.sideLeft',        // 3 — side profile
+    'studio.avatar.angles.threeQuarterRight',// 4 — 3/4 rear angle
+    'studio.avatar.angles.rear',            // 5 — full back view
 ]
 
 /* ─── Lightbox ─── */
@@ -329,8 +329,8 @@ export default function ChannelAvatarsPage() {
 
     async function generateAngle(avatar: StudioAvatar, angleIndex: number, extraPrompt: string) {
         setGeneratingAngle(angleIndex)
-        const label = ANGLE_LABELS[angleIndex] || `Góc ${angleIndex}`
-        const toastId = toast.loading(`Đang tạo ${label}...`)
+        const label = t(ANGLE_I18N_KEYS[angleIndex]) || `Angle ${angleIndex}`
+        const toastId = toast.loading(`Generating ${label}...`)
         try {
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatar.id}/generate`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -698,7 +698,7 @@ export default function ChannelAvatarsPage() {
                                 <div className="flex items-center justify-between mb-3">
                                     <div>
                                         <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Pose Matrix — 6 Góc Nhìn</h3>
-                                        <p className="text-[9px] text-muted-foreground mt-0.5">{(selected.poseImages || []).filter(Boolean).length}/6 góc đã tạo</p>
+                                        <p className="text-[9px] text-muted-foreground mt-0.5">{t('studio.avatar.anglesGenerated').replace('{{count}}', String((selected.poseImages || []).filter(Boolean).length))}</p>
                                     </div>
                                     {!selected._shared && (
                                         <div className="flex items-center gap-2">
@@ -715,13 +715,13 @@ export default function ChannelAvatarsPage() {
                                 </div>
                                 {/* 3×2 grid — exactly like the reference photo example */}
                                 <div className="grid grid-cols-3 gap-3">
-                                    {ANGLE_LABELS.map((label, i) => {
+                                    {ANGLE_I18N_KEYS.map((angleKey, i) => {
                                         const poseImgs: string[] = selected.poseImages || []
                                         const url = poseImgs[i] || ''
                                         return (
                                             <PoseMatrixSlot
-                                                key={label}
-                                                label={label}
+                                                key={angleKey}
+                                                label={t(angleKey)}
                                                 url={url}
                                                 isShared={!!selected._shared}
                                                 generatingAngle={generatingAngle}
@@ -784,10 +784,10 @@ export default function ChannelAvatarsPage() {
                     <h3 className="text-sm font-bold text-foreground mb-3">Asset Manager</h3>
                     {/* Tabs */}
                     <div className="flex border-b border-border">
-                        {ASSET_TYPES.map(t => (
-                            <button key={t.value} onClick={() => setAssetTab(t.value as typeof assetTab)} className={cn('flex-1 pb-2 text-[10px] font-bold uppercase tracking-widest transition-colors',
-                                assetTab === t.value ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-muted-foreground hover:text-foreground'
-                            )}>{t.label}</button>
+                        {ASSET_TYPES.map(at => (
+                            <button key={at.value} onClick={() => setAssetTab(at.value as typeof assetTab)} className={cn('flex-1 pb-2 text-[10px] font-bold uppercase tracking-widest transition-colors',
+                                assetTab === at.value ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-muted-foreground hover:text-foreground'
+                            )}>{at.value === 'accessory' ? t('studio.avatar.tabs.accessory') : at.value === 'prop' ? t('studio.avatar.tabs.prop') : t('studio.avatar.tabs.outfit')}</button>
                         ))}
                     </div>
                 </div>
@@ -854,11 +854,11 @@ export default function ChannelAvatarsPage() {
                     <DialogHeader><DialogTitle className="text-foreground">Add {assetType.charAt(0).toUpperCase() + assetType.slice(1)}</DialogTitle></DialogHeader>
                     <div className="space-y-3 mt-2">
                         <div className="flex gap-2">
-                            {ASSET_TYPES.map(t => (
-                                <button key={t.value} onClick={() => setAssetType(t.value as typeof assetType)}
+                            {ASSET_TYPES.map(at => (
+                                <button key={at.value} onClick={() => setAssetType(at.value as typeof assetType)}
                                     className={cn('flex-1 py-1.5 text-[10px] font-bold uppercase rounded-lg border transition-all',
-                                        assetType === t.value ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-border bg-muted/40 text-muted-foreground'
-                                    )}>{t.label}</button>
+                                        assetType === at.value ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-border bg-muted/40 text-muted-foreground'
+                                    )}>{at.value === 'accessory' ? t('studio.avatar.tabs.accessory') : at.value === 'prop' ? t('studio.avatar.tabs.prop') : t('studio.avatar.tabs.outfit')}</button>
                             ))}
                         </div>
                         <div><Label className="text-muted-foreground text-xs">Name *</Label>

@@ -53,11 +53,11 @@
             "gen": "Tạo",
             "angles": {
                 "front": "Chính diện bán thân",
-                "threeQuarterLeft": "Nghiêng trái",
-                "sideLeft": "Góc nghiêng trái",
-                "rear": "Phía sau",
+                "closeUp": "Cận mặt",
+                "threeQuarterLeft": "Chính diện cận bán thân",
+                "sideLeft": "Nghiêng trái",
                 "threeQuarterRight": "3/4 sau",
-                "closeUp": "Cận mặt"
+                "rear": "Sau lưng"
             },
             "customPoses": "Pose tùy chỉnh",
             "addPoseFolder": "Thêm thư mục Pose",
