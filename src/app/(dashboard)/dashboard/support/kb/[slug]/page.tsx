@@ -153,6 +153,7 @@ export default function ArticlePage({ params }: { params: Promise<{ slug: string
                     {/* Content — render markdown/HTML content */}
                     <div
                         className={cn(
+                            'kb-article-content',
                             'prose prose-sm dark:prose-invert max-w-none',
                             'prose-headings:font-semibold prose-headings:tracking-tight',
                             'prose-a:text-primary prose-a:no-underline hover:prose-a:underline',

@@ -229,3 +229,79 @@
 .animate-marquee {
   animation: marquee 12s linear infinite;
 }
+
+/* ── KB Article Content — Dark Mode Color Fix ─────────────────────────────
+   Article bodies use hardcoded inline RGB colors for light mode.
+   In dark mode we force all text to readable light shades via !important.
+   ──────────────────────────────────────────────────────────────────────── */
+.dark .kb-article-content,
+.dark .kb-article-content p,
+.dark .kb-article-content li,
+.dark .kb-article-content td,
+.dark .kb-article-content th,
+.dark .kb-article-content span,
+.dark .kb-article-content ol,
+.dark .kb-article-content ul {
+  color: #d1d5db !important;
+}
+
+.dark .kb-article-content h1,
+.dark .kb-article-content h2,
+.dark .kb-article-content h3,
+.dark .kb-article-content h4,
+.dark .kb-article-content h5 {
+  color: #f3f4f6 !important;
+  border-bottom-color: #374151 !important;
+}
+
+.dark .kb-article-content strong,
+.dark .kb-article-content b {
+  color: #f9fafb !important;
+}
+
+/* Tip boxes (blue) */
+.dark .kb-article-content div[style*="background:#eff6ff"],
+.dark .kb-article-content div[style*="background: #eff6ff"] {
+  background: rgba(30, 58, 138, 0.25) !important;
+  border-left-color: #3b82f6 !important;
+}
+
+.dark .kb-article-content div[style*="background:#eff6ff"] p,
+.dark .kb-article-content div[style*="background:#eff6ff"] * {
+  color: #93c5fd !important;
+}
+
+/* Warning boxes (amber) */
+.dark .kb-article-content div[style*="background:#fef3c7"],
+.dark .kb-article-content div[style*="background: #fef3c7"] {
+  background: rgba(120, 53, 15, 0.25) !important;
+  border-left-color: #f59e0b !important;
+}
+
+.dark .kb-article-content div[style*="background:#fef3c7"] p,
+.dark .kb-article-content div[style*="background:#fef3c7"] * {
+  color: #fcd34d !important;
+}
+
+/* Table header */
+.dark .kb-article-content th[style],
+.dark .kb-article-content th {
+  background: #1f2937 !important;
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+
+.dark .kb-article-content td {
+  border-color: #374151 !important;
+}
+
+.dark .kb-article-content table {
+  border-color: #374151 !important;
+}
+
+/* Inline code badges */
+.dark .kb-article-content code[style] {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #d1d5db !important;
+}
