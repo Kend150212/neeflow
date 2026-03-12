@@ -1947,7 +1947,7 @@ export default function ComposePage() {
                             xhr.open('POST', '/api/admin/media')
                             xhr.send(formData)
                         })
-                        setAttachedMedia((prev) => [...prev, media as Parameters<typeof prev>[0]])
+                        setAttachedMedia((prev) => [...prev, media as unknown as (typeof prev)[0]])
                         successCount++
                         continue
                     }
