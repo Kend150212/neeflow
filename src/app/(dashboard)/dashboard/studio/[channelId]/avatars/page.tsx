@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useWorkspace } from '@/lib/workspace-context'
 import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, FolderOpen, Upload, Search, ChevronRight, MoreHorizontal, Shirt, Glasses, Package, Pencil, Check, ArrowLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -105,7 +106,16 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
 /* ─── Main Page ─── */
 export default function ChannelAvatarsPage() {
     const { channelId } = useParams<{ channelId: string }>()
+    const router = useRouter()
     const t = useTranslation()
+    const { activeChannelId } = useWorkspace()
+
+    // ── Redirect if workspace switches to a different channel ──
+    useEffect(() => {
+        if (activeChannelId && activeChannelId !== channelId) {
+            router.replace(`/dashboard/studio/${activeChannelId}/avatars`)
+        }
+    }, [activeChannelId, channelId, router])
 
     // Avatar list
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])

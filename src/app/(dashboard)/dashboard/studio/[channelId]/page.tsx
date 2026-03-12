@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useTranslation } from '@/lib/i18n'
+import { useWorkspace } from '@/lib/workspace-context'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -31,9 +32,17 @@ export default function StudioChannelPage() {
     const { channelId } = useParams<{ channelId: string }>()
     const router = useRouter()
     const t = useTranslation()
+    const { activeChannelId } = useWorkspace()
     const [projects, setProjects] = useState<StudioProject[]>([])
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
     const [loadingProjects, setLoadingProjects] = useState(true)
+
+    // ── Redirect when workspace switches to a different channel ──
+    useEffect(() => {
+        if (activeChannelId && activeChannelId !== channelId) {
+            router.replace(`/dashboard/studio/${activeChannelId}`)
+        }
+    }, [activeChannelId, channelId, router])
 
     // New project dialog
     const [newOpen, setNewOpen] = useState(false)
