@@ -998,14 +998,34 @@ interface SortableMediaCardProps {
     onRemove: (id: string) => void
     onZoom: (url: string | null) => void
     onEditInCanva: (url?: string, id?: string) => void
+    onRefresh?: (id: string, updated: MediaItem) => void
 }
 
 function isVideoMedia(media: MediaItem) {
     return media.type === 'video' || (media.url || '').match(/\.(mp4|mov|avi|webm|mkv)$/i) !== null
 }
 
-function SortableMediaCard({ media, index, mediaRatio, isLast, aiImageJustCompleted, onRemove, onZoom, onEditInCanva }: SortableMediaCardProps) {
+function SortableMediaCard({ media, index, mediaRatio, isLast, aiImageJustCompleted, onRemove, onZoom, onEditInCanva, onRefresh }: SortableMediaCardProps) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: media.id })
+
+    // Poll for thumbnail if video doesn't have one yet (background transcode running)
+    const needsThumbnail = media.type === 'video' && !media.thumbnailUrl
+    useEffect(() => {
+        if (!needsThumbnail || !onRefresh) return
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/admin/media/${media.id}/thumbnail`)
+                if (res.ok) {
+                    const updated = await res.json() as MediaItem
+                    if (updated.thumbnailUrl) {
+                        onRefresh(media.id, updated)
+                        clearInterval(interval)
+                    }
+                }
+            } catch { /* ignore */ }
+        }, 3000)
+        return () => clearInterval(interval)
+    }, [needsThumbnail, media.id, onRefresh])
 
     const style: React.CSSProperties = {
         transform: CSS.Transform.toString(transform),
@@ -1068,15 +1088,28 @@ function SortableMediaCard({ media, index, mediaRatio, isLast, aiImageJustComple
 
             {isVideoMedia(media) ? (
                 <div className="relative h-full w-full bg-muted">
-                    <img
-                        src={media.thumbnailUrl || media.url}
-                        alt={media.originalName || ''}
-                        className="h-full w-full object-cover"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center">
-                            <Play className="h-3 w-3 text-white ml-0.5" />
+                    {media.thumbnailUrl ? (
+                        <img
+                            src={media.thumbnailUrl}
+                            alt={media.originalName || ''}
+                            className="h-full w-full object-cover"
+                        />
+                    ) : (
+                        /* No thumbnail yet — background transcode still running */
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gradient-to-br from-gray-900 to-gray-800 px-1.5">
+                            <div className="h-7 w-7 rounded-full bg-black/40 flex items-center justify-center">
+                                <Play className="h-4 w-4 text-white/60 ml-0.5" />
+                            </div>
+                            <p className="text-[7px] text-muted-foreground text-center leading-tight truncate w-full">{media.originalName}</p>
+                            <p className="text-[7px] text-primary/70 animate-pulse">Processing…</p>
                         </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        {media.thumbnailUrl && (
+                            <div className="h-6 w-6 rounded-full bg-black/50 flex items-center justify-center">
+                                <Play className="h-3 w-3 text-white ml-0.5" />
+                            </div>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -4322,6 +4355,9 @@ export default function ComposePage() {
                                                     onRemove={removeMedia}
                                                     onZoom={(url) => setLightboxUrl(url ?? null)}
                                                     onEditInCanva={openCanvaDesign}
+                                                    onRefresh={(id, updated) => {
+                                                        setAttachedMedia(prev => prev.map(m => m.id === id ? { ...m, ...updated } : m))
+                                                    }}
                                                 />
                                             ))}
                                             {/* AI Image Generating Placeholder — inside grid as a cell */}
