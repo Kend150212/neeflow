@@ -260,6 +260,87 @@ async function fetchInstagramInsights(channelPlatform: {
             })
         }
 
+        // 4. Daily views time-series (last 28 days)
+        const since28 = Math.floor(Date.now() / 1000) - 28 * 24 * 3600
+        const until28 = Math.floor(Date.now() / 1000)
+        let viewsTimeSeries: { date: string; value: number }[] = []
+        try {
+            const dailyRes = await fetch(
+                `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=views&period=day&since=${since28}&until=${until28}&access_token=${token}`
+            )
+            const dailyData = await dailyRes.json()
+            if (dailyData.data?.[0]?.values) {
+                viewsTimeSeries = dailyData.data[0].values.map((v: { end_time: string; value: number }) => ({
+                    date: v.end_time.split('T')[0],
+                    value: v.value || 0,
+                }))
+            } else {
+                // Fallback: try impressions for older accounts
+                const dailyFb = await fetch(
+                    `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=impressions&period=day&since=${since28}&until=${until28}&access_token=${token}`
+                )
+                const dailyFbData = await dailyFb.json()
+                if (dailyFbData.data?.[0]?.values) {
+                    viewsTimeSeries = dailyFbData.data[0].values.map((v: { end_time: string; value: number }) => ({
+                        date: v.end_time.split('T')[0],
+                        value: v.value || 0,
+                    }))
+                }
+            }
+        } catch { /* non-critical */ }
+
+        // 5. Interactions time-series — group recentMedia by day
+        const interactionsByDay: Record<string, number> = {}
+        for (const m of recentMedia) {
+            const day = m.timestamp.split('T')[0]
+            interactionsByDay[day] = (interactionsByDay[day] || 0) + m.likes + m.comments
+        }
+        const interactionsTimeSeries = Object.entries(interactionsByDay)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, value]) => ({ date, value }))
+
+        // 6. Content type breakdown from recentMedia (IMAGE / VIDEO / REEL / CAROUSEL_ALBUM)
+        const ctCount: Record<string, number> = { photo: 0, video: 0, reel: 0, multi_photo: 0, other: 0 }
+        for (const m of recentMedia) {
+            const mt = (m.mediaType || '').toUpperCase()
+            if (mt === 'IMAGE') ctCount.photo++
+            else if (mt === 'VIDEO') ctCount.video++
+            else if (mt === 'REELS' || mt === 'REEL') ctCount.reel++
+            else if (mt === 'CAROUSEL_ALBUM') ctCount.multi_photo++
+            else ctCount.other++
+        }
+        const totalIgPosts = Object.values(ctCount).reduce((a, b) => a + b, 0)
+        const contentTypeBreakdown = Object.entries(ctCount)
+            .filter(([, c]) => c > 0)
+            .map(([type, count]) => ({ type, count, pct: totalIgPosts ? Math.round(count / totalIgPosts * 1000) / 10 : 0 }))
+            .sort((a, b) => b.count - a.count)
+
+        // 7. Unfollows — IG Professional Dashboard exposes `unfollows` via insights
+        let unfollows = 0
+        try {
+            const ufRes = await fetch(
+                `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=unfollows&period=days_28&access_token=${token}`
+            )
+            const ufData = await ufRes.json()
+            if (ufData.data?.[0]?.values) {
+                const vals = ufData.data[0].values
+                unfollows = vals[vals.length - 1]?.value || 0
+            }
+        } catch { /* non-critical */ }
+
+        // 8. New followers from insights
+        let newFollowers = 0
+        try {
+            const nfRes = await fetch(
+                `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=follower_count&period=days_28&access_token=${token}`
+            )
+            const nfData = await nfRes.json()
+            if (nfData.data?.[0]?.values) {
+                const vals = nfData.data[0].values
+                newFollowers = vals[vals.length - 1]?.value || 0
+            }
+        } catch { /* non-critical */ }
+
         return {
             platform: 'instagram',
             accountName: accountData.username || channelPlatform.accountName,
@@ -271,6 +352,11 @@ async function fetchInstagramInsights(channelPlatform: {
             engagement: totalEngagement,
             likes: totalLikes,
             comments: totalComments,
+            newFollowers,
+            unfollows,
+            viewsTimeSeries,
+            interactionsTimeSeries,
+            contentTypeBreakdown,
             recentMedia,
         }
     } catch (err) {
@@ -278,6 +364,7 @@ async function fetchInstagramInsights(channelPlatform: {
         return null
     }
 }
+
 
 // ─── YouTube Data API v3 ─────────────────────────────────────────────
 async function fetchYouTubeInsights(channelPlatform: {
