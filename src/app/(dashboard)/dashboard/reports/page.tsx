@@ -227,6 +227,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
     const color = platformColor(insight.platform)
     const topPosts = [...posts].sort((a, b) => (b.reach || 0) - (a.reach || 0)).slice(0, 3)
     const hasRealData = LIVE_API_PLATFORMS.has(insight.platform)
+    const isTabbed = insight.platform === 'facebook' || insight.platform === 'instagram' || insight.platform === 'linkedin'
     const isMeta = insight.platform === 'facebook' || insight.platform === 'instagram'
     const ins = insight as any
 
@@ -253,11 +254,16 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
         r1: p.reactions, r1Label: t('insights.kpi.reactions'), r1Icon: Heart, r1Color: 'text-rose-400',
         r2: p.comments, r2Label: t('insights.kpi.comments'), r2Icon: MessageCircle, r2Color: 'text-blue-400',
         r3: p.shares, r3Label: t('insights.kpi.shares'), r3Icon: Share2, r3Color: 'text-green-400',
-    })) : igMedia.map(m => ({
+    })) : insight.platform === 'instagram' ? igMedia.map(m => ({
         id: m.id, thumbnail: m.thumbnail, publishedAt: m.timestamp,
         r1: m.likes, r1Label: t('insights.kpi.likes'), r1Icon: Heart, r1Color: 'text-rose-400',
         r2: m.comments, r2Label: t('insights.kpi.comments'), r2Icon: MessageCircle, r2Color: 'text-blue-400',
         r3: 0, r3Label: '', r3Icon: Share2, r3Color: '',
+    })) : (ins.recentPosts || []).map((p: any) => ({
+        id: p.id, thumbnail: p.thumbnail, publishedAt: p.publishedAt,
+        r1: p.likes, r1Label: t('insights.kpi.likes'), r1Icon: Heart, r1Color: 'text-rose-400',
+        r2: p.comments, r2Label: t('insights.kpi.comments'), r2Icon: MessageCircle, r2Color: 'text-blue-400',
+        r3: p.clicks ?? p.shares ?? 0, r3Label: p.clicks != null ? t('insights.kpi.clicks') : t('insights.kpi.shares'), r3Icon: p.clicks != null ? ExternalLink : Share2, r3Color: 'text-blue-400',
     }))
 
     const viewsTimeSeries: { date: string; value: number }[] = ins.viewsTimeSeries || []
@@ -274,12 +280,15 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
 
     const gradId = `grad-${insight.platform}-${insight.accountName.replace(/\s/g, '')}`
 
-    // Content type label helper
+    // Content type label helper — covers FB/IG/LI types
     const ctLabel = (type: string) => ({
         photo: t('insights.contentType.photo'),
+        image: t('insights.contentType.image'),
         video: t('insights.contentType.video'),
         reel: t('insights.contentType.reel'),
         multi_photo: t('insights.contentType.multiPhoto'),
+        article: t('insights.contentType.article'),
+        document: t('insights.contentType.document'),
         text: t('insights.contentType.text'),
         other: t('insights.contentType.other'),
     })[type] || type
@@ -311,8 +320,8 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                 </div>
             </div>
 
-            {/* ── TABBED LAYOUT: Facebook & Instagram ── */}
-            {isMeta ? (
+            {/* ── TABBED LAYOUT: Facebook, Instagram & LinkedIn ── */}
+            {isTabbed ? (
                 <div>
                     {/* Tab bar */}
                     <div className="flex border-b overflow-x-auto scrollbar-none">
@@ -338,8 +347,10 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     <div className="bg-muted/40 rounded-lg p-3 text-center col-span-2 sm:col-span-1">
                                         <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
-                                        <p className="text-xl font-bold font-mono">{fmt(ins.views ?? insight.impressions)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.totalViews')}</p>
+                                        <p className="text-xl font-bold font-mono">{fmt(ins.views ?? ins.impressions ?? insight.impressions)}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {insight.platform === 'linkedin' ? t('insights.kpi.impressions') : t('insights.kpi.totalViews')}
+                                        </p>
                                     </div>
                                     <div className="bg-muted/40 rounded-lg p-3 text-center">
                                         <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
@@ -413,13 +424,19 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                         <p className="text-lg font-bold font-mono">{fmt(ins.comments ?? 0)}</p>
                                         <p className="text-[10px] text-muted-foreground">{t('insights.kpi.comments')}</p>
                                     </div>
-                                    {insight.platform === 'facebook' && (
+                                    {insight.platform === 'linkedin' ? (
+                                        <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                            <ExternalLink className="h-4 w-4 mx-auto mb-1 text-indigo-500" />
+                                            <p className="text-lg font-bold font-mono">{fmt(ins.clicks ?? 0)}</p>
+                                            <p className="text-[10px] text-muted-foreground">{t('insights.kpi.clicks')}</p>
+                                        </div>
+                                    ) : insight.platform === 'facebook' ? (
                                         <div className="bg-muted/40 rounded-lg p-3 text-center">
                                             <Share2 className="h-4 w-4 mx-auto mb-1 text-green-500" />
                                             <p className="text-lg font-bold font-mono">{fmt(ins.shares ?? 0)}</p>
                                             <p className="text-[10px] text-muted-foreground">{t('insights.kpi.shares')}</p>
                                         </div>
-                                    )}
+                                    ) : null}
                                 </div>
 
                                 {/* Interactions chart */}
@@ -440,21 +457,35 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                 )}
 
                                 {/* Donut by type */}
-                                {totalInteractions > 0 && insight.platform === 'facebook' && (
+                                {totalInteractions > 0 && (insight.platform === 'facebook' || insight.platform === 'linkedin') && (
                                     <div>
                                         <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">{t('insights.interaction.byType')}</p>
                                         <div className="flex items-center gap-6">
-                                            <DonutChart size={88} data={[
-                                                { label: t('insights.kpi.reactions'), value: ins.reactions ?? 0, color: '#f43f5e' },
-                                                { label: t('insights.kpi.comments'), value: ins.comments ?? 0, color: '#3b82f6' },
-                                                { label: t('insights.kpi.shares'), value: ins.shares ?? 0, color: '#22c55e' },
-                                            ]} />
-                                            <div className="space-y-1.5">
-                                                {[
+                                            {insight.platform === 'facebook' ? (
+                                                <DonutChart size={88} data={[
                                                     { label: t('insights.kpi.reactions'), value: ins.reactions ?? 0, color: '#f43f5e' },
                                                     { label: t('insights.kpi.comments'), value: ins.comments ?? 0, color: '#3b82f6' },
                                                     { label: t('insights.kpi.shares'), value: ins.shares ?? 0, color: '#22c55e' },
-                                                ].map(({ label, value, color: c }) => (
+                                                ]} />
+                                            ) : (
+                                                <DonutChart size={88} data={[
+                                                    { label: t('insights.kpi.likes'), value: ins.likes ?? 0, color: '#f43f5e' },
+                                                    { label: t('insights.kpi.comments'), value: ins.comments ?? 0, color: '#3b82f6' },
+                                                    { label: t('insights.kpi.clicks'), value: ins.clicks ?? 0, color: '#6366f1' },
+                                                    { label: t('insights.kpi.shares'), value: ins.shares ?? 0, color: '#22c55e' },
+                                                ]} />
+                                            )}
+                                            <div className="space-y-1.5">
+                                                {(insight.platform === 'facebook' ? [
+                                                    { label: t('insights.kpi.reactions'), value: ins.reactions ?? 0, color: '#f43f5e' },
+                                                    { label: t('insights.kpi.comments'), value: ins.comments ?? 0, color: '#3b82f6' },
+                                                    { label: t('insights.kpi.shares'), value: ins.shares ?? 0, color: '#22c55e' },
+                                                ] : [
+                                                    { label: t('insights.kpi.likes'), value: ins.likes ?? 0, color: '#f43f5e' },
+                                                    { label: t('insights.kpi.comments'), value: ins.comments ?? 0, color: '#3b82f6' },
+                                                    { label: t('insights.kpi.clicks'), value: ins.clicks ?? 0, color: '#6366f1' },
+                                                    { label: t('insights.kpi.shares'), value: ins.shares ?? 0, color: '#22c55e' },
+                                                ]).map(({ label, value, color: c }) => (
                                                     <div key={label} className="flex items-center gap-2 text-xs">
                                                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c }} />
                                                         <span className="text-muted-foreground">{label}</span>
@@ -475,21 +506,26 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                     <div className="bg-muted/40 rounded-lg p-3 text-center">
                                         <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
                                         <p className="text-xl font-bold font-mono">{fmt(insight.followers)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{t('insights.audience.totalFollowers')}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {insight.platform === 'linkedin' ? t('insights.kpi.connections') : t('insights.audience.totalFollowers')}
+                                        </p>
                                     </div>
                                     <div className="bg-muted/40 rounded-lg p-3 text-center">
                                         <TrendingUp className="h-4 w-4 mx-auto mb-1 text-green-500" />
                                         <p className="text-xl font-bold font-mono">+{fmt(ins.newFollowers ?? 0)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.netFollows')}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.newFollowers')}</p>
                                     </div>
                                     <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                        <Users className="h-4 w-4 mx-auto mb-1 text-rose-500" />
-                                        <p className="text-xl font-bold font-mono">{fmt(ins.unfollows ?? 0)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.unfollows')}</p>
+                                        <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(insight.reach ?? insight.impressions ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.reach')}</p>
                                     </div>
                                 </div>
                                 <div className="h-20 bg-muted/20 rounded-lg flex flex-col items-center justify-center gap-1 text-center px-4">
-                                    <p className="text-xs text-muted-foreground">Age, gender, country breakdowns require Advanced Access review from Meta.</p>
+                                    {insight.platform === 'linkedin'
+                                        ? <p className="text-xs text-muted-foreground">Demographic breakdowns (industry, seniority, country) require LinkedIn Marketing Developer Platform (MDP) access.</p>
+                                        : <p className="text-xs text-muted-foreground">Age, gender, country breakdowns require Advanced Access review from Meta.</p>
+                                    }
                                 </div>
                             </>
                         )}
@@ -703,6 +739,22 @@ function OverviewTab({ data, platformInsights, postInsights, t }: {
                     shares: 0,
                     reach: m.reach ?? m.likes ?? 0,
                     impressions: m.impressions ?? 0,
+                })
+            }
+        }
+        if (pi.platform === 'linkedin' && Array.isArray(ins.recentPosts)) {
+            for (const p of ins.recentPosts) {
+                liveApiPosts.push({
+                    postId: p.id || '',
+                    platform: 'linkedin',
+                    content: p.text || null,
+                    thumbnail: p.thumbnail || null,
+                    publishedAt: p.publishedAt || null,
+                    likes: p.likes ?? 0,
+                    comments: p.comments ?? 0,
+                    shares: p.shares ?? 0,
+                    reach: p.impressions ?? (p.likes ?? 0) + (p.comments ?? 0),
+                    impressions: p.impressions ?? 0,
                 })
             }
         }

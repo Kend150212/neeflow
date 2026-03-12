@@ -620,20 +620,157 @@ async function fetchLinkedInInsights(channelPlatform: {
             void memberUrn // suppress unused warning
         }
 
+        // 4. Daily impressions time-series (org only — requires r_organization_social)
+        let viewsTimeSeries: { date: string; value: number }[] = []
+        let interactionsTimeSeries: { date: string; value: number }[] = []
+        let clicks = 0
+        let newFollowers = 0
+
+        if (isOrg && orgId) {
+            const orgUrn = encodeURIComponent(`urn:li:organization:${orgId}`)
+            const startDate = new Date(Date.now() - 28 * 86400000)
+            const endDate = new Date()
+
+            // Daily share stats time-series
+            try {
+                const dailyStatsRes = await fetch(
+                    `https://api.linkedin.com/rest/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${orgUrn}&timeIntervals.timeGranularityType=DAY&timeIntervals.timeRange.start=${startDate.getTime()}&timeIntervals.timeRange.end=${endDate.getTime()}`,
+                    { headers }
+                )
+                if (dailyStatsRes.ok) {
+                    const dData = await dailyStatsRes.json()
+                    for (const el of dData.elements || []) {
+                        const s = el.totalShareStatistics || {}
+                        const d = el.timeRange?.start
+                        if (d) {
+                            const dateStr = new Date(d).toISOString().split('T')[0]
+                            viewsTimeSeries.push({ date: dateStr, value: s.impressionCount || 0 })
+                            interactionsTimeSeries.push({ date: dateStr, value: (s.likeCount || 0) + (s.commentCount || 0) + (s.shareCount || 0) })
+                            clicks += s.clickCount || 0
+                        }
+                    }
+                    viewsTimeSeries.sort((a, b) => a.date.localeCompare(b.date))
+                    interactionsTimeSeries.sort((a, b) => a.date.localeCompare(b.date))
+                }
+            } catch { /* non-critical */ }
+
+            // New followers (lifetimeFollowerGain from time-granular follower stats)
+            try {
+                const dailyFollRes = await fetch(
+                    `https://api.linkedin.com/rest/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=${orgUrn}&timeIntervals.timeGranularityType=DAY&timeIntervals.timeRange.start=${startDate.getTime()}&timeIntervals.timeRange.end=${endDate.getTime()}`,
+                    { headers }
+                )
+                if (dailyFollRes.ok) {
+                    const dfData = await dailyFollRes.json()
+                    for (const el of dfData.elements || []) {
+                        newFollowers += (el.followerGains?.organicFollowerGain || 0) + (el.followerGains?.paidFollowerGain || 0)
+                    }
+                }
+            } catch { /* non-critical */ }
+        }
+
+        // 5. Recent UGC posts (last 20) with per-post stats
+        const recentPosts: {
+            id: string
+            text: string | null
+            thumbnail: string | null
+            publishedAt: string | null
+            likes: number
+            comments: number
+            shares: number
+            clicks: number
+            impressions: number
+            mediaType: string
+        }[] = []
+
+        try {
+            const authorUrn = isOrg && orgId
+                ? encodeURIComponent(`urn:li:organization:${orgId}`)
+                : encodeURIComponent(`urn:li:person:${channelPlatform.accountId}`)
+
+            const ugcRes = await fetch(
+                `https://api.linkedin.com/rest/ugcPosts?q=authors&authors=List(${authorUrn})&count=20`,
+                { headers }
+            )
+            if (ugcRes.ok) {
+                const ugcData = await ugcRes.json()
+                for (const post of ugcData.elements || []) {
+                    const postUrn = encodeURIComponent(post.id || '')
+                    const text = post.specificContent?.['com.linkedin.ugc.ShareContent']?.shareCommentary?.text
+                        || post.specificContent?.['com.linkedin.ugc.MemberNetworkVisibility']
+                        || null
+                    const media = post.specificContent?.['com.linkedin.ugc.ShareContent']?.media?.[0]
+                    const thumbnail = media?.originalUrl || media?.thumbnails?.[0]?.url || null
+                    const mediaType = media?.mediaCategory || 'TEXT'
+                    const publishedAt = post.firstPublishedAt ? new Date(post.firstPublishedAt).toISOString() : null
+
+                    // Per-post social actions (best-effort — requires r_organization_social or r_1st_connections_size)
+                    let likes = 0, comments = 0, shares = 0, postClicks = 0, postImpressions = 0
+                    try {
+                        const saRes = await fetch(
+                            `https://api.linkedin.com/rest/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${authorUrn}&shares=List(${postUrn})`,
+                            { headers }
+                        )
+                        if (saRes.ok) {
+                            const saData = await saRes.json()
+                            const s = saData.elements?.[0]?.totalShareStatistics || {}
+                            likes = s.likeCount || 0
+                            comments = s.commentCount || 0
+                            shares = s.shareCount || 0
+                            postClicks = s.clickCount || 0
+                            postImpressions = s.impressionCount || 0
+                        }
+                    } catch { /* non-critical */ }
+
+                    recentPosts.push({ id: post.id, text, thumbnail, publishedAt, likes, comments, shares, clicks: postClicks, impressions: postImpressions, mediaType })
+                }
+            }
+        } catch { /* non-critical */ }
+
+        // 6. Content type breakdown from recent posts
+        const ctCount: Record<string, number> = { article: 0, image: 0, video: 0, document: 0, text: 0, other: 0 }
+        for (const p of recentPosts) {
+            const mt = (p.mediaType || '').toUpperCase()
+            if (mt === 'ARTICLE') ctCount.article++
+            else if (mt === 'IMAGE') ctCount.image++
+            else if (mt === 'VIDEO' || mt === 'NATIVE_VIDEO') ctCount.video++
+            else if (mt === 'DOCUMENT') ctCount.document++
+            else if (mt === 'NONE' || mt === 'TEXT' || !mt) ctCount.text++
+            else ctCount.other++
+        }
+        const totalLiPosts = Object.values(ctCount).reduce((a, b) => a + b, 0)
+        const contentTypeBreakdown = Object.entries(ctCount)
+            .filter(([, c]) => c > 0)
+            .map(([type, count]) => ({ type, count, pct: totalLiPosts ? Math.round(count / totalLiPosts * 1000) / 10 : 0 }))
+            .sort((a, b) => b.count - a.count)
+
+        const totalLikes = recentPosts.reduce((a, p) => a + p.likes, 0)
+        const totalComments = recentPosts.reduce((a, p) => a + p.comments, 0)
+        const totalShares = recentPosts.reduce((a, p) => a + p.shares, 0)
+
         return {
             platform: 'linkedin',
             accountName,
             followers,
+            newFollowers,
             engagement,
             impressions,
             reach,
-            // pendingApproval omitted — we have at least follower data
+            clicks,
+            likes: totalLikes,
+            comments: totalComments,
+            shares: totalShares,
+            viewsTimeSeries,
+            interactionsTimeSeries,
+            contentTypeBreakdown,
+            recentPosts,
         }
     } catch (err) {
         console.error('[LinkedIn] fetchLinkedInInsights error:', err)
         return null
     }
 }
+
 
 // ─── Pinterest API v5 ─────────────────────────────────────────────────
 async function fetchPinterestInsights(channelPlatform: {

@@ -28,9 +28,11 @@
             "netFollows": "Net follows",
             "unfollows": "Unfollows",
             "newFollowers": "New followers",
+            "clicks": "Clicks",
             "totalViews": "Total views",
             "totalInteractions": "Total interactions",
-            "totalFollowers": "Total followers"
+            "totalFollowers": "Total followers",
+            "connections": "Connections"
         },
         "chart": {
             "daily": "Daily",
@@ -43,9 +45,12 @@
         "contentType": {
             "label": "Views by content type",
             "photo": "Photo",
+            "image": "Image",
             "video": "Video",
             "reel": "Reel",
             "multiPhoto": "Multi photo",
+            "article": "Article",
+            "document": "Document",
             "text": "Text",
             "story": "Story",
             "share": "Share",
@@ -67,7 +72,9 @@
             "nonFollowers": "Non-followers",
             "reactionsLabel": "Reactions",
             "commentsLabel": "Comments",
-            "sharesLabel": "Shares"
+            "sharesLabel": "Shares",
+            "clicksLabel": "Clicks",
+            "likesLabel": "Likes"
         },
         "posts": {
             "allPosts": "All Posts",

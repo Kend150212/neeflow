@@ -28,9 +28,11 @@
             "netFollows": "Lượt theo dõi ròng",
             "unfollows": "Hủy theo dõi",
             "newFollowers": "Người theo dõi mới",
+            "clicks": "Lượt nhấp",
             "totalViews": "Tổng lượt xem",
             "totalInteractions": "Tổng tương tác",
-            "totalFollowers": "Tổng người theo dõi"
+            "totalFollowers": "Tổng người theo dõi",
+            "connections": "Kết nối"
         },
         "chart": {
             "daily": "Hàng ngày",
@@ -43,9 +45,12 @@
         "contentType": {
             "label": "Lượt xem theo loại nội dung",
             "photo": "Ảnh",
+            "image": "Hình ảnh",
             "video": "Video",
             "reel": "Reel",
             "multiPhoto": "Nhiều ảnh",
+            "article": "Bài viết dài",
+            "document": "Tài liệu",
             "text": "Văn bản",
             "story": "Story",
             "share": "Chia sẻ",
@@ -67,7 +72,9 @@
             "nonFollowers": "Chưa theo dõi",
             "reactionsLabel": "Cảm xúc",
             "commentsLabel": "Bình luận",
-            "sharesLabel": "Chia sẻ"
+            "sharesLabel": "Chia sẻ",
+            "clicksLabel": "Lượt nhấp",
+            "likesLabel": "Thích"
         },
         "posts": {
             "allPosts": "Tất cả bài viết",

@@ -28,9 +28,11 @@
             "netFollows": "Seguidores netos",
             "unfollows": "Dejaron de seguir",
             "newFollowers": "Nuevos seguidores",
+            "clicks": "Clics",
             "totalViews": "Total de vistas",
             "totalInteractions": "Total de interacciones",
-            "totalFollowers": "Total de seguidores"
+            "totalFollowers": "Total de seguidores",
+            "connections": "Conexiones"
         },
         "chart": {
             "daily": "Diario",
@@ -43,9 +45,12 @@
         "contentType": {
             "label": "Vistas por tipo de contenido",
             "photo": "Foto",
+            "image": "Imagen",
             "video": "Video",
             "reel": "Reel",
             "multiPhoto": "Varias fotos",
+            "article": "Artículo",
+            "document": "Documento",
             "text": "Texto",
             "story": "Historia",
             "share": "Compartido",
@@ -67,7 +72,9 @@
             "nonFollowers": "No seguidores",
             "reactionsLabel": "Reacciones",
             "commentsLabel": "Comentarios",
-            "sharesLabel": "Compartir"
+            "sharesLabel": "Compartir",
+            "clicksLabel": "Clics",
+            "likesLabel": "Me gusta"
         },
         "posts": {
             "allPosts": "Todas las publicaciones",
