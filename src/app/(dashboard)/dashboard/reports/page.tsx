@@ -235,15 +235,33 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
             </div>
 
             <div className="p-4 space-y-4">
-                {/* KPI metrics row */}
+                {/* KPI metrics row — platform-specific */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
+                    {insight.platform === 'facebook' ? [
                         { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
-                        { label: insight.platform === 'youtube' ? 'Views' : 'Impressions', value: insight.impressions, icon: Eye, color: 'text-purple-500' },
+                        { label: 'Views', value: (insight as any).views ?? insight.impressions, icon: Eye, color: 'text-purple-500' },
+                        { label: 'Reactions', value: (insight as any).reactions ?? insight.engagement, icon: Heart, color: 'text-rose-500' },
+                        { label: 'Comments', value: (insight as any).comments, icon: MessageCircle, color: 'text-amber-500' },
+                    ] : insight.platform === 'instagram' ? [
+                        { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
+                        { label: 'Views', value: (insight as any).views ?? insight.impressions, icon: Eye, color: 'text-purple-500' },
+                        { label: 'Likes', value: (insight as any).likes ?? insight.engagement, icon: Heart, color: 'text-rose-500' },
+                        { label: 'Comments', value: (insight as any).comments, icon: MessageCircle, color: 'text-amber-500' },
+                    ] : insight.platform === 'youtube' ? [
+                        { label: 'Subscribers', value: insight.followers, icon: Users, color: 'text-blue-500' },
+                        { label: 'Views', value: insight.impressions, icon: Eye, color: 'text-purple-500' },
+                        { label: 'Likes', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
                         { label: 'Reach', value: insight.reach, icon: TrendingUp, color: 'text-green-500' },
-                        insight.platform === 'pinterest'
-                            ? { label: 'Saves', value: insight.saves ?? insight.engagement, icon: Bookmark, color: 'text-rose-500' }
-                            : { label: 'Engagement', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
+                    ] : insight.platform === 'pinterest' ? [
+                        { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
+                        { label: 'Impressions', value: insight.impressions, icon: Eye, color: 'text-purple-500' },
+                        { label: 'Engagement', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
+                        { label: 'Saves', value: (insight as any).saves, icon: Bookmark, color: 'text-amber-500' },
+                    ] : [
+                        { label: 'Followers', value: insight.followers, icon: Users, color: 'text-blue-500' },
+                        { label: 'Impressions', value: insight.impressions, icon: Eye, color: 'text-purple-500' },
+                        { label: 'Reach', value: insight.reach, icon: TrendingUp, color: 'text-green-500' },
+                        { label: 'Engagement', value: insight.engagement, icon: Heart, color: 'text-rose-500' },
                     ].map(({ label, value, icon: Icon, color }) => (
                         <div key={label} className="bg-muted/40 rounded-lg p-3 text-center">
                             <Icon className={`h-4 w-4 mx-auto mb-1 ${color}`} />

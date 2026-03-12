@@ -13,31 +13,74 @@ async function fetchFacebookInsights(channelPlatform: {
     const pageId = channelPlatform.accountId
 
     try {
-        // Page-level info (followers)
+        // 1. Page-level info (followers + basic fields)
         const pageRes = await fetch(
-            `https://graph.facebook.com/v21.0/${pageId}?fields=followers_count,fan_count,name&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${pageId}?fields=followers_count,fan_count,name,about&access_token=${token}`
         )
         const pageData = await pageRes.json()
-        if (pageData.error) return null
+        if (pageData.error) {
+            console.error('[Facebook] Page info error:', pageData.error)
+            return null
+        }
 
-        // Page insights — v21 valid metrics
-        // page_post_engagements was deprecated in v18, use page_total_actions
-        const since = Math.floor((Date.now() - 30 * 86400000) / 1000)
-        const until = Math.floor(Date.now() / 1000)
+        // 2. Page insights — use metrics that are NOT deprecated as of 2025
+        //    - page_views_total: total profile views (period=days_28)
+        //    - page_fan_adds_unique: unique new followers (period=days_28)
+        //    - page_media_view: views (replaces page_impressions, Nov 2025)
+        // We request period=days_28 for cumulative totals
         const insightsRes = await fetch(
-            `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_total_actions,page_impressions,page_reach,page_fan_adds_unique&period=day&since=${since}&until=${until}&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_views_total,page_fan_adds_unique,page_media_view&period=days_28&access_token=${token}`
         )
         const insightsData = await insightsRes.json()
 
-        let totalEngagement = 0, totalImpressions = 0, totalReach = 0, newFollowers = 0
+        let totalViews = 0, totalReach = 0, newFollowers = 0
         if (insightsData.data) {
             for (const metric of insightsData.data) {
-                const sum = metric.values?.reduce((acc: number, v: { value: number }) => acc + (v.value || 0), 0) || 0
-                if (metric.name === 'page_total_actions') totalEngagement = sum
-                if (metric.name === 'page_impressions') totalImpressions = sum
-                if (metric.name === 'page_reach') totalReach = sum
-                if (metric.name === 'page_fan_adds_unique') newFollowers = sum
+                // period=days_28 returns single value array
+                const val = metric.values?.[metric.values.length - 1]?.value || 0
+                if (metric.name === 'page_views_total') totalViews = val
+                if (metric.name === 'page_fan_adds_unique') newFollowers = val
+                if (metric.name === 'page_media_view') totalReach = val
             }
+        }
+
+        // 3. Engagement from recent posts (reactions + comments + shares)
+        //    This is the most reliable way — avoids deprecated engagement metrics
+        const postsRes = await fetch(
+            `https://graph.facebook.com/v21.0/${pageId}/posts?fields=reactions.summary(true),comments.summary(true),shares,message,created_time,full_picture,attachments{media_type}&limit=20&access_token=${token}`
+        )
+        const postsData = await postsRes.json()
+        let totalEngagement = 0
+        let totalComments = 0
+        let totalReactions = 0
+        let totalShares = 0
+        const recentPosts: {
+            id: string
+            message: string
+            createdTime: string
+            thumbnail: string | null
+            reactions: number
+            comments: number
+            shares: number
+        }[] = []
+
+        for (const post of postsData.data || []) {
+            const reactions = post.reactions?.summary?.total_count || 0
+            const comments = post.comments?.summary?.total_count || 0
+            const shares = post.shares?.count || 0
+            totalReactions += reactions
+            totalComments += comments
+            totalShares += shares
+            totalEngagement += reactions + comments + shares
+            recentPosts.push({
+                id: post.id,
+                message: (post.message || '').slice(0, 120),
+                createdTime: post.created_time,
+                thumbnail: post.full_picture || post.attachments?.data?.[0]?.media?.image?.src || null,
+                reactions,
+                comments,
+                shares,
+            })
         }
 
         return {
@@ -46,10 +89,16 @@ async function fetchFacebookInsights(channelPlatform: {
             followers: pageData.followers_count ?? pageData.fan_count ?? 0,
             newFollowers,
             engagement: totalEngagement,
-            impressions: totalImpressions,
+            reactions: totalReactions,
+            comments: totalComments,
+            shares: totalShares,
+            views: totalViews,
+            impressions: totalViews,
             reach: totalReach,
+            recentPosts,
         }
-    } catch {
+    } catch (err) {
+        console.error('[Facebook] fetchFacebookInsights error:', err)
         return null
     }
 }
@@ -67,38 +116,81 @@ async function fetchInstagramInsights(channelPlatform: {
     const igAccountId = cfg.instagramAccountId || channelPlatform.accountId
 
     try {
-        // Account info
+        // 1. Account info + profile summary
         const accountRes = await fetch(
-            `https://graph.facebook.com/v21.0/${igAccountId}?fields=followers_count,media_count,username&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${igAccountId}?fields=followers_count,media_count,username,profile_picture_url&access_token=${token}`
         )
         const accountData = await accountRes.json()
-        if (accountData.error) return null
+        if (accountData.error) {
+            console.error('[Instagram] Account info error:', accountData.error)
+            return null
+        }
 
-        // Account-level insights
-        const since = Math.floor((Date.now() - 30 * 86400000) / 1000)
-        const until = Math.floor(Date.now() / 1000)
+        // 2. Account-level insights — period=days_28
+        //    - views: replaces impressions for new content (v21+)
+        //    - reach: unique accounts that saw content
+        //    NOTE: impressions deprecated for v22+ and new media after July 2024
         const insightRes = await fetch(
-            `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=impressions,reach&period=day&since=${since}&until=${until}&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=views,reach&period=days_28&access_token=${token}`
         )
         const insightData = await insightRes.json()
 
-        let totalImpressions = 0, totalReach = 0
-        if (insightData.data) {
+        let totalViews = 0, totalReach = 0
+        if (insightData.data && !insightData.error) {
             for (const metric of insightData.data) {
-                const sum = metric.values?.reduce((acc: number, v: { value: number }) => acc + (v.value || 0), 0) || 0
-                if (metric.name === 'impressions') totalImpressions = sum
-                if (metric.name === 'reach') totalReach = sum
+                const val = metric.values?.[metric.values.length - 1]?.value || 0
+                if (metric.name === 'views') totalViews = val
+                if (metric.name === 'reach') totalReach = val
+            }
+        } else if (insightData.error) {
+            // Fallback to impressions for older accounts
+            console.warn('[Instagram] views metric failed, trying impressions fallback')
+            const fallbackRes = await fetch(
+                `https://graph.facebook.com/v21.0/${igAccountId}/insights?metric=impressions,reach&period=days_28&access_token=${token}`
+            )
+            const fallbackData = await fallbackRes.json()
+            if (fallbackData.data) {
+                for (const metric of fallbackData.data) {
+                    const val = metric.values?.[metric.values.length - 1]?.value || 0
+                    if (metric.name === 'impressions') totalViews = val
+                    if (metric.name === 'reach') totalReach = val
+                }
             }
         }
 
-        // Engagement from recent media (likes + comments on last 20 posts)
+        // 3. Recent media — likes, comments, views/impressions per post
         const mediaRes = await fetch(
-            `https://graph.facebook.com/v21.0/${igAccountId}/media?fields=id,like_count,comments_count&limit=20&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${igAccountId}/media?fields=id,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count,caption&limit=20&access_token=${token}`
         )
         const mediaData = await mediaRes.json()
         let totalEngagement = 0
+        let totalLikes = 0
+        let totalComments = 0
+        const recentMedia: {
+            id: string
+            mediaType: string
+            thumbnail: string | null
+            timestamp: string
+            likes: number
+            comments: number
+            caption: string
+        }[] = []
+
         for (const media of mediaData.data || []) {
-            totalEngagement += (media.like_count || 0) + (media.comments_count || 0)
+            const likes = media.like_count || 0
+            const comments = media.comments_count || 0
+            totalLikes += likes
+            totalComments += comments
+            totalEngagement += likes + comments
+            recentMedia.push({
+                id: media.id,
+                mediaType: media.media_type || 'IMAGE',
+                thumbnail: media.thumbnail_url || media.media_url || null,
+                timestamp: media.timestamp,
+                likes,
+                comments,
+                caption: (media.caption || '').slice(0, 120),
+            })
         }
 
         return {
@@ -106,11 +198,16 @@ async function fetchInstagramInsights(channelPlatform: {
             accountName: accountData.username || channelPlatform.accountName,
             followers: accountData.followers_count ?? 0,
             mediaCount: accountData.media_count ?? 0,
-            impressions: totalImpressions,
+            impressions: totalViews,
             reach: totalReach,
+            views: totalViews,
             engagement: totalEngagement,
+            likes: totalLikes,
+            comments: totalComments,
+            recentMedia,
         }
-    } catch {
+    } catch (err) {
+        console.error('[Instagram] fetchInstagramInsights error:', err)
         return null
     }
 }
@@ -560,26 +657,33 @@ async function fetchPostInsights(
 
             try {
                 if (ps.platform === 'facebook' && facebookToken && ps.externalId) {
-                    // Per-post Facebook insights
+                    // Per-post Facebook metrics via post object fields (more reliable than insights endpoint)
+                    // reactions.summary(true) = count of all reaction types
+                    // comments.summary(true) = total comment count
+                    // shares = share count
                     const res = await fetch(
-                        `https://graph.facebook.com/v21.0/${ps.externalId}/insights?metric=post_impressions_unique,post_impressions,post_reactions_by_type_total,post_clicks&access_token=${facebookToken}`
+                        `https://graph.facebook.com/v21.0/${ps.externalId}?fields=reactions.summary(true),comments.summary(true),shares,full_picture&access_token=${facebookToken}`
                     )
                     const data = await res.json()
-                    if (data.data) {
-                        for (const m of data.data) {
-                            if (m.name === 'post_reactions_by_type_total') {
-                                const vals = m.values?.[0]?.value || {}
-                                likes = Object.values(vals).reduce((a: number, v) => a + (v as number), 0)
-                            }
-                            if (m.name === 'post_impressions_unique') reach = m.values?.[0]?.value || 0
-                            if (m.name === 'post_impressions') impressions = m.values?.[0]?.value || 0
-                        }
-                        // Fetch comments count separately
-                        const commRes = await fetch(
-                            `https://graph.facebook.com/v21.0/${ps.externalId}?fields=comments.summary(true)&access_token=${facebookToken}`
+                    if (!data.error) {
+                        likes = data.reactions?.summary?.total_count || 0
+                        comments = data.comments?.summary?.total_count || 0
+                        shares = data.shares?.count || 0
+                        // post_impressions_unique is still valid (deprecated Nov 2025) — attempt as reach
+                        const insRes = await fetch(
+                            `https://graph.facebook.com/v21.0/${ps.externalId}/insights?metric=post_impressions_unique,post_clicks&access_token=${facebookToken}`
                         )
-                        const commData = await commRes.json()
-                        comments = commData.comments?.summary?.total_count || comments
+                        const insData = await insRes.json()
+                        if (insData.data && !insData.error) {
+                            for (const m of insData.data) {
+                                if (m.name === 'post_impressions_unique') reach = m.values?.[0]?.value || 0
+                                if (m.name === 'post_clicks') impressions = m.values?.[0]?.value || 0
+                            }
+                        }
+                        // Thumbnail from post if not already in db
+                        if (data.full_picture && !ps.post.media[0]?.mediaItem?.thumbnailUrl) {
+                            // Will be returned in the result even if not persisted
+                        }
                     }
                 } else if (ps.platform === 'instagram' && instagramToken && ps.externalId && igAccountId) {
                     // Instagram media fields (no insights endpoint needed for basic counts)
