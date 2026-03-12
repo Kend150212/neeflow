@@ -3048,6 +3048,47 @@ export default function ComposePage() {
         }
     }
 
+    // Standalone: generate ONLY YouTube thumbnail prompts
+    const [ytThumbnailLoading, setYtThumbnailLoading] = useState(false)
+    const handleGenerateThumbnailPrompt = async () => {
+        if (!selectedChannel || !content.trim()) {
+            toast.error('Write your post content first')
+            return
+        }
+        setYtThumbnailLoading(true)
+        try {
+            const res = await fetch('/api/admin/posts/generate-metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    channelId: selectedChannel.id,
+                    content,
+                    platforms: ['youtube'],
+                    thumbnailStyleId,
+                    thumbnailOnly: true,
+                }),
+            })
+            const data = await res.json()
+            if (!res.ok) { toast.error(data.error || 'Failed'); return }
+            if (data.ytThumbnailPrompts?.length > 0) {
+                setYtThumbnailPrompts(data.ytThumbnailPrompts)
+                setYtSelectedThumbIdx(0)
+                setYtThumbnailPrompt(data.ytThumbnailPrompts[0])
+                toast.success('✨ 3 thumbnail prompts generated')
+            } else if (data.ytThumbnailPrompt) {
+                setYtThumbnailPrompt(data.ytThumbnailPrompt)
+                setYtThumbnailPrompts([data.ytThumbnailPrompt])
+                toast.success('✨ Thumbnail prompt generated')
+            } else {
+                toast.error('No prompt returned')
+            }
+        } catch {
+            toast.error('Thumbnail prompt generation failed')
+        } finally {
+            setYtThumbnailLoading(false)
+        }
+    }
+
     // AI Customize content for each platform
     const handleCustomizeContent = async () => {
         if (!selectedChannel || !content.trim()) {
@@ -4904,13 +4945,28 @@ export default function ComposePage() {
                                             )
                                         })()}
                                         {/* Active thumbnail prompt */}
-                                        <textarea
-                                            value={ytThumbnailPrompt}
-                                            onChange={(e) => setYtThumbnailPrompt(e.target.value)}
-                                            placeholder="AI will generate a thumbnail prompt based on your content & selected style..."
-                                            className="w-full min-h-[60px] resize-y rounded-lg border bg-transparent px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                                            rows={3}
-                                        />
+                                        <div className="relative">
+                                            <textarea
+                                                value={ytThumbnailPrompt}
+                                                onChange={(e) => setYtThumbnailPrompt(e.target.value)}
+                                                placeholder="AI will generate a thumbnail prompt based on your content & selected style..."
+                                                className="w-full min-h-[60px] resize-y rounded-lg border bg-transparent px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                                                rows={3}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleGenerateThumbnailPrompt}
+                                                disabled={ytThumbnailLoading || !content.trim()}
+                                                className="absolute bottom-2 right-2 flex items-center gap-1 text-[9px] font-semibold px-2 py-1 rounded-md bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                {ytThumbnailLoading ? (
+                                                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                                ) : (
+                                                    <Sparkles className="h-2.5 w-2.5" />
+                                                )}
+                                                {ytThumbnailLoading ? 'Generating...' : 'Create Prompt'}
+                                            </button>
+                                        </div>
                                         {/* 3 thumbnail prompt options */}
                                         {ytThumbnailPrompts.length > 1 && (
                                             <div className="space-y-1">
