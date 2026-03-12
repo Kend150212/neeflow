@@ -1897,52 +1897,105 @@ export default function ComposePage() {
         })
     }
 
-    // Upload media — XHR with progress tracking
+    // Upload media — 3-step presigned direct-to-R2 flow:
+    // 1. POST /api/admin/media/presign → get presignedUrl + mediaItemId
+    // 2. PUT presignedUrl directly to R2 with XHR (tracks progress %)
+    // 3. PATCH /api/admin/media/{id}/confirm → finalize + trigger bg transcode
+    // Falls back to server upload if R2 presign unavailable.
     const handleFileUpload = useCallback(async (files: FileList | null) => {
         if (!files || !selectedChannel) return
         setUploading(true)
         let successCount = 0
         const fileArray = Array.from(files)
+
         for (let i = 0; i < fileArray.length; i++) {
             const file = fileArray[i]
             setUploadingFileName(file.name)
             setUploadProgress(0)
-            try {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('channelId', selectedChannel.id)
 
-                const media = await new Promise<Record<string, unknown>>((resolve, reject) => {
-                    const xhr = new XMLHttpRequest()
-                    xhr.upload.onprogress = (e) => {
-                        if (e.lengthComputable) {
-                            setUploadProgress(Math.round((e.loaded / e.total) * 100))
-                        }
-                    }
-                    xhr.onload = () => {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve(JSON.parse(xhr.responseText))
-                        } else {
-                            try { reject(new Error(JSON.parse(xhr.responseText).error || 'Upload failed')) }
-                            catch { reject(new Error('Upload failed')) }
-                        }
-                    }
-                    xhr.onerror = () => reject(new Error('Network error'))
-                    xhr.open('POST', '/api/admin/media')
-                    xhr.send(formData)
+            try {
+                // ── Step 1: Get presigned URL ────────────────────────────
+                const presignRes = await fetch('/api/admin/media/presign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channelId: selectedChannel.id,
+                        fileName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size,
+                    }),
                 })
 
-                setAttachedMedia((prev) => [...prev, media as Parameters<typeof prev>[0]])
+                if (!presignRes.ok) {
+                    // R2 not configured — fallback to server upload
+                    const err = await presignRes.json().catch(() => ({}))
+                    if (err?.error === 'R2 not configured') {
+                        // ── Fallback: server-side upload ──────────────────
+                        const formData = new FormData()
+                        formData.append('file', file)
+                        formData.append('channelId', selectedChannel.id)
+                        const media = await new Promise<Record<string, unknown>>((resolve, reject) => {
+                            const xhr = new XMLHttpRequest()
+                            xhr.upload.onprogress = (e) => {
+                                if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100))
+                            }
+                            xhr.onload = () => {
+                                if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText))
+                                else { try { reject(new Error(JSON.parse(xhr.responseText).error || 'Upload failed')) } catch { reject(new Error('Upload failed')) } }
+                            }
+                            xhr.onerror = () => reject(new Error('Network error'))
+                            xhr.open('POST', '/api/admin/media')
+                            xhr.send(formData)
+                        })
+                        setAttachedMedia((prev) => [...prev, media as Parameters<typeof prev>[0]])
+                        successCount++
+                        continue
+                    }
+                    throw new Error(err?.error || 'Failed to get upload URL')
+                }
+
+                const { presignedUrl, mediaItemId } = await presignRes.json() as { presignedUrl: string; mediaItemId: string; publicUrl: string }
+
+                // ── Step 2: PUT directly to R2 (tracks real upload progress) ──
+                await new Promise<void>((resolve, reject) => {
+                    const xhr = new XMLHttpRequest()
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100))
+                    }
+                    xhr.onload = () => {
+                        // R2 returns 200 for successful PUT
+                        if (xhr.status >= 200 && xhr.status < 300) resolve()
+                        else reject(new Error(`R2 upload failed: ${xhr.status}`))
+                    }
+                    xhr.onerror = () => reject(new Error('Network error during R2 upload'))
+                    xhr.open('PUT', presignedUrl)
+                    xhr.setRequestHeader('Content-Type', file.type)
+                    xhr.send(file)
+                })
+
+                // ── Step 3: Confirm upload & get final MediaItem ─────────
+                const confirmRes = await fetch(`/api/admin/media/${mediaItemId}/confirm`, {
+                    method: 'PATCH',
+                })
+                if (!confirmRes.ok) {
+                    const err = await confirmRes.json().catch(() => ({}))
+                    throw new Error(err?.error || 'Failed to confirm upload')
+                }
+                const media = await confirmRes.json()
+                setAttachedMedia((prev) => [...prev, media])
                 successCount++
+
             } catch (err: unknown) {
                 toast.error(`Upload failed: ${file.name}${err instanceof Error ? ` — ${err.message}` : ''}`)
             }
         }
+
         setUploadProgress(0)
         setUploadingFileName('')
         setUploading(false)
         if (successCount > 0) toast.success(`${successCount} file(s) uploaded!`)
     }, [selectedChannel])
+
     // Keep ref updated so async callbacks (like Canva export) always use the latest version
     handleFileUploadRef.current = handleFileUpload
 
