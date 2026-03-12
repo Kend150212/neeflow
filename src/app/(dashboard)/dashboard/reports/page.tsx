@@ -705,45 +705,69 @@ export default function InsightsPage() {
                             <ConnectPrompt platform={tabInsight.platform} />
                         )}
 
-                        {/* Top posts for this account */}
+                        {/* Top posts/pins for this account */}
                         {tabPosts.length > 0 && (
                             <Card>
                                 <CardHeader className="py-3 px-4">
-                                    <CardTitle className="text-sm font-semibold">{t('reports.topPostsByReach')}</CardTitle>
+                                    <CardTitle className="text-sm font-semibold">
+                                        {tabInsight.platform === 'pinterest' ? 'Top Pins By Impressions' : t('reports.topPostsByReach')}
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent className="px-4 pb-4">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                                        {[...tabPosts].sort((a, b) => (b.reach || 0) - (a.reach || 0)).slice(0, 5).map((post, i) => (
-                                            <div key={i} className="border rounded-lg overflow-hidden hover:border-primary/40 transition-colors group">
-                                                <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/20">
-                                                    <div className="min-w-0 flex-1">
-                                                        {post.publishedAt && <p className="text-[10px] text-muted-foreground">{new Date(post.publishedAt).toLocaleDateString()}</p>}
-                                                    </div>
-                                                    <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
-                                                </div>
-                                                {post.thumbnail ? (
-                                                    // eslint-disable-next-line @next/next/no-img-element
-                                                    <img src={post.thumbnail} alt="" className="w-full h-28 object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-28 bg-muted flex items-center justify-center">
-                                                        <FileText className="h-5 w-5 text-muted-foreground/40" />
-                                                    </div>
-                                                )}
-                                                <div className="px-3 py-2 space-y-1">
-                                                    {[
-                                                        { icon: Heart, label: t('reports.likes'), value: post.likes, color: 'text-rose-400' },
-                                                        { icon: MessageCircle, label: t('reports.comments'), value: post.comments, color: 'text-blue-400' },
-                                                        { icon: Share2, label: t('reports.shares'), value: post.shares, color: 'text-green-400' },
-                                                        { icon: Eye, label: t('reports.reach'), value: post.reach, color: 'text-purple-400' },
-                                                    ].map(({ icon: Icon, label, value, color }) => (
-                                                        <div key={label} className="flex items-center justify-between text-[11px]">
-                                                            <div className={`flex items-center gap-1 ${color}`}><Icon className="h-3 w-3" /><span className="text-muted-foreground">{label}</span></div>
-                                                            <span className="font-semibold font-mono">{fmt(value)}</span>
+                                        {[...tabPosts]
+                                            .sort((a, b) => (b.reach || b.impressions || 0) - (a.reach || a.impressions || 0))
+                                            .slice(0, 5)
+                                            .map((post, i) => (
+                                                <div key={i} className="border rounded-lg overflow-hidden hover:border-primary/40 transition-colors group">
+                                                    <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/20">
+                                                        <div className="min-w-0 flex-1">
+                                                            {post.publishedAt && <p className="text-[10px] text-muted-foreground">{new Date(post.publishedAt).toLocaleDateString()}</p>}
                                                         </div>
-                                                    ))}
+                                                        <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
+                                                    </div>
+                                                    {post.thumbnail ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img src={post.thumbnail} alt="" className="w-full h-28 object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-28 bg-muted flex items-center justify-center">
+                                                            <FileText className="h-5 w-5 text-muted-foreground/40" />
+                                                        </div>
+                                                    )}
+                                                    <div className="px-3 py-2 space-y-1">
+                                                        {tabInsight.platform === 'pinterest' ? (
+                                                            // Pinterest metrics: Impressions, Saves, Clicks
+                                                            <>
+                                                                <div className="flex items-center justify-between text-[11px]">
+                                                                    <div className="flex items-center gap-1 text-purple-400"><Eye className="h-3 w-3" /><span className="text-muted-foreground">Impressions</span></div>
+                                                                    <span className="font-semibold font-mono">{fmt(post.impressions || post.reach)}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between text-[11px]">
+                                                                    <div className="flex items-center gap-1 text-rose-400"><Bookmark className="h-3 w-3" /><span className="text-muted-foreground">Saves</span></div>
+                                                                    <span className="font-semibold font-mono">{fmt(post.shares)}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between text-[11px]">
+                                                                    <div className="flex items-center gap-1 text-blue-400"><ExternalLink className="h-3 w-3" /><span className="text-muted-foreground">Clicks</span></div>
+                                                                    <span className="font-semibold font-mono">{fmt(post.likes)}</span>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            // Standard platform metrics
+                                                            [
+                                                                { icon: Heart, label: t('reports.likes'), value: post.likes, color: 'text-rose-400' },
+                                                                { icon: MessageCircle, label: t('reports.comments'), value: post.comments, color: 'text-blue-400' },
+                                                                { icon: Share2, label: t('reports.shares'), value: post.shares, color: 'text-green-400' },
+                                                                { icon: Eye, label: t('reports.reach'), value: post.reach, color: 'text-purple-400' },
+                                                            ].map(({ icon: Icon, label, value, color }) => (
+                                                                <div key={label} className="flex items-center justify-between text-[11px]">
+                                                                    <div className={`flex items-center gap-1 ${color}`}><Icon className="h-3 w-3" /><span className="text-muted-foreground">{label}</span></div>
+                                                                    <span className="font-semibold font-mono">{fmt(value)}</span>
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
                                     </div>
                                 </CardContent>
                             </Card>
