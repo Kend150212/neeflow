@@ -296,7 +296,9 @@ async function fetchPinterestInsights(channelPlatform: {
                 return {
                     pinId: String(p.pin_id || ''),
                     title: String(p.description || p.title || ''),
-                    imageUrl: (p.media as Record<string, string>)?.images?.['150x150']?.url || null,
+                    imageUrl: ((p.media as Record<string, unknown>)?.images as Record<string, { url: string }>)?.[
+                        '150x150'
+                    ]?.url || null,
                     impressions: metrics.IMPRESSION || 0,
                     saves: metrics.SAVE || 0,
                     clicks: (metrics.PIN_CLICK || 0) + (metrics.OUTBOUND_CLICK || 0),
