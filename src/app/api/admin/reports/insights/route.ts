@@ -368,6 +368,7 @@ async function fetchInstagramInsights(channelPlatform: {
 
 // ─── YouTube Data API v3 ─────────────────────────────────────────────
 async function fetchYouTubeInsights(channelPlatform: {
+    id: string
     accountId: string
     accountName: string
     accessToken: string | null
@@ -517,6 +518,7 @@ async function fetchYouTubeInsights(channelPlatform: {
 
         return {
             platform: 'youtube',
+            channelPlatformId: channelPlatform.id,
             accountName: snippet?.title || channelPlatform.accountName,
             followers: parseInt(stats?.subscriberCount || '0'),
             totalChannelViews: parseInt(stats?.viewCount || '0'),
@@ -1318,6 +1320,7 @@ export async function GET(req: NextRequest) {
                 ? { channelId: { in: userChannelIds }, isActive: true }
                 : { isActive: true },
         select: {
+            id: true,
             platform: true,
             accountId: true,
             accountName: true,

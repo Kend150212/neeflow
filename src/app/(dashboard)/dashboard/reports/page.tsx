@@ -69,6 +69,7 @@ interface ReportsData {
 
 interface PlatformInsight {
     platform: string; accountName: string
+    channelPlatformId?: string
     followers: number | null; newFollowers?: number | null
     engagement: number | null; impressions: number | null; reach: number | null
     mediaCount?: number | null; videoCount?: number | null
@@ -914,55 +915,119 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                             </>)}
 
                             {/* YT TOP VIDEOS */}
+                            {/* YT TOP VIDEOS */}
                             {activeTab === TAB_YT_TOP && (
                                 ytVideos.length > 0 ? (
                                     <div className="space-y-3">
-                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Top {ytVideos.length} Recent Videos</p>
+                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Top {ytVideos.length} Recent Videos — click to see analytics</p>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {[...ytVideos]
                                                 .sort((a, b) => b.viewCount - a.viewCount)
-                                                .map((v) => (
-                                                    <div key={v.id} className="border rounded-lg overflow-hidden bg-muted/20 hover:bg-muted/40 transition-colors">
-                                                        <div className="relative aspect-video bg-black/10">
-                                                            {v.thumbnail ? (
-                                                                <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center">
-                                                                    <Play className="h-8 w-8 text-muted-foreground/40" />
-                                                                </div>
-                                                            )}
-                                                            {(v.duration ?? 0) > 0 && (
-                                                                <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
-                                                                    {formatDuration(v.duration ?? 0)}
+                                                .map((v) => {
+                                                    const [expanded, setExpanded] = React.useState(false)
+                                                    const [analytics, setAnalytics] = React.useState<{ timeSeries: Record<string, number>[]; totals: Record<string, number> } | null>(null)
+                                                    const [loadingAnalytics, setLoadingAnalytics] = React.useState(false)
+
+                                                    const loadAnalytics = async () => {
+                                                        if (analytics) { setExpanded(e => !e); return }
+                                                        setLoadingAnalytics(true)
+                                                        setExpanded(true)
+                                                        try {
+                                                            const res = await fetch(`/api/youtube/video-analytics?channelPlatformId=${ins.channelPlatformId}&videoId=${v.id}`)
+                                                            const data = await res.json()
+                                                            if (!data.error) setAnalytics(data)
+                                                        } catch {}
+                                                        setLoadingAnalytics(false)
+                                                    }
+
+                                                    return (
+                                                        <div key={v.id} className="border rounded-lg overflow-hidden bg-muted/20 hover:bg-muted/40 transition-colors">
+                                                            <div className="relative aspect-video bg-black/10 cursor-pointer" onClick={loadAnalytics}>
+                                                                {v.thumbnail ? (
+                                                                    <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center">
+                                                                        <Play className="h-8 w-8 text-muted-foreground/40" />
+                                                                    </div>
+                                                                )}
+                                                                {(v.duration ?? 0) > 0 && (
+                                                                    <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                                                                        {formatDuration(v.duration ?? 0)}
+                                                                    </span>
+                                                                )}
+                                                                <span className="absolute top-1.5 right-1.5 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded">
+                                                                    {expanded ? '▲ Analytics' : '▼ Analytics'}
                                                                 </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="p-2.5 space-y-2">
-                                                            <p className="text-xs font-semibold line-clamp-2 leading-tight">{v.title}</p>
-                                                            <div className="flex gap-3 text-[10px] text-muted-foreground">
-                                                                <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(v.viewCount)}</span>
-                                                                <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(v.likeCount)}</span>
-                                                                <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-blue-400" />{fmt(v.commentCount)}</span>
                                                             </div>
-                                                            {v.tags && v.tags.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {v.tags.map((tag: string, ti: number) => (
-                                                                        <span key={ti} className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded-full font-medium">
-                                                                            #{tag}
-                                                                        </span>
-                                                                    ))}
+                                                            <div className="p-2.5 space-y-2">
+                                                                <p className="text-xs font-semibold line-clamp-2 leading-tight">{v.title}</p>
+                                                                <div className="flex gap-3 text-[10px] text-muted-foreground">
+                                                                    <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(v.viewCount)}</span>
+                                                                    <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(v.likeCount)}</span>
+                                                                    <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-blue-400" />{fmt(v.commentCount)}</span>
+                                                                </div>
+                                                                {v.tags && v.tags.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {v.tags.map((tag: string, ti: number) => (
+                                                                            <span key={ti} className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded-full font-medium">
+                                                                                #{tag}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                {v.publishedAt && (
+                                                                    <p className="text-[9px] text-muted-foreground/70">{new Date(v.publishedAt).toLocaleDateString()}</p>
+                                                                )}
+                                                            </div>
+                                                            {/* Per-video analytics expand */}
+                                                            {expanded && (
+                                                                <div className="border-t px-2.5 pb-2.5 pt-2 bg-muted/30 space-y-2">
+                                                                    {loadingAnalytics ? (
+                                                                        <p className="text-[10px] text-muted-foreground text-center py-2">Loading analytics...</p>
+                                                                    ) : analytics ? (<>
+                                                                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">Last 30 days</p>
+                                                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                                                            <div>
+                                                                                <p className="text-sm font-bold font-mono">{fmt(analytics.totals.views)}</p>
+                                                                                <p className="text-[9px] text-muted-foreground">Views</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-sm font-bold font-mono">{Math.round(analytics.totals.estimatedMinutesWatched / 60)}h</p>
+                                                                                <p className="text-[9px] text-muted-foreground">Watch Time</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-sm font-bold font-mono">{Math.round(analytics.totals.averageViewDuration)}s</p>
+                                                                                <p className="text-[9px] text-muted-foreground">Avg Duration</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        {analytics.timeSeries.length > 0 && (
+                                                                            <ResponsiveContainer width="100%" height={70}>
+                                                                                <AreaChart data={analytics.timeSeries} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
+                                                                                    <defs>
+                                                                                        <linearGradient id={`vg-${v.id}`} x1="0" y1="0" x2="0" y2="1">
+                                                                                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                                                                                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                                                                        </linearGradient>
+                                                                                    </defs>
+                                                                                    <XAxis dataKey="day" tick={false} />
+                                                                                    <YAxis tick={false} />
+                                                                                    <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Views']} labelStyle={{ fontSize: 9 }} contentStyle={{ fontSize: 9 }} />
+                                                                                    <Area type="monotone" dataKey="views" stroke="#ef4444" fill={`url(#vg-${v.id})`} strokeWidth={1.5} dot={false} />
+                                                                                </AreaChart>
+                                                                            </ResponsiveContainer>
+                                                                        )}
+                                                                    </>) : (
+                                                                        <p className="text-[10px] text-muted-foreground text-center py-1">No analytics data</p>
+                                                                    )}
                                                                 </div>
                                                             )}
-                                                            {v.publishedAt && (
-                                                                <p className="text-[9px] text-muted-foreground/70">{new Date(v.publishedAt).toLocaleDateString()}</p>
-                                                            )}
+                                                            <a href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noopener noreferrer"
+                                                                className="flex items-center gap-1.5 px-2.5 pb-2 text-[10px] text-red-500 hover:text-red-400 transition-colors">
+                                                                <ExternalLink className="h-3 w-3" /> Watch on YouTube
+                                                            </a>
                                                         </div>
-                                                        <a href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noopener noreferrer"
-                                                            className="flex items-center gap-1.5 px-2.5 pb-2 text-[10px] text-red-500 hover:text-red-400 transition-colors">
-                                                            <ExternalLink className="h-3 w-3" /> Watch on YouTube
-                                                        </a>
-                                                    </div>
-                                                ))
+                                                    )
+                                                })
                                             }
                                         </div>
                                     </div>
@@ -976,68 +1041,133 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                 ytComments.length > 0 ? (
                                     <div className="space-y-3">
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{ytComments.length} Recent Comments</p>
-                                        {ytComments.map((thread) => (
-                                            <div key={thread.commentId} className="border rounded-lg p-3 bg-muted/20 space-y-2">
-                                                <div className="flex items-start gap-2.5">
-                                                    {thread.authorAvatar ? (
-                                                        <img src={thread.authorAvatar} alt={thread.authorName} className="w-7 h-7 rounded-full shrink-0 object-cover" />
-                                                    ) : (
-                                                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                                            <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                                        {ytComments.map((thread) => {
+                                            const [replyOpen, setReplyOpen] = React.useState(false)
+                                            const [replyText, setReplyText] = React.useState('')
+                                            const [replyLoading, setReplyLoading] = React.useState(false)
+                                            const [replyDone, setReplyDone] = React.useState(false)
+                                            const [replyError, setReplyError] = React.useState('')
+
+                                            const submitReply = async () => {
+                                                if (!replyText.trim() || replyLoading) return
+                                                setReplyLoading(true)
+                                                setReplyError('')
+                                                try {
+                                                    const res = await fetch('/api/youtube/reply-comment', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            channelPlatformId: ins.channelPlatformId,
+                                                            parentId: thread.commentId,
+                                                            text: replyText,
+                                                        }),
+                                                    })
+                                                    const data = await res.json()
+                                                    if (data.success) {
+                                                        setReplyDone(true)
+                                                        setReplyText('')
+                                                        setReplyOpen(false)
+                                                    } else {
+                                                        setReplyError(data.error || 'Failed to post reply')
+                                                    }
+                                                } catch {
+                                                    setReplyError('Network error')
+                                                }
+                                                setReplyLoading(false)
+                                            }
+
+                                            return (
+                                                <div key={thread.commentId} className="border rounded-lg p-3 bg-muted/20 space-y-2">
+                                                    <div className="flex items-start gap-2.5">
+                                                        {thread.authorAvatar ? (
+                                                            <img src={thread.authorAvatar} alt={thread.authorName} className="w-7 h-7 rounded-full shrink-0 object-cover" />
+                                                        ) : (
+                                                            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                                                <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-[11px] font-semibold">{thread.authorName}</span>
+                                                                {thread.videoTitle && (
+                                                                    <a href={`https://www.youtube.com/watch?v=${thread.videoId}`} target="_blank" rel="noopener noreferrer"
+                                                                        className="text-[9px] text-red-500 hover:underline truncate max-w-[120px]">
+                                                                        ▶ {thread.videoTitle}
+                                                                    </a>
+                                                                )}
+                                                                {thread.publishedAt && (
+                                                                    <span className="text-[9px] text-muted-foreground/60">{new Date(thread.publishedAt).toLocaleDateString()}</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[11px] text-foreground/80 mt-0.5 leading-snug" dangerouslySetInnerHTML={{ __html: thread.text }} />
+                                                            <div className="flex items-center gap-3 mt-1.5">
+                                                                {thread.likeCount > 0 && (
+                                                                    <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                                                                        <Heart className="h-2.5 w-2.5 text-rose-400" />{thread.likeCount}
+                                                                    </span>
+                                                                )}
+                                                                {thread.replyCount > 0 && (
+                                                                    <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                                                                        <MessageCircle className="h-2.5 w-2.5 text-blue-400" />{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}
+                                                                    </span>
+                                                                )}
+                                                                {!replyDone && (
+                                                                    <button onClick={() => setReplyOpen(o => !o)}
+                                                                        className="text-[9px] text-primary hover:underline ml-auto">
+                                                                        {replyOpen ? 'Cancel' : '↩ Reply'}
+                                                                    </button>
+                                                                )}
+                                                                {replyDone && (
+                                                                    <span className="text-[9px] text-green-500 ml-auto">✓ Replied</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {/* Reply input */}
+                                                    {replyOpen && (
+                                                        <div className="ml-9 space-y-1.5">
+                                                            <textarea
+                                                                value={replyText}
+                                                                onChange={e => setReplyText(e.target.value)}
+                                                                placeholder="Write a reply..."
+                                                                rows={2}
+                                                                className="w-full text-[11px] p-2 border rounded bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                                                            />
+                                                            {replyError && <p className="text-[10px] text-red-500">{replyError}</p>}
+                                                            <button
+                                                                onClick={submitReply}
+                                                                disabled={replyLoading || !replyText.trim()}
+                                                                className="text-[10px] bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
+                                                                {replyLoading ? 'Sending...' : 'Post Reply'}
+                                                            </button>
                                                         </div>
                                                     )}
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <span className="text-[11px] font-semibold">{thread.authorName}</span>
-                                                            {thread.videoTitle && (
-                                                                <a href={`https://www.youtube.com/watch?v=${thread.videoId}`} target="_blank" rel="noopener noreferrer"
-                                                                    className="text-[9px] text-red-500 hover:underline truncate max-w-[120px]">
-                                                                    ▶ {thread.videoTitle}
-                                                                </a>
-                                                            )}
-                                                            {thread.publishedAt && (
-                                                                <span className="text-[9px] text-muted-foreground/60">{new Date(thread.publishedAt).toLocaleDateString()}</span>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-[11px] text-foreground/80 mt-0.5 leading-snug" dangerouslySetInnerHTML={{ __html: thread.text }} />
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            {thread.likeCount > 0 && (
-                                                                <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                                                                    <Heart className="h-2.5 w-2.5 text-rose-400" />{thread.likeCount}
-                                                                </span>
-                                                            )}
-                                                            {thread.replyCount > 0 && (
-                                                                <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                                                                    <MessageCircle className="h-2.5 w-2.5 text-blue-400" />{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                {thread.replies && thread.replies.length > 0 && (
-                                                    <div className="ml-9 space-y-2 border-l border-muted pl-3">
-                                                        {thread.replies.slice(0, 3).map((rep) => (
-                                                            <div key={rep.commentId} className="flex items-start gap-2">
-                                                                {rep.authorAvatar ? (
-                                                                    <img src={rep.authorAvatar} alt={rep.authorName} className="w-5 h-5 rounded-full shrink-0 object-cover mt-0.5" />
-                                                                ) : (
-                                                                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                                                                        <UserCheck className="h-2.5 w-2.5 text-muted-foreground" />
-                                                                    </div>
-                                                                )}
-                                                                <div>
-                                                                    <span className="text-[10px] font-semibold">{rep.authorName}</span>
-                                                                    {rep.publishedAt && (
-                                                                        <span className="text-[9px] text-muted-foreground/60 ml-1.5">{new Date(rep.publishedAt).toLocaleDateString()}</span>
+                                                    {/* Existing replies */}
+                                                    {thread.replies && thread.replies.length > 0 && (
+                                                        <div className="ml-9 space-y-2 border-l border-muted pl-3">
+                                                            {thread.replies.slice(0, 3).map((rep) => (
+                                                                <div key={rep.commentId} className="flex items-start gap-2">
+                                                                    {rep.authorAvatar ? (
+                                                                        <img src={rep.authorAvatar} alt={rep.authorName} className="w-5 h-5 rounded-full shrink-0 object-cover mt-0.5" />
+                                                                    ) : (
+                                                                        <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                                                                            <UserCheck className="h-2.5 w-2.5 text-muted-foreground" />
+                                                                        </div>
                                                                     )}
-                                                                    <p className="text-[10px] text-foreground/70 leading-snug" dangerouslySetInnerHTML={{ __html: rep.text }} />
+                                                                    <div>
+                                                                        <span className="text-[10px] font-semibold">{rep.authorName}</span>
+                                                                        {rep.publishedAt && (
+                                                                            <span className="text-[9px] text-muted-foreground/60 ml-1.5">{new Date(rep.publishedAt).toLocaleDateString()}</span>
+                                                                        )}
+                                                                        <p className="text-[10px] text-foreground/70 leading-snug" dangerouslySetInnerHTML={{ __html: rep.text }} />
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
                                     </div>
                                 ) : (
                                     <p className="text-[11px] text-muted-foreground text-center py-6">No comments found</p>
