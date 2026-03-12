@@ -855,8 +855,10 @@ export default function MediaLibraryPage() {
                                                     <div className={`absolute top-1.5 left-1.5 z-10 transition-opacity ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                                         <Checkbox
                                                             checked={selected}
-                                                            onCheckedChange={() => toggleSelect(item.id)}
-                                                            onClick={(e) => toggleSelect(item.id, (e as unknown as MouseEvent).shiftKey)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                toggleSelect(item.id, (e as unknown as MouseEvent).shiftKey)
+                                                            }}
                                                             className="h-4 w-4 bg-background/80 backdrop-blur"
                                                         />
                                                     </div>
