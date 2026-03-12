@@ -737,20 +737,34 @@ export default function InsightsPage() {
                                                     <div className="px-3 py-2 space-y-1">
                                                         {tabInsight.platform === 'pinterest' ? (
                                                             // Pinterest metrics: Impressions, Saves, Clicks
-                                                            <>
-                                                                <div className="flex items-center justify-between text-[11px]">
-                                                                    <div className="flex items-center gap-1 text-purple-400"><Eye className="h-3 w-3" /><span className="text-muted-foreground">Impressions</span></div>
-                                                                    <span className="font-semibold font-mono">{fmt(post.impressions || post.reach)}</span>
-                                                                </div>
-                                                                <div className="flex items-center justify-between text-[11px]">
-                                                                    <div className="flex items-center gap-1 text-rose-400"><Bookmark className="h-3 w-3" /><span className="text-muted-foreground">Saves</span></div>
-                                                                    <span className="font-semibold font-mono">{fmt(post.shares)}</span>
-                                                                </div>
-                                                                <div className="flex items-center justify-between text-[11px]">
-                                                                    <div className="flex items-center gap-1 text-blue-400"><ExternalLink className="h-3 w-3" /><span className="text-muted-foreground">Clicks</span></div>
-                                                                    <span className="font-semibold font-mono">{fmt(post.likes)}</span>
-                                                                </div>
-                                                            </>
+                                                            // Note: Pinterest API has 24-48h data lag vs native real-time
+                                                            (() => {
+                                                                const hasData = (post.impressions || 0) > 0 || (post.likes || 0) > 0 || (post.shares || 0) > 0
+                                                                if (!hasData) {
+                                                                    return (
+                                                                        <div className="flex flex-col items-center justify-center py-2 gap-1">
+                                                                            <Clock className="h-3.5 w-3.5 text-amber-400" />
+                                                                            <span className="text-[10px] text-muted-foreground text-center">Data updating<br />within 24-48h</span>
+                                                                        </div>
+                                                                    )
+                                                                }
+                                                                return (
+                                                                    <>
+                                                                        <div className="flex items-center justify-between text-[11px]">
+                                                                            <div className="flex items-center gap-1 text-purple-400"><Eye className="h-3 w-3" /><span className="text-muted-foreground">Impressions</span></div>
+                                                                            <span className="font-semibold font-mono">{fmt(post.impressions || post.reach)}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center justify-between text-[11px]">
+                                                                            <div className="flex items-center gap-1 text-rose-400"><Bookmark className="h-3 w-3" /><span className="text-muted-foreground">Saves</span></div>
+                                                                            <span className="font-semibold font-mono">{fmt(post.shares)}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center justify-between text-[11px]">
+                                                                            <div className="flex items-center gap-1 text-blue-400"><ExternalLink className="h-3 w-3" /><span className="text-muted-foreground">Clicks</span></div>
+                                                                            <span className="font-semibold font-mono">{fmt(post.likes)}</span>
+                                                                        </div>
+                                                                    </>
+                                                                )
+                                                            })()
                                                         ) : (
                                                             // Standard platform metrics
                                                             [
