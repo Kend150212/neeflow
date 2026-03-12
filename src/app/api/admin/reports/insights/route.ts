@@ -689,43 +689,56 @@ async function fetchLinkedInInsights(channelPlatform: {
                 : encodeURIComponent(`urn:li:person:${channelPlatform.accountId}`)
 
             const ugcRes = await fetch(
-                `https://api.linkedin.com/rest/ugcPosts?q=authors&authors=List(${authorUrn})&count=20`,
-                { headers }
+                `https://api.linkedin.com/rest/ugcPosts?q=authors&authors=List(${authorUrn})&count=10`,
+                { headers, signal: AbortSignal.timeout(8000) }
             )
             if (ugcRes.ok) {
                 const ugcData = await ugcRes.json()
-                for (const post of ugcData.elements || []) {
-                    const postUrn = encodeURIComponent(post.id || '')
-                    const text = post.specificContent?.['com.linkedin.ugc.ShareContent']?.shareCommentary?.text
-                        || post.specificContent?.['com.linkedin.ugc.MemberNetworkVisibility']
-                        || null
-                    const media = post.specificContent?.['com.linkedin.ugc.ShareContent']?.media?.[0]
-                    const thumbnail = media?.originalUrl || media?.thumbnails?.[0]?.url || null
-                    const mediaType = media?.mediaCategory || 'TEXT'
-                    const publishedAt = post.firstPublishedAt ? new Date(post.firstPublishedAt).toISOString() : null
+                const rawPosts = (ugcData.elements || []).slice(0, 10)
 
-                    // Per-post social actions (best-effort — requires r_organization_social or r_1st_connections_size)
+                // Fetch per-post stats in PARALLEL (not serial) to avoid N+1 timeout
+                const postResults = await Promise.all(rawPosts.map(async (post: Record<string, unknown>) => {
+                    const postUrn = encodeURIComponent(String(post.id || ''))
+                    const specificContent = (post.specificContent as Record<string, unknown>) || {}
+                    const shareContent = specificContent['com.linkedin.ugc.ShareContent'] as Record<string, unknown> || {}
+                    const commentary = shareContent.shareCommentary as Record<string, unknown> || {}
+                    const mediaArr = Array.isArray(shareContent.media) ? shareContent.media : []
+                    const media = (mediaArr[0] as Record<string, unknown>) || {}
+                    const thumbnailsArr = Array.isArray(media.thumbnails) ? media.thumbnails : []
+                    const thumb0 = (thumbnailsArr[0] as Record<string, unknown>) || {}
+                    const text = String(commentary.text || '') || null
+                    const thumbnail = String(media.originalUrl || thumb0.url || '') || null
+                    const mediaType = String(media.mediaCategory || 'TEXT')
+                    const publishedAt = post.firstPublishedAt
+                        ? new Date(Number(post.firstPublishedAt)).toISOString()
+                        : null
+
                     let likes = 0, comments = 0, shares = 0, postClicks = 0, postImpressions = 0
-                    try {
-                        const saRes = await fetch(
-                            `https://api.linkedin.com/rest/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${authorUrn}&shares=List(${postUrn})`,
-                            { headers }
-                        )
-                        if (saRes.ok) {
-                            const saData = await saRes.json()
-                            const s = saData.elements?.[0]?.totalShareStatistics || {}
-                            likes = s.likeCount || 0
-                            comments = s.commentCount || 0
-                            shares = s.shareCount || 0
-                            postClicks = s.clickCount || 0
-                            postImpressions = s.impressionCount || 0
-                        }
-                    } catch { /* non-critical */ }
+                    if (isOrg && orgId) {
+                        try {
+                            const saRes = await fetch(
+                                `https://api.linkedin.com/rest/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=${authorUrn}&shares=List(${postUrn})`,
+                                { headers, signal: AbortSignal.timeout(5000) }
+                            )
+                            if (saRes.ok) {
+                                const saData = await saRes.json()
+                                const s = (saData.elements?.[0]?.totalShareStatistics as Record<string, number>) || {}
+                                likes = s.likeCount || 0
+                                comments = s.commentCount || 0
+                                shares = s.shareCount || 0
+                                postClicks = s.clickCount || 0
+                                postImpressions = s.impressionCount || 0
+                            }
+                        } catch { /* non-critical */ }
+                    }
 
-                    recentPosts.push({ id: post.id, text, thumbnail, publishedAt, likes, comments, shares, clicks: postClicks, impressions: postImpressions, mediaType })
-                }
+                    return { id: String(post.id || ''), text, thumbnail, publishedAt, likes, comments, shares, clicks: postClicks, impressions: postImpressions, mediaType }
+                }))
+
+                recentPosts.push(...postResults)
             }
         } catch { /* non-critical */ }
+
 
         // 6. Content type breakdown from recent posts
         const ctCount: Record<string, number> = { article: 0, image: 0, video: 0, document: 0, text: 0, other: 0 }
