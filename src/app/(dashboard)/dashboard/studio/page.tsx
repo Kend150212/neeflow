@@ -22,6 +22,7 @@ interface StudioAvatar {
     id: string
     name: string
     coverImage: string | null
+    poseImages: string[]   // AI generated angle images
     status: string
     style: string
     createdAt: string
@@ -119,14 +120,14 @@ export default function StudioPage() {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-[#080d0b]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(0, 255, 149, 0.04) 1px, transparent 0)', backgroundSize: '32px 32px' }}>
+        <div className="flex h-screen overflow-hidden bg-background">
             {/* Left sidebar: navigation */}
-            <aside className="w-56 border-r border-emerald-500/10 bg-[#080d0b] flex flex-col p-4 gap-1 shrink-0">
+            <aside className="w-56 border-r border-border bg-card flex flex-col p-4 gap-1 shrink-0">
                 <div className="flex items-center gap-2 px-2 py-3 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-400/20 flex items-center justify-center">
-                        <Clapperboard className="h-4 w-4 text-emerald-400" />
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                        <Clapperboard className="h-4 w-4 text-emerald-500" />
                     </div>
-                    <span className="font-bold text-white tracking-tight">Studio</span>
+                    <span className="font-bold tracking-tight">Studio</span>
                 </div>
 
                 {[
@@ -140,8 +141,8 @@ export default function StudioPage() {
                         className={cn(
                             'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                             item.active
-                                ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                                ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent'
                         )}
                     >
                         <item.icon className="h-4 w-4 shrink-0" />
@@ -149,10 +150,10 @@ export default function StudioPage() {
                     </Link>
                 ))}
 
-                <div className="mt-auto pt-4 border-t border-white/5">
+                <div className="mt-auto pt-4 border-t border-border">
                     <Link
                         href="/dashboard/api-keys"
-                        className="flex items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                         <Sparkles className="h-3.5 w-3.5" />
                         Configure API Keys
@@ -163,10 +164,10 @@ export default function StudioPage() {
             {/* Main content */}
             <main className="flex-1 flex flex-col overflow-y-auto">
                 {/* Header */}
-                <header className="sticky top-0 z-10 px-8 py-5 border-b border-white/5 bg-[#080d0b]/90 backdrop-blur-md flex items-center justify-between">
+                <header className="sticky top-0 z-10 px-8 py-5 border-b border-border bg-background/90 backdrop-blur-md flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-black text-white tracking-tight">Studio</h1>
-                        <p className="text-slate-400 text-sm mt-0.5">AI image & video generation workspace</p>
+                        <h1 className="text-2xl font-black tracking-tight">Studio</h1>
+                        <p className="text-muted-foreground text-sm mt-0.5">AI image &amp; video generation workspace</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'}>
@@ -190,18 +191,18 @@ export default function StudioPage() {
                     {/* Stats row */}
                     <div className="grid grid-cols-3 gap-4">
                         {[
-                            { label: 'Total Outputs', value: totalOutputs, icon: ImageIcon, color: 'text-violet-400', bg: 'bg-violet-400/10', border: 'border-violet-400/20' },
-                            { label: 'Active Projects', value: activeProjects, icon: FolderOpen, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
-                            { label: 'Avatars', value: avatars.length, icon: User, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
+                            { label: t('studio.totalOutputs') || 'Total Outputs', value: totalOutputs, icon: ImageIcon, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+                            { label: t('studio.totalProjects') || 'Total Projects', value: projects.length, icon: FolderOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+                            { label: 'Avatars', value: avatars.length, icon: User, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
                         ].map((stat) => (
-                            <div key={stat.label} className={cn('p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-400/20 transition-colors group')}>
+                            <div key={stat.label} className={cn('p-5 rounded-2xl bg-card border border-border hover:border-emerald-500/30 transition-colors group')}>
                                 <div className="flex items-center justify-between mb-3">
-                                    <p className="text-slate-400 text-sm">{stat.label}</p>
+                                    <p className="text-muted-foreground text-sm">{stat.label}</p>
                                     <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', stat.bg, `border ${stat.border}`)}>
                                         <stat.icon className={cn('h-4 w-4', stat.color)} />
                                     </div>
                                 </div>
-                                <p className="text-3xl font-black text-white">{stat.value}</p>
+                                <p className="text-3xl font-black">{stat.value}</p>
                             </div>
                         ))}
                     </div>
@@ -210,36 +211,43 @@ export default function StudioPage() {
                     {(avatars.length > 0 || !loadingAvatars) && (
                         <div>
                             <div className="flex items-center justify-between mb-3">
-                                <h2 className="text-sm font-bold text-white">Your Avatars</h2>
-                                <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'} className="text-xs text-emerald-400 hover:underline flex items-center gap-1">
+                                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Avatars</h2>
+                                <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'} className="text-xs text-emerald-500 hover:underline flex items-center gap-1">
                                     View all <ChevronRight className="h-3 w-3" />
                                 </Link>
                             </div>
                             <div className="flex gap-3 overflow-x-auto pb-1">
                                 {/* Add Avatar card */}
                                 <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'}>
-                                    <div className="w-20 h-20 rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-1 hover:border-emerald-400/40 hover:bg-emerald-400/5 transition-colors cursor-pointer shrink-0">
-                                        <Plus className="h-5 w-5 text-slate-500" />
-                                        <span className="text-[10px] text-slate-500">New</span>
+                                    <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-colors cursor-pointer shrink-0">
+                                        <Plus className="h-5 w-5 text-muted-foreground" />
+                                        <span className="text-[10px] text-muted-foreground">New</span>
                                     </div>
                                 </Link>
-                                {avatars.slice(0, 8).map((av) => (
-                                    <div key={av.id} className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 shrink-0 group">
-                                        {av.coverImage ? (
-                                            <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                                                {av.status === 'generating'
-                                                    ? <Loader2 className="h-5 w-5 text-emerald-400 animate-spin" />
-                                                    : <User className="h-5 w-5 text-slate-600" />
-                                                }
+                                {avatars.slice(0, 8).map((av) => {
+                                    // Show coverImage → first poseImage → placeholder
+                                    const previewUrl = av.coverImage
+                                        || (Array.isArray(av.poseImages) && av.poseImages.length > 0 ? av.poseImages[0] : null)
+                                    return (
+                                        <Link key={av.id} href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'}>
+                                            <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border shrink-0 group hover:ring-2 hover:ring-emerald-500/40 transition-all">
+                                                {previewUrl ? (
+                                                    <img src={previewUrl} alt={av.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                                                        {av.status === 'generating'
+                                                            ? <Loader2 className="h-5 w-5 text-emerald-500 animate-spin" />
+                                                            : <User className="h-5 w-5 text-muted-foreground" />
+                                                        }
+                                                    </div>
+                                                )}
+                                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <p className="text-[9px] text-white font-medium truncate">{av.name}</p>
+                                                </div>
                                             </div>
-                                        )}
-                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <p className="text-[9px] text-white font-medium truncate">{av.name}</p>
-                                        </div>
-                                    </div>
-                                ))}
+                                        </Link>
+                                    )
+                                })}
                             </div>
                         </div>
                     )}
@@ -250,8 +258,8 @@ export default function StudioPage() {
                             <h2 className="text-sm font-bold text-white">Projects</h2>
                         </div>
 
-                        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                            <div className="px-6 py-3 border-b border-white/5 grid grid-cols-[2fr_1fr_1fr_100px_80px] gap-4 text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                            <div className="px-6 py-3 border-b border-border grid grid-cols-[2fr_1fr_1fr_100px_80px] gap-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                                 <span>Project</span>
                                 <span>Status</span>
                                 <span>Outputs</span>
@@ -261,58 +269,58 @@ export default function StudioPage() {
 
                             {loadingProjects ? (
                                 <div className="flex items-center justify-center py-16">
-                                    <Loader2 className="h-6 w-6 text-emerald-400 animate-spin" />
+                                    <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
                                 </div>
                             ) : projects.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center">
-                                        <Clapperboard className="h-7 w-7 text-emerald-400" />
+                                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                        <Clapperboard className="h-7 w-7 text-emerald-500" />
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-white font-bold mb-1">No projects yet</p>
-                                        <p className="text-slate-400 text-sm">Create your first project to start generating AI content</p>
+                                        <p className="font-bold mb-1">No projects yet</p>
+                                        <p className="text-muted-foreground text-sm">Create your first project to start generating AI content</p>
                                     </div>
                                     <Button
                                         onClick={() => setShowNewProject(true)}
-                                        className="gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold"
+                                        className="gap-2 bg-emerald-500 hover:bg-emerald-400 font-bold"
                                     >
                                         <Plus className="h-4 w-4" />
                                         New Project
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="divide-y divide-white/5">
+                                <div className="divide-y divide-border">
                                     {projects.map((project) => {
-                                        const lastJob = project.jobs[0]
+                                        const lastJob = project.jobs?.[0]
                                         return (
-                                            <div key={project.id} className="px-6 py-4 grid grid-cols-[2fr_1fr_1fr_100px_80px] gap-4 items-center hover:bg-white/[0.02] transition-colors group">
+                                            <div key={project.id} className="px-6 py-4 grid grid-cols-[2fr_1fr_1fr_100px_80px] gap-4 items-center hover:bg-muted/50 transition-colors group">
                                                 {/* Name */}
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center">
+                                                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                                                         {project.coverImage
                                                             ? <img src={project.coverImage} alt={project.name} className="w-full h-full object-cover" />
-                                                            : <Clapperboard className="h-4 w-4 text-emerald-400" />
+                                                            : <Clapperboard className="h-4 w-4 text-emerald-500" />
                                                         }
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-sm font-bold text-white truncate">{project.name}</p>
+                                                        <p className="text-sm font-bold truncate">{project.name}</p>
                                                         {project.description && (
-                                                            <p className="text-xs text-slate-500 truncate">{project.description}</p>
+                                                            <p className="text-xs text-muted-foreground truncate">{project.description}</p>
                                                         )}
                                                     </div>
                                                 </div>
                                                 {/* Status */}
                                                 <div>
                                                     {lastJob ? getStatusBadge(lastJob.status) : (
-                                                        <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider">No runs</span>
+                                                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">No runs</span>
                                                     )}
                                                 </div>
                                                 {/* Outputs */}
-                                                <div className="flex items-center gap-4 text-sm text-slate-400">
+                                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                                     <span className="flex items-center gap-1"><ImageIcon className="h-3.5 w-3.5" />{project._count.outputs}</span>
                                                 </div>
                                                 {/* Last run */}
-                                                <div className="text-xs text-slate-500">
+                                                <div className="text-xs text-muted-foreground">
                                                     {project.lastRunAt
                                                         ? new Date(project.lastRunAt).toLocaleDateString()
                                                         : '—'
@@ -324,7 +332,7 @@ export default function StudioPage() {
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            className="text-xs gap-1.5 border-emerald-400/20 text-emerald-400 hover:bg-emerald-400 hover:text-[#080d0b] transition-all opacity-0 group-hover:opacity-100"
+                                                            className="text-xs gap-1.5 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
                                                         >
                                                             <Play className="h-3 w-3" />
                                                             Open
@@ -343,42 +351,42 @@ export default function StudioPage() {
 
             {/* New Project Dialog */}
             <Dialog open={showNewProject} onOpenChange={setShowNewProject}>
-                <DialogContent className="sm:max-w-md bg-[#0f1a14] border-emerald-400/20">
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
-                            <Clapperboard className="h-5 w-5 text-emerald-400" />
+                        <DialogTitle className="flex items-center gap-2">
+                            <Clapperboard className="h-5 w-5 text-emerald-500" />
                             New Project
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 pt-2">
                         <div>
-                            <Label className="text-slate-300 text-xs">Project Name *</Label>
+                            <Label className="text-xs">Project Name *</Label>
                             <Input
                                 value={newProjectName}
                                 onChange={e => setNewProjectName(e.target.value)}
                                 placeholder="e.g. Summer Collection Ads"
-                                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40"
+                                className="mt-1.5"
                                 onKeyDown={e => e.key === 'Enter' && createProject()}
                             />
                         </div>
                         <div>
-                            <Label className="text-slate-300 text-xs">Description <span className="text-slate-600">(optional)</span></Label>
+                            <Label className="text-xs">Description <span className="text-muted-foreground">(optional)</span></Label>
                             <Textarea
                                 value={newProjectDesc}
                                 onChange={e => setNewProjectDesc(e.target.value)}
                                 placeholder="What this project is about..."
-                                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-400/40 resize-none"
+                                className="mt-1.5 resize-none"
                                 rows={3}
                             />
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
-                            <Button variant="ghost" onClick={() => setShowNewProject(false)} className="text-slate-400">
+                            <Button variant="ghost" onClick={() => setShowNewProject(false)}>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={createProject}
                                 disabled={!newProjectName.trim() || creating}
-                                className="gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold"
+                                className="gap-2 bg-emerald-500 hover:bg-emerald-400 font-bold"
                             >
                                 {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                                 Create Project
