@@ -1163,6 +1163,8 @@ export default function ComposePage() {
     const [generating, setGenerating] = useState(false)
     const [generatingMeta, setGeneratingMeta] = useState(false)
     const [uploading, setUploading] = useState(false)
+    const [uploadProgress, setUploadProgress] = useState(0)
+    const [uploadingFileName, setUploadingFileName] = useState('')
     const [dragging, setDragging] = useState(false)
     const [aiTopic, setAiTopic] = useState('')
     // AI Suggestions & Trending
@@ -1895,41 +1897,51 @@ export default function ComposePage() {
         })
     }
 
-    // Upload media — server-side upload to Google Drive (avoids CORS)
+    // Upload media — XHR with progress tracking
     const handleFileUpload = useCallback(async (files: FileList | null) => {
         if (!files || !selectedChannel) return
         setUploading(true)
         let successCount = 0
-        try {
-            for (const file of Array.from(files)) {
-                try {
-                    toast.info(`Uploading ${file.name}...`)
-                    const formData = new FormData()
-                    formData.append('file', file)
-                    formData.append('channelId', selectedChannel.id)
+        const fileArray = Array.from(files)
+        for (let i = 0; i < fileArray.length; i++) {
+            const file = fileArray[i]
+            setUploadingFileName(file.name)
+            setUploadProgress(0)
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('channelId', selectedChannel.id)
 
-                    const res = await fetch('/api/admin/media', {
-                        method: 'POST',
-                        body: formData,
-                    })
-
-                    if (!res.ok) {
-                        const err = await res.json()
-                        toast.error(err.error || `Failed to upload ${file.name}`)
-                        continue
+                const media = await new Promise<Record<string, unknown>>((resolve, reject) => {
+                    const xhr = new XMLHttpRequest()
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            setUploadProgress(Math.round((e.loaded / e.total) * 100))
+                        }
                     }
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(JSON.parse(xhr.responseText))
+                        } else {
+                            try { reject(new Error(JSON.parse(xhr.responseText).error || 'Upload failed')) }
+                            catch { reject(new Error('Upload failed')) }
+                        }
+                    }
+                    xhr.onerror = () => reject(new Error('Network error'))
+                    xhr.open('POST', '/api/admin/media')
+                    xhr.send(formData)
+                })
 
-                    const media = await res.json()
-                    setAttachedMedia((prev) => [...prev, media])
-                    successCount++
-                } catch {
-                    toast.error(`Upload failed: ${file.name}`)
-                }
+                setAttachedMedia((prev) => [...prev, media as Parameters<typeof prev>[0]])
+                successCount++
+            } catch (err: unknown) {
+                toast.error(`Upload failed: ${file.name}${err instanceof Error ? ` — ${err.message}` : ''}`)
             }
-            if (successCount > 0) toast.success(`${successCount} file(s) uploaded!`)
-        } finally {
-            setUploading(false)
         }
+        setUploadProgress(0)
+        setUploadingFileName('')
+        setUploading(false)
+        if (successCount > 0) toast.success(`${successCount} file(s) uploaded!`)
     }, [selectedChannel])
     // Keep ref updated so async callbacks (like Canva export) always use the latest version
     handleFileUploadRef.current = handleFileUpload
@@ -4235,7 +4247,7 @@ export default function ComposePage() {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-1.5 px-2.5 pb-2">
-                            {(attachedMedia.length > 0 || aiImageBgGenerating) && (
+                            {(attachedMedia.length > 0 || aiImageBgGenerating || uploading) && (
                                 <DndContext
                                     sensors={mediaDndSensors}
                                     collisionDetection={closestCenter}
@@ -4280,6 +4292,25 @@ export default function ComposePage() {
                                                             </div>
                                                         </div>
                                                         <p className="text-[8px] font-semibold animate-pulse" style={{ color: '#2bee9d', animationDuration: '2s' }}>Creating...</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {/* Upload Progress Placeholder */}
+                                            {uploading && uploadingFileName && (
+                                                <div className={`relative rounded-lg overflow-hidden border border-primary/30 bg-muted/30 flex flex-col items-center justify-center gap-1.5 p-2 ${mediaRatio === '16:9' ? 'aspect-video' : mediaRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'
+                                                    }`}>
+                                                    {/* shimmer bg */}
+                                                    <div className="absolute inset-0 opacity-20" style={{ background: 'linear-gradient(135deg,var(--primary)/30,transparent)' }} />
+                                                    <div className="relative z-10 flex flex-col items-center gap-1.5 w-full px-2">
+                                                        <div className="h-6 w-6 rounded border border-primary/40 bg-primary/10 flex items-center justify-center">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                                        </div>
+                                                        <p className="text-[8px] text-muted-foreground text-center truncate w-full leading-tight">{uploadingFileName}</p>
+                                                        {/* progress bar */}
+                                                        <div className="w-full bg-muted rounded-full overflow-hidden" style={{ height: 4 }}>
+                                                            <div className="h-full bg-primary rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                                                        </div>
+                                                        <p className="text-[9px] font-bold text-primary">{uploadProgress}%</p>
                                                     </div>
                                                 </div>
                                             )}
