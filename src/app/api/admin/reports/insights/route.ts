@@ -51,7 +51,7 @@ async function fetchFacebookInsights(channelPlatform: {
         // 3. Engagement from recent posts (reactions + comments + shares)
         //    This is the most reliable way — avoids deprecated engagement metrics
         const postsRes = await fetch(
-            `https://graph.facebook.com/v21.0/${pageId}/posts?fields=reactions.summary(true),comments.summary(true),shares,message,created_time,full_picture,attachments{media_type}&limit=20&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${pageId}/posts?fields=reactions.summary(true),comments.summary(true),shares,message,created_time,full_picture,attachments{media_type}&limit=50&access_token=${token}`
         )
         const postsData = await postsRes.json()
         let totalEngagement = 0
@@ -164,7 +164,7 @@ async function fetchInstagramInsights(channelPlatform: {
 
         // 3. Recent media — likes, comments, views/impressions per post
         const mediaRes = await fetch(
-            `https://graph.facebook.com/v21.0/${igAccountId}/media?fields=id,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count,caption&limit=20&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${igAccountId}/media?fields=id,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count,caption&limit=50&access_token=${token}`
         )
         const mediaData = await mediaRes.json()
         let totalEngagement = 0

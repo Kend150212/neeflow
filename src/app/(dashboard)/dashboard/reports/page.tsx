@@ -303,6 +303,65 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                     </div>
                 ) : null}
 
+                {/* All FB posts with real interaction data from page API */}
+                {insight.platform === 'facebook' && (() => {
+                    const ins = insight as any
+                    const fbPosts: Array<{ id: string; message?: string; createdTime: string; thumbnail?: string; reactions: number; comments: number; shares: number }> =
+                        ins.recentPosts || []
+                    if (fbPosts.length === 0) return null
+                    return (
+                        <div>
+                            <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">
+                                All Posts ({fbPosts.length})
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                {fbPosts.map((post, i) => (
+                                    <PostCard
+                                        key={post.id || i}
+                                        thumbnail={post.thumbnail}
+                                        publishedAt={post.createdTime}
+                                        platform="facebook"
+                                        metrics={[
+                                            { icon: Heart, label: 'Reactions', value: post.reactions, color: 'text-rose-400' },
+                                            { icon: MessageCircle, label: 'Comments', value: post.comments, color: 'text-blue-400' },
+                                            { icon: Share2, label: 'Shares', value: post.shares, color: 'text-green-400' },
+                                        ]}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )
+                })()}
+
+                {/* All IG posts with real interaction data from media API */}
+                {insight.platform === 'instagram' && (() => {
+                    const ins = insight as any
+                    const igMedia: Array<{ id: string; mediaType: string; thumbnail?: string; timestamp: string; likes: number; comments: number; caption?: string }> =
+                        ins.recentMedia || []
+                    if (igMedia.length === 0) return null
+                    return (
+                        <div>
+                            <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">
+                                All Posts ({igMedia.length})
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                {igMedia.map((media, i) => (
+                                    <PostCard
+                                        key={media.id || i}
+                                        thumbnail={media.thumbnail}
+                                        publishedAt={media.timestamp}
+                                        platform="instagram"
+                                        metrics={[
+                                            { icon: Heart, label: 'Likes', value: media.likes, color: 'text-rose-400' },
+                                            { icon: MessageCircle, label: 'Comments', value: media.comments, color: 'text-blue-400' },
+                                        ]}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )
+                })()}
+
                 {/* Pinterest API top pins — shown when available */}
                 {insight.platform === 'pinterest' && insight.topPins && insight.topPins.length > 0 && (
                     <div>
@@ -324,10 +383,10 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                     </div>
                 )}
 
-                {/* Top posts for this platform (non-Pinterest) */}
-                {insight.platform !== 'pinterest' && topPosts.length > 0 && (
+                {/* Top posts for other platforms (TikTok, LinkedIn, YouTube) from Neeflow DB */}
+                {insight.platform !== 'pinterest' && insight.platform !== 'facebook' && insight.platform !== 'instagram' && topPosts.length > 0 && (
                     <div>
-                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Top Posts</p>
+                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Recent Posts</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {topPosts.map((post, i) => (
                                 <PostCard
