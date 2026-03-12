@@ -668,10 +668,17 @@ export default function ChannelAvatarsPage() {
                                                     </button>
                                                 </>
                                             ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer" onClick={() => refCoverRef.current?.click()}>
-                                                    <Upload size={20} className="text-muted-foreground" />
-                                                    <p className="text-[10px] text-muted-foreground">Upload reference image</p>
-                                                    {uploadingRef && <Loader2 size={14} className="animate-spin text-emerald-400" />}
+                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer px-3 py-2" onClick={() => refCoverRef.current?.click()}>
+                                                    <Upload size={18} className="text-emerald-400/70 flex-shrink-0" />
+                                                    <p className="text-[10px] font-bold text-emerald-400 text-center">{t('studio.avatar.refGuide.title')}</p>
+                                                    <div className="w-full space-y-1 mt-0.5">
+                                                        <p className="text-[9px] text-muted-foreground leading-tight flex items-start gap-1"><span className="text-emerald-400 flex-shrink-0">✓</span>{t('studio.avatar.refGuide.tip1')}</p>
+                                                        <p className="text-[9px] text-muted-foreground leading-tight flex items-start gap-1"><span className="text-emerald-400 flex-shrink-0">✓</span>{t('studio.avatar.refGuide.tip2')}</p>
+                                                        <p className="text-[9px] text-muted-foreground leading-tight flex items-start gap-1"><span className="text-emerald-400 flex-shrink-0">✓</span>{t('studio.avatar.refGuide.tip3')}</p>
+                                                        <p className="text-[9px] text-muted-foreground leading-tight flex items-start gap-1"><span className="text-amber-400 flex-shrink-0">→</span>{t('studio.avatar.refGuide.tip4')}</p>
+                                                    </div>
+                                                    <p className="text-[9px] text-center text-emerald-400/60 italic border-t border-border/40 pt-1 w-full">{t('studio.avatar.refGuide.why')}</p>
+                                                    {uploadingRef && <Loader2 size={12} className="animate-spin text-emerald-400" />}
                                                 </div>
                                             )}
                                             <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase border border-white/20">{t('studio.avatar.reference')}</div>

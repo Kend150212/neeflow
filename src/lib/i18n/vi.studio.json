@@ -45,6 +45,15 @@
             "refLeft": "Ảnh gốc (trái)",
             "aiRight": "AI Generated (phải)",
             "reference": "Tham chiếu",
+            "uploadRefHint": "Tải ảnh tham chiếu",
+            "refGuide": {
+                "title": "Ảnh tham chiếu lý tưởng",
+                "tip1": "Toàn thân · Mặt rõ · Trang phục hiển thị đầy đủ",
+                "tip2": "Trang phục giống mô tả nhân vật",
+                "tip3": "Sáng, nét, không chụp nhóm",
+                "tip4": "Tối thiểu 512×512px, JPG hoặc PNG",
+                "why": "1 ảnh ref = trang phục đồng nhất trên cả 6 góc"
+            },
             "poseMatrix": "Ma trận Pose — 6 Góc nhìn",
             "anglesGenerated": "{{count}}/6 góc đã tạo",
             "upload": "Tải lên",

@@ -45,6 +45,15 @@
             "refLeft": "Reference (left)",
             "aiRight": "AI Generated (right)",
             "reference": "Reference",
+            "uploadRefHint": "Upload reference image",
+            "refGuide": {
+                "title": "Ideal reference photo",
+                "tip1": "Full body · Clear face · Outfit fully visible",
+                "tip2": "Same outfit as character description",
+                "tip3": "Well-lit · Sharp · No groups",
+                "tip4": "Min 512×512px, JPG or PNG",
+                "why": "1 reference = consistent outfit across all 6 angles"
+            },
             "poseMatrix": "Pose Matrix — 6 Angles",
             "anglesGenerated": "{{count}}/6 angles generated",
             "upload": "Upload",

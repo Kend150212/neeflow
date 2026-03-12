@@ -45,6 +45,15 @@
             "refLeft": "Referencia (izquierda)",
             "aiRight": "Generado por IA (derecha)",
             "reference": "Referencia",
+            "uploadRefHint": "Subir imagen de referencia",
+            "refGuide": {
+                "title": "Foto de referencia ideal",
+                "tip1": "Cuerpo completo · Cara clara · Atuendo visible",
+                "tip2": "Mismo atuendo que la descripción del personaje",
+                "tip3": "Bien iluminada · Nitida · Sin grupos",
+                "tip4": "Mín 512×512px, JPG o PNG",
+                "why": "1 referencia = atuendo consistente en los 6 ángulos"
+            },
             "poseMatrix": "Matriz de Poses — 6 Ángulos",
             "anglesGenerated": "{{count}}/6 ángulos generados",
             "upload": "Subir",
