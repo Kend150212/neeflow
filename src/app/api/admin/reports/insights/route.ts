@@ -445,21 +445,13 @@ async function fetchTikTokInsights(channelPlatform: {
             { headers }
         )
         const userData = await userRes.json()
+        console.log('[TikTok] user/info status:', userRes.status, 'error:', userData.error)
         // TikTok uses error.code === 'ok' for success
         if (userData.error?.code && userData.error.code !== 'ok') return null
         const user = userData.data?.user
 
         // 2. Recent video list with extended fields (cover image, create_time, all metrics)
-        const videoListRes = await fetch(
-            'https://open.tiktokapis.com/v2/video/list/?fields=id,title,cover_image_url,create_time,view_count,like_count,comment_count,share_count',
-            {
-                method: 'POST',
-                headers: { ...headers, 'Content-Type': 'application/json; charset=UTF-8' },
-                body: JSON.stringify({ max_count: 20 }),
-            }
-        )
-        const videoListData = await videoListRes.json()
-        const rawVideos: Array<{
+        let rawVideos: Array<{
             id: string
             title: string
             cover_image_url: string
@@ -468,7 +460,26 @@ async function fetchTikTokInsights(channelPlatform: {
             like_count: number
             comment_count: number
             share_count: number
-        }> = videoListData.data?.videos || []
+        }> = []
+
+        try {
+            const videoListRes = await fetch(
+                'https://open.tiktokapis.com/v2/video/list/?fields=id,title,cover_image_url,create_time,view_count,like_count,comment_count,share_count',
+                {
+                    method: 'POST',
+                    headers: { ...headers, 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({ max_count: 20 }),
+                }
+            )
+            const videoListData = await videoListRes.json()
+            console.log('[TikTok] video/list status:', videoListRes.status, 'error:', videoListData.error, 'videos:', videoListData.data?.videos?.length ?? 'undefined')
+            if (!videoListData.error || videoListData.error.code === 'ok') {
+                rawVideos = videoListData.data?.videos || []
+            }
+        } catch (videoErr) {
+            console.error('[TikTok] video/list fetch failed:', videoErr)
+        }
+
 
         let totalViews = 0, totalLikes = 0, totalComments = 0, totalShares = 0
         const viewsByDay: Record<string, number> = {}
