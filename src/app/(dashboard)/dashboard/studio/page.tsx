@@ -120,234 +120,98 @@ export default function StudioPage() {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background">
-            {/* Left sidebar: navigation */}
-            <aside className="w-56 border-r border-border bg-card flex flex-col p-4 gap-1 shrink-0">
-                <div className="flex items-center gap-2 px-2 py-3 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                        <Clapperboard className="h-4 w-4 text-emerald-500" />
-                    </div>
-                    <span className="font-bold tracking-tight">Studio</span>
+        <>
+            {/* Page header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border">
+                <div>
+                    <h1 className="text-2xl font-black tracking-tight">Projects</h1>
+                    <p className="text-muted-foreground text-sm mt-0.5">AI image &amp; video generation canvas</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button
+                        size="sm"
+                        className="gap-2 bg-emerald-500 hover:bg-emerald-400 font-bold"
+                        onClick={() => setShowNewProject(true)}
+                    >
+                        <Plus className="h-4 w-4" />
+                        New Project
+                    </Button>
+                </div>
+            </div>
+
+            <div className="px-6 py-6 space-y-6">
+                {/* Stats row */}
+                <div className="grid grid-cols-3 gap-4">
+                    {[
+                        { label: 'Total Projects', value: projects.length, icon: FolderOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+                        { label: 'Total Outputs', value: totalOutputs, icon: ImageIcon, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+                        { label: 'Avatars', value: avatars.length, icon: User, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+                    ].map((stat) => (
+                        <div key={stat.label} className="p-5 rounded-2xl bg-card border border-border hover:border-emerald-500/30 transition-colors">
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="text-muted-foreground text-sm">{stat.label}</p>
+                                <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', stat.bg, `border ${stat.border}`)}>
+                                    <stat.icon className={cn('h-4 w-4', stat.color)} />
+                                </div>
+                            </div>
+                            <p className="text-3xl font-black">{stat.value}</p>
+                        </div>
+                    ))}
                 </div>
 
-                {[
-                    { label: 'All Projects', icon: FolderOpen, href: '/dashboard/studio', active: true },
-                    { label: 'Avatars', icon: User, href: activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio', active: false },
-                    { label: 'History', icon: Clock, href: '/dashboard/studio/history', active: false },
-                ].map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                            item.active
-                                ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent'
-                        )}
-                    >
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        {item.label}
-                    </Link>
-                ))}
-
-                <div className="mt-auto pt-4 border-t border-border">
-                    <Link
-                        href="/dashboard/api-keys"
-                        className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Configure API Keys
-                    </Link>
-                </div>
-            </aside>
-
-            {/* Main content */}
-            <main className="flex-1 flex flex-col overflow-y-auto">
-                {/* Header */}
-                <header className="sticky top-0 z-10 px-8 py-5 border-b border-border bg-background/90 backdrop-blur-md flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-black tracking-tight">Studio</h1>
-                        <p className="text-muted-foreground text-sm mt-0.5">AI image &amp; video generation workspace</p>
+                {/* Projects grid */}
+                {loadingProjects ? (
+                    <div className="flex items-center justify-center py-16">
+                        <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'}>
-                            <Button variant="outline" size="sm" className="gap-2 border-emerald-400/20 text-emerald-400 hover:bg-emerald-400/10">
-                                <User className="h-4 w-4" />
-                                Create Avatar
-                            </Button>
-                        </Link>
+                ) : projects.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                            <Clapperboard className="h-7 w-7 text-emerald-500" />
+                        </div>
+                        <div className="text-center">
+                            <p className="font-bold mb-1">No projects yet</p>
+                            <p className="text-muted-foreground text-sm">Create your first project to start generating AI content</p>
+                        </div>
                         <Button
-                            size="sm"
-                            className="gap-2 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold shadow-[0_0_20px_rgba(0,255,149,0.2)]"
                             onClick={() => setShowNewProject(true)}
+                            className="gap-2 bg-emerald-500 hover:bg-emerald-400 font-bold"
                         >
                             <Plus className="h-4 w-4" />
                             New Project
                         </Button>
                     </div>
-                </header>
-
-                <div className="px-8 py-6 space-y-8">
-                    {/* Stats row */}
-                    <div className="grid grid-cols-3 gap-4">
-                        {[
-                            { label: t('studio.totalOutputs') || 'Total Outputs', value: totalOutputs, icon: ImageIcon, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
-                            { label: t('studio.totalProjects') || 'Total Projects', value: projects.length, icon: FolderOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-                            { label: 'Avatars', value: avatars.length, icon: User, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-                        ].map((stat) => (
-                            <div key={stat.label} className={cn('p-5 rounded-2xl bg-card border border-border hover:border-emerald-500/30 transition-colors group')}>
-                                <div className="flex items-center justify-between mb-3">
-                                    <p className="text-muted-foreground text-sm">{stat.label}</p>
-                                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', stat.bg, `border ${stat.border}`)}>
-                                        <stat.icon className={cn('h-4 w-4', stat.color)} />
+                ) : (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                        {projects.map((project) => (
+                            <Link key={project.id} href={`/dashboard/studio/projects/${project.id}`}>
+                                <div className="group rounded-2xl border border-border bg-card overflow-hidden hover:border-emerald-500/40 hover:shadow-md transition-all">
+                                    {/* Thumbnail */}
+                                    <div className="aspect-video bg-muted flex items-center justify-center">
+                                        {project.coverImage
+                                            ? <img src={project.coverImage} alt={project.name} className="w-full h-full object-cover" />
+                                            : <Clapperboard className="h-8 w-8 text-emerald-500/40" />
+                                        }
+                                    </div>
+                                    {/* Info */}
+                                    <div className="p-4">
+                                        <p className="font-bold text-sm truncate">{project.name}</p>
+                                        {project.description && (
+                                            <p className="text-xs text-muted-foreground truncate mt-0.5">{project.description}</p>
+                                        )}
+                                        <div className="flex items-center justify-between mt-3">
+                                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                <ImageIcon className="h-3.5 w-3.5" />{project._count.outputs} outputs
+                                            </span>
+                                            <ChevronRight className="h-4 w-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
                                     </div>
                                 </div>
-                                <p className="text-3xl font-black">{stat.value}</p>
-                            </div>
+                            </Link>
                         ))}
                     </div>
-
-                    {/* Avatars strip */}
-                    {(avatars.length > 0 || !loadingAvatars) && (
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Avatars</h2>
-                                <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'} className="text-xs text-emerald-500 hover:underline flex items-center gap-1">
-                                    View all <ChevronRight className="h-3 w-3" />
-                                </Link>
-                            </div>
-                            <div className="flex gap-3 overflow-x-auto pb-1">
-                                {/* Add Avatar card */}
-                                <Link href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'}>
-                                    <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-colors cursor-pointer shrink-0">
-                                        <Plus className="h-5 w-5 text-muted-foreground" />
-                                        <span className="text-[10px] text-muted-foreground">New</span>
-                                    </div>
-                                </Link>
-                                {avatars.slice(0, 8).map((av) => {
-                                    // Show coverImage → first poseImage → placeholder
-                                    const previewUrl = av.coverImage
-                                        || (Array.isArray(av.poseImages) && av.poseImages.length > 0 ? av.poseImages[0] : null)
-                                    return (
-                                        <Link key={av.id} href={activeChannelId ? `/dashboard/studio/${activeChannelId}/avatars` : '/dashboard/studio'}>
-                                            <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border shrink-0 group hover:ring-2 hover:ring-emerald-500/40 transition-all">
-                                                {previewUrl ? (
-                                                    <img src={previewUrl} alt={av.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                                                        {av.status === 'generating'
-                                                            ? <Loader2 className="h-5 w-5 text-emerald-500 animate-spin" />
-                                                            : <User className="h-5 w-5 text-muted-foreground" />
-                                                        }
-                                                    </div>
-                                                )}
-                                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <p className="text-[9px] text-white font-medium truncate">{av.name}</p>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Projects table */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-sm font-bold text-white">Projects</h2>
-                        </div>
-
-                        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                            <div className="px-6 py-3 border-b border-border grid grid-cols-[2fr_1fr_1fr_100px_80px] gap-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                                <span>Project</span>
-                                <span>Status</span>
-                                <span>Outputs</span>
-                                <span>Last Run</span>
-                                <span></span>
-                            </div>
-
-                            {loadingProjects ? (
-                                <div className="flex items-center justify-center py-16">
-                                    <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
-                                </div>
-                            ) : projects.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-16 gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                                        <Clapperboard className="h-7 w-7 text-emerald-500" />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="font-bold mb-1">No projects yet</p>
-                                        <p className="text-muted-foreground text-sm">Create your first project to start generating AI content</p>
-                                    </div>
-                                    <Button
-                                        onClick={() => setShowNewProject(true)}
-                                        className="gap-2 bg-emerald-500 hover:bg-emerald-400 font-bold"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        New Project
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-border">
-                                    {projects.map((project) => {
-                                        const lastJob = project.jobs?.[0]
-                                        return (
-                                            <div key={project.id} className="px-6 py-4 grid grid-cols-[2fr_1fr_1fr_100px_80px] gap-4 items-center hover:bg-muted/50 transition-colors group">
-                                                {/* Name */}
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                                                        {project.coverImage
-                                                            ? <img src={project.coverImage} alt={project.name} className="w-full h-full object-cover" />
-                                                            : <Clapperboard className="h-4 w-4 text-emerald-500" />
-                                                        }
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-bold truncate">{project.name}</p>
-                                                        {project.description && (
-                                                            <p className="text-xs text-muted-foreground truncate">{project.description}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                {/* Status */}
-                                                <div>
-                                                    {lastJob ? getStatusBadge(lastJob.status) : (
-                                                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">No runs</span>
-                                                    )}
-                                                </div>
-                                                {/* Outputs */}
-                                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                                    <span className="flex items-center gap-1"><ImageIcon className="h-3.5 w-3.5" />{project._count.outputs}</span>
-                                                </div>
-                                                {/* Last run */}
-                                                <div className="text-xs text-muted-foreground">
-                                                    {project.lastRunAt
-                                                        ? new Date(project.lastRunAt).toLocaleDateString()
-                                                        : '—'
-                                                    }
-                                                </div>
-                                                {/* Action */}
-                                                <div className="flex justify-end">
-                                                    <Link href={`/dashboard/studio/projects/${project.id}`}>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="text-xs gap-1.5 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            <Play className="h-3 w-3" />
-                                                            Open
-                                                        </Button>
-                                                    </Link>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </main>
+                )}
+            </div>
 
             {/* New Project Dialog */}
             <Dialog open={showNewProject} onOpenChange={setShowNewProject}>
@@ -395,6 +259,6 @@ export default function StudioPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </>
     )
 }
