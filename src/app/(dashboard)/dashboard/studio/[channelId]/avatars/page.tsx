@@ -935,14 +935,14 @@ function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZ
             {url ? (
                 <img src={url} alt={label} className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity cursor-pointer" onClick={onZoom} />
             ) : (
-                <div className="w-full h-full flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center pointer-events-none">
                     <ImagePlus size={16} className="text-slate-700" />
                 </div>
             )}
 
             {/* Hover actions overlay */}
             {!isShared && !showGenInput && (
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all pointer-events-none group-hover:pointer-events-auto">
                     <p className="text-[9px] font-bold text-white uppercase tracking-wide mb-1">{label}</p>
                     <label className="flex items-center gap-1 px-2 py-1 bg-white/10 rounded-lg text-[10px] text-white cursor-pointer hover:bg-white/20 transition-all">
                         <Upload size={10} /> Upload
