@@ -249,7 +249,13 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
         ins.recentPosts || []
     const igMedia: Array<{ id: string; timestamp: string; thumbnail?: string; likes: number; comments: number }> =
         ins.recentMedia || []
-    const metaPosts = insight.platform === 'facebook' ? fbPosts.map(p => ({
+    type MetaPost = {
+        id: string; thumbnail?: string | null; publishedAt: string | null;
+        r1: number; r1Label: string; r1Icon: React.ComponentType<{ className?: string }>; r1Color: string;
+        r2: number; r2Label: string; r2Icon: React.ComponentType<{ className?: string }>; r2Color: string;
+        r3: number; r3Label: string; r3Icon: React.ComponentType<{ className?: string }>; r3Color: string;
+    }
+    const metaPosts: MetaPost[] = insight.platform === 'facebook' ? fbPosts.map(p => ({
         id: p.id, thumbnail: p.thumbnail, publishedAt: p.createdTime,
         r1: p.reactions, r1Label: t('insights.kpi.reactions'), r1Icon: Heart, r1Color: 'text-rose-400',
         r2: p.comments, r2Label: t('insights.kpi.comments'), r2Icon: MessageCircle, r2Color: 'text-blue-400',
@@ -259,12 +265,13 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
         r1: m.likes, r1Label: t('insights.kpi.likes'), r1Icon: Heart, r1Color: 'text-rose-400',
         r2: m.comments, r2Label: t('insights.kpi.comments'), r2Icon: MessageCircle, r2Color: 'text-blue-400',
         r3: 0, r3Label: '', r3Icon: Share2, r3Color: '',
-    })) : (ins.recentPosts || []).map((p: any) => ({
+    })) : (ins.recentPosts || []).map((p: { id: string; thumbnail?: string | null; publishedAt: string | null; likes: number; comments: number; clicks?: number; shares?: number }) => ({
         id: p.id, thumbnail: p.thumbnail, publishedAt: p.publishedAt,
         r1: p.likes, r1Label: t('insights.kpi.likes'), r1Icon: Heart, r1Color: 'text-rose-400',
         r2: p.comments, r2Label: t('insights.kpi.comments'), r2Icon: MessageCircle, r2Color: 'text-blue-400',
         r3: p.clicks ?? p.shares ?? 0, r3Label: p.clicks != null ? t('insights.kpi.clicks') : t('insights.kpi.shares'), r3Icon: p.clicks != null ? ExternalLink : Share2, r3Color: 'text-blue-400',
     }))
+
 
     const viewsTimeSeries: { date: string; value: number }[] = ins.viewsTimeSeries || []
     const interactionsTimeSeries: { date: string; value: number }[] = ins.interactionsTimeSeries || []
