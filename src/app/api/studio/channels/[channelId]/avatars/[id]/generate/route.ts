@@ -74,6 +74,7 @@ function buildAnglePrompt(
     style: string,
     anglePromptDesc: string,
     referenceImage?: string,
+    outfitLock?: string,
 ): string {
     const isRealistic = style === 'realistic'
     const qualityDesc = isRealistic
@@ -82,9 +83,12 @@ function buildAnglePrompt(
 
     const bgDesc = 'dark gradient studio background, professional dark backdrop, soft dramatic lighting from front'
 
+    // Strong consistency instruction when we have a reference image
     const consistencyNote = referenceImage
-        ? ' MUST maintain identical face features, skin tone, hair color, and outfit from the provided reference image.'
-        : ''
+        ? ` CRITICAL CONSISTENCY RULES: (1) Face must be IDENTICAL — same facial structure, skin tone, age, beauty marks. (2) Hair must be IDENTICAL — same color, length, style, and texture. (3) Outfit must be IDENTICAL — same exact garments, colors, fabric, and accessories as shown in reference. Do NOT invent or change any clothing. ${outfitLock ? `Outfit detail: ${outfitLock}.` : ''}`
+        : outfitLock
+            ? ` Wear exactly this outfit: ${outfitLock}. Keep outfit IDENTICAL across all shots.`
+            : ''
 
     return [
         isRealistic
@@ -173,8 +177,16 @@ async function runGenerationBackground(opts: {
     // Start from existing poseImages array (6 slots), preserving already-done slots
     const poseImages: string[] = Array.from({ length: 6 }, (_, i) => existingPoseImages[i] || '')
 
-    const FACE_INDEX = 1 // "Cận mặt" position in ANGLES array
+    const FRONT_INDEX = 0  // "Chính diện bán thân" — shows FULL outfit (head-to-toe)
     const isGeneratingAll = anglesToGenerate.length > 1
+
+    // Extract outfit hint from character description (keywords after common separators)
+    const outfitHint = (() => {
+        const m = characterDesc.match(/wear(?:ing)?\s+([^.]+)/i)
+            || characterDesc.match(/outfit[:\s]+([^.]+)/i)
+            || characterDesc.match(/dress(?:ed)?[\s]+(?:in|with)[:\s]+([^.]+)/i)
+        return m?.[1]?.trim() ?? ''
+    })()
 
     console.log(`[generate:bg] Start ${provider} — ${anglesToGenerate.length} angle(s) for avatar ${id}`)
 
@@ -184,6 +196,7 @@ async function runGenerationBackground(opts: {
             characterDesc, style,
             (anglePromptOverride && !isGeneratingAll) ? anglePromptOverride : angle.prompt,
             refImage,
+            outfitHint,
         )
         console.log(`[generate:bg] Angle ${index} "${angle.label}" ref=${refImage ? '✓' : 'none'}`)
 
@@ -198,7 +211,7 @@ async function runGenerationBackground(opts: {
             if (imageUrl) {
                 poseImages[index] = imageUrl
                 // Save incrementally so UI can show partial results while others are still running
-                const coverImage = poseImages[FACE_INDEX] || poseImages.find(u => !!u) || undefined
+                const coverImage = poseImages[1] || poseImages.find(u => !!u) || undefined
                 await (prisma.studioAvatar.update as (args: unknown) => Promise<unknown>)({
                     where: { id },
                     data: { poseImages: [...poseImages], coverImage },
@@ -215,29 +228,31 @@ async function runGenerationBackground(opts: {
     let anySuccess = false
 
     if (isGeneratingAll) {
-        // ── Strategy: Face-first → then all others in PARALLEL ────────────────
-        // 1) Generate face close-up first (needed as reference for others)
-        const faceEntry = anglesToGenerate.find(a => a.index === FACE_INDEX)
-        const otherEntries = anglesToGenerate.filter(a => a.index !== FACE_INDEX)
+        // ── Strategy: Front-View-first → then ALL others in PARALLEL ──────────
+        // Front View (index 0) shows FULL outfit head-to-toe → best anchor for consistency.
+        // Face close-up (index 1) shows NO outfit → poor choice as reference anchor.
+        const frontEntry = anglesToGenerate.find(a => a.index === FRONT_INDEX)
+        const otherEntries = anglesToGenerate.filter(a => a.index !== FRONT_INDEX)
 
-        let faceRefImage: string | undefined = referenceImage // user-supplied ref wins
+        let sharedRef: string | undefined = referenceImage // user-supplied ref wins
 
-        if (faceEntry) {
-            const faceUrl = await generateAndSave(faceEntry.index, faceEntry.angle, referenceImage)
-            if (faceUrl) {
+        if (frontEntry) {
+            const frontUrl = await generateAndSave(frontEntry.index, frontEntry.angle, referenceImage)
+            if (frontUrl) {
                 anySuccess = true
-                // Use generated face as reference for all remaining angles (unless user already supplied one)
+                // If no user-supplied reference, use the front-view shot (shows full outfit)
+                // as the shared reference for all remaining angles.
                 if (!referenceImage) {
-                    faceRefImage = faceUrl
-                    console.log(`[generate:bg] Face ✓ — using it as ref image for ${otherEntries.length} parallel jobs`)
+                    sharedRef = frontUrl
+                    console.log(`[generate:bg] Front view ✓ — using as outfit reference for ${otherEntries.length} parallel jobs`)
                 }
             }
         }
 
-        // 2) Generate remaining angles in parallel (all fired at the same time)
+        // Generate remaining angles in parallel
         if (otherEntries.length > 0) {
             const results = await Promise.allSettled(
-                otherEntries.map(({ index, angle }) => generateAndSave(index, angle, faceRefImage))
+                otherEntries.map(({ index, angle }) => generateAndSave(index, angle, sharedRef))
             )
             for (const r of results) {
                 if (r.status === 'fulfilled' && r.value) anySuccess = true
@@ -245,14 +260,16 @@ async function runGenerationBackground(opts: {
         }
     } else {
         // ── Single-angle mode (individual regenerate button) ──────────────────
+        // Use user-supplied reference OR fall back to first already-generated pose image
+        const singleRef = referenceImage || poseImages.find(u => !!u) || undefined
         for (const { index, angle } of anglesToGenerate) {
-            const url = await generateAndSave(index, angle, referenceImage)
+            const url = await generateAndSave(index, angle, singleRef)
             if (url) anySuccess = true
         }
     }
 
-    // Final status update — cover = face close-up preferred
-    const finalCover = poseImages[FACE_INDEX] || poseImages.find(u => !!u) || null
+    // Final status update — cover = face close-up (index 1) preferred
+    const finalCover = poseImages[1] || poseImages.find(u => !!u) || null
     await (prisma.studioAvatar.update as (args: unknown) => Promise<unknown>)({
         where: { id },
         data: {
