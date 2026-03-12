@@ -899,7 +899,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                                 </defs>
                                                 <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} />
                                                 <YAxis tick={{ fontSize: 9 }} tickFormatter={v => fmt(v)} />
-                                                <Tooltip formatter={(v) => [fmt(v ?? 0), 'Views']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
+                                                <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Views']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
                                                 <Area type="monotone" dataKey="value" stroke="#ef4444" fill="url(#ytViewsGrad)" strokeWidth={2} dot={false} />
                                             </AreaChart>
                                         </ResponsiveContainer>
@@ -929,7 +929,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                             <BarChart data={engagementTimeSeries} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                                                 <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} />
                                                 <YAxis tick={{ fontSize: 9 }} tickFormatter={v => fmt(v)} />
-                                                <Tooltip formatter={(v) => [fmt(v ?? 0), 'Engagement']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
+                                                <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Engagement']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
                                                 <Bar dataKey="value" fill="#ef4444" radius={[3, 3, 0, 0]} />
                                             </BarChart>
                                         </ResponsiveContainer>
