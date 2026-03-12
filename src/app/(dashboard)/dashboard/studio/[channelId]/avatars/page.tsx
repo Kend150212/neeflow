@@ -668,15 +668,15 @@ export default function ChannelAvatarsPage() {
                                                     </button>
                                                 </>
                                             ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer overflow-hidden relative" onClick={() => refCoverRef.current?.click()}>
+                                                <div className="w-full h-full flex items-center justify-center cursor-pointer relative group" onClick={() => refCoverRef.current?.click()}>
                                                     <img
                                                         src="/images/avatar-ref-guide.webp"
                                                         alt="Reference guide"
-                                                        className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity"
+                                                        className="max-w-full max-h-full object-contain opacity-75 group-hover:opacity-95 transition-opacity"
                                                     />
-                                                    <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-1 pointer-events-none">
-                                                        <Upload size={16} className="text-emerald-400" />
-                                                        <p className="text-[10px] font-bold text-emerald-400 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">{t('studio.avatar.uploadRefHint')}</p>
+                                                    <div className="absolute bottom-2 left-0 right-0 flex flex-col items-center gap-0.5 pointer-events-none">
+                                                        <Upload size={14} className="text-emerald-400 drop-shadow-[0_1px_4px_rgba(0,0,0,1)]" />
+                                                        <p className="text-[10px] font-bold text-emerald-400 drop-shadow-[0_1px_4px_rgba(0,0,0,1)]">{t('studio.avatar.uploadRefHint')}</p>
                                                     </div>
                                                     {uploadingRef && <div className="absolute inset-0 flex items-center justify-center bg-black/50"><Loader2 size={20} className="animate-spin text-emerald-400" /></div>}
                                                 </div>
