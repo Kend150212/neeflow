@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, FolderOpen, Upload, Search, ChevronRight, MoreHorizontal, Shirt, Glasses, Package, Pencil, Check } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, FolderOpen, Upload, Search, ChevronRight, MoreHorizontal, Shirt, Glasses, Package, Pencil, Check, ArrowLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -94,7 +95,7 @@ const ANGLE_LABELS = [
 function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center" onClick={onClose}>
-            <button className="absolute top-4 right-4 text-white/60 hover:text-white" onClick={onClose}><X size={28} /></button>
+            <button className="absolute top-4 right-4 text-foreground/60 hover:text-foreground" onClick={onClose}><X size={28} /></button>
             <img src={url} className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain" alt="lightbox" onClick={e => e.stopPropagation()} />
         </div>
     )
@@ -469,11 +470,11 @@ export default function ChannelAvatarsPage() {
 
     /* ─── Render ─── */
     return (
-        <div className="flex h-screen overflow-hidden bg-[#050807]">
+        <div className="flex h-screen overflow-hidden bg-background">
 
             {/* ══ LEFT SIDEBAR — Avatar List ══ */}
-            <aside className="w-64 flex-shrink-0 border-r border-white/5 bg-[#0a0f0d] flex flex-col">
-                <div className="p-4 border-b border-white/5">
+            <aside className="w-64 flex-shrink-0 border-r border-border bg-card flex flex-col">
+                <div className="p-4 border-b border-border">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-[0.2em]">Characters</h2>
                         <button onClick={() => setShowCreate(true)} className="w-6 h-6 rounded bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/30 transition-all">
@@ -481,8 +482,8 @@ export default function ChannelAvatarsPage() {
                         </button>
                     </div>
                     <div className="relative">
-                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search characters..." className="w-full bg-white/5 border border-white/10 rounded-lg py-1.5 pl-7 pr-3 text-xs text-slate-300 placeholder:text-slate-600 outline-none focus:border-emerald-500/50 transition-all" />
+                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search characters..." className="w-full bg-muted/40 border border-border rounded-lg py-1.5 pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-emerald-500/50 transition-all" />
                     </div>
                 </div>
 
@@ -491,57 +492,57 @@ export default function ChannelAvatarsPage() {
                         <div className="flex items-center justify-center py-8"><Loader2 size={16} className="animate-spin text-emerald-500" /></div>
                     ) : filteredAvatars.length === 0 ? (
                         <div className="text-center py-8">
-                            <p className="text-xs text-slate-500 mb-3">No avatars yet</p>
+                            <p className="text-xs text-muted-foreground mb-3">No avatars yet</p>
                             <button onClick={() => setShowCreate(true)} className="text-xs text-emerald-400 hover:underline">+ Create first avatar</button>
                         </div>
                     ) : filteredAvatars.map(av => (
                         <div key={av.id} className="relative group/item">
                             {/* Confirm delete overlay */}
                             {confirmDelete === av.id && (
-                                <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-[#0a0f0d]/95 rounded-xl border border-red-500/30">
+                                <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-card/95 rounded-xl border border-red-500/30">
                                     <span className="text-[10px] text-red-400 font-bold">Xóa?</span>
-                                    <button onClick={() => deleteAvatar(av.id)} className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded">
+                                    <button onClick={() => deleteAvatar(av.id)} className="px-2 py-0.5 bg-red-500 text-foreground text-[10px] font-bold rounded">
                                         {renameSaving ? <Loader2 size={10} className="animate-spin" /> : 'OK'}
                                     </button>
-                                    <button onClick={() => setConfirmDelete(null)} className="px-2 py-0.5 bg-white/10 text-slate-300 text-[10px] rounded">Hủy</button>
+                                    <button onClick={() => setConfirmDelete(null)} className="px-2 py-0.5 bg-muted/60 text-foreground text-[10px] rounded">Hủy</button>
                                 </div>
                             )}
 
                             {renamingId === av.id ? (
                                 /* Inline rename mode */
                                 <div className="flex items-center gap-1.5 p-2">
-                                    <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex-shrink-0">
+                                    <div className="w-10 h-10 rounded-lg bg-muted border border-border overflow-hidden flex-shrink-0">
                                         {av.coverImage ? <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" /> :
-                                            <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">{av.name[0]}</div>}
+                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">{av.name[0]}</div>}
                                     </div>
                                     <input
                                         autoFocus
                                         value={renameValue}
                                         onChange={e => setRenameValue(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter') saveRename(av.id); if (e.key === 'Escape') setRenamingId(null) }}
-                                        className="flex-1 bg-white/10 border border-emerald-500/40 rounded px-2 py-1 text-xs text-white outline-none"
+                                        className="flex-1 bg-muted/60 border border-emerald-500/40 rounded px-2 py-1 text-xs text-foreground outline-none"
                                     />
                                     <button onClick={() => saveRename(av.id)} disabled={renameSaving} className="text-emerald-400 hover:text-emerald-300">
                                         {renameSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                                     </button>
-                                    <button onClick={() => setRenamingId(null)} className="text-slate-500 hover:text-white"><X size={12} /></button>
+                                    <button onClick={() => setRenamingId(null)} className="text-muted-foreground hover:text-foreground"><X size={12} /></button>
                                 </div>
                             ) : (
                                 /* Normal row */
                                 <button onClick={() => selectAvatar(av)}
                                     className={cn('w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all group',
-                                        selected?.id === av.id ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'
+                                        selected?.id === av.id ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-muted/40 border border-transparent'
                                     )}>
-                                    <div className={cn('w-10 h-10 rounded-lg bg-slate-800 border overflow-hidden flex-shrink-0 transition-all',
-                                        selected?.id === av.id ? 'border-emerald-500/40' : 'border-white/10 grayscale group-hover:grayscale-0'
+                                    <div className={cn('w-10 h-10 rounded-lg bg-muted border overflow-hidden flex-shrink-0 transition-all',
+                                        selected?.id === av.id ? 'border-emerald-500/40' : 'border-border grayscale group-hover:grayscale-0'
                                     )}>
                                         {av.coverImage ? <img src={av.coverImage} alt={av.name} className="w-full h-full object-cover" /> :
-                                            <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">{av.name[0]}</div>}
+                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">{av.name[0]}</div>}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className={cn('text-xs font-bold truncate', selected?.id === av.id ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors')}>{av.name}</p>
+                                        <p className={cn('text-xs font-bold truncate', selected?.id === av.id ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground transition-colors')}>{av.name}</p>
                                         <p className={cn('text-[10px] uppercase tracking-widest font-bold mt-0.5',
-                                            av.status === 'generating' ? 'text-amber-400' : selected?.id === av.id ? 'text-emerald-400' : 'text-slate-600'
+                                            av.status === 'generating' ? 'text-amber-400' : selected?.id === av.id ? 'text-emerald-400' : 'text-muted-foreground'
                                         )}>{av._shared ? 'Shared' : av.status}</p>
                                     </div>
                                     {av.status === 'generating' && <Loader2 size={12} className="animate-spin text-amber-400 flex-shrink-0" />}
@@ -550,14 +551,14 @@ export default function ChannelAvatarsPage() {
                                         <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0">
                                             <button
                                                 onClick={e => { e.stopPropagation(); setRenamingId(av.id); setRenameValue(av.name) }}
-                                                className="w-6 h-6 flex items-center justify-center rounded bg-white/5 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-400 transition-all"
+                                                className="w-6 h-6 flex items-center justify-center rounded bg-muted/40 hover:bg-emerald-500/20 text-muted-foreground hover:text-emerald-400 transition-all"
                                                 title="Đổi tên"
                                             >
                                                 <Pencil size={10} />
                                             </button>
                                             <button
                                                 onClick={e => { e.stopPropagation(); setConfirmDelete(av.id) }}
-                                                className="w-6 h-6 flex items-center justify-center rounded bg-white/5 hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all"
+                                                className="w-6 h-6 flex items-center justify-center rounded bg-muted/40 hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-all"
                                                 title="Xóa"
                                             >
                                                 <Trash2 size={10} />
@@ -570,7 +571,7 @@ export default function ChannelAvatarsPage() {
                     ))}
                 </div>
 
-                <div className="p-3 border-t border-white/5">
+                <div className="p-3 border-t border-border">
                     <button onClick={() => setShowCreate(true)} className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold hover:bg-emerald-500/5 transition-all">
                         <Plus size={12} /> New Character
                     </button>
@@ -585,8 +586,8 @@ export default function ChannelAvatarsPage() {
                             <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
                                 <Sparkles size={24} className="text-emerald-400" />
                             </div>
-                            <p className="text-slate-400 text-sm mb-1">No avatars yet</p>
-                            <p className="text-slate-600 text-xs mb-4">Tạo avatar đầu tiên để bắt đầu</p>
+                            <p className="text-muted-foreground text-sm mb-1">No avatars yet</p>
+                            <p className="text-muted-foreground text-xs mb-4">Tạo avatar đầu tiên để bắt đầu</p>
                             <button onClick={() => setShowCreate(true)} className="mt-2 px-4 py-2 bg-emerald-500 text-black text-xs font-bold rounded-xl hover:bg-emerald-400 transition-all">
                                 + Tạo Avatar
                             </button>
@@ -595,22 +596,30 @@ export default function ChannelAvatarsPage() {
                 ) : (
                     <>
                         {/* Header */}
-                        <div className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between border-b border-white/5 bg-[#050807]/90 backdrop-blur-md">
-                            <div>
-                                <div className="flex items-center gap-2 mb-0.5">
-                                    <h2 className="text-lg font-black text-white tracking-tight">{selected.name}</h2>
-                                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase">{selected.style}</span>
-                                    {selected._shared && <span className="px-2 py-0.5 rounded bg-violet-500/20 text-violet-400 text-[10px] font-bold uppercase">Shared</span>}
+                        <div className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between border-b border-border bg-background/90 backdrop-blur-md">
+                            {/* Left: back link + avatar info */}
+                            <div className="flex items-center gap-3">
+                                <Link href={`/dashboard/studio/${channelId}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                    <ArrowLeft size={14} /> Studio
+                                </Link>
+                                <span className="text-muted-foreground/40">|</span>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <h2 className="text-lg font-black text-foreground tracking-tight">{selected.name}</h2>
+                                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase">{selected.style}</span>
+                                        {selected._shared && <span className="px-2 py-0.5 rounded bg-violet-500/20 text-violet-400 text-[10px] font-bold uppercase">Shared</span>}
+                                    </div>
+                                    <p className="text-muted-foreground text-xs">{selected.description || selected.prompt.slice(0, 80)}</p>
                                 </div>
-                                <p className="text-slate-500 text-xs">{selected.description || selected.prompt.slice(0, 80)}</p>
                             </div>
+                            {/* Right: generate controls */}
                             <div className="flex gap-2">
                                 {!selected._shared && (
                                     <>
-                                        <select value={genProvider} onChange={e => setGenProvider(e.target.value)} className="bg-white/5 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1.5 outline-none">
+                                        <select value={genProvider} onChange={e => setGenProvider(e.target.value)} className="bg-muted/40 border border-border text-xs text-foreground rounded-lg px-2 py-1.5 outline-none">
                                             {GEN_PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                                         </select>
-                                        <select value={genModel} onChange={e => setGenModel(e.target.value)} className="bg-white/5 border border-white/10 text-xs text-slate-300 rounded-lg px-2 py-1.5 outline-none max-w-[180px] truncate">
+                                        <select value={genModel} onChange={e => setGenModel(e.target.value)} className="bg-muted/40 border border-border text-xs text-foreground rounded-lg px-2 py-1.5 outline-none max-w-[180px] truncate">
                                             {GEN_PROVIDERS.find(p => p.value === genProvider)?.models.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                                         </select>
                                         <button onClick={() => generateAvatar(selected)}
@@ -630,12 +639,12 @@ export default function ChannelAvatarsPage() {
                             <section>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Consistency Check</h3>
-                                    <div className="flex gap-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                                    <div className="flex gap-4 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                                         <span>Ảnh gốc (trái)</span>
                                         <span>AI Generated (phải)</span>
                                     </div>
                                 </div>
-                                <div className="relative aspect-[21/9] rounded-2xl overflow-hidden border border-white/10 bg-slate-900">
+                                <div className="relative aspect-[21/9] rounded-2xl overflow-hidden border border-border bg-muted">
                                     <div className="flex h-full">
                                         {/* Left: reference (first ref image or placeholder) */}
                                         <div className="w-1/2 h-full relative group">
@@ -643,17 +652,17 @@ export default function ChannelAvatarsPage() {
                                                 <>
                                                     <img src={selected.referenceImages[0]} className="w-full h-full object-cover opacity-80" alt="Reference" />
                                                     <button onClick={() => setLightbox(selected.referenceImages[0])} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/30">
-                                                        <ZoomIn size={24} className="text-white" />
+                                                        <ZoomIn size={24} className="text-foreground" />
                                                     </button>
                                                 </>
                                             ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer" onClick={() => refCoverRef.current?.click()}>
-                                                    <Upload size={20} className="text-slate-600" />
-                                                    <p className="text-[10px] text-slate-600">Upload reference image</p>
+                                                    <Upload size={20} className="text-muted-foreground" />
+                                                    <p className="text-[10px] text-muted-foreground">Upload reference image</p>
                                                     {uploadingRef && <Loader2 size={14} className="animate-spin text-emerald-400" />}
                                                 </div>
                                             )}
-                                            <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold uppercase border border-white/10">Reference</div>
+                                            <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold uppercase border border-border">Reference</div>
                                         </div>
                                         {/* Divider */}
                                         <div className="relative w-px bg-emerald-500 shadow-[0_0_15px_rgba(0,255,149,0.5)]">
@@ -667,12 +676,12 @@ export default function ChannelAvatarsPage() {
                                                 <>
                                                     <img src={selected.coverImage} className="w-full h-full object-cover" alt="Generated" />
                                                     <button onClick={() => setLightbox(selected.coverImage!)} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/30">
-                                                        <ZoomIn size={24} className="text-white" />
+                                                        <ZoomIn size={24} className="text-foreground" />
                                                     </button>
                                                 </>
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
-                                                    <p className="text-[10px] text-slate-600 uppercase">No generated image yet</p>
+                                                    <p className="text-[10px] text-muted-foreground uppercase">No generated image yet</p>
                                                 </div>
                                             )}
                                             {selected.coverImage && <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-emerald-500/20 backdrop-blur-md rounded text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/30">AI Generated</div>}
@@ -687,7 +696,7 @@ export default function ChannelAvatarsPage() {
                                 <div className="flex items-center justify-between mb-3">
                                     <div>
                                         <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Pose Matrix — 6 Góc Nhìn</h3>
-                                        <p className="text-[9px] text-slate-600 mt-0.5">{(selected.poseImages || []).filter(Boolean).length}/6 góc đã tạo</p>
+                                        <p className="text-[9px] text-muted-foreground mt-0.5">{(selected.poseImages || []).filter(Boolean).length}/6 góc đã tạo</p>
                                     </div>
                                     {!selected._shared && (
                                         <div className="flex items-center gap-2">
@@ -736,25 +745,25 @@ export default function ChannelAvatarsPage() {
                                 </div>
                                 <div className="flex gap-3 overflow-x-auto pb-2">
                                     {(selected.poses || []).length === 0 && (
-                                        <div className="flex-shrink-0 w-32 h-40 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-600 cursor-pointer hover:border-emerald-500/30 hover:text-emerald-400 transition-all" onClick={() => setShowAddPose(true)}>
+                                        <div className="flex-shrink-0 w-32 h-40 border border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground cursor-pointer hover:border-emerald-500/30 hover:text-emerald-400 transition-all" onClick={() => setShowAddPose(true)}>
                                             <FolderOpen size={20} />
                                             <p className="text-[10px] text-center px-2">Create pose folder</p>
                                         </div>
                                     )}
                                     {(selected.poses || []).map(pose => (
                                         <div key={pose.id} className="flex-shrink-0 w-32 group cursor-pointer" onClick={() => setOpenPose(pose)}>
-                                            <div className="w-full h-40 bg-[#0d1411] border border-white/5 rounded-xl overflow-hidden relative hover:border-emerald-500/40 transition-all">
+                                            <div className="w-full h-40 bg-card border border-border rounded-xl overflow-hidden relative hover:border-emerald-500/40 transition-all">
                                                 {pose.images[0] ? (
                                                     <img src={pose.images[0].url} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" alt={pose.name} />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center"><FolderOpen size={20} className="text-slate-700" /></div>
+                                                    <div className="w-full h-full flex items-center justify-center"><FolderOpen size={20} className="text-muted-foreground" /></div>
                                                 )}
                                                 {pose.images.length > 1 && (
-                                                    <div className="absolute top-2 right-2 bg-black/80 rounded px-1.5 py-0.5 text-[10px] text-white font-bold">+{pose.images.length}</div>
+                                                    <div className="absolute top-2 right-2 bg-black/80 rounded px-1.5 py-0.5 text-[10px] text-foreground font-bold">+{pose.images.length}</div>
                                                 )}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-2">
-                                                    <p className="text-[10px] font-bold text-white truncate">{pose.name}</p>
-                                                    <p className="text-[9px] text-slate-400">{pose.images.length} ảnh</p>
+                                                    <p className="text-[10px] font-bold text-foreground truncate">{pose.name}</p>
+                                                    <p className="text-[9px] text-muted-foreground">{pose.images.length} ảnh</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -768,14 +777,14 @@ export default function ChannelAvatarsPage() {
             </main>
 
             {/* ══ RIGHT — Asset Manager ══ */}
-            <aside className="w-72 flex-shrink-0 border-l border-white/5 bg-[#0a0f0d] flex flex-col">
-                <div className="p-4 border-b border-white/5">
-                    <h3 className="text-sm font-bold text-white mb-3">Asset Manager</h3>
+            <aside className="w-72 flex-shrink-0 border-l border-border bg-card flex flex-col">
+                <div className="p-4 border-b border-border">
+                    <h3 className="text-sm font-bold text-foreground mb-3">Asset Manager</h3>
                     {/* Tabs */}
-                    <div className="flex border-b border-white/10">
+                    <div className="flex border-b border-border">
                         {ASSET_TYPES.map(t => (
                             <button key={t.value} onClick={() => setAssetTab(t.value as typeof assetTab)} className={cn('flex-1 pb-2 text-[10px] font-bold uppercase tracking-widest transition-colors',
-                                assetTab === t.value ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-500 hover:text-white'
+                                assetTab === t.value ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-muted-foreground hover:text-foreground'
                             )}>{t.label}</button>
                         ))}
                     </div>
@@ -783,10 +792,10 @@ export default function ChannelAvatarsPage() {
 
                 <div className="flex-1 overflow-y-auto p-3 space-y-2">
                     {!selected ? (
-                        <p className="text-xs text-slate-600 text-center pt-8">Select a character first</p>
+                        <p className="text-xs text-muted-foreground text-center pt-8">Select a character first</p>
                     ) : selectedAssets.length === 0 ? (
                         <div className="text-center pt-8">
-                            <p className="text-xs text-slate-600 mb-2">No {assetTab}s yet</p>
+                            <p className="text-xs text-muted-foreground mb-2">No {assetTab}s yet</p>
                             {!selected._shared && <button onClick={() => { setAssetType(assetTab); setShowAddAsset(true) }} className="text-xs text-emerald-400 hover:underline">+ Add {assetTab}</button>}
                         </div>
                     ) : selectedAssets.map(asset => (
@@ -802,7 +811,7 @@ export default function ChannelAvatarsPage() {
                 </div>
 
                 {selected && !selected._shared && (
-                    <div className="p-3 border-t border-white/5">
+                    <div className="p-3 border-t border-border">
                         <button onClick={() => { setAssetType(assetTab); setShowAddAsset(true) }}
                             className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 text-black font-black text-xs rounded-xl hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(0,255,149,0.3)] transition-all">
                             <Plus size={14} /> Add {assetTab}
@@ -816,19 +825,19 @@ export default function ChannelAvatarsPage() {
 
             {/* ══ Create Avatar Dialog ══ */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                <DialogContent className="bg-[#0d1411] border-white/10 max-w-md max-h-[90vh] overflow-y-auto">
-                    <DialogHeader><DialogTitle className="text-white">Create New Character</DialogTitle></DialogHeader>
+                <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
+                    <DialogHeader><DialogTitle className="text-foreground">Create New Character</DialogTitle></DialogHeader>
                     <div className="space-y-4 mt-2">
-                        <div><Label className="text-slate-400 text-xs">Name *</Label>
-                            <Input value={cName} onChange={e => setCName(e.target.value)} placeholder="e.g. Sophia" className="bg-white/5 border-white/10 text-white mt-1" /></div>
-                        <div><Label className="text-slate-400 text-xs">Prompt *</Label>
-                            <textarea value={cPrompt} onChange={e => setCPrompt(e.target.value)} placeholder="Describe the character..." rows={4} className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:border-emerald-500/50 resize-none mt-1" /></div>
-                        <div><Label className="text-slate-400 text-xs">Art Style</Label>
-                            <select value={cStyle} onChange={e => setCStyle(e.target.value)} className="w-full bg-white/5 border border-white/10 text-slate-300 rounded-lg px-2.5 py-2 text-xs mt-1 outline-none">
+                        <div><Label className="text-muted-foreground text-xs">Name *</Label>
+                            <Input value={cName} onChange={e => setCName(e.target.value)} placeholder="e.g. Sophia" className="bg-muted/40 border-border text-foreground mt-1" /></div>
+                        <div><Label className="text-muted-foreground text-xs">Prompt *</Label>
+                            <textarea value={cPrompt} onChange={e => setCPrompt(e.target.value)} placeholder="Describe the character..." rows={4} className="w-full bg-muted/40 border border-border rounded-lg p-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-emerald-500/50 resize-none mt-1" /></div>
+                        <div><Label className="text-muted-foreground text-xs">Art Style</Label>
+                            <select value={cStyle} onChange={e => setCStyle(e.target.value)} className="w-full bg-muted/40 border border-border text-foreground rounded-lg px-2.5 py-2 text-xs mt-1 outline-none">
                                 {STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select></div>
-                        <div><Label className="text-slate-400 text-xs">Description (optional)</Label>
-                            <input value={cDesc} onChange={e => setCDesc(e.target.value)} placeholder="Internal notes..." className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-slate-300 placeholder:text-slate-600 outline-none mt-1" /></div>
+                        <div><Label className="text-muted-foreground text-xs">Description (optional)</Label>
+                            <input value={cDesc} onChange={e => setCDesc(e.target.value)} placeholder="Internal notes..." className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none mt-1" /></div>
                         <button onClick={createAvatar} disabled={creating || !cName.trim() || !cPrompt.trim()}
                             className="w-full py-2.5 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
                             {creating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Create Character
@@ -839,21 +848,21 @@ export default function ChannelAvatarsPage() {
 
             {/* ══ Add Asset Dialog ══ */}
             <Dialog open={showAddAsset} onOpenChange={setShowAddAsset}>
-                <DialogContent className="bg-[#0d1411] border-white/10 max-w-sm">
-                    <DialogHeader><DialogTitle className="text-white">Add {assetType.charAt(0).toUpperCase() + assetType.slice(1)}</DialogTitle></DialogHeader>
+                <DialogContent className="bg-card border-border max-w-sm">
+                    <DialogHeader><DialogTitle className="text-foreground">Add {assetType.charAt(0).toUpperCase() + assetType.slice(1)}</DialogTitle></DialogHeader>
                     <div className="space-y-3 mt-2">
                         <div className="flex gap-2">
                             {ASSET_TYPES.map(t => (
                                 <button key={t.value} onClick={() => setAssetType(t.value as typeof assetType)}
                                     className={cn('flex-1 py-1.5 text-[10px] font-bold uppercase rounded-lg border transition-all',
-                                        assetType === t.value ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/10 bg-white/5 text-slate-500'
+                                        assetType === t.value ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-border bg-muted/40 text-muted-foreground'
                                     )}>{t.label}</button>
                             ))}
                         </div>
-                        <div><Label className="text-slate-400 text-xs">Name *</Label>
-                            <input value={assetName} onChange={e => setAssetName(e.target.value)} placeholder="e.g. Áo Vest Đen" className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-sm text-white placeholder:text-slate-600 outline-none mt-1" /></div>
-                        <div><Label className="text-slate-400 text-xs">Prompt (optional)</Label>
-                            <textarea value={assetPrompt} onChange={e => setAssetPrompt(e.target.value)} placeholder="Describe the item for AI reference..." rows={2} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white placeholder:text-slate-600 outline-none resize-none mt-1" /></div>
+                        <div><Label className="text-muted-foreground text-xs">Name *</Label>
+                            <input value={assetName} onChange={e => setAssetName(e.target.value)} placeholder="e.g. Áo Vest Đen" className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none mt-1" /></div>
+                        <div><Label className="text-muted-foreground text-xs">Prompt (optional)</Label>
+                            <textarea value={assetPrompt} onChange={e => setAssetPrompt(e.target.value)} placeholder="Describe the item for AI reference..." rows={2} className="w-full bg-muted/40 border border-border rounded-lg p-2 text-xs text-foreground placeholder:text-muted-foreground outline-none resize-none mt-1" /></div>
                         <button onClick={createAsset} disabled={creatingAsset || !assetName.trim()}
                             className="w-full py-2 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
                             {creatingAsset ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create Asset
@@ -864,11 +873,11 @@ export default function ChannelAvatarsPage() {
 
             {/* ══ Add Pose Dialog ══ */}
             <Dialog open={showAddPose} onOpenChange={setShowAddPose}>
-                <DialogContent className="bg-[#0d1411] border-white/10 max-w-sm">
-                    <DialogHeader><DialogTitle className="text-white">New Pose Folder</DialogTitle></DialogHeader>
+                <DialogContent className="bg-card border-border max-w-sm">
+                    <DialogHeader><DialogTitle className="text-foreground">New Pose Folder</DialogTitle></DialogHeader>
                     <div className="space-y-3 mt-2">
-                        <div><Label className="text-slate-400 text-xs">Tên pose *</Label>
-                            <input value={poseName} onChange={e => setPoseName(e.target.value)} placeholder="e.g. Ngồi café, Đứng hàng hiệu..." className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-sm text-white placeholder:text-slate-600 outline-none mt-1" onKeyDown={e => e.key === 'Enter' && createPose()} /></div>
+                        <div><Label className="text-muted-foreground text-xs">Tên pose *</Label>
+                            <input value={poseName} onChange={e => setPoseName(e.target.value)} placeholder="e.g. Ngồi café, Đứng hàng hiệu..." className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none mt-1" onKeyDown={e => e.key === 'Enter' && createPose()} /></div>
                         <button onClick={createPose} disabled={creatingPose || !poseName.trim()}
                             className="w-full py-2 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
                             {creatingPose ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />} Create Folder
@@ -879,32 +888,32 @@ export default function ChannelAvatarsPage() {
 
             {/* ══ Pose Detail Modal ══ */}
             <Dialog open={!!openPose} onOpenChange={o => !o && setOpenPose(null)}>
-                <DialogContent className="bg-[#0d1411] border-white/10 max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="bg-card border-border max-w-2xl max-h-[85vh] overflow-y-auto">
                     {openPose && (
                         <>
                             <DialogHeader>
                                 <div className="flex items-center justify-between">
-                                    <DialogTitle className="text-white flex items-center gap-2">
+                                    <DialogTitle className="text-foreground flex items-center gap-2">
                                         <FolderOpen size={16} className="text-emerald-400" /> {openPose.name}
-                                        <span className="text-xs text-slate-500 font-normal">({openPose.images.length} ảnh)</span>
+                                        <span className="text-xs text-muted-foreground font-normal">({openPose.images.length} ảnh)</span>
                                     </DialogTitle>
-                                    <button onClick={() => deletePose(openPose.id)} className="text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                                    <button onClick={() => deletePose(openPose.id)} className="text-muted-foreground hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
                                 </div>
                             </DialogHeader>
                             <div className="mt-3">
                                 <div className="grid grid-cols-3 gap-2 mb-4">
                                     {openPose.images.map((img, i) => (
-                                        <div key={i} className="group relative aspect-square bg-slate-900 rounded-lg overflow-hidden border border-white/5">
+                                        <div key={i} className="group relative aspect-square bg-muted rounded-lg overflow-hidden border border-border">
                                             <img src={img.url} alt="" className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
-                                                <button onClick={() => setLightbox(img.url)} className="p-1.5 bg-white/10 rounded-lg"><ZoomIn size={12} className="text-white" /></button>
+                                                <button onClick={() => setLightbox(img.url)} className="p-1.5 bg-muted/60 rounded-lg"><ZoomIn size={12} className="text-foreground" /></button>
                                                 <button onClick={() => deletePoseImage(img.url)} className="p-1.5 bg-red-500/20 rounded-lg"><Trash2 size={12} className="text-red-400" /></button>
                                             </div>
                                         </div>
                                     ))}
                                     {/* Upload slot */}
-                                    <label className="aspect-square bg-white/5 border border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-emerald-500/40 transition-all">
-                                        {uploadingPose ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <><Upload size={16} className="text-slate-500" /><p className="text-[10px] text-slate-500">Upload ảnh</p></>}
+                                    <label className="aspect-square bg-muted/40 border border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-emerald-500/40 transition-all">
+                                        {uploadingPose ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <><Upload size={16} className="text-muted-foreground" /><p className="text-[10px] text-muted-foreground">Upload ảnh</p></>}
                                         <input ref={poseFileRef} type="file" accept="image/*" multiple className="hidden" onChange={e => e.target.files && uploadPoseImages(e.target.files)} />
                                     </label>
                                 </div>
@@ -929,22 +938,22 @@ function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZ
     const fileRef = useRef<HTMLInputElement>(null)
     const isGenerating = generatingAngle === angleIndex
     return (
-        <div className={cn('group relative aspect-[3/4] bg-[#0d1411] border rounded-xl overflow-hidden transition-all',
-            url ? 'border-white/5 hover:border-emerald-500/50' : 'border-dashed border-white/10 hover:border-emerald-500/30'
+        <div className={cn('group relative aspect-[3/4] bg-card border rounded-xl overflow-hidden transition-all',
+            url ? 'border-border hover:border-emerald-500/50' : 'border-dashed border-border hover:border-emerald-500/30'
         )}>
             {url ? (
                 <img src={url} alt={label} className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity cursor-pointer" onClick={onZoom} />
             ) : (
                 <div className="w-full h-full flex items-center justify-center pointer-events-none">
-                    <ImagePlus size={16} className="text-slate-700" />
+                    <ImagePlus size={16} className="text-muted-foreground" />
                 </div>
             )}
 
             {/* Hover actions overlay */}
             {!isShared && !showGenInput && (
                 <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all pointer-events-none group-hover:pointer-events-auto">
-                    <p className="text-[9px] font-bold text-white uppercase tracking-wide mb-1">{label}</p>
-                    <label className="flex items-center gap-1 px-2 py-1 bg-white/10 rounded-lg text-[10px] text-white cursor-pointer hover:bg-white/20 transition-all">
+                    <p className="text-[9px] font-bold text-foreground uppercase tracking-wide mb-1">{label}</p>
+                    <label className="flex items-center gap-1 px-2 py-1 bg-muted/60 rounded-lg text-[10px] text-foreground cursor-pointer hover:bg-muted transition-all">
                         <Upload size={10} /> Upload
                         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
                     </label>
@@ -956,10 +965,10 @@ function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZ
 
             {/* Stable label when no hover */}
             {!isShared && url && (
-                <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/70 rounded text-[9px] font-bold text-white uppercase opacity-80 group-hover:opacity-0 transition-all">{label}</div>
+                <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/70 rounded text-[9px] font-bold text-foreground uppercase opacity-80 group-hover:opacity-0 transition-all">{label}</div>
             )}
             {!url && !isShared && (
-                <div className="absolute bottom-2 left-0 right-0 text-center text-[9px] text-slate-600 uppercase group-hover:opacity-0 transition-all">{label}</div>
+                <div className="absolute bottom-2 left-0 right-0 text-center text-[9px] text-muted-foreground uppercase group-hover:opacity-0 transition-all">{label}</div>
             )}
 
             {/* AI Gen inline prompt */}
@@ -967,9 +976,9 @@ function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZ
                 <div className="absolute inset-0 bg-black/90 flex flex-col p-2 gap-1.5" onClick={e => e.stopPropagation()}>
                     <p className="text-[9px] font-bold text-emerald-400 uppercase">{label} — AI Generate</p>
                     <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Thêm mô tả (optional)..." rows={3}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-lg p-1.5 text-[10px] text-white placeholder:text-slate-600 outline-none resize-none" />
+                        className="flex-1 bg-muted/40 border border-border rounded-lg p-1.5 text-[10px] text-foreground placeholder:text-muted-foreground outline-none resize-none" />
                     <div className="flex gap-1">
-                        <button onClick={() => setShowGenInput(false)} className="flex-1 py-1 bg-white/10 rounded text-[10px] text-slate-400">Cancel</button>
+                        <button onClick={() => setShowGenInput(false)} className="flex-1 py-1 bg-muted/60 rounded text-[10px] text-muted-foreground">Cancel</button>
                         <button onClick={() => { onGenerate(prompt); setShowGenInput(false); setPrompt('') }}
                             className="flex-1 py-1 bg-emerald-500 rounded text-[10px] text-black font-bold flex items-center justify-center gap-1">
                             <Sparkles size={10} /> Gen
@@ -998,26 +1007,26 @@ function AssetCard({ asset, uploading, onUpload, onDeleteImage, onDelete, onZoom
 }) {
     const inputRef = useRef<HTMLInputElement>(null)
     return (
-        <div className="p-3 rounded-xl bg-[#0d1411] border border-white/5 hover:border-white/10 transition-all">
+        <div className="p-3 rounded-xl bg-card border border-border hover:border-border transition-all">
             <div className="flex items-start justify-between mb-2">
-                <p className="text-xs font-bold text-white">{asset.name}</p>
-                <button onClick={onDelete} className="text-slate-600 hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
+                <p className="text-xs font-bold text-foreground">{asset.name}</p>
+                <button onClick={onDelete} className="text-muted-foreground hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
             </div>
-            {asset.prompt && <p className="text-[10px] text-slate-500 mb-2 line-clamp-2">{asset.prompt}</p>}
+            {asset.prompt && <p className="text-[10px] text-muted-foreground mb-2 line-clamp-2">{asset.prompt}</p>}
             {/* Multi-image grid */}
             <div className="grid grid-cols-3 gap-1 mb-2">
                 {(asset.images || []).map((img, i) => (
-                    <div key={i} className="group relative aspect-square bg-slate-900 rounded-lg overflow-hidden border border-white/5">
+                    <div key={i} className="group relative aspect-square bg-muted rounded-lg overflow-hidden border border-border">
                         <img src={img.url} className="w-full h-full object-cover" alt="" />
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-all">
-                            <button onClick={() => onZoom(img.url)} className="p-1 bg-white/10 rounded"><ZoomIn size={10} className="text-white" /></button>
+                            <button onClick={() => onZoom(img.url)} className="p-1 bg-muted/60 rounded"><ZoomIn size={10} className="text-foreground" /></button>
                             <button onClick={() => onDeleteImage(img.url)} className="p-1 bg-red-500/20 rounded"><X size={10} className="text-red-400" /></button>
                         </div>
                     </div>
                 ))}
                 {/* Add image slot */}
-                <label className="aspect-square bg-white/5 border border-dashed border-white/20 rounded-lg flex items-center justify-center cursor-pointer hover:border-emerald-500/40 transition-all">
-                    {uploading ? <Loader2 size={12} className="animate-spin text-emerald-400" /> : <Plus size={12} className="text-slate-500" />}
+                <label className="aspect-square bg-muted/40 border border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-emerald-500/40 transition-all">
+                    {uploading ? <Loader2 size={12} className="animate-spin text-emerald-400" /> : <Plus size={12} className="text-muted-foreground" />}
                     <input ref={el => { inputRef.current = el; fileRef(el) }} type="file" accept="image/*" multiple className="hidden" onChange={e => e.target.files && onUpload(e.target.files)} />
                 </label>
             </div>
