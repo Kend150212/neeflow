@@ -465,6 +465,56 @@ async function fetchYouTubeInsights(channelPlatform: {
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([date, value]) => ({ date, value }))
 
+        // Fetch recent comment threads for the channel (up to 30)
+        let recentCommentThreads: {
+            commentId: string
+            videoId: string
+            videoTitle: string
+            authorName: string
+            authorAvatar: string | null
+            text: string
+            likeCount: number
+            replyCount: number
+            publishedAt: string | null
+            replies: { commentId: string; authorName: string; authorAvatar: string | null; text: string; likeCount: number; publishedAt: string | null }[]
+        }[] = []
+        try {
+            const commentsRes = await fetch(
+                `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&allThreadsRelatedToChannelId=${ytChannelId}&maxResults=30&order=time`,
+                { headers }
+            )
+            const commentsData = await commentsRes.json()
+            const videoTitleMap: Record<string, string> = {}
+            recentVideos.forEach(v => { videoTitleMap[v.id] = v.title })
+
+            for (const thread of commentsData.items || []) {
+                const top = thread.snippet?.topLevelComment?.snippet
+                const vidId = thread.snippet?.videoId || ''
+                const reps = (thread.replies?.comments || []).map((r: { id: string; snippet: { authorDisplayName: string; authorProfileImageUrl: string | null; textDisplay: string; likeCount: number; publishedAt: string | null } }) => ({
+                    commentId: r.id,
+                    authorName: r.snippet?.authorDisplayName || 'Unknown',
+                    authorAvatar: r.snippet?.authorProfileImageUrl || null,
+                    text: r.snippet?.textDisplay || '',
+                    likeCount: r.snippet?.likeCount || 0,
+                    publishedAt: r.snippet?.publishedAt || null,
+                }))
+                recentCommentThreads.push({
+                    commentId: thread.snippet?.topLevelComment?.id || thread.id,
+                    videoId: vidId,
+                    videoTitle: videoTitleMap[vidId] || '',
+                    authorName: top?.authorDisplayName || 'Unknown',
+                    authorAvatar: top?.authorProfileImageUrl || null,
+                    text: top?.textDisplay || '',
+                    likeCount: top?.likeCount || 0,
+                    replyCount: thread.snippet?.totalReplyCount || 0,
+                    publishedAt: top?.publishedAt || null,
+                    replies: reps,
+                })
+            }
+        } catch (err) {
+            console.warn('[YouTube] commentThreads fetch failed:', err)
+        }
+
         return {
             platform: 'youtube',
             accountName: snippet?.title || channelPlatform.accountName,
@@ -480,12 +530,14 @@ async function fetchYouTubeInsights(channelPlatform: {
             viewsTimeSeries,
             engagementTimeSeries,
             recentVideos,
+            recentCommentThreads,
         }
     } catch (err) {
         console.error('[YouTube] fetchYouTubeInsights error:', err)
         return null
     }
 }
+
 
 
 // ─── TikTok API v2 ───────────────────────────────────────────────────
