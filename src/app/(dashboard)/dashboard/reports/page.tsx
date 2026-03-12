@@ -670,8 +670,49 @@ function OverviewTab({ data, platformInsights, postInsights, t }: {
         platform: p.platform,
     }))
 
-    // Overall top posts across all platforms
-    const topPosts = [...postInsights].sort((a, b) => (b.reach || 0) - (a.reach || 0)).slice(0, 5)
+    // Overall top posts — merge live FB/IG API posts with Neeflow DB posts
+    const liveApiPosts: PostInsight[] = []
+    for (const pi of platformInsights) {
+        const ins = pi as any
+        if (pi.platform === 'facebook' && Array.isArray(ins.recentPosts)) {
+            for (const p of ins.recentPosts) {
+                liveApiPosts.push({
+                    postId: p.id || '',
+                    platform: 'facebook',
+                    content: p.message || null,
+                    thumbnail: p.thumbnail || null,
+                    publishedAt: p.createdTime || null,
+                    likes: p.reactions ?? 0,
+                    comments: p.comments ?? 0,
+                    shares: p.shares ?? 0,
+                    reach: p.reach ?? (p.reactions ?? 0) + (p.comments ?? 0) + (p.shares ?? 0),
+                    impressions: p.impressions ?? 0,
+                })
+            }
+        }
+        if (pi.platform === 'instagram' && Array.isArray(ins.recentMedia)) {
+            for (const m of ins.recentMedia) {
+                liveApiPosts.push({
+                    postId: m.id || '',
+                    platform: 'instagram',
+                    content: m.caption || null,
+                    thumbnail: m.thumbnail || null,
+                    publishedAt: m.timestamp || null,
+                    likes: m.likes ?? 0,
+                    comments: m.comments ?? 0,
+                    shares: 0,
+                    reach: m.reach ?? m.likes ?? 0,
+                    impressions: m.impressions ?? 0,
+                })
+            }
+        }
+    }
+    // Merge: live API posts take priority; DB posts fill in other platforms
+    const seenIds = new Set(liveApiPosts.map(p => p.postId).filter(Boolean))
+    const dbOnlyPosts = postInsights.filter(p => !seenIds.has(p.postId))
+    const topPosts = [...liveApiPosts, ...dbOnlyPosts]
+        .sort((a, b) => ((b.reach || 0) + (b.likes || 0)) - ((a.reach || 0) + (a.likes || 0)))
+        .slice(0, 10)
 
     return (
         <div className="space-y-5">
