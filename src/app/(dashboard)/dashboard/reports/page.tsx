@@ -49,6 +49,8 @@ import {
     Plug,
     ChevronRight,
     Bookmark,
+    Play,
+    UserCheck,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -74,9 +76,19 @@ interface PlatformInsight {
     saves?: number | null
     topPins?: { pinId: string; title: string; imageUrl: string | null; impressions: number; saves: number; clicks: number; pinUrl: string }[]
     pendingApproval?: boolean
+    // TikTok-specific
+    following?: number | null
+    totalAccountLikes?: number | null
+    recentShares?: number | null
+    viewsTimeSeries?: { date: string; value: number }[]
+    interactionsTimeSeries?: { date: string; value: number }[]
+    recentVideos?: {
+        id: string; title: string; coverImageUrl: string | null; createTime: string | null
+        viewCount: number; likeCount: number; commentCount: number; shareCount: number
+    }[]
 }
 interface PostInsight {
-    postId: string; platform: string; content: string | null; thumbnail: string | null
+    postId: string; platform: string; accountName?: string | null; content: string | null; thumbnail: string | null
     publishedAt: string | null; likes: number; comments: number; shares: number; reach: number; impressions: number
 }
 
@@ -227,22 +239,35 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
     const color = platformColor(insight.platform)
     const topPosts = [...posts].sort((a, b) => (b.reach || 0) - (a.reach || 0)).slice(0, 3)
     const hasRealData = LIVE_API_PLATFORMS.has(insight.platform)
-    const isTabbed = insight.platform === 'facebook' || insight.platform === 'instagram' || insight.platform === 'linkedin'
+    const isTabbed = insight.platform === 'facebook' || insight.platform === 'instagram' || insight.platform === 'linkedin' || insight.platform === 'tiktok'
     const isMeta = insight.platform === 'facebook' || insight.platform === 'instagram'
+    const isTikTok = insight.platform === 'tiktok'
     const ins = insight as any
 
-    // Tab state — only FB/IG get tabs
+    // Tab state — FB/IG/LinkedIn/TikTok get tabs
     const TAB_VIEWS = 'views'
     const TAB_INTERACTIONS = 'interactions'
     const TAB_AUDIENCE = 'audience'
     const TAB_POSTS = 'posts'
+    // TikTok tabs
+    const TAB_TT_OVERVIEW = 'tt_overview'
+    const TAB_TT_VIDEOS = 'tt_videos'
+    const TAB_TT_ENGAGEMENT = 'tt_engagement'
+    const TAB_TT_TOP = 'tt_top'
+
     const metaTabs = [
         { id: TAB_VIEWS, label: t('insights.tabs.views') },
         { id: TAB_INTERACTIONS, label: t('insights.tabs.interactions') },
         { id: TAB_AUDIENCE, label: t('insights.tabs.audience') },
         { id: TAB_POSTS, label: t('insights.tabs.posts') },
     ]
-    const [activeTab, setActiveTab] = useState(TAB_VIEWS)
+    const tiktokTabs = [
+        { id: TAB_TT_OVERVIEW, label: 'Overview' },
+        { id: TAB_TT_VIDEOS, label: 'Videos' },
+        { id: TAB_TT_ENGAGEMENT, label: 'Engagement' },
+        { id: TAB_TT_TOP, label: 'Top Videos' },
+    ]
+    const [activeTab, setActiveTab] = useState(isTikTok ? TAB_TT_OVERVIEW : TAB_VIEWS)
 
     // FB data
     const fbPosts: Array<{ id: string; createdTime: string; thumbnail?: string; reactions: number; comments: number; shares: number }> =
@@ -327,12 +352,12 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                 </div>
             </div>
 
-            {/* ── TABBED LAYOUT: Facebook, Instagram & LinkedIn ── */}
+            {/* ── TABBED LAYOUT: Facebook, Instagram, LinkedIn & TikTok ── */}
             {isTabbed ? (
                 <div>
                     {/* Tab bar */}
                     <div className="flex border-b overflow-x-auto scrollbar-none">
-                        {metaTabs.map(tab => (
+                        {(isTikTok ? tiktokTabs : metaTabs).map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
@@ -569,6 +594,218 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                 )}
                             </>
                         )}
+
+                        {/* ── TIKTOK TABS ── */}
+                        {isTikTok && (() => {
+                            const ttViews = ins.viewsTimeSeries || []
+                            const ttInteractions = ins.interactionsTimeSeries || []
+                            const ttVideos: Array<{
+                                id: string; title: string; coverImageUrl: string | null; createTime: string | null
+                                viewCount: number; likeCount: number; commentCount: number; shareCount: number
+                            }> = ins.recentVideos || []
+                            const totalAccountLikes = ins.totalAccountLikes ?? 0
+                            const following = ins.following ?? 0
+                            const recentViews = insight.recentViews ?? 0
+                            const recentLikes = insight.recentLikes ?? 0
+                            const recentComments = insight.recentComments ?? 0
+                            const recentShares = ins.recentShares ?? 0
+                            const ttGradId = `grad-tiktok-${insight.accountName.replace(/\s/g, '')}`
+
+                            return (
+                                <>
+                                    {/* ── TT OVERVIEW ── */}
+                                    {activeTab === TAB_TT_OVERVIEW && (
+                                        <>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                                                    <p className="text-xl font-bold font-mono">{fmt(insight.followers)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Followers</p>
+                                                </div>
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <UserCheck className="h-4 w-4 mx-auto mb-1 text-indigo-500" />
+                                                    <p className="text-xl font-bold font-mono">{fmt(following)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Following</p>
+                                                </div>
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <Heart className="h-4 w-4 mx-auto mb-1 text-rose-500" />
+                                                    <p className="text-xl font-bold font-mono">{fmt(totalAccountLikes)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Total Likes</p>
+                                                </div>
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <Play className="h-4 w-4 mx-auto mb-1 text-orange-500" />
+                                                    <p className="text-xl font-bold font-mono">{fmt(insight.videoCount)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Videos</p>
+                                                </div>
+                                            </div>
+                                            {/* Recent summary row */}
+                                            <div className="bg-gradient-to-r from-[#010101]/5 to-[#010101]/10 border border-[#010101]/10 rounded-xl p-4">
+                                                <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Recent 20 Videos — Performance</p>
+                                                <div className="grid grid-cols-4 gap-2">
+                                                    {[
+                                                        { label: 'Views', value: recentViews, color: 'text-purple-500' },
+                                                        { label: 'Likes', value: recentLikes, color: 'text-rose-500' },
+                                                        { label: 'Comments', value: recentComments, color: 'text-blue-500' },
+                                                        { label: 'Shares', value: recentShares, color: 'text-green-500' },
+                                                    ].map(({ label, value, color }) => (
+                                                        <div key={label} className="text-center">
+                                                            <p className={`text-lg font-bold font-mono ${color}`}>{fmt(value)}</p>
+                                                            <p className="text-[10px] text-muted-foreground">{label}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* ── TT VIDEOS (views chart) ── */}
+                                    {activeTab === TAB_TT_VIDEOS && (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
+                                                    <p className="text-xl font-bold font-mono">{fmt(recentViews)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Total Views</p>
+                                                </div>
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <Play className="h-4 w-4 mx-auto mb-1 text-orange-500" />
+                                                    <p className="text-xl font-bold font-mono">{fmt(insight.videoCount)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Total Videos</p>
+                                                </div>
+                                            </div>
+                                            {ttViews.length > 0 ? (
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Views by Upload Date</p>
+                                                    <div className="h-40">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <AreaChart data={ttViews} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                                <defs>
+                                                                    <linearGradient id={ttGradId} x1="0" y1="0" x2="0" y2="1">
+                                                                        <stop offset="5%" stopColor="#010101" stopOpacity={0.5} />
+                                                                        <stop offset="95%" stopColor="#010101" stopOpacity={0} />
+                                                                    </linearGradient>
+                                                                </defs>
+                                                                <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} interval={2} />
+                                                                <YAxis tick={{ fontSize: 9 }} />
+                                                                <Tooltip content={<CustomTooltip />} />
+                                                                <Area type="monotone" dataKey="value" name="Views" stroke="#010101" fill={`url(#${ttGradId})`} strokeWidth={2} dot={false} />
+                                                            </AreaChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="h-20 flex flex-col items-center justify-center bg-muted/20 rounded-lg gap-2">
+                                                    <p className="text-xs text-muted-foreground">No time-series data available (video upload dates needed)</p>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* ── TT ENGAGEMENT ── */}
+                                    {activeTab === TAB_TT_ENGAGEMENT && (
+                                        <>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <Heart className="h-4 w-4 mx-auto mb-1 text-rose-500" />
+                                                    <p className="text-lg font-bold font-mono">{fmt(recentLikes)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Likes</p>
+                                                </div>
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <MessageCircle className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                                                    <p className="text-lg font-bold font-mono">{fmt(recentComments)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Comments</p>
+                                                </div>
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <Share2 className="h-4 w-4 mx-auto mb-1 text-green-500" />
+                                                    <p className="text-lg font-bold font-mono">{fmt(recentShares)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Shares</p>
+                                                </div>
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <TrendingUp className="h-4 w-4 mx-auto mb-1 text-orange-500" />
+                                                    <p className="text-lg font-bold font-mono">{fmt(recentLikes + recentComments + recentShares)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Total</p>
+                                                </div>
+                                            </div>
+                                            {ttInteractions.length > 0 ? (
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Engagement by Upload Date</p>
+                                                    <div className="h-36">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <BarChart data={ttInteractions} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                                <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} interval={2} />
+                                                                <YAxis tick={{ fontSize: 9 }} />
+                                                                <Tooltip content={<CustomTooltip />} />
+                                                                <Bar dataKey="value" name="Interactions" fill="#010101" radius={[3, 3, 0, 0]} />
+                                                            </BarChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                            {/* Donut breakdown */}
+                                            {(recentLikes + recentComments + recentShares) > 0 && (
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Breakdown by Type</p>
+                                                    <div className="flex items-center gap-6">
+                                                        <DonutChart size={88} data={[
+                                                            { label: 'Likes', value: recentLikes, color: '#f43f5e' },
+                                                            { label: 'Comments', value: recentComments, color: '#3b82f6' },
+                                                            { label: 'Shares', value: recentShares, color: '#22c55e' },
+                                                        ]} />
+                                                        <div className="space-y-1.5">
+                                                            {[
+                                                                { label: 'Likes', value: recentLikes, color: '#f43f5e' },
+                                                                { label: 'Comments', value: recentComments, color: '#3b82f6' },
+                                                                { label: 'Shares', value: recentShares, color: '#22c55e' },
+                                                            ].map(({ label, value, color: c }) => (
+                                                                <div key={label} className="flex items-center gap-2 text-xs">
+                                                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c }} />
+                                                                    <span className="text-muted-foreground">{label}</span>
+                                                                    <span className="font-semibold ml-auto">{fmt(value)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* ── TT TOP VIDEOS ── */}
+                                    {activeTab === TAB_TT_TOP && (
+                                        <>
+                                            {ttVideos.length > 0 ? (
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Recent Videos ({ttVideos.length})</p>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                                        {[...ttVideos]
+                                                            .sort((a, b) => b.viewCount - a.viewCount)
+                                                            .map((video, idx) => (
+                                                                <PostCard
+                                                                    key={video.id || idx}
+                                                                    thumbnail={video.coverImageUrl}
+                                                                    publishedAt={video.createTime}
+                                                                    platform="tiktok"
+                                                                    metrics={[
+                                                                        { icon: Eye, label: 'Views', value: video.viewCount, color: 'text-purple-400' },
+                                                                        { icon: Heart, label: 'Likes', value: video.likeCount, color: 'text-rose-400' },
+                                                                        { icon: MessageCircle, label: 'Comments', value: video.commentCount, color: 'text-blue-400' },
+                                                                        { icon: Share2, label: 'Shares', value: video.shareCount, color: 'text-green-400' },
+                                                                    ]}
+                                                                />
+                                                            ))}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="py-10 flex flex-col items-center gap-2 text-center">
+                                                    <Play className="h-8 w-8 text-muted-foreground/30" />
+                                                    <p className="text-sm text-muted-foreground">No videos found</p>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </>
+                            )
+                        })()}
                     </div>
                 </div>
             ) : (
@@ -1058,7 +1295,11 @@ export default function InsightsPage() {
         : null
 
     const tabPosts = tabInsight
-        ? postInsights.filter(p => p.platform === tabInsight.platform)
+        ? postInsights.filter(p =>
+            p.platform === tabInsight.platform &&
+            // When multiple accounts share a platform, filter to the selected account
+            (p.accountName == null || p.accountName === tabInsight.accountName)
+        )
         : postInsights
 
     const isRefreshing = loading || insightsLoading
@@ -1123,37 +1364,68 @@ export default function InsightsPage() {
                         <span>Overview</span>
                     </button>
 
-                    {/* Live accounts section */}
-                    {liveAccounts.length > 0 && (
-                        <>
-                            <p className="px-3 pt-3 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Connected</p>
-                            {liveAccounts.map(pi => {
-                                const tabKey = `${pi.platform}__${pi.accountName}`
-                                const color = platformColor(pi.platform)
-                                const isActive = activeTab === tabKey
-                                return (
-                                    <button
-                                        key={tabKey}
-                                        type="button"
-                                        onClick={() => setActiveTab(tabKey)}
-                                        className={`flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium transition-colors cursor-pointer text-left w-full border-l-2 ${isActive
-                                            ? 'bg-primary/8 text-foreground border-l-primary'
-                                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-l-transparent'
-                                            }`}
-                                    >
-                                        <div className="w-4 h-4 shrink-0">
-                                            <PlatformIcon platform={pi.platform} size="sm" />
+                    {/* Live accounts — grouped by platform */}
+                    {liveAccounts.length > 0 && (() => {
+                        // Group accounts by platform
+                        const grouped: Record<string, typeof liveAccounts> = {}
+                        for (const pi of liveAccounts) {
+                            if (!grouped[pi.platform]) grouped[pi.platform] = []
+                            grouped[pi.platform].push(pi)
+                        }
+                        // Sort platforms by PLATFORM_LABELS order
+                        const platformOrder = ['facebook', 'instagram', 'tiktok', 'youtube', 'linkedin', 'pinterest', 'twitter', 'bluesky', 'threads']
+                        const sortedPlatforms = Object.keys(grouped).sort((a, b) => {
+                            const ai = platformOrder.indexOf(a)
+                            const bi = platformOrder.indexOf(b)
+                            return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+                        })
+                        return (
+                            <>
+                                <p className="px-3 pt-3 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Connected</p>
+                                {sortedPlatforms.map(platform => {
+                                    const accounts = grouped[platform]
+                                    const pColor = platformColor(platform)
+                                    return (
+                                        <div key={platform}>
+                                            {/* Platform group header */}
+                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-y border-border/40">
+                                                <div className="w-3.5 h-3.5 shrink-0">
+                                                    <PlatformIcon platform={platform} size="sm" />
+                                                </div>
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: pColor }}>
+                                                    {PLATFORM_LABELS[platform] || platform}
+                                                </span>
+                                                <span className="ml-auto text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 leading-none">
+                                                    {accounts.length}
+                                                </span>
+                                            </div>
+                                            {/* Accounts under this platform */}
+                                            {accounts.map(pi => {
+                                                const tabKey = `${pi.platform}__${pi.accountName}`
+                                                const isActive = activeTab === tabKey
+                                                return (
+                                                    <button
+                                                        key={tabKey}
+                                                        type="button"
+                                                        onClick={() => setActiveTab(tabKey)}
+                                                        className={`flex items-center gap-2.5 pl-7 pr-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left w-full border-l-2 ${isActive
+                                                            ? 'bg-primary/8 text-foreground border-l-primary'
+                                                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-l-transparent'
+                                                            }`}
+                                                    >
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="truncate leading-tight">{pi.accountName}</p>
+                                                        </div>
+                                                        {isActive && <ChevronRight className="h-3 w-3 shrink-0 text-primary" />}
+                                                    </button>
+                                                )
+                                            })}
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate leading-tight">{pi.accountName}</p>
-                                            <p className="truncate text-[10px]" style={{ color }}>{PLATFORM_LABELS[pi.platform] || pi.platform}</p>
-                                        </div>
-                                        {isActive && <ChevronRight className="h-3 w-3 shrink-0 text-primary" />}
-                                    </button>
-                                )
-                            })}
-                        </>
-                    )}
+                                    )
+                                })}
+                            </>
+                        )
+                    })()}
 
                     {/* Pending/no-live-API accounts */}
                     {pendingAccounts.length > 0 && (

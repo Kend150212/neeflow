@@ -439,7 +439,7 @@ async function fetchTikTokInsights(channelPlatform: {
     const headers = { Authorization: `Bearer ${token}` }
 
     try {
-        // User info with stats (requires user.info.stats scope)
+        // 1. User info (requires user.info.stats scope)
         const userRes = await fetch(
             'https://open.tiktokapis.com/v2/user/info/?fields=display_name,follower_count,following_count,likes_count,video_count',
             { headers }
@@ -449,9 +449,9 @@ async function fetchTikTokInsights(channelPlatform: {
         if (userData.error?.code && userData.error.code !== 'ok') return null
         const user = userData.data?.user
 
-        // Recent video list — POST request required
+        // 2. Recent video list with extended fields (cover image, create_time, all metrics)
         const videoListRes = await fetch(
-            'https://open.tiktokapis.com/v2/video/list/?fields=id,title,cover_image_url,view_count,like_count,comment_count,share_count',
+            'https://open.tiktokapis.com/v2/video/list/?fields=id,title,cover_image_url,create_time,view_count,like_count,comment_count,share_count',
             {
                 method: 'POST',
                 headers: { ...headers, 'Content-Type': 'application/json; charset=UTF-8' },
@@ -459,25 +459,77 @@ async function fetchTikTokInsights(channelPlatform: {
             }
         )
         const videoListData = await videoListRes.json()
+        const rawVideos: Array<{
+            id: string
+            title: string
+            cover_image_url: string
+            create_time: number
+            view_count: number
+            like_count: number
+            comment_count: number
+            share_count: number
+        }> = videoListData.data?.videos || []
+
         let totalViews = 0, totalLikes = 0, totalComments = 0, totalShares = 0
-        for (const video of videoListData.data?.videos || []) {
-            totalViews += video.view_count || 0
-            totalLikes += video.like_count || 0
-            totalComments += video.comment_count || 0
-            totalShares += video.share_count || 0
-        }
+        const viewsByDay: Record<string, number> = {}
+        const interactionsByDay: Record<string, number> = {}
+
+        const recentVideos = rawVideos.map(video => {
+            const views = video.view_count || 0
+            const likes = video.like_count || 0
+            const comments = video.comment_count || 0
+            const shares = video.share_count || 0
+            totalViews += views
+            totalLikes += likes
+            totalComments += comments
+            totalShares += shares
+
+            // Build time-series from create_time (Unix timestamp in seconds)
+            if (video.create_time) {
+                const day = new Date(video.create_time * 1000).toISOString().split('T')[0]
+                viewsByDay[day] = (viewsByDay[day] || 0) + views
+                interactionsByDay[day] = (interactionsByDay[day] || 0) + likes + comments + shares
+            }
+
+            return {
+                id: video.id,
+                title: video.title || '',
+                coverImageUrl: video.cover_image_url || null,
+                createTime: video.create_time
+                    ? new Date(video.create_time * 1000).toISOString()
+                    : null,
+                viewCount: views,
+                likeCount: likes,
+                commentCount: comments,
+                shareCount: shares,
+            }
+        })
+
+        // Sort time-series chronologically
+        const viewsTimeSeries = Object.entries(viewsByDay)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, value]) => ({ date, value }))
+        const interactionsTimeSeries = Object.entries(interactionsByDay)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, value]) => ({ date, value }))
 
         return {
             platform: 'tiktok',
             accountName: user?.display_name || channelPlatform.accountName,
             followers: user?.follower_count ?? 0,
+            following: user?.following_count ?? 0,
             videoCount: user?.video_count ?? 0,
+            totalAccountLikes: user?.likes_count ?? 0,
             engagement: totalLikes + totalComments + totalShares,
             impressions: totalViews,
             reach: totalViews,
             recentViews: totalViews,
             recentLikes: totalLikes,
             recentComments: totalComments,
+            recentShares: totalShares,
+            viewsTimeSeries,
+            interactionsTimeSeries,
+            recentVideos,
         }
     } catch {
         return null
@@ -906,6 +958,13 @@ async function fetchPostInsights(
                         take: 1,
                         select: { mediaItem: { select: { url: true, thumbnailUrl: true } } },
                     },
+                    channel: {
+                        select: {
+                            platforms: {
+                                select: { platform: true, accountName: true, accountId: true },
+                            },
+                        },
+                    },
                 },
             },
         },
@@ -1075,6 +1134,19 @@ async function fetchPostInsights(
             return {
                 postId: ps.post.id,
                 platform: ps.platform,
+                // Resolve accountName: for FB, match via pageId prefix in externalId
+                accountName: (() => {
+                    type PlatformEntry = { platform: string; accountName: string; accountId: string }
+                    const cps: PlatformEntry[] = (ps.post.channel as { platforms?: PlatformEntry[] } | undefined)?.platforms || []
+                    if (ps.platform === 'facebook' && ps.externalId) {
+                        // FB externalId format: "{pageId}_{postId}"
+                        const pageId = ps.externalId.split('_')[0]
+                        return cps.find(cp => cp.platform === 'facebook' && cp.accountId === pageId)?.accountName
+                            ?? cps.find(cp => cp.platform === 'facebook')?.accountName
+                            ?? null
+                    }
+                    return cps.find(cp => cp.platform === ps.platform)?.accountName ?? null
+                })(),
                 externalId: ps.externalId,
                 publishedAt: ps.publishedAt,
                 content: ps.post.content?.slice(0, 100),
