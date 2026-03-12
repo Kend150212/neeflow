@@ -44,7 +44,6 @@ export async function GET(req: NextRequest) {
     const scopes = [
         'https://www.googleapis.com/auth/youtube.readonly',
         'https://www.googleapis.com/auth/youtube.upload',
-        'https://www.googleapis.com/auth/youtube.force-ssl',
         'https://www.googleapis.com/auth/yt-analytics.readonly',
     ].join(' ')
 

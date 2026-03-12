@@ -351,30 +351,7 @@ function YTVideoCard({ v, channelPlatformId, formatDuration, fmt }: {
 
 type YTThread = { commentId: string; videoId: string; videoTitle: string; authorName: string; authorAvatar: string | null; text: string; likeCount: number; replyCount: number; publishedAt: string | null; replies: { commentId: string; authorName: string; authorAvatar: string | null; text: string; likeCount: number; publishedAt: string | null }[] }
 
-function YTCommentThread({ thread, channelPlatformId }: { thread: YTThread; channelPlatformId: string | undefined }) {
-    const [replyOpen, setReplyOpen] = useState(false)
-    const [replyText, setReplyText] = useState('')
-    const [replyLoading, setReplyLoading] = useState(false)
-    const [replyDone, setReplyDone] = useState(false)
-    const [replyError, setReplyError] = useState('')
-
-    const submitReply = async () => {
-        if (!replyText.trim() || replyLoading || !channelPlatformId) return
-        setReplyLoading(true)
-        setReplyError('')
-        try {
-            const res = await fetch('/api/youtube/reply-comment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelPlatformId, parentId: thread.commentId, text: replyText }),
-            })
-            const data = await res.json()
-            if (data.success) { setReplyDone(true); setReplyText(''); setReplyOpen(false) }
-            else setReplyError(data.error || 'Failed to post reply')
-        } catch { setReplyError('Network error') }
-        setReplyLoading(false)
-    }
-
+function YTCommentThread({ thread }: { thread: YTThread }) {
     return (
         <div className="border rounded-lg p-3 bg-muted/20 space-y-2">
             <div className="flex items-start gap-2.5">
@@ -408,27 +385,9 @@ function YTCommentThread({ thread, channelPlatformId }: { thread: YTThread; chan
                                 <MessageCircle className="h-2.5 w-2.5 text-blue-400" />{thread.replyCount} repl{thread.replyCount === 1 ? 'y' : 'ies'}
                             </span>
                         )}
-                        {!replyDone && channelPlatformId && (
-                            <button onClick={() => setReplyOpen(o => !o)} className="text-[9px] text-primary hover:underline ml-auto">
-                                {replyOpen ? 'Cancel' : '↩ Reply'}
-                            </button>
-                        )}
-                        {replyDone && <span className="text-[9px] text-green-500 ml-auto">✓ Replied</span>}
                     </div>
                 </div>
             </div>
-            {replyOpen && (
-                <div className="ml-9 space-y-1.5">
-                    <textarea value={replyText} onChange={e => setReplyText(e.target.value)}
-                        placeholder="Write a reply..." rows={2}
-                        className="w-full text-[11px] p-2 border rounded bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary" />
-                    {replyError && <p className="text-[10px] text-red-500">{replyError}</p>}
-                    <button onClick={submitReply} disabled={replyLoading || !replyText.trim()}
-                        className="text-[10px] bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
-                        {replyLoading ? 'Sending...' : 'Post Reply'}
-                    </button>
-                </div>
-            )}
             {thread.replies && thread.replies.length > 0 && (
                 <div className="ml-9 space-y-2 border-l border-muted pl-3">
                     {thread.replies.slice(0, 3).map((rep) => (
@@ -1144,7 +1103,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                     <div className="space-y-3">
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{ytComments.length} Recent Comments</p>
                                         {ytComments.map((thread) => (
-                                            <YTCommentThread key={thread.commentId} thread={thread} channelPlatformId={ins.channelPlatformId} />
+                                            <YTCommentThread key={thread.commentId} thread={thread} />
                                         ))}
                                     </div>
                                 ) : (
