@@ -15,13 +15,17 @@ async function fetchFacebookInsights(channelPlatform: {
     try {
         // 1. Page-level info (followers + basic fields)
         const pageRes = await fetch(
-            `https://graph.facebook.com/v21.0/${pageId}?fields=followers_count,fan_count,name,about&access_token=${token}`
+            `https://graph.facebook.com/v21.0/${pageId}?fields=followers_count,fan_count,name,about,picture{url}&access_token=${token}`
         )
         const pageData = await pageRes.json()
         if (pageData.error) {
             console.error('[Facebook] Page info error:', pageData.error)
             return null
         }
+        // fan_count is more reliable than followers_count for new Pages experience
+        const followerCount = pageData.fan_count ?? pageData.followers_count ?? 0
+        console.log(`[Facebook] Page ${pageId}: fan_count=${pageData.fan_count}, followers_count=${pageData.followers_count}`)
+
 
         // 2. Page insights — use metrics that are NOT deprecated as of 2025
         //    - page_views_total: total profile views (period=days_28)
@@ -86,7 +90,7 @@ async function fetchFacebookInsights(channelPlatform: {
         return {
             platform: 'facebook',
             accountName: pageData.name || channelPlatform.accountName,
-            followers: pageData.followers_count ?? pageData.fan_count ?? 0,
+            followers: followerCount,
             newFollowers,
             engagement: totalEngagement,
             reactions: totalReactions,

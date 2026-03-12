@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     authUrl.searchParams.set('client_id', clientId)
     authUrl.searchParams.set('redirect_uri', redirectUri)
     authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('scope', 'pages_show_list,pages_read_engagement,pages_manage_engagement,pages_manage_posts,pages_manage_metadata,pages_read_user_content,pages_messaging,business_management')
+    authUrl.searchParams.set('scope', 'pages_show_list,pages_read_engagement,pages_manage_engagement,pages_manage_posts,pages_manage_metadata,pages_read_user_content,pages_messaging,business_management,read_insights')
     authUrl.searchParams.set('auth_type', 'rerequest')
     authUrl.searchParams.set('state', state)
 
