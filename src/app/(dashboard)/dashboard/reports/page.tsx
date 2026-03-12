@@ -82,11 +82,19 @@ interface PlatformInsight {
     recentShares?: number | null
     viewsTimeSeries?: { date: string; value: number }[]
     interactionsTimeSeries?: { date: string; value: number }[]
+    // YouTube-specific
+    totalChannelViews?: number | null
+    engagementTimeSeries?: { date: string; value: number }[]
     recentVideos?: {
-        id: string; title: string; coverImageUrl: string | null; createTime: string | null
-        viewCount: number; likeCount: number; commentCount: number; shareCount: number
+        // TikTok fields
+        id: string; title: string; coverImageUrl?: string | null; createTime?: string | null
+        viewCount: number; likeCount: number; commentCount: number; shareCount?: number
+        // YouTube fields
+        thumbnail?: string | null; publishedAt?: string | null
+        duration?: number; tags?: string[]
     }[]
 }
+
 interface PostInsight {
     postId: string; platform: string; accountName?: string | null; content: string | null; thumbnail: string | null
     publishedAt: string | null; likes: number; comments: number; shares: number; reach: number; impressions: number
@@ -239,9 +247,10 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
     const color = platformColor(insight.platform)
     const topPosts = [...posts].sort((a, b) => (b.reach || 0) - (a.reach || 0)).slice(0, 3)
     const hasRealData = LIVE_API_PLATFORMS.has(insight.platform)
-    const isTabbed = insight.platform === 'facebook' || insight.platform === 'instagram' || insight.platform === 'linkedin' || insight.platform === 'tiktok'
+    const isTabbed = insight.platform === 'facebook' || insight.platform === 'instagram' || insight.platform === 'linkedin' || insight.platform === 'tiktok' || insight.platform === 'youtube'
     const isMeta = insight.platform === 'facebook' || insight.platform === 'instagram'
     const isTikTok = insight.platform === 'tiktok'
+    const isYouTube = insight.platform === 'youtube'
     const ins = insight as any
 
     // Tab state — FB/IG/LinkedIn/TikTok get tabs
@@ -254,6 +263,11 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
     const TAB_TT_VIDEOS = 'tt_videos'
     const TAB_TT_ENGAGEMENT = 'tt_engagement'
     const TAB_TT_TOP = 'tt_top'
+    // YouTube tabs
+    const TAB_YT_OVERVIEW = 'yt_overview'
+    const TAB_YT_VIDEOS = 'yt_videos'
+    const TAB_YT_ENGAGEMENT = 'yt_engagement'
+    const TAB_YT_TOP = 'yt_top'
 
     const metaTabs = [
         { id: TAB_VIEWS, label: t('insights.tabs.views') },
@@ -267,7 +281,15 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
         { id: TAB_TT_ENGAGEMENT, label: 'Engagement' },
         { id: TAB_TT_TOP, label: 'Top Videos' },
     ]
-    const [activeTab, setActiveTab] = useState(isTikTok ? TAB_TT_OVERVIEW : TAB_VIEWS)
+    const youtubeTabs = [
+        { id: TAB_YT_OVERVIEW, label: 'Overview' },
+        { id: TAB_YT_VIDEOS, label: 'Videos' },
+        { id: TAB_YT_ENGAGEMENT, label: 'Engagement' },
+        { id: TAB_YT_TOP, label: 'Top Videos' },
+    ]
+    const [activeTab, setActiveTab] = useState(
+        isTikTok ? TAB_TT_OVERVIEW : isYouTube ? TAB_YT_OVERVIEW : TAB_VIEWS
+    )
 
     // FB data
     const fbPosts: Array<{ id: string; createdTime: string; thumbnail?: string; reactions: number; comments: number; shares: number }> =
@@ -300,9 +322,25 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
 
     const viewsTimeSeries: { date: string; value: number }[] = ins.viewsTimeSeries || []
     const interactionsTimeSeries: { date: string; value: number }[] = ins.interactionsTimeSeries || []
+    const engagementTimeSeries: { date: string; value: number }[] = ins.engagementTimeSeries || []
     const contentTypeBreakdown: { type: string; count: number; pct: number }[] = ins.contentTypeBreakdown || []
     const totalInteractions = (ins.reactions ?? 0) + (ins.comments ?? 0) + (ins.shares ?? 0)
         + (ins.likes ?? 0)
+
+    // YouTube data helpers
+    const ytVideos: { id: string; title: string; thumbnail?: string | null; publishedAt?: string | null; duration?: number; tags?: string[]; viewCount: number; likeCount: number; commentCount: number }[] = isYouTube ? (ins.recentVideos || []) : []
+    const ytTotalViews = ytVideos.reduce((s: number, v: { viewCount: number }) => s + v.viewCount, 0)
+    const ytTotalLikes = ytVideos.reduce((s: number, v: { likeCount: number }) => s + v.likeCount, 0)
+    const ytTotalComments = ytVideos.reduce((s: number, v: { commentCount: number }) => s + v.commentCount, 0)
+    const formatDuration = (sec: number) => {
+        if (!sec) return '0:00'
+        const h = Math.floor(sec / 3600)
+        const m = Math.floor((sec % 3600) / 60)
+        const s = sec % 60
+        return h > 0
+            ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+            : `${m}:${String(s).padStart(2, '0')}`
+    }
 
     // Fallback sparkline for non-FB/IG
     const base = Math.round((insight.reach || insight.impressions || 0) / 7)
@@ -357,7 +395,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                 <div>
                     {/* Tab bar */}
                     <div className="flex border-b overflow-x-auto scrollbar-none">
-                        {(isTikTok ? tiktokTabs : metaTabs).map(tab => (
+                        {(isTikTok ? tiktokTabs : isYouTube ? youtubeTabs : metaTabs).map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
@@ -806,6 +844,160 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                 </>
                             )
                         })()}
+
+                        {/* ── YOUTUBE TABS ── */}
+                        {isYouTube && (<>
+                            {/* YT OVERVIEW */}
+                            {activeTab === TAB_YT_OVERVIEW && (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(insight.followers)}</p>
+                                        <p className="text-[10px] text-muted-foreground">Subscribers</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ins.totalChannelViews ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">Total Views (All-Time)</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Play className="h-4 w-4 mx-auto mb-1 text-red-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(insight.videoCount ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">Total Videos</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <TrendingUp className="h-4 w-4 mx-auto mb-1 text-green-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ytTotalViews)}</p>
+                                        <p className="text-[10px] text-muted-foreground">Recent Views</p>
+                                    </div>
+                                </div>
+                            )}
+                            {/* YT VIDEOS */}
+                            {activeTab === TAB_YT_VIDEOS && (<>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ytTotalViews)}</p>
+                                        <p className="text-[10px] text-muted-foreground">Total Views (recent {ytVideos.length})</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Play className="h-4 w-4 mx-auto mb-1 text-red-500" />
+                                        <p className="text-xl font-bold font-mono">{ytVideos.length}</p>
+                                        <p className="text-[10px] text-muted-foreground">Videos Fetched</p>
+                                    </div>
+                                </div>
+                                {viewsTimeSeries.length > 0 ? (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Views by Publish Date</p>
+                                        <ResponsiveContainer width="100%" height={140}>
+                                            <AreaChart data={viewsTimeSeries} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="ytViewsGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} />
+                                                <YAxis tick={{ fontSize: 9 }} tickFormatter={v => fmt(v)} />
+                                                <Tooltip formatter={(v: number) => [fmt(v), 'Views']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
+                                                <Area type="monotone" dataKey="value" stroke="#ef4444" fill="url(#ytViewsGrad)" strokeWidth={2} dot={false} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : (
+                                    <p className="text-[11px] text-muted-foreground text-center py-4">No time-series data available</p>
+                                )}
+                            </>)}
+                            {/* YT ENGAGEMENT */}
+                            {activeTab === TAB_YT_ENGAGEMENT && (<>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Heart className="h-4 w-4 mx-auto mb-1 text-rose-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ytTotalLikes)}</p>
+                                        <p className="text-[10px] text-muted-foreground">Total Likes</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <MessageCircle className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ytTotalComments)}</p>
+                                        <p className="text-[10px] text-muted-foreground">Total Comments</p>
+                                    </div>
+                                </div>
+                                {engagementTimeSeries.length > 0 ? (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Engagement by Publish Date</p>
+                                        <ResponsiveContainer width="100%" height={140}>
+                                            <BarChart data={engagementTimeSeries} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                                                <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} />
+                                                <YAxis tick={{ fontSize: 9 }} tickFormatter={v => fmt(v)} />
+                                                <Tooltip formatter={(v: number) => [fmt(v), 'Engagement']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
+                                                <Bar dataKey="value" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : (
+                                    <p className="text-[11px] text-muted-foreground text-center py-4">No engagement data available</p>
+                                )}
+                            </>)}
+                            {/* YT TOP VIDEOS */}
+                            {activeTab === TAB_YT_TOP && (
+                                ytVideos.length > 0 ? (
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Top {ytVideos.length} Recent Videos</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {[...ytVideos]
+                                                .sort((a, b) => b.viewCount - a.viewCount)
+                                                .map((v) => (
+                                                    <div key={v.id} className="border rounded-lg overflow-hidden bg-muted/20 hover:bg-muted/40 transition-colors">
+                                                        <div className="relative aspect-video bg-black/10">
+                                                            {v.thumbnail ? (
+                                                                <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center">
+                                                                    <Play className="h-8 w-8 text-muted-foreground/40" />
+                                                                </div>
+                                                            )}
+                                                            {(v.duration ?? 0) > 0 && (
+                                                                <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                                                                    {formatDuration(v.duration ?? 0)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="p-2.5 space-y-2">
+                                                            <p className="text-xs font-semibold line-clamp-2 leading-tight">{v.title}</p>
+                                                            <div className="flex gap-3 text-[10px] text-muted-foreground">
+                                                                <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(v.viewCount)}</span>
+                                                                <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(v.likeCount)}</span>
+                                                                <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-blue-400" />{fmt(v.commentCount)}</span>
+                                                            </div>
+                                                            {v.tags && v.tags.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {v.tags.map((tag: string, ti: number) => (
+                                                                        <span key={ti} className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded-full font-medium">
+                                                                            #{tag}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {v.publishedAt && (
+                                                                <p className="text-[9px] text-muted-foreground/70">
+                                                                    {new Date(v.publishedAt).toLocaleDateString()}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <a href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noopener noreferrer"
+                                                            className="flex items-center gap-1.5 px-2.5 pb-2 text-[10px] text-red-500 hover:text-red-400 transition-colors">
+                                                            <ExternalLink className="h-3 w-3" /> Watch on YouTube
+                                                        </a>
+                                                    </div>
+                                                ))
+                                            }
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-[11px] text-muted-foreground text-center py-6">No videos found</p>
+                                )
+                            )}
+                        </>)}
                     </div>
                 </div>
             ) : (

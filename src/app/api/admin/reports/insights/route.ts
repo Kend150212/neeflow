@@ -374,10 +374,10 @@ async function fetchYouTubeInsights(channelPlatform: {
 }) {
     if (!channelPlatform.accessToken) return null
     const token = channelPlatform.accessToken
-    // Use Authorization header (not query-string) per Google best practices
     const headers = { Authorization: `Bearer ${token}` }
 
     try {
+        // 1. Channel stats + snippet
         const channelRes = await fetch(
             'https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&mine=true',
             { headers }
@@ -389,32 +389,87 @@ async function fetchYouTubeInsights(channelPlatform: {
         const snippet = channelData.items[0].snippet
         const ytChannelId = channelData.items[0].id
 
-        // Recent videos (last 10)
+        // 2. Recent video IDs (up to 20, ordered by date)
         const searchRes = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${ytChannelId}&maxResults=10&order=date&type=video`,
+            `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${ytChannelId}&maxResults=20&order=date&type=video`,
             { headers }
         )
         const searchData = await searchRes.json()
+
+        let recentVideos: {
+            id: string; title: string; thumbnail: string | null
+            publishedAt: string | null; duration: number
+            tags: string[]; viewCount: number; likeCount: number; commentCount: number
+        }[] = []
+
         let totalViews = 0, totalLikes = 0, totalComments = 0
+        const viewsByDay: Record<string, number> = {}
+        const engagementByDay: Record<string, number> = {}
+
         if (searchData.items?.length) {
-            const videoIds = searchData.items.map((i: { id: { videoId: string } }) => i.id.videoId).join(',')
+            const videoIds = searchData.items
+                .map((i: { id: { videoId: string } }) => i.id.videoId)
+                .filter(Boolean)
+                .join(',')
+
+            // 3. Per-video: statistics + snippet (title, tags, thumbnail, publishedAt) + contentDetails (duration)
             const videoRes = await fetch(
-                `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}`,
+                `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet,contentDetails&id=${videoIds}`,
                 { headers }
             )
             const videoData = await videoRes.json()
+
             for (const v of videoData.items || []) {
-                totalViews += parseInt(v.statistics?.viewCount || '0')
-                totalLikes += parseInt(v.statistics?.likeCount || '0')
-                totalComments += parseInt(v.statistics?.commentCount || '0')
+                const views = parseInt(v.statistics?.viewCount || '0')
+                const likes = parseInt(v.statistics?.likeCount || '0')
+                const comments = parseInt(v.statistics?.commentCount || '0')
+                totalViews += views
+                totalLikes += likes
+                totalComments += comments
+
+                // Parse ISO 8601 duration → seconds (e.g. PT4M13S → 253)
+                const rawDuration: string = v.contentDetails?.duration || 'PT0S'
+                const durationMatch = rawDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+                const durationSec = durationMatch
+                    ? (parseInt(durationMatch[1] || '0') * 3600) +
+                    (parseInt(durationMatch[2] || '0') * 60) +
+                    (parseInt(durationMatch[3] || '0'))
+                    : 0
+
+                const publishedAt: string | null = v.snippet?.publishedAt || null
+                if (publishedAt) {
+                    const day = publishedAt.split('T')[0]
+                    viewsByDay[day] = (viewsByDay[day] || 0) + views
+                    engagementByDay[day] = (engagementByDay[day] || 0) + likes + comments
+                }
+
+                recentVideos.push({
+                    id: v.id,
+                    title: v.snippet?.title || '',
+                    thumbnail: v.snippet?.thumbnails?.medium?.url || v.snippet?.thumbnails?.default?.url || null,
+                    publishedAt,
+                    duration: durationSec,
+                    tags: (v.snippet?.tags || []).slice(0, 8), // cap at 8 tags
+                    viewCount: views,
+                    likeCount: likes,
+                    commentCount: comments,
+                })
             }
         }
+
+        // Sort time-series chronologically
+        const viewsTimeSeries = Object.entries(viewsByDay)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, value]) => ({ date, value }))
+        const engagementTimeSeries = Object.entries(engagementByDay)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, value]) => ({ date, value }))
 
         return {
             platform: 'youtube',
             accountName: snippet?.title || channelPlatform.accountName,
             followers: parseInt(stats?.subscriberCount || '0'),
-            totalViews: parseInt(stats?.viewCount || '0'),
+            totalChannelViews: parseInt(stats?.viewCount || '0'),
             videoCount: parseInt(stats?.videoCount || '0'),
             recentViews: totalViews,
             recentLikes: totalLikes,
@@ -422,11 +477,16 @@ async function fetchYouTubeInsights(channelPlatform: {
             engagement: totalLikes + totalComments,
             impressions: totalViews,
             reach: totalViews,
+            viewsTimeSeries,
+            engagementTimeSeries,
+            recentVideos,
         }
-    } catch {
+    } catch (err) {
+        console.error('[YouTube] fetchYouTubeInsights error:', err)
         return null
     }
 }
+
 
 // ─── TikTok API v2 ───────────────────────────────────────────────────
 async function fetchTikTokInsights(channelPlatform: {
