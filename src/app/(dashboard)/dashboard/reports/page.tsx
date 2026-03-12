@@ -1482,50 +1482,6 @@ export default function InsightsPage() {
                                 <ConnectPrompt platform={tabInsight.platform} />
                             )}
 
-                            {/* Top posts/pins for this account */}
-                            {tabPosts.length > 0 && (
-                                <Card>
-                                    <CardHeader className="py-3 px-4">
-                                        <CardTitle className="text-sm font-semibold">
-                                            {tabInsight.platform === 'pinterest' ? 'Top Pins By Impressions' : t('reports.topPostsByReach')}
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="px-4 pb-4">
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                            {[...tabPosts]
-                                                .sort((a, b) => (b.reach || b.impressions || 0) - (a.reach || a.impressions || 0))
-                                                .slice(0, 5)
-                                                .map((post, i) => (
-                                                    tabInsight.platform === 'pinterest' ? (
-                                                        <PostCard
-                                                            key={i}
-                                                            thumbnail={post.thumbnail}
-                                                            publishedAt={post.publishedAt}
-                                                            pendingMessage={'Data updating\nwithin 24-48h'}
-                                                            metrics={[
-                                                                { icon: Eye, label: 'Impressions', value: post.impressions || post.reach, color: 'text-purple-400' },
-                                                                { icon: Bookmark, label: 'Saves', value: post.shares, color: 'text-rose-400' },
-                                                                { icon: ExternalLink, label: 'Clicks', value: post.likes, color: 'text-blue-400' },
-                                                            ]}
-                                                        />
-                                                    ) : (
-                                                        <PostCard
-                                                            key={i}
-                                                            thumbnail={post.thumbnail}
-                                                            publishedAt={post.publishedAt}
-                                                            metrics={[
-                                                                { icon: Heart, label: t('reports.likes'), value: post.likes, color: 'text-rose-400' },
-                                                                { icon: MessageCircle, label: t('reports.comments'), value: post.comments, color: 'text-blue-400' },
-                                                                { icon: Share2, label: t('reports.shares'), value: post.shares, color: 'text-green-400' },
-                                                                { icon: Eye, label: t('reports.reach'), value: post.reach, color: 'text-purple-400' },
-                                                            ]}
-                                                        />
-                                                    )
-                                                ))}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
                         </div>
                     ) : null}
                 </div>
@@ -1533,4 +1489,3 @@ export default function InsightsPage() {
         </div>
     )
 }
-
