@@ -7,6 +7,7 @@ import { Plus, Loader2, Sparkles, Trash2, ImagePlus, X, ZoomIn, FolderOpen, Uplo
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -104,6 +105,7 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
 /* ─── Main Page ─── */
 export default function ChannelAvatarsPage() {
     const { channelId } = useParams<{ channelId: string }>()
+    const t = useTranslation()
 
     // Avatar list
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
@@ -220,7 +222,7 @@ export default function ChannelAvatarsPage() {
                 const data = await res.json(); const nw = data.avatar
                 setAvatars(prev => [nw, ...prev]); setSelected(nw)
                 setShowCreate(false); setCName(''); setCPrompt(''); setCDesc('')
-                toast.success('Avatar created!')
+                toast.success(t('studio.avatar.created'))
             } else { const d = await res.json(); toast.error(d.error || 'Failed') }
         } finally { setCreating(false) }
     }
@@ -237,7 +239,7 @@ export default function ChannelAvatarsPage() {
                 const data = await res.json(); const up = data.avatar
                 setSelected(prev => prev ? { ...prev, ...up } : null)
                 setAvatars(prev => prev.map(a => a.id === selected.id ? { ...a, ...up } : a))
-                toast.success('Saved!')
+                toast.success(t('studio.avatar.saved'))
             }
         } finally { setSaving(false) }
     }
@@ -255,7 +257,7 @@ export default function ChannelAvatarsPage() {
                 return remaining
             })
             setConfirmDelete(null)
-            toast.success('Deleted')
+            toast.success(t('studio.avatar.deleted'))
         }
     }
 
@@ -271,7 +273,7 @@ export default function ChannelAvatarsPage() {
                 const data = await res.json()
                 setAvatars(prev => prev.map(a => a.id === id ? { ...a, name: data.avatar.name } : a))
                 setSelected(prev => prev?.id === id ? { ...prev, name: data.avatar.name } : prev)
-                toast.success('Renamed!')
+                toast.success(t('studio.avatar.renamed'))
             }
         } finally {
             setRenameSaving(false)
@@ -290,7 +292,7 @@ export default function ChannelAvatarsPage() {
             if (res.ok) {
                 const data = await res.json()
                 if (data.status === 'done') {
-                    toast.success('✅ 6 góc nhìn đã hoàn thành!', { id: toastId })
+                    toast.success(t('studio.avatar.generate6Done'), { id: toastId })
                     await fetchAvatarDetail(avatar.id)
                 } else {
                     toast.success('⏳ Đang tạo 6 ảnh riêng biệt... Poll sẽ cập nhật từng góc', { id: toastId })
@@ -355,7 +357,7 @@ export default function ChannelAvatarsPage() {
             const fd = new FormData(); fd.append('file', e.target.files[0])
             const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/reference-images`, { method: 'POST', body: fd })
             if (res.ok) { const data = await res.json(); const up = data.avatar as StudioAvatar; setSelected(prev => prev ? { ...prev, ...up } : null); setAvatars(prev => prev.map(a => a.id === selected.id ? { ...a, ...up } : a)) }
-            else toast.error('Upload failed')
+            else toast.error(t('studio.avatar.uploadFailed'))
         } finally { setUploadingRef(false); e.target.value = '' }
     }
 
@@ -388,14 +390,14 @@ export default function ChannelAvatarsPage() {
                 const data = await res.json(); const up = data.asset as AvatarAsset
                 setSelected(prev => prev ? { ...prev, assets: prev.assets?.map(a => a.id === assetId ? up : a) } : null)
                 toast.success(`${Array.from(files).length} ảnh đã upload`)
-            } else toast.error('Upload failed')
+            } else toast.error(t('studio.avatar.uploadFailed'))
         } finally { setUploadingAsset(null) }
     }
 
     async function deleteAsset(assetId: string) {
         if (!selected) return
         const res = await fetch(`/api/studio/channels/${channelId}/avatars/${selected.id}/assets/${assetId}`, { method: 'DELETE' })
-        if (res.ok) { setSelected(prev => prev ? { ...prev, assets: prev.assets?.filter(a => a.id !== assetId) } : null); toast.success('Deleted') }
+        if (res.ok) { setSelected(prev => prev ? { ...prev, assets: prev.assets?.filter(a => a.id !== assetId) } : null); toast.success(t('studio.avatar.deleted')) }
     }
 
     async function deleteAssetImage(assetId: string, url: string) {
@@ -476,14 +478,14 @@ export default function ChannelAvatarsPage() {
             <aside className="w-64 flex-shrink-0 border-r border-border bg-card flex flex-col">
                 <div className="p-4 border-b border-border">
                     <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-[0.2em]">Characters</h2>
+                        <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-[0.2em]">{t('studio.avatar.characters')}</h2>
                         <button onClick={() => setShowCreate(true)} className="w-6 h-6 rounded bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/30 transition-all">
                             <Plus size={12} />
                         </button>
                     </div>
                     <div className="relative">
                         <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search characters..." className="w-full bg-muted/40 border border-border rounded-lg py-1.5 pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-emerald-500/50 transition-all" />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('studio.avatar.searchPlaceholder')} className="w-full bg-muted/40 border border-border rounded-lg py-1.5 pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-emerald-500/50 transition-all" />
                     </div>
                 </div>
 
@@ -500,11 +502,11 @@ export default function ChannelAvatarsPage() {
                             {/* Confirm delete overlay */}
                             {confirmDelete === av.id && (
                                 <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-card/95 rounded-xl border border-red-500/30">
-                                    <span className="text-[10px] text-red-400 font-bold">Xóa?</span>
+                                    <span className="text-[10px] text-red-400 font-bold">{t('studio.avatar.deleteConfirm')}</span>
                                     <button onClick={() => deleteAvatar(av.id)} className="px-2 py-0.5 bg-red-500 text-foreground text-[10px] font-bold rounded">
                                         {renameSaving ? <Loader2 size={10} className="animate-spin" /> : 'OK'}
                                     </button>
-                                    <button onClick={() => setConfirmDelete(null)} className="px-2 py-0.5 bg-muted/60 text-foreground text-[10px] rounded">Hủy</button>
+                                    <button onClick={() => setConfirmDelete(null)} className="px-2 py-0.5 bg-muted/60 text-foreground text-[10px] rounded">{t('studio.avatar.cancel')}</button>
                                 </div>
                             )}
 
@@ -600,7 +602,7 @@ export default function ChannelAvatarsPage() {
                             {/* Left: back link + avatar info */}
                             <div className="flex items-center gap-3">
                                 <Link href={`/dashboard/studio/${channelId}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                                    <ArrowLeft size={14} /> Studio
+                                    <ArrowLeft size={14} /> {t('studio.backToStudio')}
                                 </Link>
                                 <span className="text-muted-foreground/40">|</span>
                                 <div>
@@ -638,10 +640,10 @@ export default function ChannelAvatarsPage() {
                             {/* ── Section 1: Consistency Check ── */}
                             <section>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">Consistency Check</h3>
+                                    <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em]">{t('studio.avatar.consistencyCheck')}</h3>
                                     <div className="flex gap-4 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                                        <span>Ảnh gốc (trái)</span>
-                                        <span>AI Generated (phải)</span>
+                                        <span>{t('studio.avatar.refLeft')}</span>
+                                        <span>{t('studio.avatar.aiRight')}</span>
                                     </div>
                                 </div>
                                 <div className="relative aspect-[21/9] rounded-2xl overflow-hidden border border-border bg-muted">
@@ -662,7 +664,7 @@ export default function ChannelAvatarsPage() {
                                                     {uploadingRef && <Loader2 size={14} className="animate-spin text-emerald-400" />}
                                                 </div>
                                             )}
-                                            <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold uppercase border border-border">Reference</div>
+                                            <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-black/80 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase border border-white/20">{t('studio.avatar.reference')}</div>
                                         </div>
                                         {/* Divider */}
                                         <div className="relative w-px bg-emerald-500 shadow-[0_0_15px_rgba(0,255,149,0.5)]">
@@ -759,7 +761,7 @@ export default function ChannelAvatarsPage() {
                                                     <div className="w-full h-full flex items-center justify-center"><FolderOpen size={20} className="text-muted-foreground" /></div>
                                                 )}
                                                 {pose.images.length > 1 && (
-                                                    <div className="absolute top-2 right-2 bg-black/80 rounded px-1.5 py-0.5 text-[10px] text-foreground font-bold">+{pose.images.length}</div>
+                                                    <div className="absolute top-2 right-2 bg-black/80 rounded px-1.5 py-0.5 text-[10px] text-white font-bold">+{pose.images.length}</div>
                                                 )}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-2">
                                                     <p className="text-[10px] font-bold text-foreground truncate">{pose.name}</p>
@@ -826,18 +828,18 @@ export default function ChannelAvatarsPage() {
             {/* ══ Create Avatar Dialog ══ */}
             <Dialog open={showCreate} onOpenChange={setShowCreate}>
                 <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
-                    <DialogHeader><DialogTitle className="text-foreground">Create New Character</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="text-foreground">{t('studio.avatar.createCharacter')}</DialogTitle></DialogHeader>
                     <div className="space-y-4 mt-2">
                         <div><Label className="text-muted-foreground text-xs">Name *</Label>
-                            <Input value={cName} onChange={e => setCName(e.target.value)} placeholder="e.g. Sophia" className="bg-muted/40 border-border text-foreground mt-1" /></div>
+                            <Input value={cName} onChange={e => setCName(e.target.value)} placeholder={t('studio.avatar.namePlaceholder')} className="bg-muted/40 border-border text-foreground mt-1" /></div>
                         <div><Label className="text-muted-foreground text-xs">Prompt *</Label>
-                            <textarea value={cPrompt} onChange={e => setCPrompt(e.target.value)} placeholder="Describe the character..." rows={4} className="w-full bg-muted/40 border border-border rounded-lg p-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-emerald-500/50 resize-none mt-1" /></div>
-                        <div><Label className="text-muted-foreground text-xs">Art Style</Label>
+                            <textarea value={cPrompt} onChange={e => setCPrompt(e.target.value)} placeholder={t('studio.avatar.characterPromptPlaceholder')} rows={4} className="w-full bg-muted/40 border border-border rounded-lg p-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-emerald-500/50 resize-none mt-1" /></div>
+                        <div><Label className="text-muted-foreground text-xs">{t('studio.avatar.artStyle')}</Label>
                             <select value={cStyle} onChange={e => setCStyle(e.target.value)} className="w-full bg-muted/40 border border-border text-foreground rounded-lg px-2.5 py-2 text-xs mt-1 outline-none">
                                 {STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                             </select></div>
                         <div><Label className="text-muted-foreground text-xs">Description (optional)</Label>
-                            <input value={cDesc} onChange={e => setCDesc(e.target.value)} placeholder="Internal notes..." className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none mt-1" /></div>
+                            <input value={cDesc} onChange={e => setCDesc(e.target.value)} placeholder={t('studio.avatar.descriptionNotesPlaceholder')} className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none mt-1" /></div>
                         <button onClick={createAvatar} disabled={creating || !cName.trim() || !cPrompt.trim()}
                             className="w-full py-2.5 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
                             {creating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Create Character
@@ -860,9 +862,9 @@ export default function ChannelAvatarsPage() {
                             ))}
                         </div>
                         <div><Label className="text-muted-foreground text-xs">Name *</Label>
-                            <input value={assetName} onChange={e => setAssetName(e.target.value)} placeholder="e.g. Áo Vest Đen" className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none mt-1" /></div>
+                            <input value={assetName} onChange={e => setAssetName(e.target.value)} placeholder={t('studio.avatar.assetNamePlaceholder')} className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none mt-1" /></div>
                         <div><Label className="text-muted-foreground text-xs">Prompt (optional)</Label>
-                            <textarea value={assetPrompt} onChange={e => setAssetPrompt(e.target.value)} placeholder="Describe the item for AI reference..." rows={2} className="w-full bg-muted/40 border border-border rounded-lg p-2 text-xs text-foreground placeholder:text-muted-foreground outline-none resize-none mt-1" /></div>
+                            <textarea value={assetPrompt} onChange={e => setAssetPrompt(e.target.value)} placeholder={t('studio.avatar.assetPromptPlaceholder')} rows={2} className="w-full bg-muted/40 border border-border rounded-lg p-2 text-xs text-foreground placeholder:text-muted-foreground outline-none resize-none mt-1" /></div>
                         <button onClick={createAsset} disabled={creatingAsset || !assetName.trim()}
                             className="w-full py-2 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
                             {creatingAsset ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create Asset
@@ -874,10 +876,10 @@ export default function ChannelAvatarsPage() {
             {/* ══ Add Pose Dialog ══ */}
             <Dialog open={showAddPose} onOpenChange={setShowAddPose}>
                 <DialogContent className="bg-card border-border max-w-sm">
-                    <DialogHeader><DialogTitle className="text-foreground">New Pose Folder</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="text-foreground">{t('studio.avatar.newPoseFolder')}</DialogTitle></DialogHeader>
                     <div className="space-y-3 mt-2">
                         <div><Label className="text-muted-foreground text-xs">Tên pose *</Label>
-                            <input value={poseName} onChange={e => setPoseName(e.target.value)} placeholder="e.g. Ngồi café, Đứng hàng hiệu..." className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none mt-1" onKeyDown={e => e.key === 'Enter' && createPose()} /></div>
+                            <input value={poseName} onChange={e => setPoseName(e.target.value)} placeholder={t('studio.avatar.poseFolderPlaceholder')} className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none mt-1" onKeyDown={e => e.key === 'Enter' && createPose()} /></div>
                         <button onClick={createPose} disabled={creatingPose || !poseName.trim()}
                             className="w-full py-2 bg-emerald-500 text-black font-bold text-sm rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
                             {creatingPose ? <Loader2 size={14} className="animate-spin" /> : <FolderOpen size={14} />} Create Folder
@@ -913,7 +915,7 @@ export default function ChannelAvatarsPage() {
                                     ))}
                                     {/* Upload slot */}
                                     <label className="aspect-square bg-muted/40 border border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-emerald-500/40 transition-all">
-                                        {uploadingPose ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <><Upload size={16} className="text-muted-foreground" /><p className="text-[10px] text-muted-foreground">Upload ảnh</p></>}
+                                        {uploadingPose ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : <><Upload size={16} className="text-muted-foreground" /><p className="text-[10px] text-muted-foreground">{t('studio.avatar.uploadImage')}</p></>}
                                         <input ref={poseFileRef} type="file" accept="image/*" multiple className="hidden" onChange={e => e.target.files && uploadPoseImages(e.target.files)} />
                                     </label>
                                 </div>
@@ -954,18 +956,18 @@ function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZ
                 <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all pointer-events-none group-hover:pointer-events-auto">
                     <p className="text-[9px] font-bold text-foreground uppercase tracking-wide mb-1">{label}</p>
                     <label className="flex items-center gap-1 px-2 py-1 bg-muted/60 rounded-lg text-[10px] text-foreground cursor-pointer hover:bg-muted transition-all">
-                        <Upload size={10} /> Upload
+                        <Upload size={10} /> {t('studio.avatar.upload')}
                         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
                     </label>
                     <button onClick={() => setShowGenInput(true)} className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 rounded-lg text-[10px] text-emerald-400 hover:bg-emerald-500/30 transition-all">
-                        <Sparkles size={10} /> AI Generate
+                        <Sparkles size={10} /> {t('studio.avatar.aiGenerate')}
                     </button>
                 </div>
             )}
 
             {/* Stable label when no hover */}
             {!isShared && url && (
-                <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/70 rounded text-[9px] font-bold text-foreground uppercase opacity-80 group-hover:opacity-0 transition-all">{label}</div>
+                <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/70 rounded text-[9px] font-bold text-white uppercase opacity-80 group-hover:opacity-0 transition-all">{label}</div>
             )}
             {!url && !isShared && (
                 <div className="absolute bottom-2 left-0 right-0 text-center text-[9px] text-muted-foreground uppercase group-hover:opacity-0 transition-all">{label}</div>
@@ -975,10 +977,10 @@ function PoseMatrixSlot({ label, url, isShared, generatingAngle, angleIndex, onZ
             {showGenInput && (
                 <div className="absolute inset-0 bg-black/90 flex flex-col p-2 gap-1.5" onClick={e => e.stopPropagation()}>
                     <p className="text-[9px] font-bold text-emerald-400 uppercase">{label} — AI Generate</p>
-                    <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Thêm mô tả (optional)..." rows={3}
+                    <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={t('studio.avatar.promptPlaceholder')} rows={3}
                         className="flex-1 bg-muted/40 border border-border rounded-lg p-1.5 text-[10px] text-foreground placeholder:text-muted-foreground outline-none resize-none" />
                     <div className="flex gap-1">
-                        <button onClick={() => setShowGenInput(false)} className="flex-1 py-1 bg-muted/60 rounded text-[10px] text-muted-foreground">Cancel</button>
+                        <button onClick={() => setShowGenInput(false)} className="flex-1 py-1 bg-muted/60 rounded text-[10px] text-muted-foreground">{t('studio.avatar.cancel')}</button>
                         <button onClick={() => { onGenerate(prompt); setShowGenInput(false); setPrompt('') }}
                             className="flex-1 py-1 bg-emerald-500 rounded text-[10px] text-black font-bold flex items-center justify-center gap-1">
                             <Sparkles size={10} /> Gen

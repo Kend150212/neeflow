@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -29,6 +30,7 @@ interface StudioAvatar {
 export default function StudioChannelPage() {
     const { channelId } = useParams<{ channelId: string }>()
     const router = useRouter()
+    const t = useTranslation()
     const [projects, setProjects] = useState<StudioProject[]>([])
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
     const [loadingProjects, setLoadingProjects] = useState(true)
@@ -72,7 +74,7 @@ export default function StudioChannelPage() {
                 setNewOpen(false); setNewName(''); setNewDesc('')
                 router.push(`/dashboard/studio/${channelId}/projects/${project.id}`)
             } else {
-                toast.error('Failed to create project')
+                toast.error(t('studio.failedCreateProject'))
             }
         } finally { setCreating(false) }
     }
@@ -81,7 +83,7 @@ export default function StudioChannelPage() {
         e.preventDefault(); e.stopPropagation()
         await fetch(`/api/studio/channels/${channelId}/projects/${projectId}`, { method: 'DELETE' })
         setProjects(p => p.filter(pr => pr.id !== projectId))
-        toast.success('Project archived')
+        toast.success(t('studio.projectArchived'))
     }
 
     const totalOutputs = projects.reduce((s, p) => s + p._count.outputs, 0)
@@ -91,8 +93,8 @@ export default function StudioChannelPage() {
             {/* Page header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border">
                 <div>
-                    <h1 className="text-2xl font-black tracking-tight">Projects</h1>
-                    <p className="text-muted-foreground text-sm mt-0.5">AI image &amp; video generation canvas</p>
+                    <h1 className="text-2xl font-black tracking-tight">{t('studio.projects')}</h1>
+                    <p className="text-muted-foreground text-sm mt-0.5">{t('studio.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Link href={`/dashboard/studio/${channelId}/avatars`}>
@@ -114,9 +116,9 @@ export default function StudioChannelPage() {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4">
                     {[
-                        { label: 'Total Projects', value: projects.length, icon: FolderOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-                        { label: 'Total Outputs', value: totalOutputs, icon: ImageIcon, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
-                        { label: 'Avatars', value: avatars.length, icon: User, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+                        { label: t('studio.totalProjects'), value: projects.length, icon: FolderOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+                        { label: t('studio.totalOutputs'), value: totalOutputs, icon: ImageIcon, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+                        { label: t('studio.avatars'), value: avatars.length, icon: User, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
                     ].map((stat) => (
                         <div key={stat.label} className="p-5 rounded-2xl bg-card border border-border hover:border-emerald-500/30 transition-colors">
                             <div className="flex items-center justify-between mb-3">
@@ -141,8 +143,8 @@ export default function StudioChannelPage() {
                             <Clapperboard className="h-7 w-7 text-emerald-500" />
                         </div>
                         <div className="text-center">
-                            <p className="font-bold mb-1">No projects yet</p>
-                            <p className="text-muted-foreground text-sm">Create your first project to start generating AI content</p>
+                            <p className="font-bold mb-1">{t('studio.noProjects')}</p>
+                            <p className="text-muted-foreground text-sm">{t('studio.noProjectsDesc')}</p>
                         </div>
                         <Button onClick={() => setNewOpen(true)} className="gap-2 bg-emerald-500 hover:bg-emerald-400 font-bold">
                             <Plus className="h-4 w-4" /> New Project
@@ -212,7 +214,7 @@ export default function StudioChannelPage() {
                             <Input
                                 value={newName}
                                 onChange={e => setNewName(e.target.value)}
-                                placeholder="e.g. Summer Campaign 2025"
+                                placeholder={t('studio.projectNamePlaceholder')}
                                 className="mt-1.5"
                                 onKeyDown={e => e.key === 'Enter' && createProject()}
                             />
@@ -222,13 +224,13 @@ export default function StudioChannelPage() {
                             <Textarea
                                 value={newDesc}
                                 onChange={e => setNewDesc(e.target.value)}
-                                placeholder="What is this project about?"
+                                placeholder={t('studio.descriptionPlaceholder')}
                                 rows={2}
                                 className="mt-1.5 resize-none"
                             />
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
-                            <Button variant="ghost" onClick={() => setNewOpen(false)}>Cancel</Button>
+                            <Button variant="ghost" onClick={() => setNewOpen(false)}>{t('studio.avatar.cancel')}</Button>
                             <Button
                                 onClick={createProject}
                                 disabled={creating || !newName.trim()}

@@ -124,8 +124,8 @@ export default function StudioPage() {
             {/* Page header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border">
                 <div>
-                    <h1 className="text-2xl font-black tracking-tight">Projects</h1>
-                    <p className="text-muted-foreground text-sm mt-0.5">AI image &amp; video generation canvas</p>
+                    <h1 className="text-2xl font-black tracking-tight">{t('studio.projects')}</h1>
+                    <p className="text-muted-foreground text-sm mt-0.5">{t('studio.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button
@@ -143,9 +143,9 @@ export default function StudioPage() {
                 {/* Stats row */}
                 <div className="grid grid-cols-3 gap-4">
                     {[
-                        { label: 'Total Projects', value: projects.length, icon: FolderOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-                        { label: 'Total Outputs', value: totalOutputs, icon: ImageIcon, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
-                        { label: 'Avatars', value: avatars.length, icon: User, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+                        { label: t('studio.totalProjects'), value: projects.length, icon: FolderOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+                        { label: t('studio.totalOutputs'), value: totalOutputs, icon: ImageIcon, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+                        { label: t('studio.avatars'), value: avatars.length, icon: User, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
                     ].map((stat) => (
                         <div key={stat.label} className="p-5 rounded-2xl bg-card border border-border hover:border-emerald-500/30 transition-colors">
                             <div className="flex items-center justify-between mb-3">
@@ -170,8 +170,8 @@ export default function StudioPage() {
                             <Clapperboard className="h-7 w-7 text-emerald-500" />
                         </div>
                         <div className="text-center">
-                            <p className="font-bold mb-1">No projects yet</p>
-                            <p className="text-muted-foreground text-sm">Create your first project to start generating AI content</p>
+                            <p className="font-bold mb-1">{t('studio.noProjects')}</p>
+                            <p className="text-muted-foreground text-sm">{t('studio.noProjectsDesc')}</p>
                         </div>
                         <Button
                             onClick={() => setShowNewProject(true)}
