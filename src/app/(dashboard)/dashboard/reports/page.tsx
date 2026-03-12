@@ -106,6 +106,69 @@ function fmt(n: number | null | undefined) {
     return String(n)
 }
 
+// ─── Shared Post Card ─────────────────────────────────────────────────
+interface PostCardProps {
+    thumbnail?: string | null
+    publishedAt?: string | null
+    platform?: string
+    metrics: { icon: React.ElementType; label: string; value: number | null | undefined; color: string }[]
+    pendingMessage?: string
+    href?: string
+}
+function PostCard({ thumbnail, publishedAt, platform, metrics, pendingMessage, href }: PostCardProps) {
+    const allZero = metrics.every(m => !m.value)
+    const Wrapper = href ? 'a' : 'div'
+    const wrapperProps = href ? { href, target: '_blank' as const, rel: 'noopener noreferrer' } : {}
+    return (
+        <Wrapper {...wrapperProps} className="group relative rounded-xl overflow-hidden border border-border/60 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 hover:-translate-y-0.5 flex flex-col bg-card">
+            {/* Image */}
+            <div className="relative overflow-hidden" style={{ aspectRatio: '1/1' }}>
+                {thumbnail ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-muted to-muted/60 flex items-center justify-center">
+                        <FileText className="h-8 w-8 text-muted-foreground/30" />
+                    </div>
+                )}
+                {/* Gradient overlay with date + platform */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 px-3 py-2 flex items-end justify-between">
+                    {publishedAt && (
+                        <span className="text-[10px] text-white/80 font-medium">
+                            {new Date(publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                        </span>
+                    )}
+                    {platform && (
+                        <div className="w-4 h-4 shrink-0">
+                            <PlatformIcon platform={platform} size="sm" />
+                        </div>
+                    )}
+                </div>
+            </div>
+            {/* Metrics */}
+            <div className="px-3 py-2.5 space-y-1.5 flex-1">
+                {allZero && pendingMessage ? (
+                    <div className="flex flex-col items-center justify-center py-1.5 gap-1">
+                        <Clock className="h-3.5 w-3.5 text-amber-400" />
+                        <span className="text-[10px] text-muted-foreground text-center">{pendingMessage}</span>
+                    </div>
+                ) : (
+                    metrics.map(({ icon: Icon, label, value, color }) => (
+                        <div key={label} className="flex items-center justify-between">
+                            <div className={`flex items-center gap-1.5 text-[11px] ${color}`}>
+                                <Icon className="h-3 w-3" />
+                                <span className="text-muted-foreground">{label}</span>
+                            </div>
+                            <span className="text-[11px] font-semibold font-mono tabular-nums">{fmt(value)}</span>
+                        </div>
+                    ))
+                )}
+            </div>
+        </Wrapper>
+    )
+}
+
 // ─── Tooltip ──────────────────────────────────────────────────────────
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
     if (!active || !payload?.length) return null
@@ -218,26 +281,19 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                 {/* Pinterest API top pins — shown when available */}
                 {insight.platform === 'pinterest' && insight.topPins && insight.topPins.length > 0 && (
                     <div>
-                        <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Top Pins (Last 30 Days)</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Top Pins (Last 30 Days)</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {insight.topPins.slice(0, 6).map((pin, i) => (
-                                <a key={i} href={pin.pinUrl} target="_blank" rel="noopener noreferrer"
-                                    className="border rounded-lg overflow-hidden group hover:border-primary/40 transition-colors block">
-                                    {pin.imageUrl ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={pin.imageUrl} alt={pin.title} className="w-full h-16 object-cover" />
-                                    ) : (
-                                        <div className="w-full h-16 bg-muted flex items-center justify-center">
-                                            <FileText className="h-5 w-5 text-muted-foreground/40" />
-                                        </div>
-                                    )}
-                                    <div className="px-2 py-1.5 space-y-0.5">
-                                        <div className="flex items-center justify-between text-[10px]">
-                                            <span className="text-muted-foreground flex items-center gap-0.5"><Eye className="h-2.5 w-2.5 text-purple-400" />{fmt(pin.impressions)}</span>
-                                            <span className="text-muted-foreground flex items-center gap-0.5"><Bookmark className="h-2.5 w-2.5 text-rose-400" />{fmt(pin.saves)}</span>
-                                        </div>
-                                    </div>
-                                </a>
+                                <PostCard
+                                    key={i}
+                                    thumbnail={pin.imageUrl}
+                                    href={pin.pinUrl}
+                                    metrics={[
+                                        { icon: Eye, label: 'Impressions', value: pin.impressions, color: 'text-purple-400' },
+                                        { icon: Bookmark, label: 'Saves', value: pin.saves, color: 'text-rose-400' },
+                                        { icon: ExternalLink, label: 'Clicks', value: pin.clicks, color: 'text-blue-400' },
+                                    ]}
+                                />
                             ))}
                         </div>
                     </div>
@@ -246,25 +302,19 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                 {/* Top posts for this platform (non-Pinterest) */}
                 {insight.platform !== 'pinterest' && topPosts.length > 0 && (
                     <div>
-                        <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Top Posts</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Top Posts</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {topPosts.map((post, i) => (
-                                <div key={i} className="border rounded-lg overflow-hidden group hover:border-primary/40 transition-colors">
-                                    {post.thumbnail ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={post.thumbnail} alt="" className="w-full h-16 object-cover" />
-                                    ) : (
-                                        <div className="w-full h-16 bg-muted flex items-center justify-center">
-                                            <FileText className="h-5 w-5 text-muted-foreground/40" />
-                                        </div>
-                                    )}
-                                    <div className="px-2 py-1.5 space-y-0.5">
-                                        <div className="flex items-center justify-between text-[10px]">
-                                            <span className="text-muted-foreground flex items-center gap-0.5"><Heart className="h-2.5 w-2.5 text-rose-400" />{fmt(post.likes)}</span>
-                                            <span className="text-muted-foreground flex items-center gap-0.5"><Eye className="h-2.5 w-2.5 text-purple-400" />{fmt(post.reach)}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <PostCard
+                                    key={i}
+                                    thumbnail={post.thumbnail}
+                                    publishedAt={post.publishedAt}
+                                    metrics={[
+                                        { icon: Heart, label: 'Likes', value: post.likes, color: 'text-rose-400' },
+                                        { icon: Eye, label: 'Reach', value: post.reach, color: 'text-purple-400' },
+                                        { icon: MessageCircle, label: 'Comments', value: post.comments, color: 'text-blue-400' },
+                                    ]}
+                                />
                             ))}
                         </div>
                     </div>
@@ -472,38 +522,19 @@ function OverviewTab({ data, platformInsights, postInsights, t }: {
                         <CardTitle className="text-sm font-semibold">{t('reports.topPostsByReach')}</CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                             {topPosts.map((post, i) => (
-                                <div key={i} className="border rounded-lg overflow-hidden hover:border-primary/40 transition-colors group">
-                                    <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/20">
-                                        <div className="w-4 h-4 shrink-0"><PlatformIcon platform={post.platform} size="sm" /></div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[11px] font-medium truncate">{PLATFORM_LABELS[post.platform] || post.platform}</p>
-                                            {post.publishedAt && <p className="text-[10px] text-muted-foreground">{new Date(post.publishedAt).toLocaleDateString()}</p>}
-                                        </div>
-                                        <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                                    </div>
-                                    {post.thumbnail ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={post.thumbnail} alt="" className="w-full h-24 object-cover" />
-                                    ) : (
-                                        <div className="w-full h-24 bg-muted flex items-center justify-center">
-                                            <FileText className="h-5 w-5 text-muted-foreground/40" />
-                                        </div>
-                                    )}
-                                    <div className="px-3 py-2 space-y-1">
-                                        {[
-                                            { icon: Heart, label: 'Likes', value: post.likes, color: 'text-rose-400' },
-                                            { icon: Eye, label: 'Reach', value: post.reach, color: 'text-purple-400' },
-                                            { icon: MessageCircle, label: 'Comments', value: post.comments, color: 'text-blue-400' },
-                                        ].map(({ icon: Icon, label, value, color }) => (
-                                            <div key={label} className="flex items-center justify-between text-[11px]">
-                                                <div className={`flex items-center gap-1 ${color}`}><Icon className="h-3 w-3" /><span className="text-muted-foreground">{label}</span></div>
-                                                <span className="font-semibold font-mono">{fmt(value)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                <PostCard
+                                    key={i}
+                                    thumbnail={post.thumbnail}
+                                    publishedAt={post.publishedAt}
+                                    platform={post.platform}
+                                    metrics={[
+                                        { icon: Heart, label: 'Likes', value: post.likes, color: 'text-rose-400' },
+                                        { icon: Eye, label: 'Reach', value: post.reach, color: 'text-purple-400' },
+                                        { icon: MessageCircle, label: 'Comments', value: post.comments, color: 'text-blue-400' },
+                                    ]}
+                                />
                             ))}
                         </div>
                     </CardContent>
@@ -643,8 +674,8 @@ export default function InsightsPage() {
                         type="button"
                         onClick={() => setActiveTab('overview')}
                         className={`flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium transition-colors cursor-pointer text-left w-full border-b ${activeTab === 'overview'
-                                ? 'bg-primary/8 text-primary border-l-2 border-l-primary'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-l-2 border-l-transparent'
+                            ? 'bg-primary/8 text-primary border-l-2 border-l-primary'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-l-2 border-l-transparent'
                             }`}
                     >
                         <TrendingUp className="h-3.5 w-3.5 shrink-0" />
@@ -665,8 +696,8 @@ export default function InsightsPage() {
                                         type="button"
                                         onClick={() => setActiveTab(tabKey)}
                                         className={`flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium transition-colors cursor-pointer text-left w-full border-l-2 ${isActive
-                                                ? 'bg-primary/8 text-foreground border-l-primary'
-                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-l-transparent'
+                                            ? 'bg-primary/8 text-foreground border-l-primary'
+                                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-l-transparent'
                                             }`}
                                     >
                                         <div className="w-4 h-4 shrink-0">
@@ -696,8 +727,8 @@ export default function InsightsPage() {
                                         type="button"
                                         onClick={() => setActiveTab(tabKey)}
                                         className={`flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium transition-colors cursor-pointer text-left w-full border-l-2 opacity-50 hover:opacity-80 ${isActive
-                                                ? 'bg-primary/8 text-foreground border-l-primary opacity-100'
-                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-l-transparent'
+                                            ? 'bg-primary/8 text-foreground border-l-primary opacity-100'
+                                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-l-transparent'
                                             }`}
                                     >
                                         <div className="w-4 h-4 shrink-0">
@@ -747,70 +778,36 @@ export default function InsightsPage() {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="px-4 pb-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                             {[...tabPosts]
                                                 .sort((a, b) => (b.reach || b.impressions || 0) - (a.reach || a.impressions || 0))
                                                 .slice(0, 5)
                                                 .map((post, i) => (
-                                                    <div key={i} className="border rounded-lg overflow-hidden hover:border-primary/40 transition-colors group">
-                                                        <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/20">
-                                                            <div className="min-w-0 flex-1">
-                                                                {post.publishedAt && <p className="text-[10px] text-muted-foreground">{new Date(post.publishedAt).toLocaleDateString()}</p>}
-                                                            </div>
-                                                            <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
-                                                        </div>
-                                                        {post.thumbnail ? (
-                                                            // eslint-disable-next-line @next/next/no-img-element
-                                                            <img src={post.thumbnail} alt="" className="w-full h-28 object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-28 bg-muted flex items-center justify-center">
-                                                                <FileText className="h-5 w-5 text-muted-foreground/40" />
-                                                            </div>
-                                                        )}
-                                                        <div className="px-3 py-2 space-y-1">
-                                                            {tabInsight.platform === 'pinterest' ? (
-                                                                (() => {
-                                                                    const hasData = (post.impressions || 0) > 0 || (post.likes || 0) > 0 || (post.shares || 0) > 0
-                                                                    if (!hasData) {
-                                                                        return (
-                                                                            <div className="flex flex-col items-center justify-center py-2 gap-1">
-                                                                                <Clock className="h-3.5 w-3.5 text-amber-400" />
-                                                                                <span className="text-[10px] text-muted-foreground text-center">Data updating<br />within 24-48h</span>
-                                                                            </div>
-                                                                        )
-                                                                    }
-                                                                    return (
-                                                                        <>
-                                                                            <div className="flex items-center justify-between text-[11px]">
-                                                                                <div className="flex items-center gap-1 text-purple-400"><Eye className="h-3 w-3" /><span className="text-muted-foreground">Impressions</span></div>
-                                                                                <span className="font-semibold font-mono">{fmt(post.impressions || post.reach)}</span>
-                                                                            </div>
-                                                                            <div className="flex items-center justify-between text-[11px]">
-                                                                                <div className="flex items-center gap-1 text-rose-400"><Bookmark className="h-3 w-3" /><span className="text-muted-foreground">Saves</span></div>
-                                                                                <span className="font-semibold font-mono">{fmt(post.shares)}</span>
-                                                                            </div>
-                                                                            <div className="flex items-center justify-between text-[11px]">
-                                                                                <div className="flex items-center gap-1 text-blue-400"><ExternalLink className="h-3 w-3" /><span className="text-muted-foreground">Clicks</span></div>
-                                                                                <span className="font-semibold font-mono">{fmt(post.likes)}</span>
-                                                                            </div>
-                                                                        </>
-                                                                    )
-                                                                })()
-                                                            ) : (
-                                                                [
-                                                                    { icon: Heart, label: t('reports.likes'), value: post.likes, color: 'text-rose-400' },
-                                                                    { icon: MessageCircle, label: t('reports.comments'), value: post.comments, color: 'text-blue-400' },
-                                                                    { icon: Share2, label: t('reports.shares'), value: post.shares, color: 'text-green-400' },
-                                                                    { icon: Eye, label: t('reports.reach'), value: post.reach, color: 'text-purple-400' },
-                                                                ].map(({ icon: Icon, label, value, color }) => (
-                                                                    <div key={label} className="flex items-center justify-between text-[11px]">
-                                                                        <div className={`flex items-center gap-1 ${color}`}><Icon className="h-3 w-3" /><span className="text-muted-foreground">{label}</span></div>
-                                                                        <span className="font-semibold font-mono">{fmt(value)}</span>
-                                                                    </div>
-                                                                ))
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                    tabInsight.platform === 'pinterest' ? (
+                                                        <PostCard
+                                                            key={i}
+                                                            thumbnail={post.thumbnail}
+                                                            publishedAt={post.publishedAt}
+                                                            pendingMessage={'Data updating\nwithin 24-48h'}
+                                                            metrics={[
+                                                                { icon: Eye, label: 'Impressions', value: post.impressions || post.reach, color: 'text-purple-400' },
+                                                                { icon: Bookmark, label: 'Saves', value: post.shares, color: 'text-rose-400' },
+                                                                { icon: ExternalLink, label: 'Clicks', value: post.likes, color: 'text-blue-400' },
+                                                            ]}
+                                                        />
+                                                    ) : (
+                                                        <PostCard
+                                                            key={i}
+                                                            thumbnail={post.thumbnail}
+                                                            publishedAt={post.publishedAt}
+                                                            metrics={[
+                                                                { icon: Heart, label: t('reports.likes'), value: post.likes, color: 'text-rose-400' },
+                                                                { icon: MessageCircle, label: t('reports.comments'), value: post.comments, color: 'text-blue-400' },
+                                                                { icon: Share2, label: t('reports.shares'), value: post.shares, color: 'text-green-400' },
+                                                                { icon: Eye, label: t('reports.reach'), value: post.reach, color: 'text-purple-400' },
+                                                            ]}
+                                                        />
+                                                    )
                                                 ))}
                                         </div>
                                     </CardContent>
