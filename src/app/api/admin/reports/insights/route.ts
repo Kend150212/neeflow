@@ -461,16 +461,21 @@ async function fetchPostInsights(
                     const pinToken = credMap['pinterest'].accessToken
                     const endDate = new Date().toISOString().split('T')[0]
                     const startDate = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
-                    const pinRes = await fetch(
-                        `https://api.pinterest.com/v5/pins/${ps.externalId}/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`,
-                        { headers: { Authorization: `Bearer ${pinToken}` } }
-                    )
+                    const pinUrl = `https://api.pinterest.com/v5/pins/${ps.externalId}/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`
+                    console.log(`[Pinterest] Fetching pin analytics: ${pinUrl}`)
+                    const pinRes = await fetch(pinUrl, { headers: { Authorization: `Bearer ${pinToken}` } })
+                    const pinData = await pinRes.json()
+                    console.log(`[Pinterest] Pin ${ps.externalId} analytics status=${pinRes.status}:`, JSON.stringify(pinData).slice(0, 500))
                     if (pinRes.ok) {
-                        const pinData = await pinRes.json()
-                        const summary = pinData.all?.summary_metrics || {}
-                        impressions = summary.IMPRESSION || 0
-                        likes = summary.PIN_CLICK || 0
-                        shares = summary.SAVE || 0
+                        // Pinterest API v5 returns: { "all": { "daily_metrics": [...], "summary_metrics": { "IMPRESSION": N, ... } } }
+                        const summary = pinData.all?.summary_metrics
+                            || pinData['ALL']?.summary_metrics
+                            || pinData.summary_metrics
+                            || {}
+                        console.log(`[Pinterest] summary_metrics for pin ${ps.externalId}:`, JSON.stringify(summary))
+                        impressions = summary.IMPRESSION ?? summary.impression ?? 0
+                        likes = (summary.PIN_CLICK ?? summary.pin_click ?? 0) + (summary.OUTBOUND_CLICK ?? summary.outbound_click ?? 0)
+                        shares = summary.SAVE ?? summary.save ?? 0
                         reach = impressions
                     }
                 }
