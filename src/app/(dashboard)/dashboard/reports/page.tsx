@@ -1193,162 +1193,188 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                             )
                         )}
 
-{/* ─── THREADS: OVERVIEW (includes Engagement) ─── */ }
-{
-    isThreads && activeTab === 'th_overview' && (() => {
-        const thPosts = ((ins.threadsPosts || []) as Array<{ id: string; text: string; timestamp: string; mediaType: string; mediaUrl?: string | null; permalink: string; views: number; likes: number; replies: number; reposts: number; quotes: number; shares: number }>)
-        const fromAggregated = (ins.threadsViews ?? 0) === 0 && thPosts.length > 0
-        return (
-            <div className="space-y-4">
-                {/* KPI row */}
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {[
-                        { label: 'Followers', value: ins.followers ?? 0, icon: Users, color: 'text-blue-500' },
-                        { label: 'Views', value: ins.threadsViews ?? 0, icon: Eye, color: 'text-purple-500' },
-                        { label: 'Likes', value: ins.threadsLikes ?? 0, icon: Heart, color: 'text-rose-500' },
-                        { label: 'Replies', value: ins.threadsReplies ?? 0, icon: MessageCircle, color: 'text-sky-500' },
-                        { label: 'Reposts', value: ins.threadsReposts ?? 0, icon: Repeat2, color: 'text-green-500' },
-                        { label: 'Quotes', value: ins.threadsQuotes ?? 0, icon: Quote, color: 'text-amber-500' },
-                    ].map(({ label, value, icon: Icon, color: c }) => (
-                        <div key={label} className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
-                            <Icon className={`h-4 w-4 ${c}`} />
-                            <p className="text-lg font-bold font-mono leading-none">{fmt(value)}</p>
-                            <p className="text-[10px] text-muted-foreground">{label}</p>
-                        </div>
-                    ))}
-                </div>
-                {fromAggregated && (
-                    <p className="text-[10px] text-muted-foreground text-center">
-                        Metrics summed from recent posts · Requires <span className="text-amber-400">threads_manage_insights</span> for account-level data
-                    </p>
-                )}
-                {/* Engagement Rate */}
-                {(ins.threadsViews ?? 0) > 0 && (
-                    <div className="bg-muted/30 rounded-xl px-4 py-3 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-semibold">Engagement Rate</p>
-                            <p className="text-[10px] text-muted-foreground">Likes + Replies + Reposts + Quotes / Views</p>
-                        </div>
-                        <p className="text-2xl font-bold font-mono" style={{ color }}>
-                            {(((ins.threadsEngagement ?? 0) / Math.max(ins.threadsViews ?? 1, 1)) * 100).toFixed(2)}%
-                        </p>
-                    </div>
-                )}
-                {/* Engagement Breakdown */}
-                <div className="space-y-2">
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Engagement Breakdown</p>
-                    {[
-                        { label: 'Likes', value: ins.threadsLikes ?? 0, barColor: '#f43f5e' },
-                        { label: 'Replies', value: ins.threadsReplies ?? 0, barColor: '#38bdf8' },
-                        { label: 'Reposts', value: ins.threadsReposts ?? 0, barColor: '#4ade80' },
-                        { label: 'Quotes', value: ins.threadsQuotes ?? 0, barColor: '#f59e0b' },
-                    ].map(({ label, value, barColor }) => {
-                        const total = Math.max(ins.threadsEngagement ?? 1, 1)
-                        const pct = Math.round((value / total) * 100)
-                        return (
-                            <div key={label} className="space-y-1">
-                                <div className="flex justify-between text-xs">
-                                    <span className="font-medium">{label}</span>
-                                    <span className="font-mono text-muted-foreground">{fmt(value)} <span className="text-[10px]">({pct}%)</span></span>
-                                </div>
-                                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: barColor }} />
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-                {/* Views chart */}
-                {(ins.viewsTimeSeries?.length ?? 0) > 0 && (
-                    <div>
-                        <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Views — Last 28 Days</p>
-                        <div className="h-36">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={ins.viewsTimeSeries} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="thViewsGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={color} stopOpacity={0.35} />
-                                            <stop offset="95%" stopColor={color} stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={(d: string) => d.slice(5)} interval={6} />
-                                    <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => fmt(v)} />
-                                    <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Views']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
-                                    <Area type="monotone" dataKey="value" stroke={color} fill="url(#thViewsGrad)" strokeWidth={2} dot={false} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                )}
-                {/* Top 3 posts mini-list */}
-                {thPosts.length > 0 && (
-                    <div>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-2">Top Posts by Views</p>
-                        <div className="space-y-1">
-                            {[...thPosts].sort((a, b) => b.views - a.views).slice(0, 3).map(pt => (
-                                <div key={pt.id} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
-                                    {pt.mediaUrl && <img src={pt.mediaUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />}
-                                    <p className="text-[11px] flex-1 line-clamp-1">{pt.text || '(no text)'}</p>
-                                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
-                                        <Eye className="h-3 w-3 text-purple-400" />{fmt(pt.views)}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        )
-    })()
-}
-
-{/* ─── THREADS: POSTS ─── */ }
-{
-    isThreads && activeTab === 'th_posts' && (() => {
-        const thPosts = ((ins.threadsPosts || []) as Array<{ id: string; text: string; timestamp: string; mediaType: string; mediaUrl?: string | null; permalink: string; views: number; likes: number; replies: number; reposts: number; quotes: number; shares: number }>)
-        return (
-            <div className="space-y-3">
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                    {thPosts.length} Recent Posts — sorted by views
-                </p>
-                {thPosts.length > 0 ? (
-                    <div className="space-y-2">
-                        {[...thPosts].sort((a, b) => b.views - a.views).map((post) => (
-                            <div key={post.id} className="bg-muted/30 rounded-xl p-3 hover:bg-muted/50 transition-colors">
-                                <div className="flex items-start gap-3">
-                                    {post.mediaUrl && (
-                                        <img src={post.mediaUrl} alt="" className="h-16 w-16 rounded-lg object-cover shrink-0" />
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2 mb-1">
-                                            <p className="text-xs leading-relaxed line-clamp-2 flex-1">{post.text || '(no text)'}</p>
-                                            <a href={post.permalink} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary shrink-0">
-                                                <ExternalLink className="h-3.5 w-3.5" />
-                                            </a>
+                        {/* ─── THREADS: OVERVIEW (includes Engagement) ─── */}
+                        {
+                            isThreads && activeTab === 'th_overview' && (() => {
+                                const thPosts = ((ins.threadsPosts || []) as Array<{ id: string; text: string; timestamp: string; mediaType: string; mediaUrl?: string | null; permalink: string; views: number; likes: number; replies: number; reposts: number; quotes: number; shares: number }>)
+                                const fromAggregated = (ins.threadsViews ?? 0) === 0 && thPosts.length > 0
+                                return (
+                                    <div className="space-y-4">
+                                        {/* KPI row */}
+                                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                            {[
+                                                { label: 'Followers', value: ins.followers ?? 0, icon: Users, color: 'text-blue-500' },
+                                                { label: 'Views', value: ins.threadsViews ?? 0, icon: Eye, color: 'text-purple-500' },
+                                                { label: 'Likes', value: ins.threadsLikes ?? 0, icon: Heart, color: 'text-rose-500' },
+                                                { label: 'Replies', value: ins.threadsReplies ?? 0, icon: MessageCircle, color: 'text-sky-500' },
+                                                { label: 'Reposts', value: ins.threadsReposts ?? 0, icon: Repeat2, color: 'text-green-500' },
+                                                { label: 'Quotes', value: ins.threadsQuotes ?? 0, icon: Quote, color: 'text-amber-500' },
+                                            ].map(({ label, value, icon: Icon, color: c }) => (
+                                                <div key={label} className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                                    <Icon className={`h-4 w-4 ${c}`} />
+                                                    <p className="text-lg font-bold font-mono leading-none">{fmt(value)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">{label}</p>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
-                                            <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(post.views)}</span>
-                                            <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(post.likes)}</span>
-                                            <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-sky-400" />{fmt(post.replies)}</span>
-                                            <span className="flex items-center gap-1"><Repeat2 className="h-3 w-3 text-green-400" />{fmt(post.reposts)}</span>
-                                            <span className="flex items-center gap-1"><Quote className="h-3 w-3 text-amber-400" />{fmt(post.quotes)}</span>
-                                            {post.timestamp && <span className="ml-auto">{new Date(post.timestamp).toLocaleDateString()}</span>}
+                                        {fromAggregated && (
+                                            <p className="text-[10px] text-muted-foreground text-center">
+                                                Metrics summed from recent posts · Requires <span className="text-amber-400">threads_manage_insights</span> for account-level data
+                                            </p>
+                                        )}
+                                        {/* Engagement Rate */}
+                                        {(ins.threadsViews ?? 0) > 0 && (
+                                            <div className="bg-muted/30 rounded-xl px-4 py-3 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs font-semibold">Engagement Rate</p>
+                                                    <p className="text-[10px] text-muted-foreground">Likes + Replies + Reposts + Quotes / Views</p>
+                                                </div>
+                                                <p className="text-2xl font-bold font-mono" style={{ color }}>
+                                                    {(((ins.threadsEngagement ?? 0) / Math.max(ins.threadsViews ?? 1, 1)) * 100).toFixed(2)}%
+                                                </p>
+                                            </div>
+                                        )}
+                                        {/* Engagement Breakdown */}
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Engagement Breakdown</p>
+                                            {[
+                                                { label: 'Likes', value: ins.threadsLikes ?? 0, barColor: '#f43f5e' },
+                                                { label: 'Replies', value: ins.threadsReplies ?? 0, barColor: '#38bdf8' },
+                                                { label: 'Reposts', value: ins.threadsReposts ?? 0, barColor: '#4ade80' },
+                                                { label: 'Quotes', value: ins.threadsQuotes ?? 0, barColor: '#f59e0b' },
+                                            ].map(({ label, value, barColor }) => {
+                                                const total = Math.max(ins.threadsEngagement ?? 1, 1)
+                                                const pct = Math.round((value / total) * 100)
+                                                return (
+                                                    <div key={label} className="space-y-1">
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="font-medium">{label}</span>
+                                                            <span className="font-mono text-muted-foreground">{fmt(value)} <span className="text-[10px]">({pct}%)</span></span>
+                                                        </div>
+                                                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: barColor }} />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
+                                        {/* Views chart */}
+                                        {(ins.viewsTimeSeries?.length ?? 0) > 0 && (
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Views — Last 28 Days</p>
+                                                <div className="h-36">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <AreaChart data={ins.viewsTimeSeries} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                            <defs>
+                                                                <linearGradient id="thViewsGrad" x1="0" y1="0" x2="0" y2="1">
+                                                                    <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                                                                    <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                                                </linearGradient>
+                                                            </defs>
+                                                            <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={(d: string) => d.slice(5)} interval={6} />
+                                                            <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => fmt(v)} />
+                                                            <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Views']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
+                                                            <Area type="monotone" dataKey="value" stroke={color} fill="url(#thViewsGrad)" strokeWidth={2} dot={false} />
+                                                        </AreaChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Top 3 posts mini-list */}
+                                        {thPosts.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-2">Top Posts by Views</p>
+                                                <div className="space-y-1">
+                                                    {[...thPosts].sort((a, b) => b.views - a.views).slice(0, 3).map(pt => (
+                                                        <div key={pt.id} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                                                            {pt.mediaUrl && <img src={pt.mediaUrl} alt="" className="h-8 w-8 rounded object-cover shrink-0" />}
+                                                            <p className="text-[11px] flex-1 line-clamp-1">{pt.text || '(no text)'}</p>
+                                                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                                                                <Eye className="h-3 w-3 text-purple-400" />{fmt(pt.views)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-8">
-                        <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-                        <p className="text-xs text-muted-foreground">No posts found</p>
-                    </div>
-                )}
-            </div>
-        )
-    })()
-}
+                                )
+                            })()
+                        }
+
+                        {/* ─── THREADS: POSTS ─── */}
+                        {
+                            isThreads && activeTab === 'th_posts' && (() => {
+                                const thPosts = ((ins.threadsPosts || []) as Array<{ id: string; text: string; timestamp: string; mediaType: string; mediaUrl?: string | null; permalink: string; views: number; likes: number; replies: number; reposts: number; quotes: number; shares: number }>)
+                                return (
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                                            {thPosts.length} Recent Posts — sorted by views
+                                        </p>
+                                        {thPosts.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {[...thPosts].sort((a, b) => b.views - a.views).map((post) => (
+                                                    <div key={post.id} className="bg-muted/30 rounded-xl overflow-hidden border border-muted/40 hover:border-muted/70 hover:bg-muted/40 transition-all">
+                                                        {/* Media thumbnail — full width if present */}
+                                                        {post.mediaUrl && (
+                                                            <div className="relative w-full bg-muted/50" style={{ aspectRatio: '16/7', maxHeight: 160 }}>
+                                                                <img
+                                                                    src={post.mediaUrl}
+                                                                    alt=""
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        const t = e.currentTarget
+                                                                        t.style.display = 'none'
+                                                                        const fallback = t.nextElementSibling as HTMLElement | null
+                                                                        if (fallback) fallback.style.display = 'flex'
+                                                                    }}
+                                                                />
+                                                                {/* Fallback div — hidden by default */}
+                                                                <div className="absolute inset-0 hidden items-center justify-center bg-muted/40" style={{ display: 'none' }}>
+                                                                    {/* Threads logo SVG */}
+                                                                    <svg viewBox="0 0 192 192" className="h-10 w-10 opacity-30" fill="currentColor">
+                                                                        <path d="M141.537 88.988c-.83-.389-1.677-.751-2.535-1.087a74.4 74.4 0 0 0-.965-3.599c-5.154-17.09-18.929-26.876-39.29-26.888h-.247c-.145 0-.293 0-.437.003-10.99.056-20.19 4.195-27.122 12.297-5.976 7.014-9.277 16.66-9.81 28.667l.006-.018C60.75 104.95 57 112.82 57 121.5c0 9.125 4.316 17.258 11.096 22.475l.063.05c5.726 4.365 13.127 6.975 21.341 6.975 16.218 0 29.4-8.826 35.447-22.977l.041-.098.086-.207.074-.18 1.46 1.021c5.09 3.566 11.41 3.566 13.985-.006 2.297-3.157 2.154-8.16-.328-12.3l-.003-.003c-2.293-3.868-6.5-7.006-11.726-8.262Zm-42.33 35.476c-6.66 0-12.456-2.086-16.59-5.456l-.025-.021c-3.944-3.098-6.196-7.49-6.196-12.487 0-7.88 5.387-14.46 12.756-16.002l.001-.001a11.73 11.73 0 0 1 2.358-.244c4.75 0 9.183 1.64 12.549 4.614l.029.024c3.23 2.852 5.057 6.723 5.057 10.775 0 7.15-4.466 12.968-9.937 14.626l-.002.001-.021.006a14.96 14.96 0 0 1-4.03.574h.051Z" />
+                                                                    </svg>
+                                                                </div>
+                                                                {post.mediaType === 'VIDEO' && (
+                                                                    <span className="absolute top-2 right-2 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">VIDEO</span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {/* Card body */}
+                                                        <div className="p-3 space-y-2">
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <p className="text-xs leading-relaxed line-clamp-3 flex-1">{post.text || '(no text)'}</p>
+                                                                <a href={post.permalink} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary shrink-0 mt-0.5">
+                                                                    <ExternalLink className="h-3.5 w-3.5" />
+                                                                </a>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground pt-1 border-t border-muted/40">
+                                                                <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(post.views)}</span>
+                                                                <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(post.likes)}</span>
+                                                                <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-sky-400" />{fmt(post.replies)}</span>
+                                                                <span className="flex items-center gap-1"><Repeat2 className="h-3 w-3 text-green-400" />{fmt(post.reposts)}</span>
+                                                                <span className="flex items-center gap-1"><Quote className="h-3 w-3 text-amber-400" />{fmt(post.quotes)}</span>
+                                                                {post.timestamp && (
+                                                                    <span className="ml-auto text-muted-foreground/60">
+                                                                        {new Date(post.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8">
+                                                <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                                                <p className="text-xs text-muted-foreground">No posts found</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })()
+                        }
                     </div>
                 </div>
             ) : (

@@ -1321,7 +1321,7 @@ async function fetchThreadsInsights(channelPlatform: {
         const [profileRes, insightsRes, postsRes] = await Promise.all([
             fetch(`${base}/me?fields=id,username,threads_profile_picture_url&access_token=${token}`),
             fetch(`${base}/me/threads_insights?metric=views,likes,replies,reposts,quotes,followers_count&period=days_28&since=${Math.floor((Date.now() - 28 * 86400000) / 1000)}&until=${Math.floor(Date.now() / 1000)}&access_token=${token}`),
-            fetch(`${base}/me/threads?fields=id,text,timestamp,media_type,media_url,permalink&limit=20&access_token=${token}`),
+            fetch(`${base}/me/threads?fields=id,text,timestamp,media_type,media_url,thumbnail_url,permalink&limit=20&access_token=${token}`),
         ])
 
         const profileData = await profileRes.json()
@@ -1370,7 +1370,7 @@ async function fetchThreadsInsights(channelPlatform: {
 
         if (postsData.data && Array.isArray(postsData.data)) {
             await Promise.allSettled(
-                postsData.data.slice(0, 12).map(async (post: { id: string; text?: string; timestamp?: string; media_type?: string; media_url?: string; permalink?: string }) => {
+                postsData.data.slice(0, 12).map(async (post: { id: string; text?: string; timestamp?: string; media_type?: string; media_url?: string; thumbnail_url?: string; permalink?: string }) => {
                     const mRes = await fetch(
                         `${base}/${post.id}/insights?metric=views,likes,replies,reposts,quotes,shares&access_token=${token}`
                     )
@@ -1392,7 +1392,9 @@ async function fetchThreadsInsights(channelPlatform: {
                         text: post.text || '',
                         timestamp: post.timestamp || '',
                         mediaType: post.media_type || 'TEXT',
-                        mediaUrl: post.media_url || null,
+                        mediaUrl: post.media_type === 'VIDEO'
+                            ? (post.thumbnail_url || null)
+                            : (post.media_url || null),
                         permalink: post.permalink || `https://www.threads.net/@${profileData.username}`,
                         views: pViews, likes: pLikes, replies: pReplies,
                         reposts: pReposts, quotes: pQuotes, shares: pShares,
