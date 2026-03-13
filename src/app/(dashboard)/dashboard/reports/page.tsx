@@ -1306,61 +1306,75 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                         {
                             isThreads && activeTab === 'th_posts' && (() => {
                                 const thPosts = ((ins.threadsPosts || []) as Array<{ id: string; text: string; timestamp: string; mediaType: string; mediaUrl?: string | null; permalink: string; views: number; likes: number; replies: number; reposts: number; quotes: number; shares: number }>)
+                                const sorted = [...thPosts].sort((a, b) => b.views - a.views)
                                 return (
                                     <div className="space-y-3">
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                                            {thPosts.length} Recent Posts — sorted by views
+                                            ALL POSTS ({thPosts.length})
                                         </p>
-                                        {thPosts.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {[...thPosts].sort((a, b) => b.views - a.views).map((post) => (
-                                                    <div key={post.id} className="bg-muted/30 rounded-xl overflow-hidden border border-muted/40 hover:border-muted/70 hover:bg-muted/40 transition-all">
-                                                        {/* Media thumbnail — full width if present */}
-                                                        {post.mediaUrl && (
-                                                            <div className="relative w-full bg-muted/50" style={{ aspectRatio: '16/7', maxHeight: 160 }}>
-                                                                <img
-                                                                    src={post.mediaUrl}
-                                                                    alt=""
-                                                                    className="w-full h-full object-cover"
-                                                                    onError={(e) => {
-                                                                        const t = e.currentTarget
-                                                                        t.style.display = 'none'
-                                                                        const fallback = t.nextElementSibling as HTMLElement | null
-                                                                        if (fallback) fallback.style.display = 'flex'
-                                                                    }}
-                                                                />
-                                                                {/* Fallback div — hidden by default */}
-                                                                <div className="absolute inset-0 hidden items-center justify-center bg-muted/40" style={{ display: 'none' }}>
-                                                                    {/* Threads logo SVG */}
-                                                                    <svg viewBox="0 0 192 192" className="h-10 w-10 opacity-30" fill="currentColor">
-                                                                        <path d="M141.537 88.988c-.83-.389-1.677-.751-2.535-1.087a74.4 74.4 0 0 0-.965-3.599c-5.154-17.09-18.929-26.876-39.29-26.888h-.247c-.145 0-.293 0-.437.003-10.99.056-20.19 4.195-27.122 12.297-5.976 7.014-9.277 16.66-9.81 28.667l.006-.018C60.75 104.95 57 112.82 57 121.5c0 9.125 4.316 17.258 11.096 22.475l.063.05c5.726 4.365 13.127 6.975 21.341 6.975 16.218 0 29.4-8.826 35.447-22.977l.041-.098.086-.207.074-.18 1.46 1.021c5.09 3.566 11.41 3.566 13.985-.006 2.297-3.157 2.154-8.16-.328-12.3l-.003-.003c-2.293-3.868-6.5-7.006-11.726-8.262Zm-42.33 35.476c-6.66 0-12.456-2.086-16.59-5.456l-.025-.021c-3.944-3.098-6.196-7.49-6.196-12.487 0-7.88 5.387-14.46 12.756-16.002l.001-.001a11.73 11.73 0 0 1 2.358-.244c4.75 0 9.183 1.64 12.549 4.614l.029.024c3.23 2.852 5.057 6.723 5.057 10.775 0 7.15-4.466 12.968-9.937 14.626l-.002.001-.021.006a14.96 14.96 0 0 1-4.03.574h.051Z" />
-                                                                    </svg>
+                                        {sorted.length > 0 ? (
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                {sorted.map((post) => (
+                                                    <div key={post.id} className="bg-muted/30 rounded-xl overflow-hidden border border-muted/40 hover:border-muted/70 hover:bg-muted/40 transition-all flex flex-col">
+                                                        {/* Thumbnail */}
+                                                        <div className="relative w-full bg-muted/50 aspect-square overflow-hidden">
+                                                            {post.mediaUrl ? (
+                                                                <>
+                                                                    <img
+                                                                        src={post.mediaUrl}
+                                                                        alt=""
+                                                                        className="w-full h-full object-cover"
+                                                                        onError={(e) => {
+                                                                            e.currentTarget.style.display = 'none'
+                                                                            const fb = e.currentTarget.nextElementSibling as HTMLElement | null
+                                                                            if (fb) fb.style.display = 'flex'
+                                                                        }}
+                                                                    />
+                                                                    <div className="absolute inset-0 hidden items-center justify-center bg-muted/60 text-[10px] text-muted-foreground p-2 text-center leading-snug">
+                                                                        {post.text?.substring(0, 80) || ''}
+                                                                    </div>
+                                                                </>
+                                                            ) : (
+                                                                /* Text-only post — show caption in the card body */
+                                                                <div className="w-full h-full flex items-center justify-center bg-muted/20 p-3">
+                                                                    <p className="text-[10px] text-muted-foreground leading-snug line-clamp-5 text-center">{post.text || '(no text)'}</p>
                                                                 </div>
-                                                                {post.mediaType === 'VIDEO' && (
-                                                                    <span className="absolute top-2 right-2 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">VIDEO</span>
-                                                                )}
+                                                            )}
+                                                            {post.mediaType === 'VIDEO' && (
+                                                                <span className="absolute top-1.5 right-1.5 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">VIDEO</span>
+                                                            )}
+                                                            {/* Permalink icon overlay */}
+                                                            <a
+                                                                href={post.permalink}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="absolute top-1.5 left-1.5 bg-black/50 hover:bg-black/70 text-white rounded p-0.5 transition-colors"
+                                                            >
+                                                                <ExternalLink className="h-3 w-3" />
+                                                            </a>
+                                                            {/* Threads badge */}
+                                                            <span className="absolute bottom-1.5 right-1.5 bg-black/70 text-white rounded-full p-0.5">
+                                                                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="white">
+                                                                    <path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.586-1.308-.883-2.359-.89h-.029c-.844 0-1.992.232-2.721 1.32L7.734 7.847c.98-1.454 2.568-2.256 4.478-2.256h.044c3.194.02 5.097 1.975 5.287 5.388.108.046.216.094.321.142 1.49.7 2.58 1.761 3.154 3.07.797 1.82.871 4.79-1.548 7.158-1.85 1.81-4.094 2.628-7.277 2.65Zm1.003-11.69c-.242 0-.487.007-.739.021-1.836.103-2.98.946-2.916 2.143.067 1.256 1.452 1.839 2.784 1.767 1.224-.065 2.818-.543 3.086-3.71a10.5 10.5 0 0 0-2.215-.221z" />
+                                                                </svg>
+                                                            </span>
+                                                        </div>
+                                                        {/* Stats row */}
+                                                        <div className="px-2 py-2 border-t border-muted/40 mt-auto">
+                                                            {post.mediaUrl && (
+                                                                <p className="text-[10px] text-muted-foreground line-clamp-1 mb-1">{post.text || ''}</p>
+                                                            )}
+                                                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                                                <span className="flex items-center gap-0.5"><Eye className="h-3 w-3 text-purple-400" />{fmt(post.views)}</span>
+                                                                <span className="flex items-center gap-0.5"><Heart className="h-3 w-3 text-rose-400" />{fmt(post.likes)}</span>
+                                                                <span className="flex items-center gap-0.5"><MessageCircle className="h-3 w-3 text-sky-400" />{fmt(post.replies)}</span>
+                                                                <span className="flex items-center gap-0.5"><Repeat2 className="h-3 w-3 text-green-400" />{fmt(post.reposts)}</span>
                                                             </div>
-                                                        )}
-                                                        {/* Card body */}
-                                                        <div className="p-3 space-y-2">
-                                                            <div className="flex items-start justify-between gap-2">
-                                                                <p className="text-xs leading-relaxed line-clamp-3 flex-1">{post.text || '(no text)'}</p>
-                                                                <a href={post.permalink} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary shrink-0 mt-0.5">
-                                                                    <ExternalLink className="h-3.5 w-3.5" />
-                                                                </a>
-                                                            </div>
-                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground pt-1 border-t border-muted/40">
-                                                                <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(post.views)}</span>
-                                                                <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(post.likes)}</span>
-                                                                <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-sky-400" />{fmt(post.replies)}</span>
-                                                                <span className="flex items-center gap-1"><Repeat2 className="h-3 w-3 text-green-400" />{fmt(post.reposts)}</span>
-                                                                <span className="flex items-center gap-1"><Quote className="h-3 w-3 text-amber-400" />{fmt(post.quotes)}</span>
-                                                                {post.timestamp && (
-                                                                    <span className="ml-auto text-muted-foreground/60">
-                                                                        {new Date(post.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                            {post.timestamp && (
+                                                                <p className="text-[9px] text-muted-foreground/50 mt-1">
+                                                                    {new Date(post.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}
