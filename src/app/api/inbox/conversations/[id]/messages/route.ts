@@ -137,6 +137,10 @@ export async function POST(
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Diagnostic log — helps trace why platform-specific send blocks may not fire
+    console.log(`[Inbox Reply] conv=${id} platform="${conversation.platform}" platformAccountId="${conversation.platformAccountId}"`)
+
+
     // Create the message
     const message = await prisma.inboxMessage.create({
         data: {
