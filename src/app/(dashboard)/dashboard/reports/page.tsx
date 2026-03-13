@@ -476,13 +476,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
     const [activeTab, setActiveTab] = useState(
         isTikTok ? TAB_TT_OVERVIEW : isYouTube ? TAB_YT_OVERVIEW : isThreads ? TAB_TH_OVERVIEW : isPinterest ? TAB_PIN_OVERVIEW : TAB_META_OVERVIEW
     )
-    // Reset tab when switching between accounts/platforms
-    useEffect(() => {
-        setActiveTab(
-            isTikTok ? TAB_TT_OVERVIEW : isYouTube ? TAB_YT_OVERVIEW : isThreads ? TAB_TH_OVERVIEW : isPinterest ? TAB_PIN_OVERVIEW : TAB_META_OVERVIEW
-        )
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [insight.platform, insight.accountName])
+
 
     // FB data
     const fbPosts: Array<{ id: string; createdTime: string; thumbnail?: string; reactions: number; comments: number; shares: number }> =
@@ -2014,7 +2008,7 @@ export default function InsightsPage() {
                                     <RefreshCw className="h-3.5 w-3.5 animate-spin" />Loading live data...
                                 </div>
                             ) : null}
-                            <AccountCard insight={tabInsight} posts={tabPosts} />
+                            <AccountCard key={`${tabInsight.platform}-${tabInsight.accountName}`} insight={tabInsight} posts={tabPosts} />
 
                             {/* If not live platform — show connect prompt (LinkedIn, etc.) */}
                             {!LIVE_API_PLATFORMS.has(tabInsight.platform) && (
