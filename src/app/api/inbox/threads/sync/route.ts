@@ -201,7 +201,7 @@ async function upsertThreadsConversation(params: {
             platformAccountId,
             platform: 'threads',
             externalUserId: conversationExternalId,
-            status: 'open',
+            status: 'new',
             type: 'comment',
             externalUserName: username,
             metadata: {
