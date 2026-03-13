@@ -546,6 +546,69 @@ export async function POST(
         }
     }
 
+    // ── Send reply via Threads API (threads_manage_replies) ──
+    if (conversation.platform === 'threads') {
+        const platformAccount = await prisma.channelPlatform.findUnique({
+            where: { id: conversation.platformAccountId },
+        })
+
+        if (platformAccount?.accessToken) {
+            const conv = await prisma.conversation.findUnique({
+                where: { id },
+                select: { externalId: true, metadata: true },
+            })
+
+            const replyToId = conv?.externalId || (conv?.metadata as any)?.rootPostId || null
+
+            try {
+                const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
+                const base = 'https://graph.threads.net/v1.0'
+                const accountId = platformAccount.accountId
+
+                if (cleanText && replyToId) {
+                    const createRes = await fetch(`${base}/${accountId}/threads`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            media_type: 'TEXT',
+                            text: cleanText,
+                            reply_to_id: replyToId,
+                            access_token: platformAccount.accessToken,
+                        }),
+                    })
+                    const createData = await createRes.json()
+
+                    if (createData.id) {
+                        const publishRes = await fetch(`${base}/${accountId}/threads_publish`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                creation_id: createData.id,
+                                access_token: platformAccount.accessToken,
+                            }),
+                        })
+                        const publishData = await publishRes.json()
+                        if (publishData.id) {
+                            await prisma.inboxMessage.update({
+                                where: { id: message.id },
+                                data: { externalId: publishData.id },
+                            })
+                            console.log(`[Threads Reply] ✅ Reply posted: ${publishData.id}`)
+                        } else {
+                            console.warn(`[Threads Reply] ⚠️ Publish failed:`, JSON.stringify(publishData))
+                        }
+                    } else {
+                        console.warn(`[Threads Reply] ⚠️ Create container failed:`, JSON.stringify(createData))
+                    }
+                } else if (!replyToId) {
+                    console.warn(`[Threads Reply] ⚠️ No reply_to_id for conversation ${id} — saved to DB only`)
+                }
+            } catch (err) {
+                console.error(`[Threads Reply] ❌ Error sending reply:`, err)
+            }
+        }
+    }
+
     return NextResponse.json({
         message: {
             id: message.id,

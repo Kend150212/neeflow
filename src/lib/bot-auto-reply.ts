@@ -1181,6 +1181,62 @@ async function sendAndSaveReply(
         }
     }
 
+    // ── Threads reply (threads_manage_replies, 2-step container → publish) ──
+    if (platform === 'threads' && platformAccount?.accessToken) {
+        const dedupKey = `threads_${conversation.externalId || conversation.id}`
+        const lastSent = recentBotReplies.get(dedupKey)
+        const now = Date.now()
+
+        if (lastSent && (now - lastSent) < DEDUP_TTL_MS) {
+            console.log(`[Bot] ⏭️ Skipping Threads reply (dedup) for ${dedupKey} - saving to DB only`)
+        } else {
+            recentBotReplies.set(dedupKey, now)
+            const base = 'https://graph.threads.net/v1.0'
+            const accountId = platformAccount.accountId
+            const replyToId = conversation.externalId || (conversation.metadata as any)?.rootPostId || null
+
+            if (replyToId) {
+                try {
+                    const createRes = await fetch(`${base}/${accountId}/threads`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            media_type: 'TEXT',
+                            text,
+                            reply_to_id: replyToId,
+                            access_token: platformAccount.accessToken,
+                        }),
+                    })
+                    const createData = await createRes.json()
+
+                    if (createData.id) {
+                        const publishRes = await fetch(`${base}/${accountId}/threads_publish`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                creation_id: createData.id,
+                                access_token: platformAccount.accessToken,
+                            }),
+                        })
+                        const publishData = await publishRes.json()
+                        if (publishData.id) {
+                            botSentMessageId = publishData.id
+                            console.log(`[Bot] ✅ Threads reply posted: ${publishData.id}`)
+                        } else {
+                            console.warn(`[Bot] ⚠️ Threads publish failed:`, JSON.stringify(publishData))
+                        }
+                    } else {
+                        console.warn(`[Bot] ⚠️ Threads create container failed:`, JSON.stringify(createData))
+                    }
+                } catch (err) {
+                    console.error('[Bot] ❌ Threads reply error:', err)
+                }
+            } else {
+                console.warn(`[Bot] ⚠️ No reply_to_id for Threads conversation ${conversation.id}`)
+            }
+        }
+    }
+
     // ── COMMENT REPLIES (with human-like random delay) ──
     // For comments, we schedule the API call with a random delay (30s - 10min)
     // to appear more natural. The DB message is saved immediately below.
@@ -1287,7 +1343,7 @@ async function sendAndSaveReply(
     }
 
     // Save outbound message to DB (with message_id as externalId to prevent echo duplicates)
-    const outboundExternalId = platform === 'facebook' || platform === 'instagram' || platform === 'telegram'
+    const outboundExternalId = platform === 'facebook' || platform === 'instagram' || platform === 'telegram' || platform === 'threads'
         ? (botSentMessageId || null)
         : null
     await prisma.inboxMessage.create({
