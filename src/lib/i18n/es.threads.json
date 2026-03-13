@@ -1,0 +1,31 @@
+{
+    "threads": {
+        "insights": {
+            "title": "Analíticas de Threads",
+            "followers": "Seguidores",
+            "views": "Vistas (28d)",
+            "likes": "Me gusta (28d)",
+            "replies": "Respuestas (28d)",
+            "reposts": "Reposts (28d)",
+            "quotes": "Citas (28d)",
+            "newFollowers": "Nuevos seguidores",
+            "noData": "Sin datos de Threads disponibles",
+            "error": "Error al cargar insights de Threads"
+        },
+        "inbox": {
+            "replies": "Respuestas de Threads",
+            "mentions": "Menciones de Threads",
+            "newReply": "Nueva respuesta",
+            "newMention": "Te mencionó",
+            "noReplies": "Sin respuestas aún",
+            "noMentions": "Sin menciones aún",
+            "reply": "Responder",
+            "hide": "Ocultar respuesta",
+            "replyPlaceholder": "Escribe una respuesta...",
+            "sendReply": "Enviar",
+            "syncing": "Sincronizando Threads...",
+            "syncDone": "Threads sincronizado",
+            "syncFailed": "Error al sincronizar Threads"
+        }
+    }
+}

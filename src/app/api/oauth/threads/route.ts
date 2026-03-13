@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     authUrl.searchParams.set('client_id', clientId)
     authUrl.searchParams.set('redirect_uri', redirectUri)
     authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('scope', 'threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies,threads_read_replies')
+    authUrl.searchParams.set('scope', 'threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies,threads_read_replies,threads_manage_mentions')
     authUrl.searchParams.set('state', state)
 
     return NextResponse.redirect(authUrl.toString())

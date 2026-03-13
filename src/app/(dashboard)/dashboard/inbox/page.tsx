@@ -275,6 +275,7 @@ const MESSAGING_PLATFORMS = new Set([
     'telegram',
     'zalo',
     'google_business',
+    'threads',
 ])
 
 // ─── Status filters config ───────────
@@ -356,6 +357,7 @@ export default function InboxPage() {
     const [sendingReply, setSendingReply] = useState(false)
     const [updatingConv, setUpdatingConv] = useState(false)
     const [syncingProfiles, setSyncingProfiles] = useState(false)
+    const [syncingThreads, setSyncingThreads] = useState(false)
     const [showContactCard, setShowContactCard] = useState<Set<string>>(new Set())
 
     // ─── Multi-pane layout ────────────
@@ -1453,6 +1455,42 @@ export default function InboxPage() {
                             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             : <UserPlus className="h-3.5 w-3.5" />}
                     </Button>
+                    {/* Threads sync button — only shown if channel has a Threads account */}
+                    {platformAccounts.some(a => a.platform === 'threads') && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title={t('threads.inbox.syncing')}
+                            onClick={async () => {
+                                if (!activeChannel?.id || syncingThreads) return
+                                setSyncingThreads(true)
+                                try {
+                                    const res = await fetch('/api/inbox/threads/sync', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ channelId: activeChannel.id }),
+                                    })
+                                    const data = await res.json()
+                                    if (res.ok) {
+                                        toast.success(`${t('threads.inbox.syncDone')} (${data.synced ?? 0})`)
+                                        fetchConversations()
+                                    } else {
+                                        toast.error(t('threads.inbox.syncFailed'))
+                                    }
+                                } catch {
+                                    toast.error(t('threads.inbox.syncFailed'))
+                                } finally {
+                                    setSyncingThreads(false)
+                                }
+                            }}
+                            disabled={syncingThreads}
+                        >
+                            {syncingThreads
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <RefreshCcw className="h-3.5 w-3.5" />}
+                        </Button>
+                    )}
                     {/* Pane layout switcher */}
                     <div className="flex items-center gap-0.5 border rounded-md p-0.5 bg-muted/40">
                         {([1, 2, 4] as const).map(n => (

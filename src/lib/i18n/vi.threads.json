@@ -1,0 +1,31 @@
+{
+    "threads": {
+        "insights": {
+            "title": "Phân tích Threads",
+            "followers": "Người theo dõi",
+            "views": "Lượt xem (28 ngày)",
+            "likes": "Lượt thích (28 ngày)",
+            "replies": "Phản hồi (28 ngày)",
+            "reposts": "Đăng lại (28 ngày)",
+            "quotes": "Trích dẫn (28 ngày)",
+            "newFollowers": "Người theo dõi mới",
+            "noData": "Không có dữ liệu Threads",
+            "error": "Không thể tải insights Threads"
+        },
+        "inbox": {
+            "replies": "Phản hồi Threads",
+            "mentions": "Đề cập Threads",
+            "newReply": "Phản hồi mới",
+            "newMention": "Đã đề cập bạn",
+            "noReplies": "Chưa có phản hồi",
+            "noMentions": "Chưa có đề cập",
+            "reply": "Trả lời",
+            "hide": "Ẩn phản hồi",
+            "replyPlaceholder": "Viết phản hồi...",
+            "sendReply": "Gửi",
+            "syncing": "Đang đồng bộ Threads...",
+            "syncDone": "Đã đồng bộ Threads",
+            "syncFailed": "Đồng bộ Threads thất bại"
+        }
+    }
+}

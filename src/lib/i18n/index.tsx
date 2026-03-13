@@ -14,6 +14,9 @@ import esInsights from './es.insights.json'
 import enStudio from './en.studio.json'
 import viStudio from './vi.studio.json'
 import esStudio from './es.studio.json'
+import enThreads from './en.threads.json'
+import viThreads from './vi.threads.json'
+import esThreads from './es.threads.json'
 
 export type Locale = 'en' | 'vi' | 'es'
 
@@ -35,9 +38,9 @@ function deepMerge<T extends Record<string, unknown>>(target: T, ...sources: Rec
 
 // Build merged translation objects per locale
 const translations: Record<Locale, typeof en> = {
-    en: deepMerge({ ...en } as typeof en, enKb as Record<string, unknown>, enInsights as Record<string, unknown>, enStudio as Record<string, unknown>),
-    vi: deepMerge({ ...vi } as typeof en, viKb as Record<string, unknown>, viInsights as Record<string, unknown>, viStudio as Record<string, unknown>),
-    es: deepMerge({ ...es } as typeof en, esKb as Record<string, unknown>, esInsights as Record<string, unknown>, esStudio as Record<string, unknown>),
+    en: deepMerge({ ...en } as typeof en, enKb as Record<string, unknown>, enInsights as Record<string, unknown>, enStudio as Record<string, unknown>, enThreads as Record<string, unknown>),
+    vi: deepMerge({ ...vi } as typeof en, viKb as Record<string, unknown>, viInsights as Record<string, unknown>, viStudio as Record<string, unknown>, viThreads as Record<string, unknown>),
+    es: deepMerge({ ...es } as typeof en, esKb as Record<string, unknown>, esInsights as Record<string, unknown>, esStudio as Record<string, unknown>, esThreads as Record<string, unknown>),
 }
 
 interface I18nContextType {

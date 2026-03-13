@@ -1288,6 +1288,71 @@ async function fetchPostInsights(
     return results
 }
 
+// ─── Threads Graph API ──────────────────────────────────────────────
+async function fetchThreadsInsights(channelPlatform: {
+    accountId: string
+    accountName: string
+    accessToken: string | null
+}) {
+    if (!channelPlatform.accessToken) return null
+    const token = channelPlatform.accessToken
+    const userId = channelPlatform.accountId
+    const base = 'https://graph.threads.net/v1.0'
+
+    try {
+        // 1. Profile info + follower count
+        const profileRes = await fetch(
+            `${base}/${userId}?fields=id,username,threads_profile_picture_url,followers_count&access_token=${token}`
+        )
+        const profileData = await profileRes.json()
+        if (profileData.error) {
+            console.error('[Threads] Profile error:', profileData.error)
+            return null
+        }
+        const followerCount = profileData.followers_count ?? 0
+
+        // 2. Account-level insights (28-day totals)
+        const insightsRes = await fetch(
+            `${base}/${userId}/threads_insights?metric=views,likes,replies,reposts,quotes,followers_count&period=days_28&access_token=${token}`
+        )
+        const insightsData = await insightsRes.json()
+
+        let totalViews = 0, totalLikes = 0, totalReplies = 0, totalReposts = 0, totalQuotes = 0, newFollowers = 0
+        if (insightsData.data) {
+            for (const metric of insightsData.data) {
+                const val = typeof metric.total_value?.value === 'number'
+                    ? metric.total_value.value
+                    : (metric.values?.[metric.values.length - 1]?.value ?? 0)
+                if (metric.name === 'views') totalViews = val
+                if (metric.name === 'likes') totalLikes = val
+                if (metric.name === 'replies') totalReplies = val
+                if (metric.name === 'reposts') totalReposts = val
+                if (metric.name === 'quotes') totalQuotes = val
+                if (metric.name === 'followers_count') newFollowers = val
+            }
+        }
+
+        return {
+            platform: 'threads',
+            accountId: userId,
+            accountName: profileData.username || channelPlatform.accountName,
+            avatarUrl: profileData.threads_profile_picture_url || null,
+            followers: followerCount,
+            newFollowers,
+            views: totalViews,
+            likes: totalLikes,
+            replies: totalReplies,
+            reposts: totalReposts,
+            quotes: totalQuotes,
+            reaches: totalViews,
+            engagements: totalLikes + totalReplies + totalReposts + totalQuotes,
+        }
+    } catch (err) {
+        console.error('[Threads] Insights fetch error:', err)
+        return null
+    }
+}
+
 // ─── Main Handler ────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
     const session = await auth()
@@ -1338,6 +1403,7 @@ export async function GET(req: NextRequest) {
             if (cp.platform === 'tiktok') return fetchTikTokInsights(cp)
             if (cp.platform === 'pinterest') return fetchPinterestInsights(cp)
             if (cp.platform === 'linkedin') return fetchLinkedInInsights(cp)
+            if (cp.platform === 'threads') return fetchThreadsInsights(cp)
         })
     )
 

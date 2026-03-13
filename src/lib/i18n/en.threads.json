@@ -1,0 +1,31 @@
+{
+    "threads": {
+        "insights": {
+            "title": "Threads Analytics",
+            "followers": "Followers",
+            "views": "Views (28d)",
+            "likes": "Likes (28d)",
+            "replies": "Replies (28d)",
+            "reposts": "Reposts (28d)",
+            "quotes": "Quotes (28d)",
+            "newFollowers": "New Followers",
+            "noData": "No Threads insights available",
+            "error": "Failed to load Threads insights"
+        },
+        "inbox": {
+            "replies": "Threads Replies",
+            "mentions": "Threads Mentions",
+            "newReply": "New reply",
+            "newMention": "Mentioned you",
+            "noReplies": "No replies yet",
+            "noMentions": "No mentions yet",
+            "reply": "Reply",
+            "hide": "Hide reply",
+            "replyPlaceholder": "Write a reply...",
+            "sendReply": "Send",
+            "syncing": "Syncing Threads...",
+            "syncDone": "Threads synced",
+            "syncFailed": "Threads sync failed"
+        }
+    }
+}
