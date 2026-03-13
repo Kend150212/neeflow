@@ -5,8 +5,10 @@ import { prisma } from '@/lib/prisma'
 const BASE = 'https://graph.threads.net/v1.0'
 
 // POST /api/inbox/threads/sync
-// Fetches Threads replies and mentions for all active Threads accounts in the channel
-// and upserts them as Conversations + Messages in the inbox.
+// Correct flow:
+//   1. GET /me/threads           → list user's own posts (threads_basic)
+//   2. GET /{post-id}/replies    → replies TO each post  (threads_read_replies)
+//   3. GET /me/mentions          → posts that mention the user (threads_manage_mentions)
 export async function POST(req: NextRequest) {
     const session = await auth()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -14,7 +16,7 @@ export async function POST(req: NextRequest) {
     const { channelId } = await req.json()
     if (!channelId) return NextResponse.json({ error: 'channelId required' }, { status: 400 })
 
-    // Verify user has access to this channel
+    // Verify access
     const isAdmin = session.user.role === 'ADMIN'
     if (!isAdmin) {
         const member = await prisma.channelMember.findFirst({
@@ -23,7 +25,6 @@ export async function POST(req: NextRequest) {
         if (!member) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Get active Threads platform accounts for this channel
     const threadsPlatforms = await prisma.channelPlatform.findMany({
         where: { channelId, platform: 'threads', isActive: true },
         select: { id: true, accountId: true, accountName: true, accessToken: true }
@@ -39,33 +40,49 @@ export async function POST(req: NextRequest) {
         if (!tp.accessToken) continue
         const token = tp.accessToken
 
-
         try {
-            // ── 1. Fetch replies (threads_manage_replies + threads_read_replies) ──
-            const repliesRes = await fetch(
-                `${BASE}/${tp.accountId}/replies?fields=id,text,username,timestamp,has_replies,root_post,replied_to,is_reply&limit=50&access_token=${token}`
+            // ── 1. Get the user's own Threads posts ──────────────────────────
+            const postsRes = await fetch(
+                `${BASE}/me/threads?fields=id,text,timestamp,username&limit=25&access_token=${token}`
             )
-            const repliesData = await repliesRes.json()
+            const postsData = await postsRes.json()
 
-            if (repliesData.data && Array.isArray(repliesData.data)) {
-                for (const reply of repliesData.data) {
-                    await upsertThreadsConversation({
-                        channelId,
-                        platformAccountId: tp.id,
-                        externalId: reply.id,
-                        type: 'reply',
-                        text: reply.text || '',
-                        username: reply.username || 'threads_user',
-                        timestamp: reply.timestamp ? new Date(reply.timestamp) : new Date(),
-                        rootPostId: reply.root_post?.id || reply.replied_to?.id || null,
-                    })
-                    totalSynced++
+            if (postsData.data && Array.isArray(postsData.data)) {
+                for (const post of postsData.data) {
+                    // ── 2. Get replies TO this post ──────────────────────────
+                    const repRes = await fetch(
+                        `${BASE}/${post.id}/replies?fields=id,text,username,timestamp,replied_to&limit=50&access_token=${token}`
+                    )
+                    const repData = await repRes.json()
+
+                    if (repData.data && Array.isArray(repData.data)) {
+                        for (const reply of repData.data) {
+                            await upsertThreadsConversation({
+                                channelId,
+                                platformAccountId: tp.id,
+                                // Group by post — all replies to same post = same conversation
+                                conversationExternalId: post.id,
+                                messageExternalId: reply.id,
+                                type: 'reply',
+                                text: reply.text || '',
+                                username: reply.username || 'threads_user',
+                                timestamp: reply.timestamp ? new Date(reply.timestamp) : new Date(),
+                                rootPostId: post.id,
+                                rootPostText: post.text || '',
+                            })
+                            totalSynced++
+                        }
+                    } else if (repData.error) {
+                        console.warn(`[Threads sync] replies error for post ${post.id}:`, repData.error?.message)
+                    }
                 }
+            } else if (postsData.error) {
+                console.warn(`[Threads sync] posts fetch error:`, postsData.error?.message)
             }
 
-            // ── 2. Fetch mentions (threads_manage_mentions) ──
+            // ── 3. Mentions (threads_manage_mentions) ────────────────────────
             const mentionsRes = await fetch(
-                `${BASE}/${tp.accountId}/mentions?fields=id,text,username,timestamp&limit=50&access_token=${token}`
+                `${BASE}/me/mentions?fields=id,text,username,timestamp&limit=50&access_token=${token}`
             )
             const mentionsData = await mentionsRes.json()
 
@@ -74,15 +91,19 @@ export async function POST(req: NextRequest) {
                     await upsertThreadsConversation({
                         channelId,
                         platformAccountId: tp.id,
-                        externalId: mention.id,
+                        conversationExternalId: mention.id,
+                        messageExternalId: mention.id,
                         type: 'mention',
                         text: mention.text || '',
                         username: mention.username || 'threads_user',
                         timestamp: mention.timestamp ? new Date(mention.timestamp) : new Date(),
                         rootPostId: null,
+                        rootPostText: null,
                     })
                     totalSynced++
                 }
+            } else if (mentionsData.error) {
+                console.warn(`[Threads sync] mentions error:`, mentionsData.error?.message)
             }
 
         } catch (err) {
@@ -93,57 +114,66 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ synced: totalSynced, accounts: threadsPlatforms.length })
 }
 
-// ── Helper: upsert a Threads conversation + message ──────────────────
+// ── Helper: upsert Threads conversation + message ────────────────────
 async function upsertThreadsConversation(params: {
     channelId: string
     platformAccountId: string
-    externalId: string
+    conversationExternalId: string   // post ID — groups replies together
+    messageExternalId: string        // reply/mention ID
     type: 'reply' | 'mention'
     text: string
     username: string
     timestamp: Date
     rootPostId: string | null
+    rootPostText: string | null
 }) {
-    const { channelId, platformAccountId, externalId, type, text, username, timestamp, rootPostId } = params
+    const {
+        channelId, platformAccountId,
+        conversationExternalId, messageExternalId,
+        type, text, username, timestamp, rootPostId, rootPostText,
+    } = params
 
-    // Conversation unique key: @@unique([channelId, platform, externalUserId])
-    // We use externalId as the externalUserId (thread post ID) so each thread gets its own conversation
+    // One conversation per post (all replies grouped under the same post)
     const conversation = await prisma.conversation.upsert({
         where: {
             channelId_platform_externalUserId: {
                 channelId,
                 platform: 'threads',
-                externalUserId: externalId,
+                externalUserId: conversationExternalId,
             },
         },
         create: {
             channelId,
             platformAccountId,
             platform: 'threads',
-            externalUserId: externalId,
+            externalUserId: conversationExternalId,
             status: 'open',
-            type,
+            type: 'comment',
             externalUserName: username,
-            metadata: { threadsType: type, rootPostId, threadExternalId: externalId } as object,
+            metadata: {
+                threadsType: type,
+                rootPostId,
+                rootPostText,
+                threadExternalId: conversationExternalId,   // used as reply_to_id when replying
+            } as object,
             lastMessageAt: timestamp,
         },
         update: {
             lastMessageAt: timestamp,
-            externalUserName: username,
         },
         select: { id: true },
     })
 
-    // InboxMessage has no unique constraint — skip if already synced (match by externalId)
+    // Deduplicate messages by externalId
     const existing = await prisma.inboxMessage.findFirst({
-        where: { conversationId: conversation.id, externalId },
+        where: { conversationId: conversation.id, externalId: messageExternalId },
         select: { id: true },
     })
     if (!existing) {
         await prisma.inboxMessage.create({
             data: {
                 conversationId: conversation.id,
-                externalId,
+                externalId: messageExternalId,
                 direction: 'inbound',
                 content: text,
                 senderName: username,
@@ -154,7 +184,7 @@ async function upsertThreadsConversation(params: {
     }
 }
 
-// GET /api/inbox/threads/sync — quick status check
+// GET — quick health check
 export async function GET() {
     return NextResponse.json({ status: 'ok', endpoint: 'Threads inbox sync' })
 }
