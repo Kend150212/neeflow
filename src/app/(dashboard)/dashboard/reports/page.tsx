@@ -1160,9 +1160,10 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                     </div>
                                 )}
                             </>)}
+                        </>)}
 
                             {/* YT TOP VIDEOS */}
-                            {activeTab === TAB_YT_TOP && (
+                            {isYouTube && activeTab === TAB_YT_TOP && (
                                 ytVideos.length > 0 ? (
                                     <div className="space-y-3">
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Top {ytVideos.length} Recent Videos — click thumbnail to see analytics</p>
@@ -1181,7 +1182,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                             )}
 
                             {/* YT COMMENTS */}
-                            {activeTab === TAB_YT_COMMENTS && (
+                            {isYouTube && activeTab === TAB_YT_COMMENTS && (
                                 ytComments.length > 0 ? (
                                     <div className="space-y-3">
                                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{ytComments.length} Recent Comments</p>
