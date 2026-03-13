@@ -703,11 +703,31 @@ export default function InboxPage() {
             }
         }, 3000) // Every 3 seconds
 
+        // ── Threads auto-sync every 60 seconds ──────────────────────────────
+        // Threads has no webhooks — we poll the API to catch new comments.
+        const threadsInterval = setInterval(async () => {
+            if (!activeChannel?.id) return
+            // Only run if there are Threads platform accounts connected
+            const hasThreads = platformAccounts.some(pa => pa.platform === 'threads')
+            if (!hasThreads) return
+            try {
+                await fetch('/api/inbox/threads/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId: activeChannel.id }),
+                })
+                // The 3s poller will pick up any newly-synced conversations automatically
+            } catch { /* silently ignore auto-sync errors */ }
+        }, 60000) // Every 60 seconds
+
         // Initial unread count
         prevUnreadRef.current = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
 
-        return () => clearInterval(pollInterval)
-    }, [activeChannel?.id, statusFilter, activeTab, selectedPlatformIds, selectedConversation?.id, playNotificationSound, showBrowserNotification]) // eslint-disable-line
+        return () => {
+            clearInterval(pollInterval)
+            clearInterval(threadsInterval)
+        }
+    }, [activeChannel?.id, statusFilter, activeTab, selectedPlatformIds, selectedConversation?.id, playNotificationSound, showBrowserNotification, platformAccounts]) // eslint-disable-line
 
     // ─── Fetch platform accounts ──────
     const fetchPlatforms = useCallback(async () => {
@@ -2195,7 +2215,7 @@ export default function InboxPage() {
                                                                                         {paneLikedIds.has(msg.externalId) ? '💙 Liked' : '👍 Like'}
                                                                                     </button>
                                                                                 )}
-                                                                                {msg.direction === 'inbound' && msg.externalId && sc.type === 'comment' && (
+                                                                                {msg.direction === 'inbound' && msg.externalId && sc.type === 'comment' && sc.platform !== 'threads' && (
                                                                                     <button
                                                                                         className="text-[10px] font-semibold text-muted-foreground hover:text-purple-500 transition-colors"
                                                                                         onClick={async () => {
