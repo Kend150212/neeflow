@@ -555,10 +555,12 @@ export async function POST(
         if (platformAccount?.accessToken) {
             const conv = await prisma.conversation.findUnique({
                 where: { id },
-                select: { externalId: true, metadata: true },
+                select: { metadata: true },
             })
 
-            const replyToId = conv?.externalId || (conv?.metadata as any)?.rootPostId || null
+            // replyToId stored in metadata during sync (Conversation has no externalId field)
+            const meta = conv?.metadata as any
+            const replyToId = meta?.threadExternalId || meta?.rootPostId || null
 
             try {
                 const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')

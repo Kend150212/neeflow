@@ -39,11 +39,6 @@ export async function POST(req: NextRequest) {
         if (!tp.accessToken) continue
         const token = tp.accessToken
 
-        // Fetch platform account record
-        const platformAccount = await prisma.platformAccount.findFirst({
-            where: { channelId, platform: 'threads', externalId: tp.accountId }
-        })
-        if (!platformAccount) continue
 
         try {
             // ── 1. Fetch replies (threads_manage_replies + threads_read_replies) ──
@@ -56,7 +51,7 @@ export async function POST(req: NextRequest) {
                 for (const reply of repliesData.data) {
                     await upsertThreadsConversation({
                         channelId,
-                        platformAccountId: platformAccount.id,
+                        platformAccountId: tp.id,
                         externalId: reply.id,
                         type: 'reply',
                         text: reply.text || '',
@@ -78,7 +73,7 @@ export async function POST(req: NextRequest) {
                 for (const mention of mentionsData.data) {
                     await upsertThreadsConversation({
                         channelId,
-                        platformAccountId: platformAccount.id,
+                        platformAccountId: tp.id,
                         externalId: mention.id,
                         type: 'mention',
                         text: mention.text || '',
@@ -111,41 +106,54 @@ async function upsertThreadsConversation(params: {
 }) {
     const { channelId, platformAccountId, externalId, type, text, username, timestamp, rootPostId } = params
 
-    // Upsert conversation
+    // Conversation unique key: @@unique([channelId, platform, externalUserId])
+    // We use externalId as the externalUserId (thread post ID) so each thread gets its own conversation
     const conversation = await prisma.conversation.upsert({
-        where: { externalId_platform: { externalId, platform: 'threads' } },
+        where: {
+            channelId_platform_externalUserId: {
+                channelId,
+                platform: 'threads',
+                externalUserId: externalId,
+            },
+        },
         create: {
             channelId,
             platformAccountId,
             platform: 'threads',
-            externalId,
+            externalUserId: externalId,
             status: 'open',
+            type,
             participantName: username,
-            participantExternalId: username,
-            metadata: { type, rootPostId } as object,
+            externalUserName: username,
+            metadata: { threadsType: type, rootPostId, threadExternalId: externalId } as object,
             lastMessageAt: timestamp,
         },
         update: {
             lastMessageAt: timestamp,
             participantName: username,
+            externalUserName: username,
         },
-        select: { id: true }
+        select: { id: true },
     })
 
-    // Upsert the message itself
-    await prisma.message.upsert({
-        where: { externalId_conversationId: { externalId, conversationId: conversation.id } },
-        create: {
-            conversationId: conversation.id,
-            externalId,
-            content: text,
-            senderName: username,
-            senderType: 'customer',
-            sentAt: timestamp,
-            metadata: { threadsType: type, rootPostId } as object,
-        },
-        update: { content: text },
+    // InboxMessage has no unique constraint — skip if already synced (match by externalId)
+    const existing = await prisma.inboxMessage.findFirst({
+        where: { conversationId: conversation.id, externalId },
+        select: { id: true },
     })
+    if (!existing) {
+        await prisma.inboxMessage.create({
+            data: {
+                conversationId: conversation.id,
+                externalId,
+                direction: 'inbound',
+                content: text,
+                senderName: username,
+                senderType: 'customer',
+                sentAt: timestamp,
+            },
+        })
+    }
 }
 
 // GET /api/inbox/threads/sync — quick status check

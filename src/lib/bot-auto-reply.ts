@@ -1193,7 +1193,8 @@ async function sendAndSaveReply(
             recentBotReplies.set(dedupKey, now)
             const base = 'https://graph.threads.net/v1.0'
             const accountId = platformAccount.accountId
-            const replyToId = conversation.externalId || (conversation.metadata as any)?.rootPostId || null
+            const meta = conversation.metadata as any
+            const replyToId = meta?.threadExternalId || meta?.rootPostId || null
 
             if (replyToId) {
                 try {
