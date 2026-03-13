@@ -1338,7 +1338,6 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                     )}
                                 </div>
                             )}
-                        </>)}
                     </div>
                 </div>
             ) : (
