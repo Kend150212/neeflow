@@ -51,6 +51,8 @@ import {
     Bookmark,
     Play,
     UserCheck,
+    Repeat2,
+    Quote,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -113,7 +115,7 @@ const LIVE_API_PLATFORMS = new Set(['facebook', 'instagram', 'youtube', 'tiktok'
 
 // ─── Constants ───────────────────────────────────────────────────────
 const PLATFORM_COLORS: Record<string, string> = {
-    facebook: '#1877f2', instagram: '#e1306c', youtube: '#ff0000', tiktok: '#010101',
+    facebook: '#1877f2', instagram: '#e1306c', youtube: '#ff0000', tiktok: '#25F4EE',
     linkedin: '#0a66c2', pinterest: '#e60023', x: '#000000', gbp: '#34a853',
 }
 const PLATFORM_LABELS: Record<string, string> = {
@@ -419,10 +421,12 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
     const color = platformColor(insight.platform)
     const topPosts = [...posts].sort((a, b) => (b.reach || 0) - (a.reach || 0)).slice(0, 3)
     const hasRealData = LIVE_API_PLATFORMS.has(insight.platform)
-    const isTabbed = insight.platform === 'facebook' || insight.platform === 'instagram' || insight.platform === 'linkedin' || insight.platform === 'tiktok' || insight.platform === 'youtube'
+    const isTabbed = insight.platform === 'facebook' || insight.platform === 'instagram' || insight.platform === 'linkedin' || insight.platform === 'tiktok' || insight.platform === 'youtube' || insight.platform === 'threads' || insight.platform === 'pinterest'
     const isMeta = insight.platform === 'facebook' || insight.platform === 'instagram'
     const isTikTok = insight.platform === 'tiktok'
     const isYouTube = insight.platform === 'youtube'
+    const isThreads = insight.platform === 'threads'
+    const isPinterest = insight.platform === 'pinterest'
     const ins = insight as any
 
     // Tab state — FB/IG/LinkedIn/TikTok get tabs
@@ -440,16 +444,13 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
     const TAB_YT_TOP = 'yt_top'
     const TAB_YT_COMMENTS = 'yt_comments'
 
+    const TAB_META_OVERVIEW = 'meta_overview'
     const metaTabs = [
-        { id: TAB_VIEWS, label: t('insights.tabs.views') },
-        { id: TAB_INTERACTIONS, label: t('insights.tabs.interactions') },
-        { id: TAB_AUDIENCE, label: t('insights.tabs.audience') },
+        { id: TAB_META_OVERVIEW, label: 'Overview' },
         { id: TAB_POSTS, label: t('insights.tabs.posts') },
     ]
     const tiktokTabs = [
         { id: TAB_TT_OVERVIEW, label: 'Overview' },
-        { id: TAB_TT_VIDEOS, label: 'Videos' },
-        { id: TAB_TT_ENGAGEMENT, label: 'Engagement' },
         { id: TAB_TT_TOP, label: 'Top Videos' },
     ]
     const youtubeTabs = [
@@ -457,8 +458,23 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
         { id: TAB_YT_TOP, label: 'Top Videos' },
         { id: TAB_YT_COMMENTS, label: 'Comments' },
     ]
+    // Threads tabs
+    const TAB_TH_OVERVIEW = 'th_overview'
+    const TAB_TH_ENGAGEMENT = 'th_engagement'
+    const TAB_TH_POSTS = 'th_posts'
+    const threadsTabs = [
+        { id: TAB_TH_OVERVIEW, label: 'Overview' },
+        { id: TAB_TH_ENGAGEMENT, label: 'Engagement' },
+        { id: TAB_TH_POSTS, label: 'Posts' },
+    ]
+    const TAB_PIN_OVERVIEW = 'pin_overview'
+    const TAB_PIN_PINS = 'pin_pins'
+    const pinterestTabs = [
+        { id: TAB_PIN_OVERVIEW, label: 'Overview' },
+        { id: TAB_PIN_PINS, label: 'Top Pins' },
+    ]
     const [activeTab, setActiveTab] = useState(
-        isTikTok ? TAB_TT_OVERVIEW : isYouTube ? TAB_YT_OVERVIEW : TAB_VIEWS
+        isTikTok ? TAB_TT_OVERVIEW : isYouTube ? TAB_YT_OVERVIEW : isThreads ? TAB_TH_OVERVIEW : isPinterest ? TAB_PIN_OVERVIEW : TAB_META_OVERVIEW
     )
 
 
@@ -568,7 +584,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                 <div>
                     {/* Tab bar */}
                     <div className="flex border-b overflow-x-auto scrollbar-none">
-                        {(isTikTok ? tiktokTabs : isYouTube ? youtubeTabs : metaTabs).map(tab => (
+                        {(isTikTok ? tiktokTabs : isYouTube ? youtubeTabs : isThreads ? threadsTabs : isPinterest ? pinterestTabs : metaTabs).map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
@@ -583,12 +599,12 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                     </div>
 
                     <div className="p-4 space-y-5">
-                        {/* ── VIEWS TAB ── */}
-                        {activeTab === TAB_VIEWS && (
-                            <>
-                                {/* KPIs */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    <div className="bg-muted/40 rounded-lg p-3 text-center col-span-2 sm:col-span-1">
+                        {/* ── META OVERVIEW TAB (Views + Interactions + Audience merged) ── */}
+                        {activeTab === TAB_META_OVERVIEW && (
+                            <div className="space-y-4">
+                                {/* Row 1: reach/views + followers + new followers */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
                                         <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
                                         <p className="text-xl font-bold font-mono">{fmt(ins.views ?? ins.impressions ?? insight.impressions)}</p>
                                         <p className="text-[10px] text-muted-foreground">
@@ -598,17 +614,59 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                     <div className="bg-muted/40 rounded-lg p-3 text-center">
                                         <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
                                         <p className="text-xl font-bold font-mono">{fmt(insight.followers)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.followers')}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {insight.platform === 'linkedin' ? t('insights.kpi.connections') : t('insights.kpi.followers')}
+                                        </p>
                                     </div>
                                     <div className="bg-muted/40 rounded-lg p-3 text-center">
                                         <TrendingUp className="h-4 w-4 mx-auto mb-1 text-green-500" />
-                                        <p className="text-xl font-bold font-mono">{fmt(ins.newFollowers ?? 0)}</p>
+                                        <p className="text-xl font-bold font-mono">+{fmt(ins.newFollowers ?? 0)}</p>
                                         <p className="text-[10px] text-muted-foreground">{t('insights.kpi.newFollowers')}</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <Heart className="h-4 w-4 mx-auto mb-1 text-rose-500" />
+                                        <p className="text-xl font-bold font-mono">{fmt(ins.reactions ?? ins.likes ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {insight.platform === 'facebook' ? t('insights.kpi.reactions') : t('insights.kpi.likes')}
+                                        </p>
                                     </div>
                                 </div>
 
-                                {/* Daily views chart */}
-                                {viewsTimeSeries.length > 0 ? (
+                                {/* Row 2: comments + shares/clicks + reach */}
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <MessageCircle className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+                                        <p className="text-lg font-bold font-mono">{fmt(ins.comments ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.comments')}</p>
+                                    </div>
+                                    {insight.platform === 'linkedin' ? (
+                                        <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                            <ExternalLink className="h-4 w-4 mx-auto mb-1 text-indigo-500" />
+                                            <p className="text-lg font-bold font-mono">{fmt(ins.clicks ?? 0)}</p>
+                                            <p className="text-[10px] text-muted-foreground">{t('insights.kpi.clicks')}</p>
+                                        </div>
+                                    ) : insight.platform === 'facebook' ? (
+                                        <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                            <Share2 className="h-4 w-4 mx-auto mb-1 text-green-500" />
+                                            <p className="text-lg font-bold font-mono">{fmt(ins.shares ?? 0)}</p>
+                                            <p className="text-[10px] text-muted-foreground">{t('insights.kpi.shares')}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                            <Share2 className="h-4 w-4 mx-auto mb-1 text-green-500" />
+                                            <p className="text-lg font-bold font-mono">{fmt(ins.shares ?? 0)}</p>
+                                            <p className="text-[10px] text-muted-foreground">{t('insights.kpi.shares')}</p>
+                                        </div>
+                                    )}
+                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                        <TrendingUp className="h-4 w-4 mx-auto mb-1 text-emerald-500" />
+                                        <p className="text-lg font-bold font-mono">{fmt(insight.reach ?? insight.impressions ?? 0)}</p>
+                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.reach')}</p>
+                                    </div>
+                                </div>
+
+                                {/* Views area chart — 28 days */}
+                                {viewsTimeSeries.length > 0 && (
                                     <div>
                                         <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">{t('insights.chart.last28days')}</p>
                                         <div className="h-36">
@@ -628,65 +686,13 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                             </ResponsiveContainer>
                                         </div>
                                     </div>
-                                ) : null}
-
-                                {/* Content type breakdown */}
-                                {contentTypeBreakdown.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">{t('insights.contentType.label')}</p>
-                                        <div className="space-y-2">
-                                            {contentTypeBreakdown.map(({ type, pct }) => (
-                                                <div key={type} className="flex items-center gap-2">
-                                                    <span className="text-xs text-muted-foreground w-20 shrink-0">{ctLabel(type)}</span>
-                                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                                                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
-                                                    </div>
-                                                    <span className="text-xs font-mono w-12 text-right">{pct}%</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
                                 )}
-                            </>
-                        )}
 
-                        {/* ── INTERACTIONS TAB ── */}
-                        {activeTab === TAB_INTERACTIONS && (
-                            <>
-                                {/* KPI row */}
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                        <Heart className="h-4 w-4 mx-auto mb-1 text-rose-500" />
-                                        <p className="text-lg font-bold font-mono">{fmt(ins.reactions ?? ins.likes ?? 0)}</p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            {insight.platform === 'facebook' ? t('insights.kpi.reactions') : t('insights.kpi.likes')}
-                                        </p>
-                                    </div>
-                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                        <MessageCircle className="h-4 w-4 mx-auto mb-1 text-blue-500" />
-                                        <p className="text-lg font-bold font-mono">{fmt(ins.comments ?? 0)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.comments')}</p>
-                                    </div>
-                                    {insight.platform === 'linkedin' ? (
-                                        <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                            <ExternalLink className="h-4 w-4 mx-auto mb-1 text-indigo-500" />
-                                            <p className="text-lg font-bold font-mono">{fmt(ins.clicks ?? 0)}</p>
-                                            <p className="text-[10px] text-muted-foreground">{t('insights.kpi.clicks')}</p>
-                                        </div>
-                                    ) : insight.platform === 'facebook' ? (
-                                        <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                            <Share2 className="h-4 w-4 mx-auto mb-1 text-green-500" />
-                                            <p className="text-lg font-bold font-mono">{fmt(ins.shares ?? 0)}</p>
-                                            <p className="text-[10px] text-muted-foreground">{t('insights.kpi.shares')}</p>
-                                        </div>
-                                    ) : null}
-                                </div>
-
-                                {/* Interactions chart */}
+                                {/* Interactions bar chart */}
                                 {interactionsTimeSeries.length > 0 && (
                                     <div>
                                         <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">{t('insights.interaction.overview')}</p>
-                                        <div className="h-32">
+                                        <div className="h-28">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <BarChart data={interactionsTimeSeries} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
                                                     <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} interval={3} />
@@ -739,38 +745,25 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                         </div>
                                     </div>
                                 )}
-                            </>
-                        )}
 
-                        {/* ── AUDIENCE TAB ── */}
-                        {activeTab === TAB_AUDIENCE && (
-                            <>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                        <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
-                                        <p className="text-xl font-bold font-mono">{fmt(insight.followers)}</p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            {insight.platform === 'linkedin' ? t('insights.kpi.connections') : t('insights.audience.totalFollowers')}
-                                        </p>
+                                {/* Content type breakdown */}
+                                {contentTypeBreakdown.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">{t('insights.contentType.label')}</p>
+                                        <div className="space-y-2">
+                                            {contentTypeBreakdown.map(({ type, pct }) => (
+                                                <div key={type} className="flex items-center gap-2">
+                                                    <span className="text-xs text-muted-foreground w-20 shrink-0">{ctLabel(type)}</span>
+                                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                                                    </div>
+                                                    <span className="text-xs font-mono w-12 text-right">{pct}%</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                        <TrendingUp className="h-4 w-4 mx-auto mb-1 text-green-500" />
-                                        <p className="text-xl font-bold font-mono">+{fmt(ins.newFollowers ?? 0)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.newFollowers')}</p>
-                                    </div>
-                                    <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                        <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
-                                        <p className="text-xl font-bold font-mono">{fmt(insight.reach ?? insight.impressions ?? 0)}</p>
-                                        <p className="text-[10px] text-muted-foreground">{t('insights.kpi.reach')}</p>
-                                    </div>
-                                </div>
-                                <div className="h-20 bg-muted/20 rounded-lg flex flex-col items-center justify-center gap-1 text-center px-4">
-                                    {insight.platform === 'linkedin'
-                                        ? <p className="text-xs text-muted-foreground">Demographic breakdowns (industry, seniority, country) require LinkedIn Marketing Developer Platform (MDP) access.</p>
-                                        : <p className="text-xs text-muted-foreground">Age, gender, country breakdowns require Advanced Access review from Meta.</p>
-                                    }
-                                </div>
-                            </>
+                                )}
+                            </div>
                         )}
 
                         {/* ── POSTS TAB ── */}
@@ -824,9 +817,10 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
 
                             return (
                                 <>
-                                    {/* ── TT OVERVIEW ── */}
+                                    {/* ── TT OVERVIEW (merged: KPIs + Views chart + Engagement) ── */}
                                     {activeTab === TAB_TT_OVERVIEW && (
                                         <>
+                                            {/* Account KPIs */}
                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                                 <div className="bg-muted/40 rounded-lg p-3 text-center">
                                                     <Users className="h-4 w-4 mx-auto mb-1 text-blue-500" />
@@ -849,73 +843,14 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                                     <p className="text-[10px] text-muted-foreground">Videos</p>
                                                 </div>
                                             </div>
-                                            {/* Recent summary row */}
-                                            <div className="bg-gradient-to-r from-[#010101]/5 to-[#010101]/10 border border-[#010101]/10 rounded-xl p-4">
-                                                <p className="text-[10px] text-muted-foreground mb-3 font-medium uppercase tracking-wider">Recent 20 Videos — Performance</p>
-                                                <div className="grid grid-cols-4 gap-2">
-                                                    {[
-                                                        { label: 'Views', value: recentViews, color: 'text-purple-500' },
-                                                        { label: 'Likes', value: recentLikes, color: 'text-rose-500' },
-                                                        { label: 'Comments', value: recentComments, color: 'text-blue-500' },
-                                                        { label: 'Shares', value: recentShares, color: 'text-green-500' },
-                                                    ].map(({ label, value, color }) => (
-                                                        <div key={label} className="text-center">
-                                                            <p className={`text-lg font-bold font-mono ${color}`}>{fmt(value)}</p>
-                                                            <p className="text-[10px] text-muted-foreground">{label}</p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
 
-                                    {/* ── TT VIDEOS (views chart) ── */}
-                                    {activeTab === TAB_TT_VIDEOS && (
-                                        <>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                                    <Eye className="h-4 w-4 mx-auto mb-1 text-purple-500" />
-                                                    <p className="text-xl font-bold font-mono">{fmt(recentViews)}</p>
-                                                    <p className="text-[10px] text-muted-foreground">Total Views</p>
-                                                </div>
-                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                                    <Play className="h-4 w-4 mx-auto mb-1 text-orange-500" />
-                                                    <p className="text-xl font-bold font-mono">{fmt(insight.videoCount)}</p>
-                                                    <p className="text-[10px] text-muted-foreground">Total Videos</p>
-                                                </div>
-                                            </div>
-                                            {ttViews.length > 0 ? (
-                                                <div>
-                                                    <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Views by Upload Date</p>
-                                                    <div className="h-40">
-                                                        <ResponsiveContainer width="100%" height="100%">
-                                                            <AreaChart data={ttViews} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
-                                                                <defs>
-                                                                    <linearGradient id={ttGradId} x1="0" y1="0" x2="0" y2="1">
-                                                                        <stop offset="5%" stopColor="#010101" stopOpacity={0.5} />
-                                                                        <stop offset="95%" stopColor="#010101" stopOpacity={0} />
-                                                                    </linearGradient>
-                                                                </defs>
-                                                                <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} interval={2} />
-                                                                <YAxis tick={{ fontSize: 9 }} />
-                                                                <Tooltip content={<CustomTooltip />} />
-                                                                <Area type="monotone" dataKey="value" name="Views" stroke="#010101" fill={`url(#${ttGradId})`} strokeWidth={2} dot={false} />
-                                                            </AreaChart>
-                                                        </ResponsiveContainer>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="h-20 flex flex-col items-center justify-center bg-muted/20 rounded-lg gap-2">
-                                                    <p className="text-xs text-muted-foreground">No time-series data available (video upload dates needed)</p>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {/* ── TT ENGAGEMENT ── */}
-                                    {activeTab === TAB_TT_ENGAGEMENT && (
-                                        <>
+                                            {/* Engagement KPIs */}
                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
+                                                    <Eye className="h-4 w-4 mx-auto mb-1 text-[#25F4EE]" />
+                                                    <p className="text-lg font-bold font-mono">{fmt(recentViews)}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Views (recent)</p>
+                                                </div>
                                                 <div className="bg-muted/40 rounded-lg p-3 text-center">
                                                     <Heart className="h-4 w-4 mx-auto mb-1 text-rose-500" />
                                                     <p className="text-lg font-bold font-mono">{fmt(recentLikes)}</p>
@@ -931,13 +866,33 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                                     <p className="text-lg font-bold font-mono">{fmt(recentShares)}</p>
                                                     <p className="text-[10px] text-muted-foreground">Shares</p>
                                                 </div>
-                                                <div className="bg-muted/40 rounded-lg p-3 text-center">
-                                                    <TrendingUp className="h-4 w-4 mx-auto mb-1 text-orange-500" />
-                                                    <p className="text-lg font-bold font-mono">{fmt(recentLikes + recentComments + recentShares)}</p>
-                                                    <p className="text-[10px] text-muted-foreground">Total</p>
-                                                </div>
                                             </div>
-                                            {ttInteractions.length > 0 ? (
+
+                                            {/* Views by upload date chart */}
+                                            {ttViews.length > 0 ? (
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Views by Upload Date</p>
+                                                    <div className="h-40">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <AreaChart data={ttViews} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                                <defs>
+                                                                    <linearGradient id={ttGradId} x1="0" y1="0" x2="0" y2="1">
+                                                                        <stop offset="5%" stopColor="#25F4EE" stopOpacity={0.4} />
+                                                                        <stop offset="95%" stopColor="#25F4EE" stopOpacity={0} />
+                                                                    </linearGradient>
+                                                                </defs>
+                                                                <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} interval={2} />
+                                                                <YAxis tick={{ fontSize: 9 }} />
+                                                                <Tooltip content={<CustomTooltip />} />
+                                                                <Area type="monotone" dataKey="value" name="Views" stroke="#25F4EE" fill={`url(#${ttGradId})`} strokeWidth={2} dot={false} />
+                                                            </AreaChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+
+                                            {/* Engagement by upload date */}
+                                            {ttInteractions.length > 0 && (
                                                 <div>
                                                     <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Engagement by Upload Date</p>
                                                     <div className="h-36">
@@ -946,12 +901,13 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                                                 <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={d => d.slice(5)} interval={2} />
                                                                 <YAxis tick={{ fontSize: 9 }} />
                                                                 <Tooltip content={<CustomTooltip />} />
-                                                                <Bar dataKey="value" name="Interactions" fill="#010101" radius={[3, 3, 0, 0]} />
+                                                                <Bar dataKey="value" name="Interactions" fill="#25F4EE" radius={[3, 3, 0, 0]} />
                                                             </BarChart>
                                                         </ResponsiveContainer>
                                                     </div>
                                                 </div>
-                                            ) : null}
+                                            )}
+
                                             {/* Donut breakdown */}
                                             {(recentLikes + recentComments + recentShares) > 0 && (
                                                 <div>
@@ -1110,10 +1066,280 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                                     <p className="text-[11px] text-muted-foreground text-center py-6">No comments found</p>
                                 )
                             )}
+
+                            {/* ── THREADS: OVERVIEW ── */}
+                            {isThreads && activeTab === 'th_overview' && (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                        {[
+                                            { label: 'Followers', value: ins.followers ?? 0, icon: Users, color: 'text-blue-500' },
+                                            { label: 'Views', value: ins.threadsViews ?? 0, icon: Eye, color: 'text-purple-500' },
+                                            { label: 'Likes', value: ins.threadsLikes ?? 0, icon: Heart, color: 'text-rose-500' },
+                                            { label: 'Replies', value: ins.threadsReplies ?? 0, icon: MessageCircle, color: 'text-sky-500' },
+                                            { label: 'Reposts', value: ins.threadsReposts ?? 0, icon: Repeat2, color: 'text-green-500' },
+                                            { label: 'Quotes', value: ins.threadsQuotes ?? 0, icon: Quote, color: 'text-amber-500' },
+                                        ].map(({ label, value, icon: Icon, color: c }) => (
+                                            <div key={label} className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                                <Icon className={`h-4 w-4 ${c}`} />
+                                                <p className="text-lg font-bold font-mono leading-none">{fmt(value)}</p>
+                                                <p className="text-[10px] text-muted-foreground">{label}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {(ins.threadsViews ?? 0) > 0 && (
+                                        <div className="bg-muted/30 rounded-xl px-4 py-3 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs font-semibold">Engagement Rate</p>
+                                                <p className="text-[10px] text-muted-foreground">Likes + Replies + Reposts + Quotes / Views</p>
+                                            </div>
+                                            <p className="text-2xl font-bold font-mono" style={{ color }}>
+                                                {(((ins.threadsEngagement ?? 0) / Math.max(ins.threadsViews ?? 1, 1)) * 100).toFixed(2)}%
+                                            </p>
+                                        </div>
+                                    )}
+                                    {(ins.viewsTimeSeries?.length ?? 0) > 0 ? (
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">Views — Last 28 Days</p>
+                                            <div className="h-36">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart data={ins.viewsTimeSeries} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                        <defs>
+                                                            <linearGradient id="thViewsGrad" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor={color} stopOpacity={0.35} />
+                                                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={(d: string) => d.slice(5)} interval={6} />
+                                                        <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => fmt(v)} />
+                                                        <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Views']} labelStyle={{ fontSize: 10 }} contentStyle={{ fontSize: 10 }} />
+                                                        <Area type="monotone" dataKey="value" stroke={color} fill="url(#thViewsGrad)" strokeWidth={2} dot={false} />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-muted/20 rounded-xl py-6 text-center">
+                                            <BarChart2 className="h-7 w-7 mx-auto mb-2 text-muted-foreground/40" />
+                                            <p className="text-xs text-muted-foreground">Daily chart available after threads_manage_insights is approved</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ── THREADS: ENGAGEMENT ── */}
+                            {isThreads && activeTab === 'th_engagement' && (
+                                <div className="space-y-4">
+                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">28-Day Engagement Breakdown</p>
+                                    {[
+                                        { label: 'Likes', value: ins.threadsLikes ?? 0, barColor: '#f43f5e' },
+                                        { label: 'Replies', value: ins.threadsReplies ?? 0, barColor: '#38bdf8' },
+                                        { label: 'Reposts', value: ins.threadsReposts ?? 0, barColor: '#4ade80' },
+                                        { label: 'Quotes', value: ins.threadsQuotes ?? 0, barColor: '#f59e0b' },
+                                    ].map(({ label, value, barColor }) => {
+                                        const total = Math.max(ins.threadsEngagement ?? 1, 1)
+                                        const pct = Math.round((value / total) * 100)
+                                        return (
+                                            <div key={label} className="space-y-1">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="font-medium">{label}</span>
+                                                    <span className="font-mono text-muted-foreground">{fmt(value)} <span className="text-[10px]">({pct}%)</span></span>
+                                                </div>
+                                                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: barColor }} />
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                    <div className="h-40 mt-2">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={[
+                                                    { name: 'Likes', value: ins.threadsLikes ?? 0 },
+                                                    { name: 'Replies', value: ins.threadsReplies ?? 0 },
+                                                    { name: 'Reposts', value: ins.threadsReposts ?? 0 },
+                                                    { name: 'Quotes', value: ins.threadsQuotes ?? 0 },
+                                                ]}
+                                                margin={{ top: 4, right: 0, left: -28, bottom: 0 }}
+                                            >
+                                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                                <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => fmt(v)} />
+                                                <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), '']} contentStyle={{ fontSize: 10 }} />
+                                                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                                    {['#f43f5e', '#38bdf8', '#4ade80', '#f59e0b'].map((c, i) => <Cell key={i} fill={c} />)}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── THREADS: POSTS ── */}
+                            {isThreads && activeTab === 'th_posts' && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                                        {ins.threadsPosts?.length ?? 0} Recent Posts — sorted by views
+                                    </p>
+                                    {(ins.threadsPosts?.length ?? 0) > 0 ? (
+                                        <div className="space-y-2">
+                                            {[...(ins.threadsPosts as Array<{ id: string; text: string; timestamp: string; permalink: string; views: number; likes: number; replies: number; reposts: number; quotes: number; shares: number }>)]
+                                                .sort((a, b) => b.views - a.views)
+                                                .map((post) => (
+                                                    <div key={post.id} className="bg-muted/30 rounded-xl p-3 space-y-2 hover:bg-muted/50 transition-colors">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <p className="text-xs leading-relaxed line-clamp-2 flex-1">{post.text || '(no text)'}</p>
+                                                            <a href={post.permalink} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary shrink-0 mt-0.5">
+                                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                            </a>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                                                            <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(post.views)}</span>
+                                                            <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(post.likes)}</span>
+                                                            <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-sky-400" />{fmt(post.replies)}</span>
+                                                            <span className="flex items-center gap-1"><Repeat2 className="h-3 w-3 text-green-400" />{fmt(post.reposts)}</span>
+                                                            <span className="flex items-center gap-1"><Quote className="h-3 w-3 text-amber-400" />{fmt(post.quotes)}</span>
+                                                            {post.timestamp && <span className="ml-auto">{new Date(post.timestamp).toLocaleDateString()}</span>}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                                            <p className="text-xs text-muted-foreground">No posts found</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </>)}
                     </div>
                 </div>
             ) : (
+
+                            {/* ── PINTEREST: OVERVIEW ── */}
+                            {isPinterest && activeTab === 'pin_overview' && (
+                                <div className="space-y-4">
+                                    {/* KPI Grid */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                            <Users className="h-4 w-4 text-blue-500" />
+                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.followers)}</p>
+                                            <p className="text-[10px] text-muted-foreground">Followers</p>
+                                        </div>
+                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                            <Eye className="h-4 w-4 text-purple-500" />
+                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.impressions)}</p>
+                                            <p className="text-[10px] text-muted-foreground">Impressions</p>
+                                        </div>
+                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                            <Heart className="h-4 w-4 text-rose-500" />
+                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.engagement)}</p>
+                                            <p className="text-[10px] text-muted-foreground">Clicks</p>
+                                        </div>
+                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                            <Bookmark className="h-4 w-4 text-amber-500" />
+                                            <p className="text-xl font-bold font-mono leading-none">{fmt(ins.saves ?? 0)}</p>
+                                            <p className="text-[10px] text-muted-foreground">Saves</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Engagement breakdown bars */}
+                                    {(insight.impressions > 0 || insight.engagement > 0 || (ins.saves ?? 0) > 0) && (
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">30-Day Breakdown</p>
+                                            {[
+                                                { label: 'Impressions', value: insight.impressions, barColor: '#a855f7' },
+                                                { label: 'Clicks', value: insight.engagement, barColor: '#f43f5e' },
+                                                { label: 'Saves', value: ins.saves ?? 0, barColor: '#f59e0b' },
+                                            ].map(({ label, value, barColor }) => {
+                                                const maxVal = Math.max(insight.impressions, insight.engagement, ins.saves ?? 0, 1)
+                                                const pct = Math.round((value / maxVal) * 100)
+                                                return (
+                                                    <div key={label} className="space-y-1">
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="font-medium">{label}</span>
+                                                            <span className="font-mono text-muted-foreground">{fmt(value)}</span>
+                                                        </div>
+                                                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: barColor }} />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Trend chart — use sparkData (time series from insight) */}
+                                    {(insight.impressions > 0) && (
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">30-Day Impressions Trend</p>
+                                            <div className="h-36">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart data={sparkData} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                        <defs>
+                                                            <linearGradient id="pinGrad" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor={color} stopOpacity={0.4} />
+                                                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={4} />
+                                                        <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => fmt(v)} />
+                                                        <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Impressions']} contentStyle={{ fontSize: 10 }} />
+                                                        <Area type="monotone" dataKey="v" stroke={color} fill="url(#pinGrad)" strokeWidth={2} dot={false} />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ── PINTEREST: TOP PINS ── */}
+                            {isPinterest && activeTab === 'pin_pins' && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                                        Top {ins.topPins?.length ?? 0} Pins — sorted by impressions
+                                    </p>
+                                    {(ins.topPins?.length ?? 0) > 0 ? (
+                                        <div className="space-y-2">
+                                            {[...(ins.topPins as Array<{ pinId: string; title: string; imageUrl: string | null; impressions: number; saves: number; clicks: number; pinUrl: string }>)]
+                                                .sort((a, b) => b.impressions - a.impressions)
+                                                .map((pin, idx) => (
+                                                    <div key={pin.pinId || idx} className="bg-muted/30 rounded-xl overflow-hidden hover:bg-muted/50 transition-colors">
+                                                        <div className="flex gap-3 p-3">
+                                                            {/* Thumbnail */}
+                                                            {pin.imageUrl ? (
+                                                                <img src={pin.imageUrl} alt={pin.title || 'Pin'} className="w-14 h-14 object-cover rounded-lg shrink-0 bg-muted" />
+                                                            ) : (
+                                                                <div className="w-14 h-14 rounded-lg bg-muted/60 shrink-0 flex items-center justify-center">
+                                                                    <Bookmark className="h-5 w-5 text-muted-foreground/40" />
+                                                                </div>
+                                                            )}
+                                                            {/* Info */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-start justify-between gap-2 mb-2">
+                                                                    <p className="text-xs font-medium line-clamp-2 leading-relaxed">{pin.title || `Pin #${idx + 1}`}</p>
+                                                                    <a href={pin.pinUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-[#e60023] shrink-0">
+                                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                                    </a>
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                                                                    <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(pin.impressions)}&nbsp;impr</span>
+                                                                    <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(pin.clicks)}&nbsp;clicks</span>
+                                                                    <span className="flex items-center gap-1"><Bookmark className="h-3 w-3 text-amber-400" />{fmt(pin.saves)}&nbsp;saves</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <Bookmark className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                                            <p className="text-xs text-muted-foreground">No top pins found for this period</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                 /* ── NON-META: original layout ── */
                 <div className="p-4 space-y-4">
                     {/* KPI metrics row — platform-specific */}

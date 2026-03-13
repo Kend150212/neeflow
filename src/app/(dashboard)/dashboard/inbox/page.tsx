@@ -1985,7 +1985,11 @@ export default function InboxPage() {
                                                                     rel="noopener noreferrer"
                                                                     className="text-[10px] text-muted-foreground hover:text-blue-400 transition-colors"
                                                                 >
-                                                                    {t('inbox.postPreview.viewOnFacebook')}
+                                                                    {sc.platform === 'threads'
+                                                                        ? '• Click to view on Threads'
+                                                                        : sc.platform === 'instagram'
+                                                                            ? '• Click to view on Instagram'
+                                                                            : t('inbox.postPreview.viewOnFacebook')}
                                                                 </a>
                                                             </div>
                                                             {(sc.metadata as any).postContent && (

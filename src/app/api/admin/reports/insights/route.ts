@@ -1003,9 +1003,9 @@ async function fetchPinterestInsights(channelPlatform: {
             saves = summary.SAVE || 0
         }
 
-        // 3. Top 10 Pins analytics for "top posts" section
+        // 3. Top 10 Pins analytics — fetch ALL metrics + pin detail in parallel
         const topPinsRes = await fetch(
-            `${base}/v5/user_account/top_pins_analytics?start_date=${startDate}&end_date=${endDate}&metric_types=IMPRESSION&num_of_pins=10&sort_by=IMPRESSION`,
+            `${base}/v5/user_account/top_pins_analytics?start_date=${startDate}&end_date=${endDate}&metric_types=IMPRESSION,SAVE,PIN_CLICK,OUTBOUND_CLICK&num_of_pins=10&sort_by=IMPRESSION`,
             { headers }
         )
         let topPins: {
@@ -1019,20 +1019,37 @@ async function fetchPinterestInsights(channelPlatform: {
         }[] = []
         if (topPinsRes.ok) {
             const topPinsData = await topPinsRes.json()
-            topPins = (topPinsData.pins_results || []).map((p: Record<string, unknown>) => {
+            const pinsResults: Record<string, unknown>[] = topPinsData.pins_results || []
+
+            // Fetch pin details (title, description, image) in parallel
+            const pinDetails = await Promise.all(
+                pinsResults.map(async (p) => {
+                    const pinId = String(p.pin_id || '')
+                    if (!pinId) return null
+                    try {
+                        const pr = await fetch(`${base}/v5/pins/${pinId}`, { headers })
+                        if (pr.ok) return await pr.json()
+                    } catch { /* ignore */ }
+                    return null
+                })
+            )
+
+            topPins = pinsResults.map((p, i) => {
                 const metrics = (p.metrics as Record<string, number>) || {}
-                const pinData = (p.data_status as Record<string, unknown>) || {}
+                const detail = pinDetails[i] as Record<string, unknown> | null
+                const media = (detail?.media || p.media || {}) as Record<string, unknown>
+                const images = (media.images || {}) as Record<string, { url: string }>
+                const imageUrl =
+                    images['600x']?.url || images['400x300']?.url || images['150x150']?.url ||
+                    ((p.media as Record<string, unknown>)?.images as Record<string, { url: string }>)?.['150x150']?.url || null
                 return {
                     pinId: String(p.pin_id || ''),
-                    title: String(p.description || p.title || ''),
-                    imageUrl: ((p.media as Record<string, unknown>)?.images as Record<string, { url: string }>)?.[
-                        '150x150'
-                    ]?.url || null,
+                    title: String(detail?.description || detail?.title || p.description || p.title || ''),
+                    imageUrl,
                     impressions: metrics.IMPRESSION || 0,
                     saves: metrics.SAVE || 0,
                     clicks: (metrics.PIN_CLICK || 0) + (metrics.OUTBOUND_CLICK || 0),
                     pinUrl: `https://www.pinterest.com/pin/${p.pin_id || ''}`,
-                    ...(pinData && {}),
                 }
             })
         }
@@ -1300,31 +1317,40 @@ async function fetchThreadsInsights(channelPlatform: {
     const base = 'https://graph.threads.net/v1.0'
 
     try {
-        // 1. Profile info — followers_count is NOT a valid profile field,
-        //    it comes from threads_insights instead
-        const profileRes = await fetch(
-            `${base}/${userId}?fields=id,username,threads_profile_picture_url&access_token=${token}`
-        )
+        // ── 1. Profile (basic fields only — followers_count is NOT a profile field) ──
+        const [profileRes, insightsRes, postsRes] = await Promise.all([
+            fetch(`${base}/me?fields=id,username,threads_profile_picture_url&access_token=${token}`),
+            fetch(`${base}/me/threads_insights?metric=views,likes,replies,reposts,quotes,followers_count&period=days_28&since=${Math.floor((Date.now() - 28 * 86400000) / 1000)}&until=${Math.floor(Date.now() / 1000)}&access_token=${token}`),
+            fetch(`${base}/me/threads?fields=id,text,timestamp,media_type,permalink&limit=20&access_token=${token}`),
+        ])
+
         const profileData = await profileRes.json()
         if (profileData.error) {
             console.error('[Threads] Profile error:', profileData.error)
             return null
         }
 
-        // 2. Account-level insights (28-day totals)
-        // followers_count is a lifecycle metric — use summary endpoint
-        const insightsRes = await fetch(
-            `${base}/${userId}/threads_insights?metric=views,likes,replies,reposts,quotes,followers_count&period=days_28&access_token=${token}`
-        )
+        // ── 2. Account-level 28-day metrics ──
         const insightsData = await insightsRes.json()
-
         let totalViews = 0, totalLikes = 0, totalReplies = 0, totalReposts = 0, totalQuotes = 0, followerCount = 0
+        const viewsTimeSeries: { date: string; value: number }[] = []
+
         if (insightsData.data) {
             for (const metric of insightsData.data) {
                 const val = typeof metric.total_value?.value === 'number'
                     ? metric.total_value.value
                     : (metric.values?.[metric.values.length - 1]?.value ?? 0)
-                if (metric.name === 'views') totalViews = val
+                if (metric.name === 'views') {
+                    totalViews = val
+                    // Build daily time series from granular values if available
+                    if (Array.isArray(metric.values)) {
+                        for (const v of metric.values) {
+                            if (v.end_time) {
+                                viewsTimeSeries.push({ date: v.end_time.slice(0, 10), value: v.value ?? 0 })
+                            }
+                        }
+                    }
+                }
                 if (metric.name === 'likes') totalLikes = val
                 if (metric.name === 'replies') totalReplies = val
                 if (metric.name === 'reposts') totalReposts = val
@@ -1332,8 +1358,46 @@ async function fetchThreadsInsights(channelPlatform: {
                 if (metric.name === 'followers_count') followerCount = val
             }
         } else if (insightsData.error) {
-            // threads_manage_insights not granted — still return basic profile
             console.warn('[Threads] Insights error (permission?):', insightsData.error?.message)
+        }
+
+        // ── 3. Per-post metrics (top posts) ──
+        const postsData = await postsRes.json()
+        const threadsPosts: Array<{
+            id: string; text: string; timestamp: string; mediaType: string; permalink: string;
+            views: number; likes: number; replies: number; reposts: number; quotes: number; shares: number;
+        }> = []
+
+        if (postsData.data && Array.isArray(postsData.data)) {
+            await Promise.allSettled(
+                postsData.data.slice(0, 12).map(async (post: { id: string; text?: string; timestamp?: string; media_type?: string; permalink?: string }) => {
+                    const mRes = await fetch(
+                        `${base}/${post.id}/insights?metric=views,likes,replies,reposts,quotes,shares&access_token=${token}`
+                    )
+                    const mData = await mRes.json()
+                    let pViews = 0, pLikes = 0, pReplies = 0, pReposts = 0, pQuotes = 0, pShares = 0
+                    if (mData.data) {
+                        for (const m of mData.data) {
+                            const v = m.total_value?.value ?? m.values?.[0]?.value ?? 0
+                            if (m.name === 'views') pViews = v
+                            if (m.name === 'likes') pLikes = v
+                            if (m.name === 'replies') pReplies = v
+                            if (m.name === 'reposts') pReposts = v
+                            if (m.name === 'quotes') pQuotes = v
+                            if (m.name === 'shares') pShares = v
+                        }
+                    }
+                    threadsPosts.push({
+                        id: post.id,
+                        text: post.text || '',
+                        timestamp: post.timestamp || '',
+                        mediaType: post.media_type || 'TEXT',
+                        permalink: post.permalink || `https://www.threads.net/@${profileData.username}`,
+                        views: pViews, likes: pLikes, replies: pReplies,
+                        reposts: pReposts, quotes: pQuotes, shares: pShares,
+                    })
+                })
+            )
         }
 
         return {
@@ -1345,11 +1409,17 @@ async function fetchThreadsInsights(channelPlatform: {
             reach: totalViews,
             impressions: totalViews,
             engagement: totalLikes + totalReplies + totalReposts + totalQuotes,
-            // Threads-specific extras (stored for display)
-            likes: totalLikes,
-            replies: totalReplies,
-            reposts: totalReposts,
-            quotes: totalQuotes,
+            // Threads-specific account metrics
+            threadsViews: totalViews,
+            threadsLikes: totalLikes,
+            threadsReplies: totalReplies,
+            threadsReposts: totalReposts,
+            threadsQuotes: totalQuotes,
+            threadsEngagement: totalLikes + totalReplies + totalReposts + totalQuotes,
+            // Time series for chart
+            viewsTimeSeries,
+            // Per-post breakdown
+            threadsPosts,
         }
     } catch (err) {
         console.error('[Threads] Insights fetch error:', err)
