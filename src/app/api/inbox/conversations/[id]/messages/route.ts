@@ -558,9 +558,20 @@ export async function POST(
                 select: { metadata: true },
             })
 
-            // replyToId stored in metadata during sync (Conversation has no externalId field)
+            // Get the most recent inbound (customer) comment to reply to directly
+            // This ensures our reply is nested under the right comment, not just the root post
+            const lastInboundMsg = await prisma.inboxMessage.findFirst({
+                where: { conversationId: id, direction: 'inbound' },
+                orderBy: { sentAt: 'desc' },
+                select: { externalId: true },
+            })
+
             const meta = conv?.metadata as any
-            const replyToId = meta?.threadExternalId || meta?.rootPostId || null
+            // Prefer the specific comment ID; fall back to root post ID
+            const replyToId = lastInboundMsg?.externalId
+                || meta?.threadExternalId
+                || meta?.rootPostId
+                || null
 
             try {
                 const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
@@ -595,7 +606,7 @@ export async function POST(
                                 where: { id: message.id },
                                 data: { externalId: publishData.id },
                             })
-                            console.log(`[Threads Reply] ✅ Reply posted: ${publishData.id}`)
+                            console.log(`[Threads Reply] ✅ Reply posted: ${publishData.id} (reply_to=${replyToId})`)
                         } else {
                             console.warn(`[Threads Reply] ⚠️ Publish failed:`, JSON.stringify(publishData))
                         }
@@ -610,6 +621,7 @@ export async function POST(
             }
         }
     }
+
 
     return NextResponse.json({
         message: {

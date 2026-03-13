@@ -43,12 +43,18 @@ export async function POST(req: NextRequest) {
         try {
             // ── 1. Get the user's own Threads posts ──────────────────────────
             const postsRes = await fetch(
-                `${BASE}/me/threads?fields=id,text,timestamp,username&limit=25&access_token=${token}`
+                `${BASE}/me/threads?fields=id,text,timestamp,username,media_type,media_url,thumbnail_url,permalink&limit=25&access_token=${token}`
             )
             const postsData = await postsRes.json()
 
             if (postsData.data && Array.isArray(postsData.data)) {
                 for (const post of postsData.data) {
+                    // Resolve the best image URL for this post
+                    const postMediaUrl: string | null =
+                        post.media_type === 'VIDEO'
+                            ? (post.thumbnail_url || null)
+                            : (post.media_url || null)
+
                     // ── 2. Get replies TO this post ──────────────────────────
                     const repRes = await fetch(
                         `${BASE}/${post.id}/replies?fields=id,text,username,timestamp,replied_to&limit=50&access_token=${token}`
@@ -69,9 +75,13 @@ export async function POST(req: NextRequest) {
                                 timestamp: reply.timestamp ? new Date(reply.timestamp) : new Date(),
                                 rootPostId: post.id,
                                 rootPostText: post.text || '',
+                                rootPostMediaUrl: postMediaUrl,
+                                rootPostMediaType: post.media_type || null,
+                                rootPostPermalink: post.permalink || null,
                             })
                             totalSynced++
                         }
+
                     } else if (repData.error) {
                         console.warn(`[Threads sync] replies error for post ${post.id}:`, repData.error?.message)
                     }
@@ -126,11 +136,15 @@ async function upsertThreadsConversation(params: {
     timestamp: Date
     rootPostId: string | null
     rootPostText: string | null
+    rootPostMediaUrl?: string | null
+    rootPostMediaType?: string | null
+    rootPostPermalink?: string | null
 }) {
     const {
         channelId, platformAccountId,
         conversationExternalId, messageExternalId,
         type, text, username, timestamp, rootPostId, rootPostText,
+        rootPostMediaUrl, rootPostMediaType, rootPostPermalink,
     } = params
 
     // One conversation per post (all replies grouped under the same post)
@@ -155,14 +169,31 @@ async function upsertThreadsConversation(params: {
                 rootPostId,
                 rootPostText,
                 threadExternalId: conversationExternalId,   // used as reply_to_id when replying
+                // Fields the inbox UI already reads for the post preview card:
+                postContent: rootPostText || null,
+                postImages: rootPostMediaUrl ? [rootPostMediaUrl] : [],
+                postPermalink: rootPostPermalink || null,
+                rootPostMediaType: rootPostMediaType || null,
             } as object,
             lastMessageAt: timestamp,
         },
         update: {
             lastMessageAt: timestamp,
+            // Also update media fields in case they changed (e.g. thumbnail generated later)
+            metadata: {
+                threadsType: type,
+                rootPostId,
+                rootPostText,
+                threadExternalId: conversationExternalId,
+                postContent: rootPostText || null,
+                postImages: rootPostMediaUrl ? [rootPostMediaUrl] : [],
+                postPermalink: rootPostPermalink || null,
+                rootPostMediaType: rootPostMediaType || null,
+            } as object,
         },
         select: { id: true },
     })
+
 
     // Deduplicate messages by externalId
     const existing = await prisma.inboxMessage.findFirst({
