@@ -1364,7 +1364,7 @@ async function fetchThreadsInsights(channelPlatform: {
         // ── 3. Per-post metrics (top posts) ──
         const postsData = await postsRes.json()
         const threadsPosts: Array<{
-            id: string; text: string; timestamp: string; mediaType: string; permalink: string;
+            id: string; text: string; timestamp: string; mediaType: string; mediaUrl: string | null; permalink: string;
             views: number; likes: number; replies: number; reposts: number; quotes: number; shares: number;
         }> = []
 
