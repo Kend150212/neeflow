@@ -799,6 +799,133 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                             </>
                         )}
 
+
+                        {/* ── PINTEREST: OVERVIEW ── */}
+                            {isPinterest && activeTab === 'pin_overview' && (
+                                <div className="space-y-4">
+                                    {/* KPI Grid */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                            <Users className="h-4 w-4 text-blue-500" />
+                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.followers)}</p>
+                                            <p className="text-[10px] text-muted-foreground">Followers</p>
+                                        </div>
+                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                            <Eye className="h-4 w-4 text-purple-500" />
+                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.impressions)}</p>
+                                            <p className="text-[10px] text-muted-foreground">Impressions</p>
+                                        </div>
+                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                            <Heart className="h-4 w-4 text-rose-500" />
+                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.engagement)}</p>
+                                            <p className="text-[10px] text-muted-foreground">Clicks</p>
+                                        </div>
+                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+                                            <Bookmark className="h-4 w-4 text-amber-500" />
+                                            <p className="text-xl font-bold font-mono leading-none">{fmt(ins.saves ?? 0)}</p>
+                                            <p className="text-[10px] text-muted-foreground">Saves</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Engagement breakdown bars */}
+                                    {(insight.impressions > 0 || insight.engagement > 0 || (ins.saves ?? 0) > 0) && (
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">30-Day Breakdown</p>
+                                            {[
+                                                { label: 'Impressions', value: insight.impressions, barColor: '#a855f7' },
+                                                { label: 'Clicks', value: insight.engagement, barColor: '#f43f5e' },
+                                                { label: 'Saves', value: ins.saves ?? 0, barColor: '#f59e0b' },
+                                            ].map(({ label, value, barColor }) => {
+                                                const maxVal = Math.max(insight.impressions, insight.engagement, ins.saves ?? 0, 1)
+                                                const pct = Math.round((value / maxVal) * 100)
+                                                return (
+                                                    <div key={label} className="space-y-1">
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="font-medium">{label}</span>
+                                                            <span className="font-mono text-muted-foreground">{fmt(value)}</span>
+                                                        </div>
+                                                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: barColor }} />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Trend chart — use sparkData (time series from insight) */}
+                                    {(insight.impressions > 0) && (
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">30-Day Impressions Trend</p>
+                                            <div className="h-36">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart data={sparkData} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+                                                        <defs>
+                                                            <linearGradient id="pinGrad" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor={color} stopOpacity={0.4} />
+                                                                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={4} />
+                                                        <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => fmt(v)} />
+                                                        <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Impressions']} contentStyle={{ fontSize: 10 }} />
+                                                        <Area type="monotone" dataKey="v" stroke={color} fill="url(#pinGrad)" strokeWidth={2} dot={false} />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ── PINTEREST: TOP PINS ── */}
+                            {isPinterest && activeTab === 'pin_pins' && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                                        Top {ins.topPins?.length ?? 0} Pins — sorted by impressions
+                                    </p>
+                                    {(ins.topPins?.length ?? 0) > 0 ? (
+                                        <div className="space-y-2">
+                                            {[...(ins.topPins as Array<{ pinId: string; title: string; imageUrl: string | null; impressions: number; saves: number; clicks: number; pinUrl: string }>)]
+                                                .sort((a, b) => b.impressions - a.impressions)
+                                                .map((pin, idx) => (
+                                                    <div key={pin.pinId || idx} className="bg-muted/30 rounded-xl overflow-hidden hover:bg-muted/50 transition-colors">
+                                                        <div className="flex gap-3 p-3">
+                                                            {/* Thumbnail */}
+                                                            {pin.imageUrl ? (
+                                                                <img src={pin.imageUrl} alt={pin.title || 'Pin'} className="w-14 h-14 object-cover rounded-lg shrink-0 bg-muted" />
+                                                            ) : (
+                                                                <div className="w-14 h-14 rounded-lg bg-muted/60 shrink-0 flex items-center justify-center">
+                                                                    <Bookmark className="h-5 w-5 text-muted-foreground/40" />
+                                                                </div>
+                                                            )}
+                                                            {/* Info */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-start justify-between gap-2 mb-2">
+                                                                    <p className="text-xs font-medium line-clamp-2 leading-relaxed">{pin.title || `Pin #${idx + 1}`}</p>
+                                                                    <a href={pin.pinUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-[#e60023] shrink-0">
+                                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                                    </a>
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                                                                    <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(pin.impressions)}&nbsp;impr</span>
+                                                                    <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(pin.clicks)}&nbsp;clicks</span>
+                                                                    <span className="flex items-center gap-1"><Bookmark className="h-3 w-3 text-amber-400" />{fmt(pin.saves)}&nbsp;saves</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <Bookmark className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                                            <p className="text-xs text-muted-foreground">No top pins found for this period</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         {/* ── TIKTOK TABS ── */}
                         {isTikTok && (() => {
                             const ttViews = ins.viewsTimeSeries || []
@@ -1215,132 +1342,7 @@ function AccountCard({ insight, posts }: { insight: PlatformInsight; posts: Post
                 </div>
             ) : (
 
-                            {/* ── PINTEREST: OVERVIEW ── */}
-                            {isPinterest && activeTab === 'pin_overview' && (
-                                <div className="space-y-4">
-                                    {/* KPI Grid */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
-                                            <Users className="h-4 w-4 text-blue-500" />
-                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.followers)}</p>
-                                            <p className="text-[10px] text-muted-foreground">Followers</p>
-                                        </div>
-                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
-                                            <Eye className="h-4 w-4 text-purple-500" />
-                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.impressions)}</p>
-                                            <p className="text-[10px] text-muted-foreground">Impressions</p>
-                                        </div>
-                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
-                                            <Heart className="h-4 w-4 text-rose-500" />
-                                            <p className="text-xl font-bold font-mono leading-none">{fmt(insight.engagement)}</p>
-                                            <p className="text-[10px] text-muted-foreground">Clicks</p>
-                                        </div>
-                                        <div className="bg-muted/40 rounded-xl p-3 text-center flex flex-col items-center gap-1">
-                                            <Bookmark className="h-4 w-4 text-amber-500" />
-                                            <p className="text-xl font-bold font-mono leading-none">{fmt(ins.saves ?? 0)}</p>
-                                            <p className="text-[10px] text-muted-foreground">Saves</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Engagement breakdown bars */}
-                                    {(insight.impressions > 0 || insight.engagement > 0 || (ins.saves ?? 0) > 0) && (
-                                        <div className="space-y-3">
-                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">30-Day Breakdown</p>
-                                            {[
-                                                { label: 'Impressions', value: insight.impressions, barColor: '#a855f7' },
-                                                { label: 'Clicks', value: insight.engagement, barColor: '#f43f5e' },
-                                                { label: 'Saves', value: ins.saves ?? 0, barColor: '#f59e0b' },
-                                            ].map(({ label, value, barColor }) => {
-                                                const maxVal = Math.max(insight.impressions, insight.engagement, ins.saves ?? 0, 1)
-                                                const pct = Math.round((value / maxVal) * 100)
-                                                return (
-                                                    <div key={label} className="space-y-1">
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="font-medium">{label}</span>
-                                                            <span className="font-mono text-muted-foreground">{fmt(value)}</span>
-                                                        </div>
-                                                        <div className="h-2 rounded-full bg-muted overflow-hidden">
-                                                            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: barColor }} />
-                                                        </div>
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {/* Trend chart — use sparkData (time series from insight) */}
-                                    {(insight.impressions > 0) && (
-                                        <div>
-                                            <p className="text-[10px] text-muted-foreground mb-2 font-medium uppercase tracking-wider">30-Day Impressions Trend</p>
-                                            <div className="h-36">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <AreaChart data={sparkData} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
-                                                        <defs>
-                                                            <linearGradient id="pinGrad" x1="0" y1="0" x2="0" y2="1">
-                                                                <stop offset="5%" stopColor={color} stopOpacity={0.4} />
-                                                                <stop offset="95%" stopColor={color} stopOpacity={0} />
-                                                            </linearGradient>
-                                                        </defs>
-                                                        <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={4} />
-                                                        <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => fmt(v)} />
-                                                        <Tooltip formatter={(v) => [fmt(typeof v === 'number' ? v : Number(v)), 'Impressions']} contentStyle={{ fontSize: 10 }} />
-                                                        <Area type="monotone" dataKey="v" stroke={color} fill="url(#pinGrad)" strokeWidth={2} dot={false} />
-                                                    </AreaChart>
-                                                </ResponsiveContainer>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* ── PINTEREST: TOP PINS ── */}
-                            {isPinterest && activeTab === 'pin_pins' && (
-                                <div className="space-y-3">
-                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                                        Top {ins.topPins?.length ?? 0} Pins — sorted by impressions
-                                    </p>
-                                    {(ins.topPins?.length ?? 0) > 0 ? (
-                                        <div className="space-y-2">
-                                            {[...(ins.topPins as Array<{ pinId: string; title: string; imageUrl: string | null; impressions: number; saves: number; clicks: number; pinUrl: string }>)]
-                                                .sort((a, b) => b.impressions - a.impressions)
-                                                .map((pin, idx) => (
-                                                    <div key={pin.pinId || idx} className="bg-muted/30 rounded-xl overflow-hidden hover:bg-muted/50 transition-colors">
-                                                        <div className="flex gap-3 p-3">
-                                                            {/* Thumbnail */}
-                                                            {pin.imageUrl ? (
-                                                                <img src={pin.imageUrl} alt={pin.title || 'Pin'} className="w-14 h-14 object-cover rounded-lg shrink-0 bg-muted" />
-                                                            ) : (
-                                                                <div className="w-14 h-14 rounded-lg bg-muted/60 shrink-0 flex items-center justify-center">
-                                                                    <Bookmark className="h-5 w-5 text-muted-foreground/40" />
-                                                                </div>
-                                                            )}
-                                                            {/* Info */}
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex items-start justify-between gap-2 mb-2">
-                                                                    <p className="text-xs font-medium line-clamp-2 leading-relaxed">{pin.title || `Pin #${idx + 1}`}</p>
-                                                                    <a href={pin.pinUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-[#e60023] shrink-0">
-                                                                        <ExternalLink className="h-3.5 w-3.5" />
-                                                                    </a>
-                                                                </div>
-                                                                <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
-                                                                    <span className="flex items-center gap-1"><Eye className="h-3 w-3 text-purple-400" />{fmt(pin.impressions)}&nbsp;impr</span>
-                                                                    <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-rose-400" />{fmt(pin.clicks)}&nbsp;clicks</span>
-                                                                    <span className="flex items-center gap-1"><Bookmark className="h-3 w-3 text-amber-400" />{fmt(pin.saves)}&nbsp;saves</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-8">
-                                            <Bookmark className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-                                            <p className="text-xs text-muted-foreground">No top pins found for this period</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                /* ── NON-META: original layout ── */
+                                /* ── NON-META: original layout ── */
                 <div className="p-4 space-y-4">
                     {/* KPI metrics row — platform-specific */}
                     {(() => {
