@@ -916,6 +916,10 @@ export default function InboxPage() {
                 }
                 if (res.ok) {
                     const data = await res.json()
+                    // Show Threads API error if reply was saved to DB but not posted
+                    if (data.threadsError) {
+                        toast.error(`⚠️ Threads: ${data.threadsError}`, { duration: 8000 })
+                    }
                     setPanels(cur => cur.map((p, i) => i === panelIdx
                         ? { ...p, messages: p.messages.map(m => m.id === tempId ? { ...optimisticMessage, ...data.message } : m) }
                         : p

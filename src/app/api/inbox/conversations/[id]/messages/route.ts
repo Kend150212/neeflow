@@ -577,8 +577,12 @@ export async function POST(
                 const cleanText = content.trim().replace(/^@\[[^\]]+\]\s*/, '').replace(/@\[([^\]]+)\]/g, '@$1')
                 const base = 'https://graph.threads.net/v1.0'
                 const accountId = platformAccount.accountId
+                const token = platformAccount.accessToken
+
+                console.log(`[Threads Reply] accountId=${accountId} token=${token.slice(0, 8)}... replyToId=${replyToId} text="${cleanText.slice(0, 60)}"`)
 
                 if (cleanText && replyToId) {
+                    // Step 1: Create media container
                     const createRes = await fetch(`${base}/${accountId}/threads`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -586,21 +590,25 @@ export async function POST(
                             media_type: 'TEXT',
                             text: cleanText,
                             reply_to_id: replyToId,
-                            access_token: platformAccount.accessToken,
+                            access_token: token,
                         }),
                     })
                     const createData = await createRes.json()
+                    console.log(`[Threads Reply] Create container response:`, JSON.stringify(createData))
 
                     if (createData.id) {
+                        // Step 2: Publish the container
                         const publishRes = await fetch(`${base}/${accountId}/threads_publish`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 creation_id: createData.id,
-                                access_token: platformAccount.accessToken,
+                                access_token: token,
                             }),
                         })
                         const publishData = await publishRes.json()
+                        console.log(`[Threads Reply] Publish response:`, JSON.stringify(publishData))
+
                         if (publishData.id) {
                             await prisma.inboxMessage.update({
                                 where: { id: message.id },
@@ -608,13 +616,26 @@ export async function POST(
                             })
                             console.log(`[Threads Reply] ✅ Reply posted: ${publishData.id} (reply_to=${replyToId})`)
                         } else {
-                            console.warn(`[Threads Reply] ⚠️ Publish failed:`, JSON.stringify(publishData))
+                            const errMsg = publishData.error?.message || JSON.stringify(publishData)
+                            console.warn(`[Threads Reply] ⚠️ Publish failed:`, errMsg)
+                            // Return partial success — message saved to DB but not posted to Threads
+                            return NextResponse.json({
+                                message: { id: message.id, direction: message.direction, senderType: message.senderType, content: message.content, mediaUrl: message.mediaUrl, confidence: message.confidence, sentAt: message.sentAt.toISOString() },
+                                threadsError: `Threads publish failed: ${errMsg}`,
+                            })
                         }
                     } else {
-                        console.warn(`[Threads Reply] ⚠️ Create container failed:`, JSON.stringify(createData))
+                        const errMsg = createData.error?.message || JSON.stringify(createData)
+                        console.warn(`[Threads Reply] ⚠️ Create container failed:`, errMsg)
+                        return NextResponse.json({
+                            message: { id: message.id, direction: message.direction, senderType: message.senderType, content: message.content, mediaUrl: message.mediaUrl, confidence: message.confidence, sentAt: message.sentAt.toISOString() },
+                            threadsError: `Threads create failed: ${errMsg}`,
+                        })
                     }
                 } else if (!replyToId) {
-                    console.warn(`[Threads Reply] ⚠️ No reply_to_id for conversation ${id} — saved to DB only`)
+                    console.warn(`[Threads Reply] ⚠️ No reply_to_id — lastInboundMsg.externalId was null. Conv=${id}`)
+                } else if (!cleanText) {
+                    console.warn(`[Threads Reply] ⚠️ Empty text after cleaning`)
                 }
             } catch (err) {
                 console.error(`[Threads Reply] ❌ Error sending reply:`, err)
