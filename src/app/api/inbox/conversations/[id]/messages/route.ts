@@ -601,12 +601,43 @@ export async function POST(
                     console.log(`[Threads Reply] Create container response:`, JSON.stringify(createData))
 
                     if (createData.id) {
-                        // Step 2: Publish the container
+                        // Step 2: Poll container status until FINISHED (Threads requires this before publish)
+                        // Without polling, publish returns error_subcode 4279009 "Media Not Found"
+                        const creationId = createData.id
+                        let containerReady = false
+                        for (let attempt = 0; attempt < 12; attempt++) {
+                            // Wait 1 second between polls (first poll also waits 1s)
+                            await new Promise(r => setTimeout(r, 1000))
+                            const statusRes = await fetch(
+                                `${base}/${creationId}?fields=status,error_message&access_token=${token}`
+                            )
+                            const statusData = await statusRes.json()
+                            console.log(`[Threads Reply] Container status poll ${attempt + 1}: ${statusData.status || JSON.stringify(statusData)}`)
+                            if (statusData.status === 'FINISHED') {
+                                containerReady = true
+                                break
+                            }
+                            if (statusData.status === 'ERROR') {
+                                console.warn(`[Threads Reply] ⚠️ Container ERROR: ${statusData.error_message}`)
+                                break
+                            }
+                            // statuses: IN_PROGRESS, PUBLISHED, ERROR, EXPIRED
+                        }
+
+                        if (!containerReady) {
+                            console.warn(`[Threads Reply] ⚠️ Container not ready after polling — aborting publish`)
+                            return NextResponse.json({
+                                message: { id: message.id, direction: message.direction, senderType: message.senderType, content: message.content, mediaUrl: message.mediaUrl, confidence: message.confidence, sentAt: message.sentAt.toISOString() },
+                                threadsError: 'Threads container not ready (timed out waiting for FINISHED status)',
+                            })
+                        }
+
+                        // Step 3: Publish the ready container
                         const publishRes = await fetch(`${base}/${accountId}/threads_publish`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                creation_id: createData.id,
+                                creation_id: creationId,
                                 access_token: token,
                             }),
                         })
@@ -622,7 +653,6 @@ export async function POST(
                         } else {
                             const errMsg = publishData.error?.message || JSON.stringify(publishData)
                             console.warn(`[Threads Reply] ⚠️ Publish failed:`, errMsg)
-                            // Return partial success — message saved to DB but not posted to Threads
                             return NextResponse.json({
                                 message: { id: message.id, direction: message.direction, senderType: message.senderType, content: message.content, mediaUrl: message.mediaUrl, confidence: message.confidence, sentAt: message.sentAt.toISOString() },
                                 threadsError: `Threads publish failed: ${errMsg}`,
