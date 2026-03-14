@@ -324,8 +324,9 @@ export default function ProjectCanvasPage() {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         imageGenNode: withDelete((props: any) => (
-            <ImageGenNode {...props} data={{ ...props.data, running: runningRef.current, onRun: () => handleRunRef.current(), onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+            <ImageGenNode {...props} data={{ ...props.data, channelId: channelIdRef.current, running: runningRef.current, onRun: () => handleRunRef.current(), onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         )),
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         upscaleNode: withDelete((props: any) => (
             <UpscaleNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
