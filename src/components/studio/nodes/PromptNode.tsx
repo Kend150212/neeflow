@@ -4,6 +4,7 @@ import { memo, useState, useEffect, useRef } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { Type, Sparkles, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface PromptNodeData {
     prompt?: string
@@ -19,6 +20,7 @@ interface PromptNodeData {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const PromptNode = memo(({ data, selected }: NodeProps<any>) => {
     const d = data as PromptNodeData
+    const { t } = useI18n()
 
     // Local state — prevents focus loss when parent re-renders
     const [value, setValue] = useState(d.prompt || '')
@@ -62,13 +64,13 @@ export const PromptNode = memo(({ data, selected }: NodeProps<any>) => {
                 <button
                     className="nodrag ml-auto flex items-center gap-1 text-[10px] text-violet-400 hover:text-white transition-colors disabled:opacity-50"
                     disabled={enhancing}
-                    title="AI Enhance"
+                    title={t('studio.canvas.aiEnhance')}
                     onClick={() => onEnhanceRef.current?.()}
                 >
                     {enhancing
                         ? <Loader2 className="h-3 w-3 animate-spin" />
                         : <Sparkles className="h-3 w-3" />}
-                    {enhancing ? 'Enhancing...' : 'AI Enhance'}
+                    {enhancing ? t('studio.canvas.enhancing') : t('studio.canvas.aiEnhance')}
                 </button>
             </div>
 
@@ -78,7 +80,7 @@ export const PromptNode = memo(({ data, selected }: NodeProps<any>) => {
                     className="nodrag w-full bg-transparent text-xs text-slate-300 placeholder:text-slate-600 resize-none outline-none leading-relaxed"
                     value={value}
                     onChange={handleChange}
-                    placeholder="Describe your image..."
+                    placeholder={t('studio.canvas.promptPlaceholder')}
                     rows={4}
                 />
             </div>

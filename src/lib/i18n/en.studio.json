@@ -110,6 +110,38 @@
                 "illustration": "Illustration",
                 "sketching": "Sketch"
             }
+        },
+        "canvas": {
+            "save": "Save",
+            "run": "Run",
+            "outputsTab": "Outputs",
+            "historyTab": "History",
+            "noOutputs": "No outputs yet.",
+            "noOutputsDesc": "Run the workflow to generate images.",
+            "noRuns": "No runs yet",
+            "sendToCompose": "Send {count} to Compose",
+            "dragToConnect": "Drag to connect · Del to remove node",
+            "selectAvatar": "Select avatar...",
+            "changeAvatar": "Click to change avatar",
+            "chooseOutfit": "Choose outfit...",
+            "changeOutfit": "Click to change outfit",
+            "chooseAccessory": "Choose accessory...",
+            "changeAccessory": "Click to change accessory",
+            "outfitSection": "Outfit",
+            "accessorySection": "Accessory",
+            "selectAvatarTitle": "Select Avatar",
+            "noAvatarsYet": "No avatars yet.",
+            "createAvatar": "Create Avatar",
+            "outfitPickerTitleOutfit": "Choose Outfit",
+            "outfitPickerTitleAccessory": "Choose Accessory",
+            "tabOutfit": "Outfit",
+            "tabAccessory": "Accessory",
+            "tabProp": "Prop",
+            "noAssetsOfType": "No {type} yet.",
+            "addType": "Add {type}",
+            "promptPlaceholder": "Describe your image...",
+            "aiEnhance": "AI Enhance",
+            "enhancing": "Enhancing..."
         }
     }
 }

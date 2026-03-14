@@ -110,6 +110,38 @@
                 "illustration": "Ilustración",
                 "sketching": "Boceto"
             }
+        },
+        "canvas": {
+            "save": "Guardar",
+            "run": "Ejecutar",
+            "outputsTab": "Salidas",
+            "historyTab": "Historial",
+            "noOutputs": "Sin salidas aún.",
+            "noOutputsDesc": "Ejecuta el flujo de trabajo para generar imágenes.",
+            "noRuns": "Sin ejecuciones aún",
+            "sendToCompose": "Enviar {count} a Compose",
+            "dragToConnect": "Arrastra para conectar · Del para eliminar nodo",
+            "selectAvatar": "Seleccionar avatar...",
+            "changeAvatar": "Clic para cambiar avatar",
+            "chooseOutfit": "Elegir atuendo...",
+            "changeOutfit": "Clic para cambiar atuendo",
+            "chooseAccessory": "Elegir accesorio...",
+            "changeAccessory": "Clic para cambiar accesorio",
+            "outfitSection": "Atuendo",
+            "accessorySection": "Accesorio",
+            "selectAvatarTitle": "Seleccionar Avatar",
+            "noAvatarsYet": "Sin avatares aún.",
+            "createAvatar": "Crear Avatar",
+            "outfitPickerTitleOutfit": "Elegir Atuendo",
+            "outfitPickerTitleAccessory": "Elegir Accesorio",
+            "tabOutfit": "Atuendo",
+            "tabAccessory": "Accesorio",
+            "tabProp": "Utilería",
+            "noAssetsOfType": "Sin {type} aún.",
+            "addType": "Añadir {type}",
+            "promptPlaceholder": "Describe tu imagen...",
+            "aiEnhance": "Mejorar con IA",
+            "enhancing": "Mejorando..."
         }
     }
 }

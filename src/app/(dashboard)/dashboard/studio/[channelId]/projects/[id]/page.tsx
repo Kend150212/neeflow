@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useI18n } from '@/lib/i18n'
 import { AvatarNode } from '@/components/studio/nodes/AvatarNode'
 import { PromptNode } from '@/components/studio/nodes/PromptNode'
 import { ProductNode } from '@/components/studio/nodes/ProductNode'
@@ -79,6 +80,7 @@ const DEFAULT_EDGES = [
 
 export default function ProjectCanvasPage() {
     const { channelId, id } = useParams<{ channelId: string; id: string }>()
+    const { t } = useI18n()
     const [project, setProject] = useState<StudioProject | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -103,11 +105,19 @@ export default function ProjectCanvasPage() {
     const runningRef = useRef(running)
     useEffect(() => { runningRef.current = running }, [running])
 
+    // Stable refs so handleDeleteNode / withDelete / nodeTypes NEVER change identity
+    // ── this is the root fix for PromptNode focus-loss-on-keypress ──
+    const setNodesRef = useRef(setNodes)
+    const setEdgesRef = useRef(setEdges)
+    useEffect(() => { setNodesRef.current = setNodes }, [setNodes])
+    useEffect(() => { setEdgesRef.current = setEdges }, [setEdges])
+
     const updateNodeData = useCallback((nodeId: string, updates: Record<string, unknown>) => {
-        setNodes(nds => nds.map(n =>
+        setNodesRef.current(nds => nds.map(n =>
             n.id === nodeId ? { ...n, data: { ...(n.data as Record<string, unknown>), ...updates } } : n
         ) as Node[])
-    }, [setNodes])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const handleOpenAvatarPicker = useCallback((nodeId: string) => {
         setAvatarPickerNodeId(nodeId)
@@ -125,10 +135,11 @@ export default function ProjectCanvasPage() {
         handleOpenOutfitPicker(nodeId, 'accessory')
     }, [handleOpenOutfitPicker])
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleDeleteNode = useCallback((nodeId: string) => {
-        setNodes(nds => nds.filter(n => n.id !== nodeId) as Node[])
-        setEdges(eds => (eds as Array<{ source: string; target: string; id: string }>).filter(e => e.source !== nodeId && e.target !== nodeId) as never[])
-    }, [setNodes, setEdges])
+        setNodesRef.current(nds => nds.filter(n => n.id !== nodeId) as Node[])
+        setEdgesRef.current(eds => (eds as Array<{ source: string; target: string; id: string }>).filter(e => e.source !== nodeId && e.target !== nodeId) as never[])
+    }, [])
 
     // HOC: wraps any node with a hover-activated × delete button
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -522,11 +533,11 @@ export default function ProjectCanvasPage() {
                     <div className="ml-auto flex items-center gap-2">
                         <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-slate-400 hover:text-white text-xs" onClick={handleSave} disabled={saving}>
                             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                            Save
+                            {t('studio.canvas.save')}
                         </Button>
                         <Button size="sm" className="h-7 gap-1.5 bg-pink-400 text-[#080d0b] hover:bg-pink-300 font-bold text-xs shadow-[0_0_12px_rgba(244,114,182,0.3)]" onClick={handleRun} disabled={running}>
                             {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                            Run
+                            {t('studio.canvas.run')}
                         </Button>
                     </div>
                 </header>
@@ -575,7 +586,7 @@ export default function ProjectCanvasPage() {
                             className={cn('flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors',
                                 rightTab === tab ? 'text-white border-b-2 border-emerald-400' : 'text-slate-500 hover:text-slate-300'
                             )}>
-                            {tab === 'outputs' ? `Outputs (${outputs.length})` : 'History'}
+                            {tab === 'outputs' ? `${t('studio.canvas.outputsTab')} (${outputs.length})` : t('studio.canvas.historyTab')}
                         </button>
                     ))}
                 </div>
@@ -587,7 +598,7 @@ export default function ProjectCanvasPage() {
                                 <div className="w-12 h-12 rounded-xl bg-pink-400/10 border border-pink-400/20 flex items-center justify-center">
                                     <ImageIcon className="h-5 w-5 text-pink-400" />
                                 </div>
-                                <p className="text-xs text-slate-500 text-center">No outputs yet.<br />Run the workflow to generate images.</p>
+                                <p className="text-xs text-slate-500 text-center">{t('studio.canvas.noOutputs')}<br />{t('studio.canvas.noOutputsDesc')}</p>
                             </div>
                         ) : (
                             <div className="space-y-2">
@@ -633,7 +644,7 @@ export default function ProjectCanvasPage() {
                                         className="w-full gap-1.5 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold text-xs mt-2"
                                     >
                                         {pushing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                                        Send {selectedOutputs.size} to Compose
+                                        {t('studio.canvas.sendToCompose').replace('{count}', String(selectedOutputs.size))}
                                     </Button>
                                 )}
                             </div>
@@ -655,7 +666,7 @@ export default function ProjectCanvasPage() {
                                 </div>
                             ))}
                             {(project?.jobs || []).length === 0 && (
-                                <p className="text-xs text-slate-600 text-center py-8">No runs yet</p>
+                                <p className="text-xs text-slate-600 text-center py-8">{t('studio.canvas.noRuns')}</p>
                             )}
                         </div>
                     )}
@@ -667,15 +678,15 @@ export default function ProjectCanvasPage() {
                 <DialogContent className="sm:max-w-lg bg-[#0f1a14] border-emerald-400/20">
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
-                            <User className="h-5 w-5 text-emerald-400" /> Select Avatar
+                            <User className="h-5 w-5 text-emerald-400" /> {t('studio.canvas.selectAvatarTitle')}
                         </DialogTitle>
                     </DialogHeader>
                     {avatars.length === 0 ? (
                         <div className="flex flex-col items-center gap-3 py-8">
-                            <p className="text-slate-400 text-sm">No avatars yet.</p>
+                            <p className="text-slate-400 text-sm">{t('studio.canvas.noAvatarsYet')}</p>
                             <Link href={`/dashboard/studio/${channelId}/avatars`}>
                                 <Button size="sm" className="gap-1.5 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold">
-                                    <Plus className="h-3.5 w-3.5" /> Create Avatar
+                                    <Plus className="h-3.5 w-3.5" /> {t('studio.canvas.createAvatar')}
                                 </Button>
                             </Link>
                         </div>
@@ -705,8 +716,8 @@ export default function ProjectCanvasPage() {
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
                             {outfitPickerMode === 'accessory'
-                                ? <><Gem className="h-5 w-5 text-violet-400" /> Chọn Phụ kiện</>
-                                : <><Shirt className="h-5 w-5 text-amber-400" /> Chọn Outfit</>}
+                                ? <><Gem className="h-5 w-5 text-violet-400" /> {t('studio.canvas.outfitPickerTitleAccessory')}</>
+                                : <><Shirt className="h-5 w-5 text-amber-400" /> {t('studio.canvas.outfitPickerTitleOutfit')}</>}
                         </DialogTitle>
                     </DialogHeader>
                     {/* Tabs */}
@@ -719,7 +730,7 @@ export default function ProjectCanvasPage() {
                                         ? 'text-white border-b-2 border-emerald-400'
                                         : 'text-slate-500 hover:text-slate-300'
                                 )}>
-                                {tab === 'outfit' ? 'Outfit' : tab === 'accessory' ? 'Phụ kiện' : 'Prop'}
+                                {tab === 'outfit' ? t('studio.canvas.tabOutfit') : tab === 'accessory' ? t('studio.canvas.tabAccessory') : t('studio.canvas.tabProp')}
                             </button>
                         ))}
                     </div>
@@ -727,10 +738,10 @@ export default function ProjectCanvasPage() {
                         const filtered = avatarAssets.filter(a => a.type === outfitTab)
                         if (filtered.length === 0) return (
                             <div className="flex flex-col items-center gap-3 py-8">
-                                <p className="text-slate-400 text-sm">Chưa có {outfitTab} nào.</p>
+                                <p className="text-slate-400 text-sm">{t('studio.canvas.noAssetsOfType').replace('{type}', outfitTab)}</p>
                                 <Link href={`/dashboard/studio/${channelId}/avatars`}>
                                     <Button size="sm" className="gap-1.5 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold text-xs">
-                                        <Plus className="h-3.5 w-3.5" /> Thêm {outfitTab}
+                                        <Plus className="h-3.5 w-3.5" /> {t('studio.canvas.addType').replace('{type}', outfitTab)}
                                     </Button>
                                 </Link>
                             </div>

@@ -4,6 +4,7 @@ import { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { User, ChevronDown, RefreshCw, Shirt, Gem } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface AvatarNodeData extends Record<string, unknown> {
     avatarId?: string
@@ -27,6 +28,7 @@ interface AvatarNodeData extends Record<string, unknown> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
     const d = data as AvatarNodeData
+    const { t } = useI18n()
 
     return (
         <div className={cn(
@@ -47,7 +49,7 @@ export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
                     <div
                         className="flex items-center gap-2 group/avatar cursor-pointer hover:bg-white/5 rounded-lg p-1 -mx-1 transition-colors"
                         onClick={d.onSelect}
-                        title="Click to change avatar"
+                        title={t('studio.canvas.changeAvatar')}
                     >
                         <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0">
                             {d.avatarCover
@@ -66,7 +68,7 @@ export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
                         onClick={d.onSelect}
                         className="nodrag w-full flex items-center justify-between text-slate-400 hover:text-white text-xs py-1 transition-colors"
                     >
-                        <span>Select avatar...</span>
+                        <span>{t('studio.canvas.selectAvatar')}</span>
                         <ChevronDown className="h-3.5 w-3.5 shrink-0" />
                     </button>
                 )}
@@ -75,12 +77,12 @@ export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
             {/* Outfit section — only visible after avatar is selected */}
             {d.avatarId && (
                 <div className="px-3 py-2 border-b border-white/5">
-                    <p className="text-[9px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Outfit</p>
+                    <p className="text-[9px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">{t('studio.canvas.outfitSection')}</p>
                     {d.outfitId ? (
                         <div
                             className="flex items-center gap-2 group/outfit cursor-pointer hover:bg-white/5 rounded-lg p-1 -mx-1 transition-colors"
                             onClick={d.onSelectOutfit}
-                            title="Click to change outfit"
+                            title={t('studio.canvas.changeOutfit')}
                         >
                             <div className="w-7 h-7 rounded overflow-hidden border border-white/10 shrink-0">
                                 {d.outfitImage
@@ -97,7 +99,7 @@ export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
                             className="nodrag w-full flex items-center justify-between text-slate-500 hover:text-slate-300 text-[11px] py-0.5 transition-colors"
                         >
                             <span className="flex items-center gap-1.5">
-                                <Shirt className="h-3 w-3" /> Choose outfit...
+                                <Shirt className="h-3 w-3" /> {t('studio.canvas.chooseOutfit')}
                             </span>
                             <ChevronDown className="h-3 w-3 shrink-0" />
                         </button>
@@ -108,12 +110,12 @@ export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
             {/* Accessory section — only visible after avatar is selected */}
             {d.avatarId && (
                 <div className="px-3 py-2">
-                    <p className="text-[9px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Phụ kiện</p>
+                    <p className="text-[9px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">{t('studio.canvas.accessorySection')}</p>
                     {d.accessoryId ? (
                         <div
                             className="flex items-center gap-2 group/acc cursor-pointer hover:bg-white/5 rounded-lg p-1 -mx-1 transition-colors"
                             onClick={d.onSelectAccessory}
-                            title="Click to change accessory"
+                            title={t('studio.canvas.changeAccessory')}
                         >
                             <div className="w-7 h-7 rounded overflow-hidden border border-white/10 shrink-0">
                                 {d.accessoryImage
@@ -130,7 +132,7 @@ export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
                             className="nodrag w-full flex items-center justify-between text-slate-500 hover:text-slate-300 text-[11px] py-0.5 transition-colors"
                         >
                             <span className="flex items-center gap-1.5">
-                                <Gem className="h-3 w-3" /> Choose accessory...
+                                <Gem className="h-3 w-3" /> {t('studio.canvas.chooseAccessory')}
                             </span>
                             <ChevronDown className="h-3 w-3 shrink-0" />
                         </button>

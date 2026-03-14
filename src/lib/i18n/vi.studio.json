@@ -110,6 +110,38 @@
                 "illustration": "Minh họa",
                 "sketching": "Phác thảo"
             }
+        },
+        "canvas": {
+            "save": "Lưu",
+            "run": "Chạy",
+            "outputsTab": "Đầu ra",
+            "historyTab": "Lịch sử",
+            "noOutputs": "Chưa có đầu ra.",
+            "noOutputsDesc": "Chạy workflow để tạo ảnh.",
+            "noRuns": "Chưa có lần chạy nào",
+            "sendToCompose": "Gửi {count} vào Compose",
+            "dragToConnect": "Kéo để kết nối · Del để xóa node",
+            "selectAvatar": "Chọn avatar...",
+            "changeAvatar": "Click để đổi avatar",
+            "chooseOutfit": "Chọn trang phục...",
+            "changeOutfit": "Click để đổi trang phục",
+            "chooseAccessory": "Chọn phụ kiện...",
+            "changeAccessory": "Click để đổi phụ kiện",
+            "outfitSection": "Trang phục",
+            "accessorySection": "Phụ kiện",
+            "selectAvatarTitle": "Chọn Avatar",
+            "noAvatarsYet": "Chưa có avatar.",
+            "createAvatar": "Tạo Avatar",
+            "outfitPickerTitleOutfit": "Chọn Trang phục",
+            "outfitPickerTitleAccessory": "Chọn Phụ kiện",
+            "tabOutfit": "Trang phục",
+            "tabAccessory": "Phụ kiện",
+            "tabProp": "Đạo cụ",
+            "noAssetsOfType": "Chưa có {type} nào.",
+            "addType": "Thêm {type}",
+            "promptPlaceholder": "Mô tả hình ảnh của bạn...",
+            "aiEnhance": "AI Nâng cao",
+            "enhancing": "Đang xử lý..."
         }
     }
 }
