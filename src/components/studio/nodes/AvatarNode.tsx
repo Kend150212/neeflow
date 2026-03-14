@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { User, ChevronDown, RefreshCw, Shirt, Gem } from 'lucide-react'
+import { User, ChevronDown, RefreshCw, Shirt, Gem, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n'
 
@@ -23,6 +23,8 @@ interface AvatarNodeData extends Record<string, unknown> {
     onSelect?: () => void
     onSelectOutfit?: () => void
     onSelectAccessory?: () => void
+    onClearOutfit?: () => void
+    onClearAccessory?: () => void
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,19 +81,29 @@ export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
                 <div className="px-3 py-2 border-b border-white/5">
                     <p className="text-[9px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">{t('studio.canvas.outfitSection')}</p>
                     {d.outfitId ? (
-                        <div
-                            className="flex items-center gap-2 group/outfit cursor-pointer hover:bg-white/5 rounded-lg p-1 -mx-1 transition-colors"
-                            onClick={d.onSelectOutfit}
-                            title={t('studio.canvas.changeOutfit')}
-                        >
-                            <div className="w-7 h-7 rounded overflow-hidden border border-white/10 shrink-0">
+                        <div className="flex items-center gap-2 group/outfit rounded-lg p-1 -mx-1 transition-colors hover:bg-white/5">
+                            <div
+                                className="w-7 h-7 rounded overflow-hidden border border-white/10 shrink-0 cursor-pointer"
+                                onClick={d.onSelectOutfit}
+                            >
                                 {d.outfitImage
                                     ? <img src={d.outfitImage} alt={d.outfitName} className="w-full h-full object-cover" />
                                     : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Shirt className="h-3 w-3 text-slate-600" /></div>
                                 }
                             </div>
-                            <p className="text-[11px] text-white truncate flex-1">{d.outfitName}</p>
-                            <RefreshCw className="h-2.5 w-2.5 text-slate-600 group-hover/outfit:text-emerald-400 transition-colors shrink-0" />
+                            <p
+                                className="text-[11px] text-white truncate flex-1 cursor-pointer"
+                                onClick={d.onSelectOutfit}
+                                title={t('studio.canvas.changeOutfit')}
+                            >{d.outfitName}</p>
+                            {/* Clear / deselect button */}
+                            <button
+                                className="nodrag opacity-0 group-hover/outfit:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-500/20"
+                                onClick={e => { e.stopPropagation(); d.onClearOutfit?.() }}
+                                title="Bỏ chọn outfit"
+                            >
+                                <X className="h-3 w-3 text-slate-500 hover:text-red-400" />
+                            </button>
                         </div>
                     ) : (
                         <button
@@ -112,19 +124,29 @@ export const AvatarNode = memo(({ data, selected }: NodeProps<any>) => {
                 <div className="px-3 py-2">
                     <p className="text-[9px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">{t('studio.canvas.accessorySection')}</p>
                     {d.accessoryId ? (
-                        <div
-                            className="flex items-center gap-2 group/acc cursor-pointer hover:bg-white/5 rounded-lg p-1 -mx-1 transition-colors"
-                            onClick={d.onSelectAccessory}
-                            title={t('studio.canvas.changeAccessory')}
-                        >
-                            <div className="w-7 h-7 rounded overflow-hidden border border-white/10 shrink-0">
+                        <div className="flex items-center gap-2 group/acc rounded-lg p-1 -mx-1 transition-colors hover:bg-white/5">
+                            <div
+                                className="w-7 h-7 rounded overflow-hidden border border-white/10 shrink-0 cursor-pointer"
+                                onClick={d.onSelectAccessory}
+                            >
                                 {d.accessoryImage
                                     ? <img src={d.accessoryImage} alt={d.accessoryName} className="w-full h-full object-cover" />
                                     : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Gem className="h-3 w-3 text-slate-600" /></div>
                                 }
                             </div>
-                            <p className="text-[11px] text-white truncate flex-1">{d.accessoryName}</p>
-                            <RefreshCw className="h-2.5 w-2.5 text-slate-600 group-hover/acc:text-emerald-400 transition-colors shrink-0" />
+                            <p
+                                className="text-[11px] text-white truncate flex-1 cursor-pointer"
+                                onClick={d.onSelectAccessory}
+                                title={t('studio.canvas.changeAccessory')}
+                            >{d.accessoryName}</p>
+                            {/* Clear / deselect button */}
+                            <button
+                                className="nodrag opacity-0 group-hover/acc:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-500/20"
+                                onClick={e => { e.stopPropagation(); d.onClearAccessory?.() }}
+                                title="Bỏ chọn accessory"
+                            >
+                                <X className="h-3 w-3 text-slate-500 hover:text-red-400" />
+                            </button>
                         </div>
                     ) : (
                         <button

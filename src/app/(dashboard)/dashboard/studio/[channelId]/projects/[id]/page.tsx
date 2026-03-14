@@ -321,6 +321,8 @@ export default function ProjectCanvasPage() {
                 onSelect: () => handleOpenAvatarPicker(props.id),
                 onSelectOutfit: () => handleOpenOutfitPicker(props.id, 'outfit'),
                 onSelectAccessory: () => handleOpenAccessoryPicker(props.id),
+                onClearOutfit: () => updateNodeData(props.id, { outfitId: undefined, outfitName: undefined, outfitImage: undefined }),
+                onClearAccessory: () => updateNodeData(props.id, { accessoryId: undefined, accessoryName: undefined, accessoryImage: undefined }),
             }} />
         )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
