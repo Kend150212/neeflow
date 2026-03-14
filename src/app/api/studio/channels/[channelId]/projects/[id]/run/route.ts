@@ -129,109 +129,104 @@ interface AvatarRecord {
 
 async function executeWorkflow(opts: WorkflowOpts) {
     try {
-        let generatedAny = false
-
         if (opts.avatarNodes.length === 0) {
-            // No avatar connected → plain generation without reference
-            await runGeneration({ ...opts, avatarData: null, refImageBase64: null, finalPrompt: opts.basePrompt })
-            generatedAny = true
+            // No avatar connected → plain text generation
+            await runGeneration({
+                ...opts,
+                avatarDataList: [],
+                refImagesBase64: [],
+                finalPrompt: opts.basePrompt,
+            })
         } else {
-            // 1 generation per connected avatar — each uses its own reference image
-            for (const avatarNode of opts.avatarNodes) {
-                const nodeData = avatarNode.data
-                const avatarId = nodeData.avatarId as string | undefined
-
-                // ── Fetch full avatar from DB to get poseImages, outfit/accessory prompts
-                let avatarRecord: AvatarRecord | null = null
-                if (avatarId) {
-                    avatarRecord = await prisma.studioAvatar.findUnique({
-                        where: { id: avatarId },
-                        select: {
-                            id: true,
-                            name: true,
-                            prompt: true,
-                            coverImage: true,
-                            poseImages: true,
-                            assets: {
-                                select: { id: true, type: true, name: true, prompt: true, images: true },
+            // ── Fetch ALL avatar records from DB in parallel ──────────────────
+            const avatarRecords = await Promise.all(
+                opts.avatarNodes.map(async (avatarNode) => {
+                    const nodeData = avatarNode.data
+                    const avatarId = nodeData.avatarId as string | undefined
+                    let record: AvatarRecord | null = null
+                    if (avatarId) {
+                        record = await prisma.studioAvatar.findUnique({
+                            where: { id: avatarId },
+                            select: {
+                                id: true, name: true, prompt: true, coverImage: true,
+                                poseImages: true,
+                                assets: { select: { id: true, type: true, name: true, prompt: true, images: true } },
                             },
-                        },
-                    }) as AvatarRecord | null
-                }
-
-                // ── Build combined prompt ─────────────────────────────────────
-                // Order: Avatar prompt + Outfit prompt + Accessory prompt + base prompt
-                const promptParts: string[] = []
-
-                // Avatar base prompt (from DB preferred, fallback to node.data)
-                const avatarBasePrompt = avatarRecord?.prompt || (nodeData.avatarPrompt as string | undefined) || ''
-                if (avatarBasePrompt) promptParts.push(avatarBasePrompt)
-
-                // Outfit prompt — only if user selected an outfit on this avatar node
-                const selectedOutfitId = nodeData.outfitId as string | undefined
-                if (selectedOutfitId && avatarRecord) {
-                    const outfitAsset = avatarRecord.assets.find(a => a.id === selectedOutfitId && a.type === 'outfit')
-                    if (outfitAsset?.prompt) {
-                        promptParts.push(`wearing: ${outfitAsset.prompt}`)
-                    } else if (outfitAsset?.name) {
-                        promptParts.push(`wearing: ${outfitAsset.name}`)
+                        }) as AvatarRecord | null
                     }
-                } else if (nodeData.outfitName) {
-                    // Fallback: outfit name only (no prompt in DB)
-                    promptParts.push(`wearing: ${nodeData.outfitName}`)
-                }
-
-                // Accessory prompt — only if user selected an accessory
-                const selectedAccessoryId = nodeData.accessoryId as string | undefined
-                if (selectedAccessoryId && avatarRecord) {
-                    const accessoryAsset = avatarRecord.assets.find(a => a.id === selectedAccessoryId && a.type === 'accessory')
-                    if (accessoryAsset?.prompt) {
-                        promptParts.push(`with accessory: ${accessoryAsset.prompt}`)
-                    } else if (accessoryAsset?.name) {
-                        promptParts.push(`with accessory: ${accessoryAsset.name}`)
-                    }
-                } else if (nodeData.accessoryName) {
-                    promptParts.push(`with accessory: ${nodeData.accessoryName}`)
-                }
-
-                // Append base (master + image-specific) prompt
-                if (opts.basePrompt) promptParts.push(opts.basePrompt)
-                const finalPrompt = promptParts.join(', ')
-
-                // ── Select reference image ────────────────────────────────────
-                // Priority: 1) front-face pose (poseImages[0]), 2) coverImage, 3) node.data.avatarCover
-                let refImageUrl: string | null = null
-
-                if (avatarRecord?.poseImages) {
-                    const poseArray = avatarRecord.poseImages as unknown[]
-                    // poseImages can be [{url, label?}] or [url, ...]
-                    const firstPose = poseArray[0]
-                    if (typeof firstPose === 'string') {
-                        refImageUrl = firstPose
-                    } else if (firstPose && typeof firstPose === 'object' && 'url' in firstPose) {
-                        refImageUrl = (firstPose as { url: string }).url
-                    }
-                }
-                // Fallback to coverImage
-                if (!refImageUrl && avatarRecord?.coverImage) refImageUrl = avatarRecord.coverImage
-                // Final fallback: node.data.avatarCover
-                if (!refImageUrl && nodeData.avatarCover) refImageUrl = String(nodeData.avatarCover)
-
-                const refImageBase64 = refImageUrl ? await fetchImageAsBase64(refImageUrl) : null
-
-                await runGeneration({
-                    ...opts,
-                    avatarData: nodeData,
-                    refImageBase64,
-                    finalPrompt,
+                    return { nodeData, record }
                 })
-                generatedAny = true
-            }
+            )
+
+            // ── Build COMBINED prompt — all avatars in one ────────────────────
+            // If only 1 avatar: "AvatarDesc, wearing: ..., with accessory: ..., base"
+            // If 2+ avatars: "Person 1 (Davis): ..., Person 2 (Hana): ..., [base prompt]"
+            const isMulti = avatarRecords.length > 1
+
+            const avatarDescriptions = avatarRecords.map(({ nodeData, record }, idx) => {
+                const parts: string[] = []
+                // Label for multi-avatar (e.g. "Person 1 (Davis)")
+                const label = isMulti
+                    ? `Character ${idx + 1} (${record?.name || (nodeData.avatarName as string) || `Avatar ${idx + 1}`})`
+                    : ''
+
+                const baseDesc = record?.prompt || (nodeData.avatarPrompt as string | undefined) || ''
+                if (baseDesc) parts.push(isMulti ? `${label}: ${baseDesc}` : baseDesc)
+
+                // Outfit
+                const outfitId = nodeData.outfitId as string | undefined
+                if (outfitId && record) {
+                    const asset = record.assets.find(a => a.id === outfitId && a.type === 'outfit')
+                    if (asset) parts.push(`wearing: ${asset.prompt || asset.name}`)
+                } else if (nodeData.outfitName) {
+                    parts.push(`wearing: ${nodeData.outfitName as string}`)
+                }
+
+                // Accessory
+                const accessoryId = nodeData.accessoryId as string | undefined
+                if (accessoryId && record) {
+                    const asset = record.assets.find(a => a.id === accessoryId && a.type === 'accessory')
+                    if (asset) parts.push(`with: ${asset.prompt || asset.name}`)
+                } else if (nodeData.accessoryName) {
+                    parts.push(`with: ${nodeData.accessoryName as string}`)
+                }
+
+                return parts.join(', ')
+            }).filter(Boolean)
+
+            // Final prompt structure
+            const promptParts = [...avatarDescriptions]
+            if (opts.basePrompt) promptParts.push(opts.basePrompt)
+            const finalPrompt = promptParts.join('. ')
+
+            // ── Fetch ALL reference images in parallel ────────────────────────
+            const refImagesBase64 = await Promise.all(
+                avatarRecords.map(async ({ nodeData, record }) => {
+                    // Priority: poseImages[0] > coverImage > node.data.avatarCover
+                    let url: string | null = null
+                    if (record?.poseImages) {
+                        const arr = record.poseImages as unknown[]
+                        const first = arr[0]
+                        if (typeof first === 'string') url = first
+                        else if (first && typeof first === 'object' && 'url' in first)
+                            url = (first as { url: string }).url
+                    }
+                    if (!url && record?.coverImage) url = record.coverImage
+                    if (!url && nodeData.avatarCover) url = String(nodeData.avatarCover)
+                    return url ? await fetchImageAsBase64(url) : null
+                })
+            )
+
+            // ── Single combined generation ────────────────────────────────────
+            await runGeneration({
+                ...opts,
+                avatarDataList: avatarRecords.map(r => r.nodeData),
+                refImagesBase64: refImagesBase64.filter((r): r is string => r !== null),
+                finalPrompt,
+            })
         }
 
-        if (generatedAny) {
-            await prisma.studioJob.update({ where: { id: opts.jobId }, data: { status: 'done', finishedAt: new Date() } })
-        }
+        await prisma.studioJob.update({ where: { id: opts.jobId }, data: { status: 'done', finishedAt: new Date() } })
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err)
         await prisma.studioJob.update({ where: { id: opts.jobId }, data: { status: 'failed', error: message, finishedAt: new Date() } })
@@ -240,10 +235,12 @@ async function executeWorkflow(opts: WorkflowOpts) {
 
 
 
-// ─── Single generation run (for one avatar reference) ─────────────────────────
+
+
+// ─── Generation run (combined, supports multi-avatar) ─────────────────────────
 interface RunOpts extends WorkflowOpts {
-    avatarData: Record<string, unknown> | null
-    refImageBase64: string | null
+    avatarDataList: Array<Record<string, unknown>>
+    refImagesBase64: string[]   // one per avatar, or empty
     finalPrompt: string
 }
 
@@ -251,14 +248,16 @@ async function runGeneration(opts: RunOpts) {
     const { width, height } = falSizeToPixels(opts.imageSize)
     const outputs: string[] = []
 
+    // Primary reference image (first avatar, used for single-ref providers)
+    const primaryRef = opts.refImagesBase64[0] ?? null
+
     if (opts.provider === 'fal_ai') {
-        // ── Fal.ai path ───────────────────────────────────────────────────────
+        // ── Fal.ai path — supports 1 img2img ref (first avatar) ───────────────
         const { falRunSync } = await import('@/lib/studio/fal-client')
 
-        // When we have a ref image, use flux/dev (supports image_url img2img)
-        // flux/schnell does NOT support image_url, so we auto-upgrade
+        // flux/schnell doesn't support image_url → auto-upgrade to flux/dev
         let effectiveModel = opts.model
-        if (opts.refImageBase64 && effectiveModel.includes('schnell')) {
+        if (primaryRef && effectiveModel.includes('schnell')) {
             effectiveModel = 'fal-ai/flux/dev'
         }
 
@@ -270,9 +269,9 @@ async function runGeneration(opts: RunOpts) {
             num_inference_steps: effectiveModel.includes('schnell') ? 4 : 28,
         }
 
-        // Pass avatar image as reference (img2img strength ~0.65 — enough to look like avatar, still creative)
-        if (opts.refImageBase64) {
-            input.image_url = opts.refImageBase64
+        // Img2img with primary avatar reference (strength ~0.65)
+        if (primaryRef) {
+            input.image_url = primaryRef
             input.strength = 0.65
         }
 
@@ -292,14 +291,14 @@ async function runGeneration(opts: RunOpts) {
                     url: finalUrl, prompt: opts.finalPrompt,
                     metadata: {
                         provider: 'fal_ai', model: effectiveModel, size: opts.imageSize,
-                        avatarName: opts.avatarData?.avatarName || null,
-                        avatarId: opts.avatarData?.avatarId || null,
-                        usedRefImage: !!opts.refImageBase64,
+                        avatarCount: opts.avatarDataList.length,
+                        usedRefImage: !!primaryRef,
                         width: img.width, height: img.height,
                     },
                 },
             })
         }
+
     } else {
         // ── Multi-provider path (runware / openai / gemini) ───────────────────
         const keyResult = await resolveImageAIKey(opts.channelId, opts.provider, opts.model)
@@ -314,16 +313,19 @@ async function runGeneration(opts: RunOpts) {
 
             switch (resolvedProvider) {
                 case 'runware':
-                    url = await generateRunware(apiKey, opts.finalPrompt, effectiveModel, width, height, opts.refImageBase64)
+                    // Runware: use primary ref only
+                    url = await generateRunware(apiKey, opts.finalPrompt, effectiveModel, width, height, primaryRef)
                     break
                 case 'openai': {
-                    const r = await generateOpenAI(apiKey, opts.finalPrompt, effectiveModel, width, height, opts.refImageBase64)
+                    // OpenAI: use primary ref only
+                    const r = await generateOpenAI(apiKey, opts.finalPrompt, effectiveModel, width, height, primaryRef)
                     url = r.url
                     break
                 }
                 case 'gemini': {
                     const aspect = pixelsToGeminiAspect(width, height)
-                    const r = await generateGemini(apiKey, opts.finalPrompt, effectiveModel, aspect, opts.refImageBase64)
+                    // Gemini: send ALL ref images so it can render all characters together
+                    const r = await generateGemini(apiKey, opts.finalPrompt, effectiveModel, aspect, opts.refImagesBase64)
                     url = r.url
                     mimeType = r.mimeType || 'image/png'
                     break
@@ -341,8 +343,8 @@ async function runGeneration(opts: RunOpts) {
                     url: finalUrl, prompt: opts.finalPrompt,
                     metadata: {
                         provider: resolvedProvider, model: effectiveModel, size: opts.imageSize,
-                        avatarName: opts.avatarData?.avatarName || null,
-                        usedRefImage: !!opts.refImageBase64,
+                        avatarCount: opts.avatarDataList.length,
+                        usedRefImages: opts.refImagesBase64.length,
                     },
                 },
             })
@@ -507,7 +509,7 @@ async function generateOpenAI(
 
 async function generateGemini(
     apiKey: string, prompt: string, model: string, aspectRatio: string,
-    refImageBase64?: string | null,
+    refImages?: string[] | string | null,
 ): Promise<{ url: string; mimeType?: string }> {
     const isImagen = model.includes('imagen')
 
@@ -526,17 +528,30 @@ async function generateGemini(
         return { url: `data:${mime};base64,${pred.bytesBase64Encoded}`, mimeType: mime }
     }
 
-    // Gemini native — send ref image inline so model can "see" the avatar
+    // Normalize refImages → always an array
+    const refArr: string[] = Array.isArray(refImages)
+        ? refImages.filter(Boolean)
+        : refImages ? [refImages] : []
+
+    // Gemini native — send ALL reference images inline (supports multi-character scenes)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parts: any[] = []
-    if (refImageBase64) {
-        const base64 = refImageBase64.split(',')[1]
-        const mime = refImageBase64.split(';')[0].split(':')[1] || 'image/jpeg'
-        parts.push({ inlineData: { mimeType: mime, data: base64 } })
-        parts.push({ text: `The reference image shows the character/subject. Generate a creative, high-quality marketing image where THIS EXACT PERSON (same face, same look) is the central subject. Apply this concept: ${prompt}` })
+
+    if (refArr.length > 0) {
+        // Send each avatar image as a separate inlineData part
+        for (const dataUri of refArr) {
+            const base64 = dataUri.split(',')[1]
+            const mime = dataUri.split(';')[0].split(':')[1] || 'image/jpeg'
+            parts.push({ inlineData: { mimeType: mime, data: base64 } })
+        }
+        const subjectDesc = refArr.length === 1
+            ? 'THIS EXACT PERSON (same face, same look) as the central subject'
+            : `ALL ${refArr.length} PEOPLE shown in the reference images together in one scene (keep each person's exact face and appearance)`
+        parts.push({ text: `These are reference images showing the character(s). Generate a creative, high-quality marketing image featuring ${subjectDesc}. ${prompt}` })
     } else {
         parts.push({ text: `Create a visually striking marketing image: ${prompt}` })
     }
+
 
     const urlG = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
     const res = await fetch(urlG, {
