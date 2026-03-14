@@ -129,7 +129,21 @@ export default function ProjectCanvasPage() {
         setOutfitPickerMode(mode)
         setOutfitTab(mode)
         setOutfitPickerOpen(true)
+        // Re-fetch assets for THIS node's avatar (multi-avatar support)
+        setNodesRef.current(nds => {
+            const node = nds.find(n => n.id === nodeId) as { data?: Record<string, unknown> } | undefined
+            const avatarId = node?.data?.avatarId as string | undefined
+            if (avatarId) {
+                fetch(`/api/studio/channels/${channelIdRef.current}/avatars/${avatarId}/assets`)
+                    .then(r => r.json())
+                    .then(d => setAvatarAssets(d.assets || []))
+                    .catch(() => { })
+            }
+            return nds
+        })
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
 
     const handleOpenAccessoryPicker = useCallback((nodeId: string) => {
         handleOpenOutfitPicker(nodeId, 'accessory')
@@ -395,12 +409,22 @@ export default function ProjectCanvasPage() {
                 setProject(data.project)
                 if (data.project.workflow) {
                     const wf = data.project.workflow
-                    if ((wf.nodesJson as unknown[]).length > 0) setNodes(wf.nodesJson as Node[])
+                    if ((wf.nodesJson as unknown[]).length > 0) {
+                        const loadedNodes = wf.nodesJson as Node[]
+                        setNodes(loadedNodes)
+                        // Auto-fetch assets for any already-selected avatarNode
+                        const firstAvatarNode = (loadedNodes as Array<{ type?: string; data?: Record<string, unknown> }>)
+                            .find(n => n.type === 'avatarNode' && n.data?.avatarId)
+                        if (firstAvatarNode?.data?.avatarId) {
+                            fetchAvatarAssets(firstAvatarNode.data.avatarId as string)
+                        }
+                    }
                     if ((wf.edgesJson as unknown[]).length > 0) setEdges(wf.edgesJson as never[])
                 }
             }
         } finally { setLoading(false) }
     }
+
 
     async function fetchAvatars() {
         // Use channel-scoped API
