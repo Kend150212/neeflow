@@ -544,13 +544,34 @@ async function generateGemini(
             const mime = dataUri.split(';')[0].split(':')[1] || 'image/jpeg'
             parts.push({ inlineData: { mimeType: mime, data: base64 } })
         }
-        const subjectDesc = refArr.length === 1
-            ? 'THIS EXACT PERSON (same face, same look) as the central subject'
-            : `ALL ${refArr.length} PEOPLE shown in the reference images together in one scene (keep each person's exact face and appearance)`
-        parts.push({ text: `These are reference images showing the character(s). Generate a creative, high-quality marketing image featuring ${subjectDesc}. ${prompt}` })
+
+        let instruction: string
+        if (refArr.length === 1) {
+            instruction = [
+                `REFERENCE IMAGE: This shows the person's face and physical identity.`,
+                `TASK: Generate a creative, high-quality image of THIS EXACT PERSON.`,
+                `RULES:`,
+                `- FACE: Keep the exact same face, ethnicity, hair color, and facial features from the reference image.`,
+                `- OUTFIT & ACCESSORIES: IGNORE what they are wearing in the reference image. Instead, dress them EXACTLY as described in the prompt below.`,
+                `- DO NOT copy the clothing or accessories from the reference photo.`,
+                `PROMPT: ${prompt}`,
+            ].join('\n')
+        } else {
+            instruction = [
+                `REFERENCE IMAGES: Each image shows one person's face and physical identity.`,
+                `TASK: Generate a single creative, high-quality image featuring ALL ${refArr.length} PEOPLE TOGETHER in one scene.`,
+                `RULES:`,
+                `- FACES: Keep each person's exact face, ethnicity, hair color, and facial features from their reference image.`,
+                `- OUTFIT & ACCESSORIES: IGNORE what each person is wearing in the reference images. Instead, dress them EXACTLY as described in the prompt below.`,
+                `- DO NOT copy any clothing or accessories from the reference photos.`,
+                `PROMPT: ${prompt}`,
+            ].join('\n')
+        }
+        parts.push({ text: instruction })
     } else {
         parts.push({ text: `Create a visually striking marketing image: ${prompt}` })
     }
+
 
 
     const urlG = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
