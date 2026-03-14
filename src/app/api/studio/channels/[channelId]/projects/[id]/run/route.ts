@@ -553,6 +553,7 @@ async function generateGemini(
                 `RULES:`,
                 `- FACE: Keep the exact same face, ethnicity, hair color, and facial features from the reference image.`,
                 `- OUTFIT & ACCESSORIES: IGNORE what they are wearing in the reference image. Instead, dress them EXACTLY as described in the prompt below.`,
+                `- If the prompt does NOT specify an outfit or accessories, then FREELY CREATE a stylish, creative outfit and accessories that perfectly match the scene, mood, and concept described in the prompt.`,
                 `- DO NOT copy the clothing or accessories from the reference photo.`,
                 `PROMPT: ${prompt}`,
             ].join('\n')
@@ -563,6 +564,7 @@ async function generateGemini(
                 `RULES:`,
                 `- FACES: Keep each person's exact face, ethnicity, hair color, and facial features from their reference image.`,
                 `- OUTFIT & ACCESSORIES: IGNORE what each person is wearing in the reference images. Instead, dress them EXACTLY as described in the prompt below.`,
+                `- If the prompt does NOT specify an outfit or accessories for a person, then FREELY CREATE a stylish, creative outfit and accessories for them that matches the scene, mood, and concept of the prompt.`,
                 `- DO NOT copy any clothing or accessories from the reference photos.`,
                 `PROMPT: ${prompt}`,
             ].join('\n')
