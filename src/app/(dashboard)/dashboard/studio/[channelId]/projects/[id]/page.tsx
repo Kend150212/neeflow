@@ -25,6 +25,7 @@ import {
     ShoppingBag, ArrowUpCircle, Scissors, Video, Send,
     UserRound, Paintbrush2, Eraser, Layers, ScanLine,
     Crop, MessageSquareText, AudioLines,
+    Shirt, Gem,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -49,6 +50,10 @@ import { LipSyncNode } from '@/components/studio/nodes/LipSyncNode'
 
 interface StudioAvatar {
     id: string; name: string; coverImage: string | null; prompt: string; style: string
+}
+interface StudioAvatarAsset {
+    id: string; type: string; name: string; prompt: string | null
+    images: Array<{ url: string; label?: string }>
 }
 interface StudioOutput {
     id: string; url: string; type: string; prompt: string | null; createdAt: string
@@ -82,6 +87,12 @@ export default function ProjectCanvasPage() {
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
     const [avatarPickerNodeId, setAvatarPickerNodeId] = useState<string | null>(null)
+    // Outfit / Accessory picker
+    const [outfitPickerOpen, setOutfitPickerOpen] = useState(false)
+    const [outfitPickerNodeId, setOutfitPickerNodeId] = useState<string | null>(null)
+    const [outfitPickerMode, setOutfitPickerMode] = useState<'outfit' | 'accessory' | 'prop'>('outfit')
+    const [avatarAssets, setAvatarAssets] = useState<StudioAvatarAsset[]>([])
+    const [outfitTab, setOutfitTab] = useState<'outfit' | 'accessory' | 'prop'>('outfit')
     const [selectedOutputs, setSelectedOutputs] = useState<Set<string>>(new Set())
     const [pushing, setPushing] = useState(false)
     const [enhancingNode, setEnhancingNode] = useState<string | null>(null)
@@ -102,6 +113,17 @@ export default function ProjectCanvasPage() {
         setAvatarPickerNodeId(nodeId)
         setAvatarPickerOpen(true)
     }, [])
+
+    const handleOpenOutfitPicker = useCallback((nodeId: string, mode: 'outfit' | 'accessory' | 'prop' = 'outfit') => {
+        setOutfitPickerNodeId(nodeId)
+        setOutfitPickerMode(mode)
+        setOutfitTab(mode)
+        setOutfitPickerOpen(true)
+    }, [])
+
+    const handleOpenAccessoryPicker = useCallback((nodeId: string) => {
+        handleOpenOutfitPicker(nodeId, 'accessory')
+    }, [handleOpenOutfitPicker])
 
     const handleDeleteNode = useCallback((nodeId: string) => {
         setNodes(nds => nds.filter(n => n.id !== nodeId) as Node[])
@@ -248,7 +270,12 @@ export default function ProjectCanvasPage() {
     const nodeTypes = useMemo<NodeTypes>(() => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         avatarNode: withDelete((props: any) => (
-            <AvatarNode {...props} data={{ ...props.data, onSelect: () => handleOpenAvatarPicker(props.id) }} />
+            <AvatarNode {...props} data={{
+                ...props.data,
+                onSelect: () => handleOpenAvatarPicker(props.id),
+                onSelectOutfit: () => handleOpenOutfitPicker(props.id, 'outfit'),
+                onSelectAccessory: () => handleOpenAccessoryPicker(props.id),
+            }} />
         )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         promptNode: withDelete((props: any) => (
@@ -317,7 +344,7 @@ export default function ProjectCanvasPage() {
             <LipSyncNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         )),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [withDelete, handleOpenAvatarPicker, handleRun, handleAISuggest, updateNodeData, running, channelId])
+    }), [withDelete, handleOpenAvatarPicker, handleOpenOutfitPicker, handleOpenAccessoryPicker, handleRun, handleAISuggest, updateNodeData, running, channelId])
 
 
     useEffect(() => {
@@ -358,8 +385,37 @@ export default function ProjectCanvasPage() {
         updateNodeData(avatarPickerNodeId, {
             avatarId: avatar.id, avatarName: avatar.name,
             avatarCover: avatar.coverImage, avatarPrompt: avatar.prompt,
+            // Reset outfit & accessory when switching avatar
+            outfitId: undefined, outfitName: undefined, outfitImage: undefined,
+            accessoryId: undefined, accessoryName: undefined, accessoryImage: undefined,
         })
         setAvatarPickerOpen(false)
+        // Fetch assets for the newly selected avatar
+        fetchAvatarAssets(avatar.id)
+    }
+
+    async function fetchAvatarAssets(avatarId: string) {
+        const res = await fetch(`/api/studio/channels/${channelId}/avatars/${avatarId}/assets`)
+        if (res.ok) {
+            const data = await res.json()
+            setAvatarAssets(data.assets || [])
+        }
+    }
+
+    function selectOutfitForNode(asset: StudioAvatarAsset) {
+        if (!outfitPickerNodeId) return
+        const firstImage = (asset.images as Array<{ url: string }>)?.[0]?.url
+        const isAccessory = outfitTab === 'accessory' || outfitTab === 'prop'
+        if (isAccessory) {
+            updateNodeData(outfitPickerNodeId, {
+                accessoryId: asset.id, accessoryName: asset.name, accessoryImage: firstImage,
+            })
+        } else {
+            updateNodeData(outfitPickerNodeId, {
+                outfitId: asset.id, outfitName: asset.name, outfitImage: firstImage,
+            })
+        }
+        setOutfitPickerOpen(false)
     }
 
     const onConnect = useCallback((connection: Connection) => {
@@ -640,6 +696,67 @@ export default function ProjectCanvasPage() {
                             ))}
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Outfit / Accessory Picker Dialog */}
+            <Dialog open={outfitPickerOpen} onOpenChange={setOutfitPickerOpen}>
+                <DialogContent className="sm:max-w-lg bg-[#0f1a14] border-emerald-400/20">
+                    <DialogHeader>
+                        <DialogTitle className="text-white flex items-center gap-2">
+                            {outfitPickerMode === 'accessory'
+                                ? <><Gem className="h-5 w-5 text-violet-400" /> Chọn Phụ kiện</>
+                                : <><Shirt className="h-5 w-5 text-amber-400" /> Chọn Outfit</>}
+                        </DialogTitle>
+                    </DialogHeader>
+                    {/* Tabs */}
+                    <div className="flex gap-1 border-b border-white/10 mb-3">
+                        {(['outfit', 'accessory', 'prop'] as const).map(tab => (
+                            <button key={tab} onClick={() => setOutfitTab(tab)}
+                                className={cn(
+                                    'px-3 py-1.5 text-xs font-semibold capitalize rounded-t transition-colors',
+                                    outfitTab === tab
+                                        ? 'text-white border-b-2 border-emerald-400'
+                                        : 'text-slate-500 hover:text-slate-300'
+                                )}>
+                                {tab === 'outfit' ? 'Outfit' : tab === 'accessory' ? 'Phụ kiện' : 'Prop'}
+                            </button>
+                        ))}
+                    </div>
+                    {(() => {
+                        const filtered = avatarAssets.filter(a => a.type === outfitTab)
+                        if (filtered.length === 0) return (
+                            <div className="flex flex-col items-center gap-3 py-8">
+                                <p className="text-slate-400 text-sm">Chưa có {outfitTab} nào.</p>
+                                <Link href={`/dashboard/studio/${channelId}/avatars`}>
+                                    <Button size="sm" className="gap-1.5 bg-emerald-400 text-[#080d0b] hover:bg-emerald-300 font-bold text-xs">
+                                        <Plus className="h-3.5 w-3.5" /> Thêm {outfitTab}
+                                    </Button>
+                                </Link>
+                            </div>
+                        )
+                        return (
+                            <div className="grid grid-cols-3 gap-3">
+                                {filtered.map(asset => {
+                                    const img = (asset.images as Array<{ url: string }>)?.[0]?.url
+                                    return (
+                                        <button key={asset.id} onClick={() => selectOutfitForNode(asset)}
+                                            className="flex flex-col items-center gap-1.5 p-2 rounded-xl border border-white/10 hover:border-emerald-400/40 hover:bg-emerald-400/5 transition-all">
+                                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                                                {img
+                                                    ? <img src={img} alt={asset.name} className="w-full h-full object-cover" />
+                                                    : <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                                                        {outfitTab === 'outfit' ? <Shirt className="h-5 w-5 text-slate-600" /> : <Gem className="h-5 w-5 text-slate-600" />}
+                                                    </div>
+                                                }
+                                            </div>
+                                            <p className="text-[11px] font-medium text-white text-center truncate w-full">{asset.name}</p>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        )
+                    })()}
                 </DialogContent>
             </Dialog>
         </div>
