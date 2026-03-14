@@ -159,12 +159,20 @@ export default function ProjectCanvasPage() {
     ), [handleDeleteNode])
 
 
+    // Stable ref for nodes (read in handleAISuggest without subscribing)
+    const nodesRef = useRef(nodes)
+    useEffect(() => { nodesRef.current = nodes }, [nodes])
+
+    const channelIdRef = useRef(channelId)
+    useEffect(() => { channelIdRef.current = channelId }, [channelId])
+
     // AI Suggest for PromptNode
+    const handleAISuggestRef = useRef<(nodeId: string) => void>(() => { })
     const handleAISuggest = useCallback(async (nodeId: string) => {
         setEnhancingNode(nodeId)
         try {
             // Find avatar + product context from connected nodes
-            const currentNodes = nodes
+            const currentNodes = nodesRef.current
             const promptNode = currentNodes.find(n => n.id === nodeId)
             const avatarNode = currentNodes.find(n => n.type === 'avatarNode')
             const productNode = currentNodes.find(n => n.type === 'productNode')
@@ -173,7 +181,7 @@ export default function ProjectCanvasPage() {
             const productData = productNode?.data as Record<string, string | number> | undefined
             const currentPrompt = (promptNode?.data as Record<string, string>)?.prompt || ''
 
-            const res = await fetch(`/api/studio/channels/${channelId}/prompt-suggest`, {
+            const res = await fetch(`/api/studio/channels/${channelIdRef.current}/prompt-suggest`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -186,8 +194,7 @@ export default function ProjectCanvasPage() {
                 }),
             })
             if (res.ok) {
-                const data = await res.json()
-                const suggestions: string[] = data.suggestions || []
+                const { suggestions = [] } = await res.json()
                 if (suggestions.length > 0) {
                     updateNodeData(nodeId, { prompt: suggestions[0], _suggestions: suggestions })
                     toast.success('AI suggestions generated! Click to cycle through them.')
@@ -199,7 +206,8 @@ export default function ProjectCanvasPage() {
             setEnhancingNode(null)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [channelId, nodes, updateNodeData])
+    }, [updateNodeData])
+    useEffect(() => { handleAISuggestRef.current = handleAISuggest }, [handleAISuggest])
 
     const handleRun = useCallback(async () => {
         if (runningRef.current) return
@@ -247,8 +255,10 @@ export default function ProjectCanvasPage() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [channelId, id])
+    useEffect(() => { handleRunRef.current = handleRun }, [handleRun])
 
     // Push selected outputs to Compose as draft post
+
     const handlePushToPost = useCallback(async () => {
         if (!selectedOutputs.size) {
             toast.error('Select at least one output')
@@ -278,6 +288,16 @@ export default function ProjectCanvasPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [channelId, id, selectedOutputs])
 
+    // Stable refs for use inside nodeTypes (which must have [] deps)
+    const enhancingNodeRef = useRef(enhancingNode)
+    useEffect(() => { enhancingNodeRef.current = enhancingNode }, [enhancingNode])
+
+    const handleRunRef = useRef<() => void>(() => { })
+
+    // nodeTypes MUST be stable ([] deps) — never recreated so ReactFlow
+    // never remounts node components, preserving textarea focus on every keystroke.
+    // All dynamic state is read via refs at call-time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const nodeTypes = useMemo<NodeTypes>(() => ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         avatarNode: withDelete((props: any) => (
@@ -293,18 +313,18 @@ export default function ProjectCanvasPage() {
             <PromptNode {...props} data={{
                 ...props.data,
                 onChange: (val: string) => updateNodeData(props.id, { prompt: val }),
-                onEnhance: () => handleAISuggest(props.id),
-                enhancing: enhancingNode === props.id,
+                onEnhance: () => handleAISuggestRef.current(props.id),
+                enhancing: enhancingNodeRef.current === props.id,
             }} />
         )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         productNode: withDelete((props: any) => (
-            <ProductNode {...props} data={{ ...props.data, channelId, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+            <ProductNode {...props} data={{ ...props.data, channelId: channelIdRef.current, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         )),
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         imageGenNode: withDelete((props: any) => (
-            <ImageGenNode {...props} data={{ ...props.data, running, onRun: handleRun, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+            <ImageGenNode {...props} data={{ ...props.data, running: runningRef.current, onRun: () => handleRunRef.current(), onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         upscaleNode: withDelete((props: any) => (
@@ -348,14 +368,14 @@ export default function ProjectCanvasPage() {
         )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         captionGenNode: withDelete((props: any) => (
-            <CaptionGenNode {...props} data={{ ...props.data, channelId, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
+            <CaptionGenNode {...props} data={{ ...props.data, channelId: channelIdRef.current, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         )),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         lipSyncNode: withDelete((props: any) => (
             <LipSyncNode {...props} data={{ ...props.data, onChange: (key: string, val: unknown) => updateNodeData(props.id, { [key]: val }) }} />
         )),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [withDelete, handleOpenAvatarPicker, handleOpenOutfitPicker, handleOpenAccessoryPicker, handleRun, handleAISuggest, updateNodeData, running, channelId])
+        // ↓ INTENTIONALLY EMPTY — all dynamics read via refs at call-time
+    }), [])
 
 
     useEffect(() => {
