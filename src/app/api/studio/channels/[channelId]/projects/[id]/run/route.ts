@@ -116,31 +116,112 @@ interface WorkflowOpts {
     numImages: number
 }
 
+
+// ─── Avatar DB record type ─────────────────────────────────────────────────────
+interface AvatarRecord {
+    id: string
+    name: string
+    prompt: string
+    coverImage: string | null
+    poseImages: unknown   // JSON array: [{url, label?, prompt?}] or [url, url, ...]
+    assets: Array<{ id: string; type: string; name: string; prompt: string | null; images: unknown }>
+}
+
 async function executeWorkflow(opts: WorkflowOpts) {
     try {
         let generatedAny = false
 
         if (opts.avatarNodes.length === 0) {
-            // No avatar connected → plain generation
+            // No avatar connected → plain generation without reference
             await runGeneration({ ...opts, avatarData: null, refImageBase64: null, finalPrompt: opts.basePrompt })
             generatedAny = true
         } else {
             // 1 generation per connected avatar — each uses its own reference image
             for (const avatarNode of opts.avatarNodes) {
-                const avatarData = avatarNode.data
-                // Build avatar-enriched prompt
-                let finalPrompt = opts.basePrompt
-                if (avatarData.avatarPrompt) {
-                    finalPrompt = `${String(avatarData.avatarPrompt)}, ${finalPrompt}`
+                const nodeData = avatarNode.data
+                const avatarId = nodeData.avatarId as string | undefined
+
+                // ── Fetch full avatar from DB to get poseImages, outfit/accessory prompts
+                let avatarRecord: AvatarRecord | null = null
+                if (avatarId) {
+                    avatarRecord = await prisma.studioAvatar.findUnique({
+                        where: { id: avatarId },
+                        select: {
+                            id: true,
+                            name: true,
+                            prompt: true,
+                            coverImage: true,
+                            poseImages: true,
+                            assets: {
+                                select: { id: true, type: true, name: true, prompt: true, images: true },
+                            },
+                        },
+                    }) as AvatarRecord | null
                 }
-                // Fetch avatar cover as base64 ref image
-                const refImageBase64 = avatarData.avatarCover
-                    ? await fetchImageAsBase64(String(avatarData.avatarCover))
-                    : null
+
+                // ── Build combined prompt ─────────────────────────────────────
+                // Order: Avatar prompt + Outfit prompt + Accessory prompt + base prompt
+                const promptParts: string[] = []
+
+                // Avatar base prompt (from DB preferred, fallback to node.data)
+                const avatarBasePrompt = avatarRecord?.prompt || (nodeData.avatarPrompt as string | undefined) || ''
+                if (avatarBasePrompt) promptParts.push(avatarBasePrompt)
+
+                // Outfit prompt — only if user selected an outfit on this avatar node
+                const selectedOutfitId = nodeData.outfitId as string | undefined
+                if (selectedOutfitId && avatarRecord) {
+                    const outfitAsset = avatarRecord.assets.find(a => a.id === selectedOutfitId && a.type === 'outfit')
+                    if (outfitAsset?.prompt) {
+                        promptParts.push(`wearing: ${outfitAsset.prompt}`)
+                    } else if (outfitAsset?.name) {
+                        promptParts.push(`wearing: ${outfitAsset.name}`)
+                    }
+                } else if (nodeData.outfitName) {
+                    // Fallback: outfit name only (no prompt in DB)
+                    promptParts.push(`wearing: ${nodeData.outfitName}`)
+                }
+
+                // Accessory prompt — only if user selected an accessory
+                const selectedAccessoryId = nodeData.accessoryId as string | undefined
+                if (selectedAccessoryId && avatarRecord) {
+                    const accessoryAsset = avatarRecord.assets.find(a => a.id === selectedAccessoryId && a.type === 'accessory')
+                    if (accessoryAsset?.prompt) {
+                        promptParts.push(`with accessory: ${accessoryAsset.prompt}`)
+                    } else if (accessoryAsset?.name) {
+                        promptParts.push(`with accessory: ${accessoryAsset.name}`)
+                    }
+                } else if (nodeData.accessoryName) {
+                    promptParts.push(`with accessory: ${nodeData.accessoryName}`)
+                }
+
+                // Append base (master + image-specific) prompt
+                if (opts.basePrompt) promptParts.push(opts.basePrompt)
+                const finalPrompt = promptParts.join(', ')
+
+                // ── Select reference image ────────────────────────────────────
+                // Priority: 1) front-face pose (poseImages[0]), 2) coverImage, 3) node.data.avatarCover
+                let refImageUrl: string | null = null
+
+                if (avatarRecord?.poseImages) {
+                    const poseArray = avatarRecord.poseImages as unknown[]
+                    // poseImages can be [{url, label?}] or [url, ...]
+                    const firstPose = poseArray[0]
+                    if (typeof firstPose === 'string') {
+                        refImageUrl = firstPose
+                    } else if (firstPose && typeof firstPose === 'object' && 'url' in firstPose) {
+                        refImageUrl = (firstPose as { url: string }).url
+                    }
+                }
+                // Fallback to coverImage
+                if (!refImageUrl && avatarRecord?.coverImage) refImageUrl = avatarRecord.coverImage
+                // Final fallback: node.data.avatarCover
+                if (!refImageUrl && nodeData.avatarCover) refImageUrl = String(nodeData.avatarCover)
+
+                const refImageBase64 = refImageUrl ? await fetchImageAsBase64(refImageUrl) : null
 
                 await runGeneration({
                     ...opts,
-                    avatarData,
+                    avatarData: nodeData,
                     refImageBase64,
                     finalPrompt,
                 })
@@ -156,6 +237,8 @@ async function executeWorkflow(opts: WorkflowOpts) {
         await prisma.studioJob.update({ where: { id: opts.jobId }, data: { status: 'failed', error: message, finishedAt: new Date() } })
     }
 }
+
+
 
 // ─── Single generation run (for one avatar reference) ─────────────────────────
 interface RunOpts extends WorkflowOpts {
