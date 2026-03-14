@@ -134,7 +134,7 @@ async function executeWorkflow(opts: WorkflowOpts) {
             await runGeneration({
                 ...opts,
                 avatarDataList: [],
-                refImagesBase64: [],
+                avatarRefSets: [],
                 finalPrompt: opts.basePrompt,
             })
         } else {
@@ -200,20 +200,42 @@ async function executeWorkflow(opts: WorkflowOpts) {
             const finalPrompt = promptParts.join('. ')
 
             // ── Fetch ALL reference images in parallel ────────────────────────
-            const refImagesBase64 = await Promise.all(
+            // Per avatar: face image + outfit image + accessory image
+            const avatarRefSets = await Promise.all(
                 avatarRecords.map(async ({ nodeData, record }) => {
-                    // Priority: poseImages[0] > coverImage > node.data.avatarCover
-                    let url: string | null = null
+                    // 1. Face / identity image
+                    let faceUrl: string | null = null
                     if (record?.poseImages) {
                         const arr = record.poseImages as unknown[]
                         const first = arr[0]
-                        if (typeof first === 'string') url = first
+                        if (typeof first === 'string') faceUrl = first
                         else if (first && typeof first === 'object' && 'url' in first)
-                            url = (first as { url: string }).url
+                            faceUrl = (first as { url: string }).url
                     }
-                    if (!url && record?.coverImage) url = record.coverImage
-                    if (!url && nodeData.avatarCover) url = String(nodeData.avatarCover)
-                    return url ? await fetchImageAsBase64(url) : null
+                    if (!faceUrl && record?.coverImage) faceUrl = record.coverImage
+                    if (!faceUrl && nodeData.avatarCover) faceUrl = String(nodeData.avatarCover)
+
+                    // 2. Outfit image (from node data — already the selected asset image)
+                    const outfitUrl = nodeData.outfitImage ? String(nodeData.outfitImage) : null
+
+                    // 3. Accessory image
+                    const accessoryUrl = nodeData.accessoryImage ? String(nodeData.accessoryImage) : null
+
+                    // Fetch all in parallel
+                    const [faceB64, outfitB64, accessoryB64] = await Promise.all([
+                        faceUrl ? fetchImageAsBase64(faceUrl) : Promise.resolve(null),
+                        outfitUrl ? fetchImageAsBase64(outfitUrl) : Promise.resolve(null),
+                        accessoryUrl ? fetchImageAsBase64(accessoryUrl) : Promise.resolve(null),
+                    ])
+
+                    return {
+                        name: record?.name || (nodeData.avatarName as string) || 'Character',
+                        faceB64,
+                        outfitB64,
+                        outfitName: nodeData.outfitName ? String(nodeData.outfitName) : null,
+                        accessoryB64,
+                        accessoryName: nodeData.accessoryName ? String(nodeData.accessoryName) : null,
+                    }
                 })
             )
 
@@ -221,7 +243,7 @@ async function executeWorkflow(opts: WorkflowOpts) {
             await runGeneration({
                 ...opts,
                 avatarDataList: avatarRecords.map(r => r.nodeData),
-                refImagesBase64: refImagesBase64.filter((r): r is string => r !== null),
+                avatarRefSets,
                 finalPrompt,
             })
         }
@@ -237,10 +259,20 @@ async function executeWorkflow(opts: WorkflowOpts) {
 
 
 
+// ─── Per-avatar image reference bundle ────────────────────────────────────────
+interface AvatarRefSet {
+    name: string
+    faceB64: string | null
+    outfitB64: string | null
+    outfitName: string | null
+    accessoryB64: string | null
+    accessoryName: string | null
+}
+
 // ─── Generation run (combined, supports multi-avatar) ─────────────────────────
 interface RunOpts extends WorkflowOpts {
     avatarDataList: Array<Record<string, unknown>>
-    refImagesBase64: string[]   // one per avatar, or empty
+    avatarRefSets: AvatarRefSet[]   // one set per avatar (face + outfit + accessory images)
     finalPrompt: string
 }
 
@@ -248,8 +280,8 @@ async function runGeneration(opts: RunOpts) {
     const { width, height } = falSizeToPixels(opts.imageSize)
     const outputs: string[] = []
 
-    // Primary reference image (first avatar, used for single-ref providers)
-    const primaryRef = opts.refImagesBase64[0] ?? null
+    // Primary reference image (face of first avatar — for single-ref providers)
+    const primaryRef = opts.avatarRefSets[0]?.faceB64 ?? null
 
     if (opts.provider === 'fal_ai') {
         // ── Fal.ai path — supports 1 img2img ref (first avatar) ───────────────
@@ -324,8 +356,8 @@ async function runGeneration(opts: RunOpts) {
                 }
                 case 'gemini': {
                     const aspect = pixelsToGeminiAspect(width, height)
-                    // Gemini: send ALL ref images so it can render all characters together
-                    const r = await generateGemini(apiKey, opts.finalPrompt, effectiveModel, aspect, opts.refImagesBase64)
+                    // Gemini: send all ref sets (face + outfit + accessory per avatar)
+                    const r = await generateGemini(apiKey, opts.finalPrompt, effectiveModel, aspect, opts.avatarRefSets)
                     url = r.url
                     mimeType = r.mimeType || 'image/png'
                     break
@@ -344,7 +376,7 @@ async function runGeneration(opts: RunOpts) {
                     metadata: {
                         provider: resolvedProvider, model: effectiveModel, size: opts.imageSize,
                         avatarCount: opts.avatarDataList.length,
-                        usedRefImages: opts.refImagesBase64.length,
+                        usedRefImages: opts.avatarRefSets.length,
                     },
                 },
             })
@@ -509,7 +541,7 @@ async function generateOpenAI(
 
 async function generateGemini(
     apiKey: string, prompt: string, model: string, aspectRatio: string,
-    refImages?: string[] | string | null,
+    refImages?: AvatarRefSet[] | string[] | string | null,
 ): Promise<{ url: string; mimeType?: string }> {
     const isImagen = model.includes('imagen')
 
@@ -528,48 +560,73 @@ async function generateGemini(
         return { url: `data:${mime};base64,${pred.bytesBase64Encoded}`, mimeType: mime }
     }
 
-    // Normalize refImages → always an array
-    const refArr: string[] = Array.isArray(refImages)
-        ? refImages.filter(Boolean)
-        : refImages ? [refImages] : []
-
-    // Gemini native — send ALL reference images inline (supports multi-character scenes)
+    // Helper: push a base64 data URI as inlineData part
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parts: any[] = []
 
-    if (refArr.length > 0) {
-        // Send each avatar image as a separate inlineData part
-        for (const dataUri of refArr) {
-            const base64 = dataUri.split(',')[1]
-            const mime = dataUri.split(';')[0].split(':')[1] || 'image/jpeg'
-            parts.push({ inlineData: { mimeType: mime, data: base64 } })
+    const addImage = (dataUri: string) => {
+        const base64 = dataUri.split(',')[1]
+        const mime = dataUri.split(';')[0].split(':')[1] || 'image/jpeg'
+        parts.push({ inlineData: { mimeType: mime, data: base64 } })
+    }
+
+    // Determine if we have structured AvatarRefSet[] or legacy string refs
+    const isRefSets = Array.isArray(refImages) && refImages.length > 0 && typeof refImages[0] === 'object'
+
+    if (isRefSets) {
+        // ── Structured path: per-avatar face + outfit + accessory ─────────────
+        const sets = refImages as AvatarRefSet[]
+        const isMulti = sets.length > 1
+
+        for (let i = 0; i < sets.length; i++) {
+            const s = sets[i]
+            const label = isMulti ? `Character ${i + 1} (${s.name})` : s.name
+
+            if (s.faceB64) {
+                parts.push({ text: `[REFERENCE - FACE of ${label}]: Use this image for the face, hair, and physical identity ONLY.` })
+                addImage(s.faceB64)
+            }
+            if (s.outfitB64) {
+                parts.push({ text: `[REFERENCE - OUTFIT for ${label}]: ${label} must wear EXACTLY this outfit/clothing in the generated image.` })
+                addImage(s.outfitB64)
+            }
+            if (s.accessoryB64) {
+                parts.push({ text: `[REFERENCE - ACCESSORY for ${label}]: ${label} must use/wear EXACTLY this accessory in the generated image.` })
+                addImage(s.accessoryB64)
+            }
         }
 
-        let instruction: string
-        if (refArr.length === 1) {
-            instruction = [
-                `REFERENCE IMAGE: This shows the person's face and physical identity.`,
-                `TASK: Generate a creative, high-quality image of THIS EXACT PERSON.`,
-                `RULES:`,
-                `- FACE: Keep the exact same face, ethnicity, hair color, and facial features from the reference image.`,
-                `- OUTFIT & ACCESSORIES: IGNORE what they are wearing in the reference image. Instead, dress them EXACTLY as described in the prompt below.`,
-                `- If the prompt does NOT specify an outfit or accessories, then FREELY CREATE a stylish, creative outfit and accessories that perfectly match the scene, mood, and concept described in the prompt.`,
-                `- DO NOT copy the clothing or accessories from the reference photo.`,
+        // Build instruction text
+        const faceRule = `- FACE: Keep exact face, hair color, ethnicity from the FACE reference image(s).`
+        const outfitRule = `- OUTFIT: If an OUTFIT reference image is provided, reproduce that exact outfit/clothing on the character. DO NOT copy clothing from the FACE image.`
+        const accessoryRule = `- ACCESSORY: If an ACCESSORY reference image is provided, include that exact accessory on the character.`
+        const noSpecRule = `- If no outfit or accessory reference is provided for a character, FREELY CREATE stylish clothing and accessories that fit the scene mood and prompt context.`
+        const taskRule = isMulti
+            ? `TASK: Generate a single creative, high-quality image featuring ALL ${sets.length} CHARACTERS TOGETHER in one scene.`
+            : `TASK: Generate a creative, high-quality image of THIS CHARACTER.`
+
+        parts.push({ text: [taskRule, 'RULES:', faceRule, outfitRule, accessoryRule, noSpecRule, `PROMPT: ${prompt}`].join('\n') })
+
+    } else if (refImages) {
+        // ── Legacy flat string path ───────────────────────────────────────────
+        const refArr: string[] = Array.isArray(refImages)
+            ? (refImages as string[]).filter(Boolean)
+            : [refImages as string]
+
+        for (const dataUri of refArr) addImage(dataUri)
+
+        const subjectDesc = refArr.length === 1
+            ? 'THIS EXACT PERSON (same face, same look) as the central subject'
+            : `ALL ${refArr.length} PEOPLE shown in the reference images together in one scene`
+        parts.push({
+            text: [
+                `REFERENCE IMAGE(S): Face/identity only.`,
+                `TASK: Generate a creative, high-quality image featuring ${subjectDesc}.`,
+                `- Keep exact face from reference. IGNORE clothing in reference image.`,
+                `- If no outfit specified in prompt, create stylish clothing that fits the scene.`,
                 `PROMPT: ${prompt}`,
             ].join('\n')
-        } else {
-            instruction = [
-                `REFERENCE IMAGES: Each image shows one person's face and physical identity.`,
-                `TASK: Generate a single creative, high-quality image featuring ALL ${refArr.length} PEOPLE TOGETHER in one scene.`,
-                `RULES:`,
-                `- FACES: Keep each person's exact face, ethnicity, hair color, and facial features from their reference image.`,
-                `- OUTFIT & ACCESSORIES: IGNORE what each person is wearing in the reference images. Instead, dress them EXACTLY as described in the prompt below.`,
-                `- If the prompt does NOT specify an outfit or accessories for a person, then FREELY CREATE a stylish, creative outfit and accessories for them that matches the scene, mood, and concept of the prompt.`,
-                `- DO NOT copy any clothing or accessories from the reference photos.`,
-                `PROMPT: ${prompt}`,
-            ].join('\n')
-        }
-        parts.push({ text: instruction })
+        })
     } else {
         parts.push({ text: `Create a visually striking marketing image: ${prompt}` })
     }
