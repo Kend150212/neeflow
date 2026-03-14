@@ -25,7 +25,7 @@ import {
     ShoppingBag, ArrowUpCircle, Scissors, Video, Send,
     UserRound, Paintbrush2, Eraser, Layers, ScanLine,
     Crop, MessageSquareText, AudioLines,
-    Shirt, Gem,
+    Shirt, Gem, ZoomIn, X as XIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -86,6 +86,7 @@ export default function ProjectCanvasPage() {
     const [saving, setSaving] = useState(false)
     const [running, setRunning] = useState(false)
     const [rightTab, setRightTab] = useState<'outputs' | 'history'>('outputs')
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
     const [avatars, setAvatars] = useState<StudioAvatar[]>([])
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
     const [avatarPickerNodeId, setAvatarPickerNodeId] = useState<string | null>(null)
@@ -673,9 +674,17 @@ export default function ProjectCanvasPage() {
                                             )}
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-1.5">
                                                 <span className="text-[9px] text-slate-400">{out.metadata?.model?.split('/').pop()}</span>
-                                                <a href={out.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                                                    <ExternalLink className="h-3.5 w-3.5 text-white" />
-                                                </a>
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); setLightboxUrl(out.url) }}
+                                                        title="Phóng to"
+                                                    >
+                                                        <ZoomIn className="h-3.5 w-3.5 text-white hover:text-emerald-300 transition-colors" />
+                                                    </button>
+                                                    <a href={out.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                                        <ExternalLink className="h-3.5 w-3.5 text-white hover:text-emerald-300 transition-colors" />
+                                                    </a>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -754,6 +763,46 @@ export default function ProjectCanvasPage() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Lightbox — fullscreen image preview */}
+            {lightboxUrl && (
+                <div
+                    className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center"
+                    onClick={() => setLightboxUrl(null)}
+                    onKeyDown={e => e.key === 'Escape' && setLightboxUrl(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    tabIndex={-1}
+                >
+                    {/* Close button */}
+                    <button
+                        onClick={() => setLightboxUrl(null)}
+                        className="absolute top-4 right-4 z-10 bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+                    >
+                        <XIcon className="h-5 w-5 text-white" />
+                    </button>
+
+                    {/* Image */}
+                    <img
+                        src={lightboxUrl}
+                        alt=""
+                        className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl object-contain"
+                        onClick={e => e.stopPropagation()}
+                    />
+
+                    {/* Download / open link */}
+                    <a
+                        href={lightboxUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="absolute bottom-5 right-5 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
+                    >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Mở full
+                    </a>
+                </div>
+            )}
 
             {/* Outfit / Accessory Picker Dialog */}
             <Dialog open={outfitPickerOpen} onOpenChange={setOutfitPickerOpen}>
