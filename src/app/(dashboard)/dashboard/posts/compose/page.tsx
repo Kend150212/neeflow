@@ -2305,18 +2305,59 @@ export default function ComposePage() {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .setCallback((data: any) => {
                     if (data.action === gPicker.Action.PICKED && data.docs) {
-                        for (const doc of data.docs) {
-                            const alreadyAttached = attachedMedia.some((m: { id: string }) => m.id === doc.id)
-                            if (alreadyAttached) continue
-                            setAttachedMedia(prev => [...prev, {
-                                id: doc.id,
-                                url: `https://drive.google.com/uc?id=${doc.id}&export=download`,
-                                thumbnailUrl: doc.thumbnails?.[0]?.url || null,
-                                type: doc.mimeType,
-                                originalName: doc.name,
-                            }])
+                        if (!selectedChannel) {
+                            toast.error('Please select a channel first')
+                            return
                         }
-                        toast.success(`Added ${data.docs.length} file${data.docs.length > 1 ? 's' : ''} from Drive`)
+                        const channelId = selectedChannel.id
+                        for (const doc of data.docs) {
+                            // Skip already-attached
+                            if (attachedMedia.some((m: { id: string }) => m.id === doc.id)) continue
+
+                            const placeholderId = `drive-import-${doc.id}`
+
+                            // Add loading placeholder immediately
+                            setAttachedMedia(prev => [...prev, {
+                                id: placeholderId,
+                                url: '',
+                                thumbnailUrl: doc.thumbnails?.[doc.thumbnails.length - 1]?.url || null,
+                                type: doc.mimeType?.startsWith('video/') ? 'video' : 'image',
+                                originalName: doc.name,
+                                isCanvaLoading: true, // reuse loading state for placeholder spinner
+                                canvaError: null,
+                            }])
+
+                            // Import via server — downloads with auth token → R2 public URL
+                            fetch('/api/user/gdrive/import-file', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    fileId: doc.id,
+                                    mimeType: doc.mimeType,
+                                    fileName: doc.name,
+                                    channelId,
+                                }),
+                            })
+                                .then(async res => {
+                                    if (!res.ok) {
+                                        const err = await res.json().catch(() => ({}))
+                                        throw new Error(err.error || `Import failed (${res.status})`)
+                                    }
+                                    return res.json()
+                                })
+                                .then(mediaItem => {
+                                    // Replace placeholder with real MediaItem
+                                    setAttachedMedia(prev => prev.map(m =>
+                                        m.id === placeholderId ? mediaItem : m
+                                    ))
+                                })
+                                .catch(err => {
+                                    toast.error(`Failed to import "${doc.name}": ${err.message}`)
+                                    // Remove broken placeholder
+                                    setAttachedMedia(prev => prev.filter(m => m.id !== placeholderId))
+                                })
+                        }
+                        toast.success(`Importing ${data.docs.length} file${data.docs.length > 1 ? 's' : ''} from Drive...`)
                     }
                 })
                 .build()
@@ -2326,7 +2367,8 @@ export default function ComposePage() {
             toast.error('Failed to open Google Drive picker')
         }
         setLoadingDrivePicker(false)
-    }, [attachedMedia])
+    }, [attachedMedia, selectedChannel])
+
 
     // ─── Canva design handler ────────────────────────────────────
     const openCanvaDesign = useCallback(async (existingMediaUrl?: string, existingMediaId?: string) => {
