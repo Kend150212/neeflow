@@ -69,29 +69,62 @@ const sections = [
         `
     },
     {
-        id: 'data-sharing',
-        title: '4. Data Sharing & Third Parties',
+        id: 'google-limited-use',
+        title: '4. Google API Services — Limited Use Disclosure',
         content: `
-        <p><strong>We do not sell, rent, or broker your personal information to any third party.</strong></p>
-        <h4>4.1 Service Providers</h4>
-        <p>We share data with trusted third-party providers strictly to operate the Service:</p>
+        <div style="background: #fef9c3; border: 1px solid #fde047; border-radius: 10px; padding: 14px 18px; margin-bottom: 1.2rem;">
+            <p style="color: #713f12; font-weight: 600; margin: 0 0 6px;">⚠️ Required Google API Disclosure</p>
+            <p style="color: #713f12; margin: 0; font-size: 0.9rem;">NeeFlow's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener" style="color: #92400e;">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+        </div>
+        <h4>What Google User Data We Access</h4>
+        <p>When you connect a Google account (YouTube, Google Drive), NeeFlow accesses only the specific data scopes you authorize:</p>
         <ul>
-            <li><strong>Social Media Platforms:</strong> Facebook, Instagram, TikTok, YouTube, LinkedIn, X, Pinterest — content published on your behalf.</li>
-            <li><strong>AI Providers:</strong> OpenAI, Google Gemini, Runware, OpenRouter, Synthetic.new — for AI content generation features you enable.</li>
-            <li><strong>Stripe:</strong> Payment processing and subscription management.</li>
-            <li><strong>Google Drive:</strong> Media storage integration (only if you connect Google Drive).</li>
-            <li><strong>Robolly:</strong> Template-based image generation (only if you enable this integration).</li>
-            <li><strong>SMTP Provider:</strong> Sending transactional emails.</li>
+            <li><strong>YouTube Data API:</strong> Channel information, video upload capabilities, analytics for your own channel — used solely to publish and manage your YouTube content within NeeFlow.</li>
+            <li><strong>Google Drive API:</strong> Access to files and folders you explicitly select — used solely to import media into NeeFlow's content editor at your request.</li>
         </ul>
-        <h4>4.2 Legal Requirements</h4>
-        <p>We may disclose your information where required by law, court order, or governmental authority, or to protect the rights, property, or safety of NeeFlow, our users, or the public.</p>
-        <h4>4.3 Business Transfers</h4>
-        <p>In the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction. You will be notified via email before your data is subject to a different privacy policy.</p>
+        <h4>Limited Use Rules — How We Use Google User Data</h4>
+        <ul>
+            <li><strong>Permitted purpose only:</strong> Google user data is used exclusively to provide the specific NeeFlow features you requested (publishing to YouTube, importing Drive files). It is not used for any secondary purpose.</li>
+            <li><strong>No AI training:</strong> Google user data is <strong>never</strong> used to train AI models — ours or any third-party's.</li>
+            <li><strong>No transfer to AI providers:</strong> Google user data is <strong>never</strong> sent to OpenRouter, OpenAI, Runware, Synthetic.new, or any other AI service. These providers only receive text and content you <em>directly type or upload</em> in NeeFlow's editor — completely separate from any Google API data flow.</li>
+            <li><strong>No unauthorized sharing:</strong> Google user data is never sold, rented, or shared beyond what is strictly necessary to operate NeeFlow's core features.</li>
+            <li><strong>No human access:</strong> NeeFlow staff do not read your Google user data unless you explicitly request support and share specific information, or as required by law.</li>
+        </ul>
+        <h4>Data Segregation Architecture</h4>
+        <p>NeeFlow maintains strict architectural separation between Google API data flows and AI generation pipelines:</p>
+        <ul>
+            <li>Files accessed via Google Drive API flow only to NeeFlow's own storage and editor display — they are never routed through AI generation endpoints.</li>
+            <li>YouTube data flows only to NeeFlow's publishing and analytics systems.</li>
+            <li>AI content generation (captions, images via OpenRouter etc.) is triggered <em>only</em> by text and media you manually provide in NeeFlow's AI tools — this pipeline is technically isolated from any Google API data path.</li>
+        </ul>
+        <p>To revoke NeeFlow's access to your Google data at any time, visit your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account permissions page</a> or disconnect the integration from your NeeFlow dashboard.</p>
         `
     },
     {
+        id: 'data-sharing',
+        title: '5. Data Sharing & Third Parties',
+        content: `
+        <p><strong>We do not sell, rent, or broker your personal information to any third party.</strong></p>
+        <h4>5.1 Service Providers</h4>
+        <p>We share data with trusted third-party providers strictly to operate the Service:</p>
+        <ul>
+            <li><strong>Social Media Platforms:</strong> Facebook, Instagram, TikTok, YouTube, LinkedIn, X, Pinterest — content published on your behalf.</li>
+            <li><strong>AI Providers (user-supplied content only):</strong> OpenAI, Google Gemini, Runware, OpenRouter, Synthetic.new — for AI content generation features you enable. <strong>Google API data is never sent to these providers.</strong> They only receive text and media you directly create in NeeFlow.</li>
+            <li><strong>Stripe:</strong> Payment processing and subscription management.</li>
+            <li><strong>Google Drive:</strong> Media storage integration (only if you connect Google Drive). Data from Google Drive API is used exclusively within NeeFlow and never forwarded to AI providers.</li>
+            <li><strong>Robolly:</strong> Template-based image generation (only if you enable this integration).</li>
+            <li><strong>SMTP Provider:</strong> Sending transactional emails.</li>
+        </ul>
+        <h4>5.2 Legal Requirements</h4>
+        <p>We may disclose your information where required by law, court order, or governmental authority, or to protect the rights, property, or safety of NeeFlow, our users, or the public.</p>
+        <h4>5.3 Business Transfers</h4>
+        <p>In the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction. You will be notified via email before your data is subject to a different privacy policy.</p>
+        `
+    },
+
+    {
         id: 'data-security',
-        title: '5. Data Security',
+        title: '6. Data Security',
         content: `
         <p>We implement industry-standard security measures to protect your data:</p>
         <ul>
@@ -107,7 +140,7 @@ const sections = [
     },
     {
         id: 'data-retention',
-        title: '6. Data Retention',
+        title: '7. Data Retention',
         content: `
         <ul>
             <li><strong>Account Data:</strong> Retained as long as your account is active. Upon account deletion, personal data is purged within 30 days, except where retention is required by law.</li>
@@ -120,7 +153,7 @@ const sections = [
     },
     {
         id: 'your-rights',
-        title: '7. Your Rights',
+        title: '8. Your Rights',
         content: `
         <p>Depending on your location, you may have the following rights regarding your personal data:</p>
         <ul>
@@ -137,7 +170,7 @@ const sections = [
     },
     {
         id: 'cookies',
-        title: '8. Cookies & Tracking',
+        title: '9. Cookies & Tracking',
         content: `
         <p>NeeFlow uses only <strong>essential cookies</strong> required for the Service to function:</p>
         <ul>
@@ -149,7 +182,7 @@ const sections = [
     },
     {
         id: 'international',
-        title: '9. International Data Transfers',
+        title: '10. International Data Transfers',
         content: `
         <p>NeeFlow is operated from the United States. If you access the Service from outside the United States, your data may be transferred to, stored, and processed in the United States or other countries where our service providers operate. By using the Service, you consent to this transfer.</p>
         <p>For users in the European Economic Area (EEA) or United Kingdom, we ensure appropriate safeguards are in place for international transfers, including Standard Contractual Clauses (SCCs) where applicable.</p>
@@ -157,14 +190,14 @@ const sections = [
     },
     {
         id: 'children',
-        title: '10. Children\'s Privacy',
+        title: '11. Children\'s Privacy',
         content: `
         <p>NeeFlow is not directed to individuals under the age of 16. We do not knowingly collect personal information from children under 16. If you believe we have inadvertently collected information from a minor, please contact us immediately at <a href="mailto:privacy@neeflow.com">privacy@neeflow.com</a> and we will delete it promptly.</p>
         `
     },
     {
         id: 'changes',
-        title: '11. Changes to This Policy',
+        title: '12. Changes to This Policy',
         content: `
         <p>We may update this Privacy Policy from time to time. When we make material changes, we will notify you by:</p>
         <ul>
@@ -176,7 +209,7 @@ const sections = [
     },
     {
         id: 'contact',
-        title: '12. Contact Us',
+        title: '13. Contact Us',
         content: `
         <p>For any privacy-related questions, requests, or concerns, please contact us:</p>
         <ul>
@@ -189,7 +222,7 @@ const sections = [
 ]
 
 export default async function PrivacyPolicyPage() {
-    const lastUpdated = 'February 22, 2025'
+    const lastUpdated = 'March 14, 2026'
     const branding = await getBrandingServer()
 
     return (
