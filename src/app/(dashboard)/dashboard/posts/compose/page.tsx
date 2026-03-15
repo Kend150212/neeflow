@@ -2326,29 +2326,48 @@ export default function ComposePage() {
                                 canvaError: null,
                             }])
 
-                            // Download via server (picker token) → upload to R2 → public URL
-                            // pickerToken is passed directly so the server can bypass scope limitations
-                            fetch('/api/user/gdrive/import-file', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    fileId: doc.id,
-                                    mimeType: doc.mimeType,
-                                    fileName: doc.name,
-                                    channelId,
-                                    pickerToken: accessToken,
-                                }),
-                            })
-                                .then(async res => {
-                                    const body = await res.json().catch(() => ({}))
-                                    if (!res.ok) throw new Error(body.error || `Import failed (${res.status})`)
-                                    // Replace placeholder with real MediaItem (has proper R2 thumbnailUrl)
-                                    setAttachedMedia(prev => prev.map(m => m.id === placeholderId ? body : m))
-                                })
-                                .catch(err => {
-                                    toast.error(`Failed to import "${doc.name}": ${err.message}`)
-                                    setAttachedMedia(prev => prev.filter(m => m.id !== placeholderId))
-                                })
+                                // ── Client-side download using picker's OAuth token ────────────────
+                                // The picker's accessToken is valid to download the file directly
+                                // from the browser (Google Drive API allows this). We then upload
+                                // the raw bytes to our media API — same as a normal file upload.
+                                // This completely avoids server-side scope issues (drive.file limitation).
+                                ; (async () => {
+                                    try {
+                                        const mimeType = doc.mimeType || 'application/octet-stream'
+                                        const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg').split(';')[0] || 'jpg'
+                                        const fileName = doc.name || `drive-import.${ext}`
+
+                                        // Step 1: Fetch file bytes from Drive using the picker's token
+                                        const driveRes = await fetch(
+                                            `https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media`,
+                                            { headers: { Authorization: `Bearer ${accessToken}` } }
+                                        )
+                                        if (!driveRes.ok) {
+                                            throw new Error(`Google Drive returned ${driveRes.status}. Please check the file is owned by your connected account.`)
+                                        }
+                                        const blob = await driveRes.blob()
+                                        const file = new File([blob], fileName, { type: mimeType })
+
+                                        // Step 2: Upload blob to our media API (same as regular upload)
+                                        const formData = new FormData()
+                                        formData.append('file', file)
+                                        formData.append('channelId', channelId)
+
+                                        const uploadRes = await fetch('/api/admin/media', {
+                                            method: 'POST',
+                                            body: formData,
+                                        })
+                                        const body = await uploadRes.json().catch(() => ({}))
+                                        if (!uploadRes.ok) throw new Error(body.error || `Upload failed (${uploadRes.status})`)
+
+                                        // Step 3: Replace placeholder with real MediaItem
+                                        setAttachedMedia(prev => prev.map(m => m.id === placeholderId ? body : m))
+                                    } catch (err: unknown) {
+                                        const msg = err instanceof Error ? err.message : 'Import failed'
+                                        toast.error(`Failed to import "${doc.name}": ${msg}`)
+                                        setAttachedMedia(prev => prev.filter(m => m.id !== placeholderId))
+                                    }
+                                })()
                         }
                         toast.success(`Importing ${data.docs.length} file${data.docs.length > 1 ? 's' : ''} from Drive…`)
                     }
