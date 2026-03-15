@@ -2327,36 +2327,69 @@ export default function ComposePage() {
                                 canvaError: null,
                             }])
 
-                            // Import via server — downloads with picker auth token → R2 public URL
-                            fetch('/api/user/gdrive/import-file', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    fileId: doc.id,
-                                    mimeType: doc.mimeType,
-                                    fileName: doc.name,
-                                    channelId,
-                                    pickerAccessToken: accessToken, // pass picker token so server can download any file user can see
-                                }),
-                            })
-                                .then(async res => {
-                                    if (!res.ok) {
-                                        const err = await res.json().catch(() => ({}))
-                                        throw new Error(err.error || `Import failed (${res.status})`)
+                                // ── Client-side download: browser fetches the Drive file
+                                // using the picker access token (avoids drive.file scope limitation).
+                                // Then upload through the standard presign → R2 flow.
+                                ; (async () => {
+                                    try {
+                                        // 1. Download file in browser with picker token
+                                        const dlUrl = `https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media`
+                                        const dlRes = await fetch(dlUrl, {
+                                            headers: { Authorization: `Bearer ${accessToken}` },
+                                        })
+                                        if (!dlRes.ok) {
+                                            throw new Error(`Failed to download from Drive: ${dlRes.status}`)
+                                        }
+                                        const blob = await dlRes.blob()
+                                        const mimeType = doc.mimeType || blob.type || 'image/jpeg'
+                                        const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg'
+                                        const safeName = doc.name || `drive-import.${ext}`
+                                        const file = new File([blob], safeName, { type: mimeType })
+
+                                        // 2. Try presign → R2 flow
+                                        const presignRes = await fetch('/api/admin/media/presign', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                channelId,
+                                                fileName: file.name,
+                                                fileType: file.type,
+                                                fileSize: file.size,
+                                            }),
+                                        })
+
+                                        if (presignRes.ok) {
+                                            const { presignedUrl, mediaItemId } = await presignRes.json() as { presignedUrl: string; mediaItemId: string }
+                                            // PUT to R2
+                                            const r2Res = await fetch(presignedUrl, {
+                                                method: 'PUT',
+                                                headers: { 'Content-Type': file.type },
+                                                body: file,
+                                            })
+                                            if (!r2Res.ok) throw new Error('R2 upload failed')
+                                            // Confirm
+                                            const confirmRes = await fetch(`/api/admin/media/${mediaItemId}/confirm`, { method: 'PATCH' })
+                                            if (!confirmRes.ok) throw new Error('Confirm failed')
+                                            const mediaItem = await confirmRes.json()
+                                            setAttachedMedia(prev => prev.map(m => m.id === placeholderId ? mediaItem : m))
+                                        } else {
+                                            // Fallback: server-side multipart upload
+                                            const formData = new FormData()
+                                            formData.append('file', file)
+                                            formData.append('channelId', channelId)
+                                            const uploadRes = await fetch('/api/admin/media', { method: 'POST', body: formData })
+                                            if (!uploadRes.ok) {
+                                                const err = await uploadRes.json().catch(() => ({}))
+                                                throw new Error(err.error || 'Upload failed')
+                                            }
+                                            const mediaItem = await uploadRes.json()
+                                            setAttachedMedia(prev => prev.map(m => m.id === placeholderId ? mediaItem : m))
+                                        }
+                                    } catch (err) {
+                                        toast.error(`Failed to import "${doc.name}": ${err instanceof Error ? err.message : 'Unknown error'}`)
+                                        setAttachedMedia(prev => prev.filter(m => m.id !== placeholderId))
                                     }
-                                    return res.json()
-                                })
-                                .then(mediaItem => {
-                                    // Replace placeholder with real MediaItem
-                                    setAttachedMedia(prev => prev.map(m =>
-                                        m.id === placeholderId ? mediaItem : m
-                                    ))
-                                })
-                                .catch(err => {
-                                    toast.error(`Failed to import "${doc.name}": ${err.message}`)
-                                    // Remove broken placeholder
-                                    setAttachedMedia(prev => prev.filter(m => m.id !== placeholderId))
-                                })
+                                })()
                         }
                         toast.success(`Importing ${data.docs.length} file${data.docs.length > 1 ? 's' : ''} from Drive...`)
                     }
