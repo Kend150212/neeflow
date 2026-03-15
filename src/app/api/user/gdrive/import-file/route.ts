@@ -1,9 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { getUserGDriveAccessToken, uploadFile, makeFilePublic, getOrCreateChannelFolder, getOrCreateMonthlyFolder } from '@/lib/gdrive'
+import {
+    getUserGDriveAccessToken,
+    getGDriveAccessToken,
+    uploadFile,
+    makeFilePublic,
+    getOrCreateChannelFolder,
+    getOrCreateMonthlyFolder,
+} from '@/lib/gdrive'
 import { uploadToR2, generateR2Key, isR2Configured } from '@/lib/r2'
 import { checkStorageQuota } from '@/lib/storage-quota'
 import { prisma } from '@/lib/prisma'
+
+/** Download a Drive file trying user token first, then admin token as fallback */
+async function downloadDriveFile(fileId: string, userId: string): Promise<Response> {
+    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
+
+    // Try user token first
+    try {
+        const userToken = await getUserGDriveAccessToken(userId)
+        const res = await fetch(downloadUrl, {
+            headers: { Authorization: `Bearer ${userToken}` },
+        })
+        if (res.ok) return res
+        // 403/404 → file may be in admin Drive, try admin token
+        if (res.status !== 403 && res.status !== 404) {
+            return res // other errors return as-is
+        }
+    } catch {
+        // user has no Drive token connected — fall through to admin
+    }
+
+    // Fallback to admin token (files uploaded by NeeFlow's admin Drive integration)
+    const adminToken = await getGDriveAccessToken()
+    return fetch(downloadUrl, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+    })
+}
 
 export const maxDuration = 30
 
@@ -41,21 +74,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(existing, { status: 200 })
         }
 
-        // ─── Get user Google Drive access token ──────────────────────────
-        const accessToken = await getUserGDriveAccessToken(session.user.id)
-
-        // ─── Download the file from Google Drive ─────────────────────────
-        const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 25000)
-
-        const driveRes = await fetch(downloadUrl, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-            signal: controller.signal,
-        })
-        clearTimeout(timeout)
+        // ─── Download the file from Google Drive (user token → admin fallback) ──
+        const driveRes = await downloadDriveFile(fileId, session.user.id)
 
         if (!driveRes.ok) {
             return NextResponse.json(
@@ -119,7 +139,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(mediaItem, { status: 201 })
         }
 
-        // ─── Fallback: Google Drive (re-upload as public) ─────────────────
+        // ─── Fallback: Google Drive (re-upload as public) — get access token ─
+        const accessToken = await getUserGDriveAccessToken(session.user.id)
+            .catch(() => getGDriveAccessToken()) // use admin token if user has none
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
             select: { gdriveFolderId: true },
