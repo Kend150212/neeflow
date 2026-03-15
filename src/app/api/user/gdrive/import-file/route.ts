@@ -83,7 +83,8 @@ export async function POST(req: NextRequest) {
                         )
                     }
                     // Use retryRes from this point
-                    return await processDownload(retryRes, { fileId, mimeType, fileName, channelId, adminToken, session })
+                    return await processDownload(retryRes, { fileId, mimeType, fileName, channelId, accessToken: adminToken, session })
+
                 } catch {
                     return NextResponse.json(
                         { error: `Cannot access this Drive file (${driveRes.status}). Please check file permissions.` },
