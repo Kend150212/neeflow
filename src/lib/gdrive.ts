@@ -5,14 +5,21 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_DRIVE_API = 'https://www.googleapis.com/drive/v3'
 
-// Scopes needed: manage files created by the app
+// Admin scopes: manage files created by the app (used for Drive folder backup)
 const SCOPES = [
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/userinfo.email',
 ]
 
+// User picker scopes: read-only access to ALL files the user owns
+// Required to download files selected via Google Picker
+const USER_PICKER_SCOPES = [
+    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/userinfo.email',
+]
+
 /**
- * Build Google OAuth2 authorization URL
+ * Build Google OAuth2 authorization URL (admin / system Drive connection)
  */
 export function getGDriveAuthUrl(clientId: string, redirectUri: string, state: string) {
     const params = new URLSearchParams({
@@ -20,6 +27,23 @@ export function getGDriveAuthUrl(clientId: string, redirectUri: string, state: s
         redirect_uri: redirectUri,
         response_type: 'code',
         scope: SCOPES.join(' '),
+        access_type: 'offline',
+        prompt: 'consent',
+        state,
+    })
+    return `${GOOGLE_AUTH_URL}?${params.toString()}`
+}
+
+/**
+ * Build Google OAuth2 authorization URL for USER-level Drive picker connection.
+ * Uses drive.readonly so users can pick and download any file from their Drive.
+ */
+export function getUserGDriveAuthUrl(clientId: string, redirectUri: string, state: string) {
+    const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: USER_PICKER_SCOPES.join(' '),
         access_type: 'offline',
         prompt: 'consent',
         state,

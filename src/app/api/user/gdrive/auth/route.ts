@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getGDriveAuthUrl, getUserRedirectUri } from '@/lib/gdrive'
+import { getUserGDriveAuthUrl, getUserRedirectUri } from '@/lib/gdrive'
 import crypto from 'crypto'
 
 // GET /api/user/gdrive/auth — redirect user to Google OAuth consent screen
@@ -37,7 +37,7 @@ export async function GET() {
     })).toString('base64url')
 
     const redirectUri = getUserRedirectUri()
-    const authUrl = getGDriveAuthUrl(clientId, redirectUri, state)
+    const authUrl = getUserGDriveAuthUrl(clientId, redirectUri, state)
 
     return NextResponse.json({ authUrl })
 }
