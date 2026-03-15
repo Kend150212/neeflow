@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { fileId, mimeType, fileName, channelId } = await req.json()
+    const { fileId, mimeType, fileName, channelId, pickerToken } = await req.json()
 
     if (!fileId || !channelId) {
         return NextResponse.json({ error: 'fileId and channelId are required' }, { status: 400 })
@@ -44,21 +44,31 @@ export async function POST(req: NextRequest) {
         })
         if (existing) return NextResponse.json(existing, { status: 200 })
 
-        // ─── Get access token — try user token first, admin fallback ──────
-        // User token is proven to work (same call as picker-config).
-        // Admin token is used as fallback for files in admin's drive.
+        // ─── Get access token ─────────────────────────────────────────────
+        // Priority 1: Use the picker's OAuth token passed directly from the client.
+        // This token already has the correct scope (drive.readonly or broader)
+        // since it was issued by the Google Picker flow. This avoids the
+        // drive.file scope restriction that causes 404 on user-owned files.
+        //
+        // Priority 2: Fall back to stored user refresh token.
+        // Priority 3: Fall back to admin system token.
         let accessToken: string
-        try {
-            accessToken = await getUserGDriveAccessToken(session.user.id)
-        } catch {
-            // User's personal Drive not connected — try system admin token
+        if (pickerToken) {
+            // Use the picker token directly — it has proven file access
+            accessToken = pickerToken
+        } else {
             try {
-                accessToken = await getGDriveAccessToken()
+                accessToken = await getUserGDriveAccessToken(session.user.id)
             } catch {
-                return NextResponse.json(
-                    { error: 'Google Drive not connected. Please connect your Drive in settings.' },
-                    { status: 403 }
-                )
+                // User's personal Drive not connected — try system admin token
+                try {
+                    accessToken = await getGDriveAccessToken()
+                } catch {
+                    return NextResponse.json(
+                        { error: 'Google Drive not connected. Please connect your Drive in settings.' },
+                        { status: 403 }
+                    )
+                }
             }
         }
 

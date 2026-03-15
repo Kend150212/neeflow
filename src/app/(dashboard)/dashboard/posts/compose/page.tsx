@@ -2326,7 +2326,8 @@ export default function ComposePage() {
                                 canvaError: null,
                             }])
 
-                            // Download via server (user token) → upload to R2 → public URL
+                            // Download via server (picker token) → upload to R2 → public URL
+                            // pickerToken is passed directly so the server can bypass scope limitations
                             fetch('/api/user/gdrive/import-file', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -2335,6 +2336,7 @@ export default function ComposePage() {
                                     mimeType: doc.mimeType,
                                     fileName: doc.name,
                                     channelId,
+                                    pickerToken: accessToken,
                                 }),
                             })
                                 .then(async res => {
