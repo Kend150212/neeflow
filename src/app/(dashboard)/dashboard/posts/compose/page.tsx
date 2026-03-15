@@ -2305,20 +2305,50 @@ export default function ComposePage() {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .setCallback((data: any) => {
                     if (data.action === gPicker.Action.PICKED && data.docs) {
+                        if (!selectedChannel) {
+                            toast.error('Please select a channel first')
+                            return
+                        }
+                        const channelId = selectedChannel.id
                         for (const doc of data.docs) {
                             if (attachedMedia.some((m: { id: string }) => m.id === doc.id)) continue
-                            // Use server-side proxy for thumbnail so image renders in browser
-                            // (direct Drive URLs require Google auth cookies)
-                            const thumbUrl = `/api/user/gdrive/proxy-thumb?fileId=${doc.id}`
+
+                            const placeholderId = `drive-import-${doc.id}`
+
+                            // Show loading spinner immediately — replace when R2 URL ready
                             setAttachedMedia(prev => [...prev, {
-                                id: doc.id,
-                                url: `https://drive.google.com/uc?id=${doc.id}&export=download`,
-                                thumbnailUrl: thumbUrl,
+                                id: placeholderId,
+                                url: '',
+                                thumbnailUrl: null,
                                 type: doc.mimeType?.startsWith('video/') ? 'video' : 'image',
                                 originalName: doc.name,
+                                isCanvaLoading: true,
+                                canvaError: null,
                             }])
+
+                            // Download via server (user token) → upload to R2 → public URL
+                            fetch('/api/user/gdrive/import-file', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    fileId: doc.id,
+                                    mimeType: doc.mimeType,
+                                    fileName: doc.name,
+                                    channelId,
+                                }),
+                            })
+                                .then(async res => {
+                                    const body = await res.json().catch(() => ({}))
+                                    if (!res.ok) throw new Error(body.error || `Import failed (${res.status})`)
+                                    // Replace placeholder with real MediaItem (has proper R2 thumbnailUrl)
+                                    setAttachedMedia(prev => prev.map(m => m.id === placeholderId ? body : m))
+                                })
+                                .catch(err => {
+                                    toast.error(`Failed to import "${doc.name}": ${err.message}`)
+                                    setAttachedMedia(prev => prev.filter(m => m.id !== placeholderId))
+                                })
                         }
-                        toast.success(`Added ${data.docs.length} file${data.docs.length > 1 ? 's' : ''} from Drive`)
+                        toast.success(`Importing ${data.docs.length} file${data.docs.length > 1 ? 's' : ''} from Drive…`)
                     }
                 })
                 .build()
